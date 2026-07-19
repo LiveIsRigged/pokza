@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pokza-web",
+      "runtimeExecutable": "/opt/homebrew/bin/npx",
+      "runtimeArgs": ["expo", "start", "--web"],
+      "port": 8081
+    }
+  ]
+}
