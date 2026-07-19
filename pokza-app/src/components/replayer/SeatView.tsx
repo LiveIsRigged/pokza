@@ -63,8 +63,8 @@ export function SeatView({ seat, x, y, tableCenter, folded, stackRemaining, curr
   return (
     <View style={[styles.wrapper, { left: x, top: y }]} pointerEvents="none">
       <Animated.View style={[styles.cardsRow, { opacity: cardOpacity }]}>
-        <CardView card={seat.isHero ? seat.holeCards?.[0] : undefined} />
-        <CardView card={seat.isHero ? seat.holeCards?.[1] : undefined} />
+        <CardView card={seat.holeCards?.[0]} />
+        <CardView card={seat.holeCards?.[1]} />
       </Animated.View>
 
       <View style={[styles.badge, isActive && styles.badgeActive]}>
