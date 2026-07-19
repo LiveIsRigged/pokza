@@ -2,6 +2,24 @@ import type { Action, Card, Hand, Street } from '../types/poker';
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river'];
 
+/**
+ * Total misé par chaque siège sur l'ensemble des actions fournies.
+ * `amount` est cumulé par street : on garde donc la dernière valeur de chaque street et on somme les streets.
+ */
+export function committedBySeat(actions: Action[]): Record<string, number> {
+  const perStreet: Record<string, Partial<Record<Street, number>>> = {};
+  for (const a of actions) {
+    if (a.amount == null) continue;
+    perStreet[a.seatId] = perStreet[a.seatId] ?? {};
+    perStreet[a.seatId]![a.street] = a.amount;
+  }
+  const totals: Record<string, number> = {};
+  for (const seatId of Object.keys(perStreet)) {
+    totals[seatId] = STREET_ORDER.reduce((sum, st) => sum + (perStreet[seatId]![st] ?? 0), 0);
+  }
+  return totals;
+}
+
 export interface HandState {
   step: number;
   totalSteps: number;

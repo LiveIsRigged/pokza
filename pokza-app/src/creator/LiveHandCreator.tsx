@@ -6,6 +6,7 @@ import { StreetStep } from './steps/StreetStep';
 import { ShowdownStep } from './steps/ShowdownStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { buildSeats } from './positions';
+import { committedBySeat } from '../engine/handEngine';
 import { DEFAULT_CONTEXT, type ContextData, type ReviewData } from './types';
 
 type Phase =
@@ -76,6 +77,10 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
 
   // Sièges adverses encore en jeu (non couchés) à qui on peut attribuer des cartes à l'abattage.
   const villainSeats = seats.filter((s) => !s.isHero && activeSeatIds.includes(s.id));
+
+  // Total misé par chaque siège lors des streets précédant `street` (exclut donc les blindes de la street courante).
+  const priorCommittedFor = (street: 'preflop' | 'flop' | 'turn' | 'river') =>
+    committedBySeat(actions.filter((a) => a.street !== street));
 
   // Enregistre l'état courant avant de passer à la phase suivante, pour pouvoir revenir en arrière sans perdre ni dupliquer les données.
   const pushSnapshotAndGo = (nextPhase: Phase, patch: Partial<Omit<Snapshot, 'phase'>> = {}) => {
@@ -221,6 +226,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           startOrder={actions.length + 1}
           initialBetAmount={context.bb}
           initialContributions={initialContributions}
+          priorCommitted={priorCommittedFor('preflop')}
           step={step}
           totalSteps={TOTAL_STEPS}
           onBack={goBack}
@@ -244,6 +250,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           seats={seats}
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
+          priorCommitted={priorCommittedFor('flop')}
           step={step}
           totalSteps={TOTAL_STEPS}
           onBack={goBack}
@@ -274,6 +281,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           seats={seats}
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
+          priorCommitted={priorCommittedFor('turn')}
           step={step}
           totalSteps={TOTAL_STEPS}
           onBack={goBack}
@@ -304,6 +312,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           seats={seats}
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
+          priorCommitted={priorCommittedFor('river')}
           step={step}
           totalSteps={TOTAL_STEPS}
           onBack={goBack}

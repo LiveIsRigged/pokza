@@ -31,6 +31,8 @@ interface StreetStepProps {
   startOrder: number;
   initialBetAmount?: number;
   initialContributions?: Record<string, number>;
+  /** Total déjà misé par chaque siège lors des streets précédentes */
+  priorCommitted?: Record<string, number>;
   onBack: () => void;
   onComplete: (boardCards: Card[], actions: Action[], remainingActiveSeatIds: string[]) => void;
   onHandEndsEarly: (boardCards: Card[], actions: Action[], remainingActiveSeatIds: string[]) => void;
@@ -52,6 +54,7 @@ export function StreetStep({
   startOrder,
   initialBetAmount = 0,
   initialContributions = {},
+  priorCommitted = {},
   onBack,
   onComplete,
   onHandEndsEarly,
@@ -60,7 +63,16 @@ export function StreetStep({
 }: StreetStepProps) {
   const [boardCards, setBoardCards] = useState<(Card | undefined)[]>(Array(boardCount).fill(undefined));
 
-  const order = getActingOrder(seats, street).filter((s) => activeSeatIds.includes(s.id));
+  // Chips qu'un siège peut engager sur CETTE street (son stack restant en début de street).
+  const availableAtStart = (id: string) => {
+    const seat = seats.find((s) => s.id === id);
+    return (seat?.startingStack ?? 0) - (priorCommitted[id] ?? 0);
+  };
+
+  // Seuls les sièges encore en jeu ET qui ont des jetons agissent (les joueurs déjà à tapis passent).
+  const order = getActingOrder(seats, street).filter(
+    (s) => activeSeatIds.includes(s.id) && availableAtStart(s.id) > 0
+  );
   const [queue, setQueue] = useState<string[]>(order.map((s) => s.id));
   const [active, setActive] = useState<string[]>(activeSeatIds);
   const [betAmount, setBetAmount] = useState(initialBetAmount);
@@ -76,6 +88,12 @@ export function StreetStep({
   const currentSeat = seats.find((s) => s.id === currentSeatId);
   const owed = betAmount - (contributions[currentSeatId] ?? 0);
   const canCheck = owed <= 0;
+
+  // Stack restant d'un siège en tenant compte de ce qu'il a déjà mis sur cette street.
+  const remainingFor = (id: string) => availableAtStart(id) - (contributions[id] ?? 0);
+  const currentRemaining = currentSeatId ? availableAtStart(currentSeatId) : 0;
+  const callTo = Math.min(betAmount, currentRemaining); // suivre est plafonné au tapis
+  const isCallAllIn = callTo >= currentRemaining && callTo < betAmount;
 
   const reorderAfter = (ids: string[], afterSeatId: string) =>
     getActingOrderAfter(seats, street, afterSeatId)
@@ -149,18 +167,17 @@ export function StreetStep({
 
   const handleCall = () => {
     pushHistory();
-    const nextRecorded = pushAction('call', betAmount);
-    setContributions((c) => ({ ...c, [currentSeatId]: betAmount }));
+    // Suivre est plafonné au stack : si le joueur ne peut pas couvrir, il suit à tapis.
+    const nextRecorded = pushAction('call', callTo);
+    setContributions((c) => ({ ...c, [currentSeatId]: callTo }));
     const nextQueue = queue.slice(1);
     setQueue(nextQueue);
     finishIfDone(nextQueue, active, nextRecorded);
   };
 
-  const confirmAmount = () => {
-    const amount = Number(amountInput);
-    if (!amount || amount <= betAmount) return;
+  // Mise/relance à un montant cumulé sur la street (déjà plafonné au stack en amont).
+  const commitBetTo = (amount: number, type: ActionType) => {
     pushHistory();
-    const type: ActionType = enteringAmount === 'raise' ? 'raise' : 'bet';
     const nextRecorded = pushAction(type, amount);
     const nextQueue = reorderAfter(active.filter((id) => id !== currentSeatId), currentSeatId);
     setBetAmount(amount);
@@ -169,6 +186,30 @@ export function StreetStep({
     setAmountInput('');
     setEnteringAmount(null);
     finishIfDone(nextQueue, active, nextRecorded);
+  };
+
+  const confirmAmount = () => {
+    let amount = Number(amountInput);
+    if (!amount) return;
+    // On ne peut jamais miser plus que son stack.
+    amount = Math.min(amount, currentRemaining);
+    if (amount <= betAmount && amount < currentRemaining) return; // relance insuffisante (sauf tapis)
+    commitBetTo(amount, enteringAmount === 'raise' ? 'raise' : 'bet');
+  };
+
+  const handleAllIn = () => {
+    if (currentRemaining <= 0) return;
+    if (currentRemaining <= betAmount) {
+      // Pas de quoi relancer : tapis = suivre à tapis (les autres restent redevables du betAmount).
+      pushHistory();
+      const nextRecorded = pushAction('call', currentRemaining);
+      setContributions((c) => ({ ...c, [currentSeatId]: currentRemaining }));
+      const nextQueue = queue.slice(1);
+      setQueue(nextQueue);
+      finishIfDone(nextQueue, active, nextRecorded);
+    } else {
+      commitBetTo(currentRemaining, betAmount > 0 ? 'raise' : 'bet');
+    }
   };
 
   return (
@@ -194,7 +235,7 @@ export function StreetStep({
         </View>
       )}
 
-      {boardComplete && currentSeat && (
+      {boardComplete && (
         <View style={styles.actionSection}>
           <View style={styles.summary}>
             {recorded.map((a) => (
@@ -205,58 +246,86 @@ export function StreetStep({
             ))}
           </View>
 
-          <View style={styles.actorRow}>
-            <Text style={[typography.postTitle, styles.actor]}>{seatDisplay(currentSeat)} agit</Text>
-            {history.length > 0 && (
-              <Pressable onPress={handleUndo} style={styles.undoButton}>
-                <Text style={styles.undoText}>↩ Annuler</Text>
-              </Pressable>
-            )}
+          {/* Rappel des stacks restants pour chaque joueur encore en jeu */}
+          <View style={styles.stacksRow}>
+            {getActingOrder(seats, street)
+              .filter((s) => active.includes(s.id))
+              .map((s) => (
+                <View key={s.id} style={styles.stackChip}>
+                  <Text style={styles.stackChipName}>{seatDisplay(s)}</Text>
+                  <Text style={styles.stackChipValue}>{Math.max(remainingFor(s.id), 0)}</Text>
+                </View>
+              ))}
           </View>
 
-          {enteringAmount ? (
-            <View>
-              <TextInput
-                style={styles.amountInput}
-                keyboardType="numeric"
-                autoFocus
-                placeholder={betAmount > 0 ? `Plus de ${betAmount}` : 'Montant'}
-                value={amountInput}
-                onChangeText={setAmountInput}
-              />
-              <View style={styles.row}>
-                <Pressable style={styles.secondaryButton} onPress={() => setEnteringAmount(null)}>
-                  <Text style={styles.secondaryText}>Annuler</Text>
-                </Pressable>
-                <Pressable style={styles.primaryButton} onPress={confirmAmount}>
-                  <Text style={styles.primaryText}>Valider</Text>
-                </Pressable>
+          {currentSeat ? (
+            <>
+              <View style={styles.actorRow}>
+                <Text style={[typography.postTitle, styles.actor]}>
+                  {seatDisplay(currentSeat)} agit · reste {Math.max(remainingFor(currentSeatId), 0)}
+                </Text>
+                {history.length > 0 && (
+                  <Pressable onPress={handleUndo} style={styles.undoButton}>
+                    <Text style={styles.undoText}>↩ Annuler</Text>
+                  </Pressable>
+                )}
               </View>
-            </View>
-          ) : (
-            <View style={styles.row}>
-              {canCheck ? (
-                <>
-                  <Pressable style={styles.actionButton} onPress={handleCheck}>
-                    <Text style={styles.actionText}>Check</Text>
-                  </Pressable>
-                  <Pressable style={styles.actionButtonPrimary} onPress={() => setEnteringAmount(betAmount > 0 ? 'raise' : 'bet')}>
-                    <Text style={styles.actionTextPrimary}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
-                  </Pressable>
-                </>
+
+              {enteringAmount ? (
+                <View>
+                  <TextInput
+                    style={styles.amountInput}
+                    keyboardType="numeric"
+                    autoFocus
+                    placeholder={`Montant (max ${currentRemaining})`}
+                    value={amountInput}
+                    onChangeText={setAmountInput}
+                  />
+                  <View style={styles.row}>
+                    <Pressable style={styles.secondaryButton} onPress={() => setEnteringAmount(null)}>
+                      <Text style={styles.secondaryText}>Annuler</Text>
+                    </Pressable>
+                    <Pressable style={styles.primaryButton} onPress={confirmAmount}>
+                      <Text style={styles.primaryText}>Valider</Text>
+                    </Pressable>
+                  </View>
+                </View>
               ) : (
-                <>
-                  <Pressable style={styles.actionButton} onPress={handleFold}>
-                    <Text style={styles.actionText}>Fold</Text>
+                <View style={styles.row}>
+                  {canCheck ? (
+                    <Pressable style={styles.actionButton} onPress={handleCheck}>
+                      <Text style={styles.actionText}>Check</Text>
+                    </Pressable>
+                  ) : (
+                    <>
+                      <Pressable style={styles.actionButton} onPress={handleFold}>
+                        <Text style={styles.actionText}>Fold</Text>
+                      </Pressable>
+                      <Pressable style={styles.actionButton} onPress={handleCall}>
+                        <Text style={styles.actionText}>
+                          Suivre ({callTo}){isCallAllIn ? ' · tapis' : ''}
+                        </Text>
+                      </Pressable>
+                    </>
+                  )}
+                  {currentRemaining > betAmount && (
+                    <Pressable style={styles.actionButtonPrimary} onPress={() => setEnteringAmount(betAmount > 0 ? 'raise' : 'bet')}>
+                      <Text style={styles.actionTextPrimary}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
+                    </Pressable>
+                  )}
+                  <Pressable style={styles.allInButton} onPress={handleAllIn}>
+                    <Text style={styles.allInText}>Tapis ({currentRemaining})</Text>
                   </Pressable>
-                  <Pressable style={styles.actionButton} onPress={handleCall}>
-                    <Text style={styles.actionText}>Suivre ({betAmount})</Text>
-                  </Pressable>
-                  <Pressable style={styles.actionButtonPrimary} onPress={() => setEnteringAmount('raise')}>
-                    <Text style={styles.actionTextPrimary}>Relancer</Text>
-                  </Pressable>
-                </>
+                </View>
               )}
+            </>
+          ) : (
+            // Plus personne ne peut agir (tous les joueurs restants sont à tapis) : on passe la street.
+            <View>
+              <Text style={styles.allInNote}>Les joueurs restants sont à tapis.</Text>
+              <Pressable style={styles.primaryButton} onPress={() => onComplete(finalBoard(), [], active)}>
+                <Text style={styles.primaryText}>Continuer</Text>
+              </Pressable>
             </View>
           )}
         </View>
@@ -276,13 +345,38 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   summary: {
-    marginBottom: 16,
+    marginBottom: 12,
     maxHeight: 100,
   },
   summaryLine: {
     fontSize: 12,
     color: colors.textSecondary,
     marginBottom: 2,
+  },
+  stacksRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 16,
+  },
+  stackChip: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: 'rgba(22,35,61,0.06)',
+  },
+  stackChipName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  stackChipValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.tableFelt,
   },
   actorRow: {
     flexDirection: 'row',
@@ -331,6 +425,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+  allInButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.gold,
+    backgroundColor: '#FBF3DC',
+  },
+  allInText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.tableFelt,
+  },
+  allInNote: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 12,
   },
   amountInput: {
     borderWidth: 1,
