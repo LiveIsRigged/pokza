@@ -35,7 +35,11 @@ export function layoutSeats(
   const cx = width / 2;
   const cy = height / 2;
   const rx = (width / 2) * (1 - seatMarginRatio);
-  const ry = (height / 2) * (1 - seatMarginRatio * 0.6);
+  // Les cartes d'un siège sont dessinées AU-DESSUS de lui (~46px). On plafonne le rayon
+  // vertical pour que les sièges du haut et du bas gardent toujours cette marge dans la
+  // table, sinon leurs cartes débordent et sont coupées par le bord du feutre.
+  const CARD_MARGIN = 46;
+  const ry = Math.min((height / 2) * (1 - seatMarginRatio * 0.6), height / 2 - CARD_MARGIN);
 
   return ordered.map((seat, i) => {
     const angleDeg = 90 + (i * 360) / n;
