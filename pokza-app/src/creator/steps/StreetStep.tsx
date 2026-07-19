@@ -4,7 +4,7 @@ import type { Action, ActionType, Card, Seat, Street } from '../../types/poker';
 import { colors, typography } from '../../theme/theme';
 import { getActingOrder, getActingOrderAfter } from '../positions';
 import { WizardScreen } from '../WizardScreen';
-import { CardPicker } from '../CardPicker';
+import { MultiCardPicker } from '../MultiCardPicker';
 
 const STREET_TITLES: Record<Street, string> = {
   preflop: 'Préflop',
@@ -12,8 +12,6 @@ const STREET_TITLES: Record<Street, string> = {
   turn: 'Turn',
   river: 'River',
 };
-
-const SLOT_LABELS = ['Première carte', 'Deuxième carte', 'Troisième carte'];
 
 interface Snapshot {
   queue: string[];
@@ -183,22 +181,16 @@ export function StreetStep({
     >
       {boardCount > 0 && (
         <View style={styles.boardSection}>
-          {Array.from({ length: boardCount }).map((_, i) => {
-            const otherCards = [...usedCardsElsewhere, ...boardCards.filter((c, idx) => idx !== i && c)] as Card[];
-            return (
-              <CardPicker
-                key={i}
-                label={SLOT_LABELS[i] ?? `Carte ${i + 1}`}
-                value={boardCards[i]}
-                disabledCards={otherCards}
-                onChange={(card) => {
-                  const next = [...boardCards];
-                  next[i] = card;
-                  setBoardCards(next);
-                }}
-              />
-            );
-          })}
+          <MultiCardPicker
+            count={boardCount}
+            selected={boardCards}
+            disabledCards={usedCardsElsewhere}
+            onChange={(next) => {
+              const filled = [...next];
+              while (filled.length < boardCount) filled.push(undefined);
+              setBoardCards(filled);
+            }}
+          />
         </View>
       )}
 

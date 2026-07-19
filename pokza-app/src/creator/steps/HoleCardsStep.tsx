@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import type { Card } from '../../types/poker';
-import { CardPicker } from '../CardPicker';
+import { MultiCardPicker } from '../MultiCardPicker';
 import { WizardScreen } from '../WizardScreen';
 
 interface HoleCardsStepProps {
@@ -14,13 +14,12 @@ interface HoleCardsStepProps {
 }
 
 export function HoleCardsStep({ cards, onChange, onNext, onBack, step, totalSteps }: HoleCardsStepProps) {
-  const [first, second] = cards;
-  const canContinue = Boolean(first && second);
+  const canContinue = Boolean(cards[0] && cards[1]);
 
   return (
     <WizardScreen
       title="Tes cartes"
-      subtitle="Les deux cartes du hero"
+      subtitle="Choisis tes deux cartes"
       onNext={onNext}
       onBack={onBack}
       nextDisabled={!canContinue}
@@ -28,17 +27,10 @@ export function HoleCardsStep({ cards, onChange, onNext, onBack, step, totalStep
       totalSteps={totalSteps}
     >
       <View>
-        <CardPicker
-          label="Première carte"
-          value={first}
-          disabledCards={second ? [second] : []}
-          onChange={(card) => onChange([card, second])}
-        />
-        <CardPicker
-          label="Deuxième carte"
-          value={second}
-          disabledCards={first ? [first] : []}
-          onChange={(card) => onChange([first, card])}
+        <MultiCardPicker
+          count={2}
+          selected={cards}
+          onChange={(next) => onChange([next[0], next[1]])}
         />
       </View>
     </WizardScreen>

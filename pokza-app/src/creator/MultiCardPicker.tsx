@@ -12,11 +12,13 @@ const SUITS: { suit: Suit; symbol: string; red: boolean }[] = [
   { suit: 'c', symbol: '♣', red: false },
 ];
 
-interface CardPickerProps {
-  label: string;
-  value?: Card;
-  onChange: (card: Card) => void;
-  /** Cartes déjà utilisées ailleurs dans la main, à désactiver pour éviter les doublons */
+interface MultiCardPickerProps {
+  /** Nombre de cartes à choisir */
+  count: number;
+  /** Cartes choisies, dans l'ordre de sélection */
+  selected: (Card | undefined)[];
+  onChange: (cards: (Card | undefined)[]) => void;
+  /** Cartes déjà utilisées ailleurs dans la main, à désactiver */
   disabledCards?: Card[];
 }
 
@@ -24,14 +26,32 @@ function sameCard(a: Card, b: Card) {
   return a.rank === b.rank && a.suit === b.suit;
 }
 
-export function CardPicker({ label, value, onChange, disabledCards = [] }: CardPickerProps) {
+export function MultiCardPicker({ count, selected, onChange, disabledCards = [] }: MultiCardPickerProps) {
+  const chosen = selected.filter(Boolean) as Card[];
+
+  const toggle = (card: Card) => {
+    const idx = chosen.findIndex((c) => sameCard(c, card));
+    if (idx !== -1) {
+      // déjà choisie → on la retire
+      onChange(chosen.filter((_, i) => i !== idx));
+      return;
+    }
+    if (chosen.length >= count) return; // déjà complet
+    onChange([...chosen, card]);
+  };
+
   return (
-    <View style={styles.wrapper}>
-      <View style={styles.header}>
-        <Text style={styles.label}>{label}</Text>
-        <View style={styles.preview}>
-          <CardView card={value} size="medium" />
-        </View>
+    <View>
+      <View style={styles.slots}>
+        {Array.from({ length: count }).map((_, i) => (
+          <Pressable
+            key={i}
+            onPress={() => chosen[i] && onChange(chosen.filter((_, j) => j !== i))}
+            style={styles.slot}
+          >
+            {chosen[i] ? <CardView card={chosen[i]} size="medium" /> : <View style={styles.emptySlot} />}
+          </Pressable>
+        ))}
       </View>
 
       {SUITS.map(({ suit, symbol, red }) => (
@@ -43,13 +63,15 @@ export function CardPicker({ label, value, onChange, disabledCards = [] }: CardP
         >
           {RANKS.map((rank) => {
             const card: Card = { rank, suit };
-            const isSelected = value && sameCard(value, card);
-            const isDisabled = disabledCards.some((c) => sameCard(c, card));
+            const isSelected = chosen.some((c) => sameCard(c, card));
+            const isUsed = disabledCards.some((c) => sameCard(c, card));
+            const isFull = chosen.length >= count && !isSelected;
+            const isDisabled = isUsed || isFull;
             return (
               <Pressable
                 key={rank}
-                disabled={isDisabled}
-                onPress={() => onChange(card)}
+                disabled={isUsed}
+                onPress={() => toggle(card)}
                 style={[styles.card, isSelected && styles.cardSelected, isDisabled && styles.cardDisabled]}
               >
                 <Text style={[styles.rank, { color: red ? colors.cardTextRed : colors.cardTextBlack }]}>{rank}</Text>
@@ -64,22 +86,23 @@ export function CardPicker({ label, value, onChange, disabledCards = [] }: CardP
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 14,
-  },
-  header: {
+  slots: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
+    gap: 8,
+    marginBottom: 16,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    flex: 1,
+  slot: {
+    width: 44,
+    height: 58,
   },
-  preview: {
-    marginLeft: 8,
+  emptySlot: {
+    width: 44,
+    height: 58,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(22,35,61,0.3)',
+    backgroundColor: 'rgba(22,35,61,0.04)',
   },
   suitRow: {
     flexDirection: 'row',
