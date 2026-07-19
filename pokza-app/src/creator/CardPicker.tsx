@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Card, Rank, Suit } from '../types/poker';
 import { colors } from '../theme/theme';
 import { CardView } from '../components/replayer/CardView';
@@ -25,19 +25,6 @@ function sameCard(a: Card, b: Card) {
 }
 
 export function CardPicker({ label, value, onChange, disabledCards = [] }: CardPickerProps) {
-  const [pendingRank, setPendingRank] = useState<Rank | undefined>(value?.rank);
-  const [pendingSuit, setPendingSuit] = useState<Suit | undefined>(value?.suit);
-
-  const selectRank = (rank: Rank) => {
-    setPendingRank(rank);
-    if (pendingSuit) onChange({ rank, suit: pendingSuit });
-  };
-
-  const selectSuit = (suit: Suit) => {
-    setPendingSuit(suit);
-    if (pendingRank) onChange({ rank: pendingRank, suit });
-  };
-
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
@@ -47,53 +34,43 @@ export function CardPicker({ label, value, onChange, disabledCards = [] }: CardP
         </View>
       </View>
 
-      <View style={styles.rankRow}>
-        {RANKS.map((rank) => {
-          const isSelected = pendingRank === rank;
-          const isDisabled = pendingSuit !== undefined && disabledCards.some((c) => c.rank === rank && c.suit === pendingSuit);
-          return (
-            <Pressable
-              key={rank}
-              disabled={isDisabled}
-              onPress={() => selectRank(rank)}
-              style={[styles.rankCell, isSelected && styles.rankCellSelected, isDisabled && styles.cellDisabled]}
-            >
-              <Text style={[styles.rankText, isSelected && styles.cellTextSelected]}>{rank}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <View style={styles.suitRow}>
-        {SUITS.map(({ suit, symbol, red }) => {
-          const isSelected = pendingSuit === suit;
-          const isDisabled = pendingRank !== undefined && disabledCards.some((c) => c.rank === pendingRank && c.suit === suit);
-          return (
-            <Pressable
-              key={suit}
-              disabled={isDisabled}
-              onPress={() => selectSuit(suit)}
-              style={[styles.suitCell, isSelected && styles.suitCellSelected, isDisabled && styles.cellDisabled]}
-            >
-              <Text style={[styles.suitText, { color: isSelected ? '#fff' : red ? colors.cardTextRed : colors.cardTextBlack }]}>
-                {symbol}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {SUITS.map(({ suit, symbol, red }) => (
+        <ScrollView
+          key={suit}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.suitRow}
+        >
+          {RANKS.map((rank) => {
+            const card: Card = { rank, suit };
+            const isSelected = value && sameCard(value, card);
+            const isDisabled = disabledCards.some((c) => sameCard(c, card));
+            return (
+              <Pressable
+                key={rank}
+                disabled={isDisabled}
+                onPress={() => onChange(card)}
+                style={[styles.card, isSelected && styles.cardSelected, isDisabled && styles.cardDisabled]}
+              >
+                <Text style={[styles.rank, { color: red ? colors.cardTextRed : colors.cardTextBlack }]}>{rank}</Text>
+                <Text style={[styles.suit, { color: red ? colors.cardTextRed : colors.cardTextBlack }]}>{symbol}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 18,
+    marginBottom: 14,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   label: {
     fontSize: 13,
@@ -104,56 +81,34 @@ const styles = StyleSheet.create({
   preview: {
     marginLeft: 8,
   },
-  rankRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 8,
-  },
-  rankCell: {
-    width: 42,
-    height: 42,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.cardFace,
-    borderWidth: 1,
-    borderColor: '#D8D4C8',
-  },
-  rankCellSelected: {
-    backgroundColor: colors.tableFelt,
-    borderColor: colors.tableFelt,
-  },
-  rankText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
   suitRow: {
     flexDirection: 'row',
     gap: 6,
+    paddingBottom: 6,
   },
-  suitCell: {
-    flex: 1,
-    height: 42,
+  card: {
+    width: 44,
+    height: 58,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.cardFace,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#D8D4C8',
   },
-  suitCellSelected: {
-    backgroundColor: colors.action,
-    borderColor: colors.action,
+  cardSelected: {
+    borderColor: colors.gold,
+    backgroundColor: '#FBF3DC',
   },
-  suitText: {
-    fontSize: 20,
+  cardDisabled: {
+    opacity: 0.2,
   },
-  cellDisabled: {
-    opacity: 0.25,
+  rank: {
+    fontSize: 17,
+    fontWeight: '700',
   },
-  cellTextSelected: {
-    color: '#fff',
+  suit: {
+    fontSize: 16,
+    marginTop: 1,
   },
 });
