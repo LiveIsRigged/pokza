@@ -22,7 +22,7 @@ export function ActionCallout({ text, stepKey }: ActionCalloutProps) {
   if (!text) return null;
 
   return (
-    <Animated.View style={[styles.wrapper, { opacity }]} pointerEvents="none">
+    <Animated.View style={[styles.wrapper, { opacity }]}>
       <Text style={styles.text}>{text}</Text>
     </Animated.View>
   );
@@ -30,18 +30,11 @@ export function ActionCallout({ text, stepKey }: ActionCalloutProps) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'absolute',
-    top: '38%',
-    alignSelf: 'center',
-    backgroundColor: 'rgba(14,24,48,0.85)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(201,162,39,0.4)',
+    alignItems: 'center',
+    paddingVertical: 6,
   },
   text: {
-    color: colors.textOnFelt,
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },

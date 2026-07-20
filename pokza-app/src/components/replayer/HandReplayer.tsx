@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import type { Hand } from '../../types/poker';
-import { computeHandState, describeAction } from '../../engine/handEngine';
+import { computeHandState, describeAction, totalReplaySteps } from '../../engine/handEngine';
 import { layoutSeats } from '../../engine/layout';
 import { colors } from '../../theme/theme';
 import { TableSurface } from './TableSurface';
@@ -22,7 +22,7 @@ export function HandReplayer({ hand }: HandReplayerProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const totalSteps = hand.actions.length;
+  const totalSteps = totalReplaySteps(hand);
   const state = useMemo(() => computeHandState(hand, step), [hand, step]);
   const seatCoords = useMemo(
     () => (size.width > 0 ? layoutSeats(hand.seats, size.width, size.height) : []),
@@ -54,14 +54,34 @@ export function HandReplayer({ hand }: HandReplayerProps) {
 
   const actionText = state.lastAction ? describeAction(hand, state.lastAction) : null;
 
+  const winnerSeat = state.winningSeatId ? hand.seats.find((s) => s.id === state.winningSeatId) : null;
+  const winnerSeatCoord = state.winningSeatId
+    ? seatCoords.find((sc) => sc.seat.id === state.winningSeatId)?.x
+    : null;
+  const winnerCoords = winnerSeatCoord
+    ? seatCoords.find((sc) => sc.seat.id === state.winningSeatId)
+    : null;
+
   return (
     <View style={styles.container}>
       <View style={styles.tableArea} onLayout={onLayout}>
         <TableSurface width={size.width} height={size.height} />
 
         {size.width > 0 && (
-          <View style={[styles.boardWrapper, { left: tableCenter.x, top: tableCenter.y }]} pointerEvents="none">
-            <BoardView cards={state.board} pot={state.potTotal} />
+          <View style={[styles.boardWrapper, { width: size.width, height: size.height }]} pointerEvents="none">
+            <BoardView
+              cards={state.board}
+              pot={state.potTotal}
+              winningSeatId={state.winningSeatId}
+              winnerSeatCoords={
+                winnerCoords
+                  ? {
+                      x: winnerCoords.x - tableCenter.x,
+                      y: winnerCoords.y - tableCenter.y,
+                    }
+                  : null
+              }
+            />
           </View>
         )}
 
@@ -78,9 +98,9 @@ export function HandReplayer({ hand }: HandReplayerProps) {
             isActive={state.lastAction?.seatId === seat.id}
           />
         ))}
-
-        <ActionCallout text={actionText} stepKey={step} />
       </View>
+
+      <ActionCallout text={actionText} stepKey={step} />
 
       <PlaybackControls
         playing={playing}
@@ -117,7 +137,9 @@ const styles = StyleSheet.create({
   },
   boardWrapper: {
     position: 'absolute',
-    transform: [{ translateX: -70 }, { translateY: -34 }],
-    width: 140,
+    left: 0,
+    top: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

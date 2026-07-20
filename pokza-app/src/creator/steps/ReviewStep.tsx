@@ -5,6 +5,8 @@ import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
 import type { ReviewData } from '../types';
 
+const MAX_VOTE_OPTIONS = 4;
+
 interface ReviewStepProps {
   value: ReviewData;
   onChange: (value: ReviewData) => void;
@@ -16,6 +18,17 @@ interface ReviewStepProps {
 
 export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps }: ReviewStepProps) {
   const update = (patch: Partial<ReviewData>) => onChange({ ...value, ...patch });
+
+  const voteOptions = value.voteOptions ?? ['', ''];
+  const hasVoteQuestion = (value.voteQuestion ?? '').trim().length > 0;
+
+  const updateOption = (index: number, text: string) => {
+    const next = [...voteOptions];
+    next[index] = text;
+    update({ voteOptions: next });
+  };
+
+  const filledOptions = voteOptions.map((o) => o.trim()).filter(Boolean);
 
   return (
     <WizardScreen
@@ -44,6 +57,35 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
           value={value.voteQuestion ?? ''}
           onChangeText={(t) => update({ voteQuestion: t })}
         />
+
+        {hasVoteQuestion && (
+          <>
+            <Text style={styles.label}>Réponses possibles (2 à 4)</Text>
+            {[0, 1, 2, 3].map((i) => (
+              <TextInput
+                key={i}
+                style={[styles.input, styles.optionInput]}
+                placeholder={i < 2 ? `Réponse ${i + 1}` : `Réponse ${i + 1} (optionnel)`}
+                value={voteOptions[i] ?? ''}
+                onChangeText={(t) => updateOption(i, t)}
+                maxLength={20}
+              />
+            ))}
+
+            {filledOptions.length > 0 && (
+              <>
+                <Text style={styles.label}>Aperçu du vote</Text>
+                <View style={styles.previewRow}>
+                  {filledOptions.slice(0, MAX_VOTE_OPTIONS).map((opt, i) => (
+                    <View key={i} style={styles.previewBubble}>
+                      <Text style={styles.previewBubbleText}>{opt}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+          </>
+        )}
 
         <Text style={styles.label}>Visibilité</Text>
         <View style={styles.row}>
@@ -74,7 +116,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textPrimary,
   },
+  optionInput: {
+    marginBottom: 8,
+  },
   row: {
     flexDirection: 'row',
+  },
+  previewRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  previewBubble: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.25)',
+  },
+  previewBubbleText: {
+    fontSize: 12,
+    color: colors.textPrimary,
   },
 });

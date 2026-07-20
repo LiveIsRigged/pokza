@@ -37,6 +37,7 @@ export type ActionType =
   | 'post-sb'
   | 'post-bb'
   | 'post-ante'
+  | 'post-straddle'
   | 'fold'
   | 'check'
   | 'call'
@@ -88,6 +89,9 @@ export interface Post {
   title: string;
   hand: Hand;
   voteQuestion?: string;
+  voteOptions?: string[];
+  /** Nombre de votes déjà reçus par option (clé = texte de l'option) */
+  voteCounts?: Record<string, number>;
   likeCount: number;
   commentCount: number;
   visibility: Visibility;

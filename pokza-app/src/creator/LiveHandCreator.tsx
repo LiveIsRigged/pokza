@@ -5,7 +5,7 @@ import { HoleCardsStep } from './steps/HoleCardsStep';
 import { StreetStep } from './steps/StreetStep';
 import { ShowdownStep } from './steps/ShowdownStep';
 import { ReviewStep } from './steps/ReviewStep';
-import { buildSeats } from './positions';
+import { buildSeats, getActingOrder } from './positions';
 import { committedBySeat } from '../engine/handEngine';
 import { DEFAULT_CONTEXT, type ContextData, type ReviewData } from './types';
 
@@ -133,7 +133,11 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
       id: `hand-${Date.now()}`,
       variant: 'nlhe',
       gameType: context.gameType,
-      blinds: { sb: context.sb, bb: context.bb },
+      blinds: {
+        sb: context.sb,
+        bb: context.bb,
+        ante: context.anteType === 'bb' ? context.bb : context.anteType === 'per-player' ? context.ante : undefined,
+      },
       effectiveStack: context.effectiveStack,
       visibility: review.visibility,
       seats: seatsWithCards,
@@ -150,6 +154,9 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
       level: context.level,
       title: review.title,
       voteQuestion: review.voteQuestion || undefined,
+      voteOptions: review.voteQuestion
+        ? (review.voteOptions ?? []).map((o) => o.trim()).filter(Boolean)
+        : undefined,
       likeCount: 0,
       commentCount: 0,
       visibility: review.visibility,
@@ -181,13 +188,79 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           step={step}
           totalSteps={TOTAL_STEPS}
           onNext={() => {
-            const builtSeats = buildSeats(context.numPlayers, context.heroPosition, context.effectiveStack);
+            const builtSeats = buildSeats(
+              context.numPlayers,
+              context.heroPosition,
+              context.effectiveStack,
+              context.opponentNames,
+              context.seatStacks
+            );
             const sbSeat = builtSeats.find((s) => s.position === 'SB') ?? builtSeats.find((s) => s.position === 'BTN')!;
             const bbSeat = builtSeats.find((s) => s.position === 'BB')!;
-            const blindActions: Action[] = [
-              { id: 'blind-sb', street: 'preflop', seatId: sbSeat.id, type: 'post-sb', amount: context.sb, order: 1 },
-              { id: 'blind-bb', street: 'preflop', seatId: bbSeat.id, type: 'post-bb', amount: context.bb, order: 2 },
-            ];
+
+            let order = 1;
+            const blindActions: Action[] = [];
+
+            // Ante par joueur : chaque siège poste son ante avant les blindes.
+            if (context.anteType === 'per-player' && context.ante > 0) {
+              for (const seat of builtSeats) {
+                blindActions.push({
+                  id: `ante-${seat.id}`,
+                  street: 'preflop',
+                  seatId: seat.id,
+                  type: 'post-ante',
+                  amount: context.ante,
+                  order: order++,
+                });
+              }
+            }
+
+            blindActions.push({
+              id: 'blind-sb',
+              street: 'preflop',
+              seatId: sbSeat.id,
+              type: 'post-sb',
+              amount: context.sb,
+              order: order++,
+            });
+            blindActions.push({
+              id: 'blind-bb',
+              street: 'preflop',
+              seatId: bbSeat.id,
+              type: 'post-bb',
+              amount: context.bb,
+              order: order++,
+            });
+
+            // BB ante : seule la BB poste l'ante (montant = BB), après les blindes.
+            if (context.anteType === 'bb' && context.bb > 0) {
+              blindActions.push({
+                id: 'ante-bb',
+                street: 'preflop',
+                seatId: bbSeat.id,
+                type: 'post-ante',
+                amount: context.bb,
+                order: order++,
+              });
+            }
+
+            // Straddle (cash game) : le premier joueur à parler préflop poste un montant
+            // volontaire (généralement 2x BB), qui devient le niveau à suivre. Il agira en
+            // dernier (comme la BB en temps normal), l'action reprenant après lui.
+            if (context.gameType === 'cash' && context.straddle && context.straddleAmount > 0) {
+              const straddlerSeat = getActingOrder(builtSeats, 'preflop')[0];
+              if (straddlerSeat) {
+                blindActions.push({
+                  id: 'straddle',
+                  street: 'preflop',
+                  seatId: straddlerSeat.id,
+                  type: 'post-straddle',
+                  amount: context.straddleAmount,
+                  order: order++,
+                });
+              }
+            }
+
             pushSnapshotAndGo('holeCards', {
               seats: builtSeats,
               actions: blindActions,
@@ -212,9 +285,11 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
     case 'street-preflop': {
       const sbSeat = seats.find((s) => s.position === 'SB') ?? seats.find((s) => s.position === 'BTN');
       const bbSeat = seats.find((s) => s.position === 'BB');
+      const straddleAction = actions.find((a) => a.type === 'post-straddle');
       const initialContributions: Record<string, number> = {};
       if (sbSeat) initialContributions[sbSeat.id] = context.sb;
       if (bbSeat) initialContributions[bbSeat.id] = context.bb;
+      if (straddleAction) initialContributions[straddleAction.seatId] = straddleAction.amount ?? 0;
       return (
         <StreetStep
           key={`preflop-${phaseKey}`}
@@ -224,9 +299,13 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           seats={seats}
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
-          initialBetAmount={context.bb}
+          initialBetAmount={straddleAction ? straddleAction.amount : context.bb}
           initialContributions={initialContributions}
           priorCommitted={priorCommittedFor('preflop')}
+          anteCommitted={committedBySeat(actions.filter((a) => a.type === 'post-ante'))}
+          firstToActAfterSeatId={straddleAction?.seatId}
+          bb={context.bb}
+          gameType={context.gameType}
           step={step}
           totalSteps={TOTAL_STEPS}
           onBack={goBack}

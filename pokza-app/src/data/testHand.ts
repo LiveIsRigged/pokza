@@ -35,10 +35,7 @@ const actions: Action[] = [
   { id: 'a12', street: 'flop', seatId: 's-bb', type: 'fold', order: 12 },
 
   { id: 'a13', street: 'turn', seatId: 's-hj', type: 'bet', amount: 70, order: 13 },
-  { id: 'a14', street: 'turn', seatId: 's-co', type: 'call', amount: 70, order: 14 },
-
-  { id: 'a15', street: 'river', seatId: 's-hj', type: 'bet', amount: 150, order: 15 },
-  { id: 'a16', street: 'river', seatId: 's-co', type: 'call', amount: 150, order: 16 },
+  { id: 'a14', street: 'turn', seatId: 's-co', type: 'fold', order: 14 },
 ];
 
 export const testPost: Post = {
@@ -51,6 +48,7 @@ export const testPost: Post = {
   level: undefined,
   title: 'Hero call contre un reg au club circus',
   voteQuestion: 'Tu payes cette river ?',
+  voteCounts: { Oui: 34, Non: 12 },
   likeCount: 24,
   commentCount: 7,
   visibility: 'public',

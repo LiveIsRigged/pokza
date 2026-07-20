@@ -14,14 +14,26 @@ export const POSITION_SETS: Record<number, Position[]> = {
   9: ['UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
 };
 
-export function buildSeats(numPlayers: number, heroPosition: Position, startingStack: number): Seat[] {
+export function buildSeats(
+  numPlayers: number,
+  heroPosition: Position,
+  startingStack: number,
+  opponentNames?: Partial<Record<Position, string>>,
+  seatStacks?: Partial<Record<Position, number>>
+): Seat[] {
   const positions = POSITION_SETS[numPlayers] ?? POSITION_SETS[6];
-  return positions.map((position) => ({
-    id: `s-${position.toLowerCase()}`,
-    position,
-    isHero: position === heroPosition,
-    startingStack,
-  }));
+  return positions.map((position) => {
+    const isHero = position === heroPosition;
+    const name = !isHero ? opponentNames?.[position]?.trim() : undefined;
+    const stack = seatStacks?.[position];
+    return {
+      id: `s-${position.toLowerCase()}`,
+      position,
+      isHero,
+      startingStack: stack && stack > 0 ? stack : startingStack,
+      ...(name ? { playerName: name } : {}),
+    };
+  });
 }
 
 function postflopStartPosition(present: Position[]): Position {
