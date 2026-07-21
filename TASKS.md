@@ -8,7 +8,185 @@ Pokza development backlog. All tasks V0-V4. Each task < 1 day of work.
 
 ---
 
-## 🔧 Correctifs (Changelog)
+- **2026-07-20 — Replayer : les jetons "posés" au pot cachaient le stack de BB — surcharge corrigée.**
+  Fichier : `src/components/replayer/SeatView.tsx`.
+  Deux causes : (1) tous les sièges glissaient jusqu'au même point exact (le pot), donc leurs piles
+  se superposaient parfaitement — plus un siège est proche du centre (BB en particulier, le plus
+  proche), plus sa propre pile finissait près de son propre badge. Fix : le glissement s'arrête
+  désormais à 75% du chemin (`RESTING_FRACTION`) plutôt que 100% — chaque siège garde une pile
+  distincte au lieu de converger vers un point unique partagé. (2) Le point cible du pot a été
+  reculé (58→85px au-dessus du centre) : calculé précisément à partir des mesures DOM réelles du
+  badge de BB pour garantir qu'à 75% du chemin, sa propre pile ne chevauche plus son propre nom.
+  Plafond de jetons visibles abaissé de 5 à 3 (moins de surcharge visuelle par pile). Vérifié : le
+  nom "BB" est de nouveau lisible, sa pile de jetons flotte au-dessus sans chevaucher le texte.
+
+- **2026-07-20 — Replayer : montant masqué une fois le jeton posé au pot (déjà affiché par "Pot X").**
+  Fichier : `src/components/replayer/SeatView.tsx` (`BetChipPopIn`, nouvelle prop `showAmount`).
+  Le montant sous chaque petit tas de jetons faisait doublon avec la pastille "Pot X" une fois la
+  mise "posée" (street terminée) — surcharge inutile. Fix : `showAmount={Boolean(currentBet)}` —
+  le montant ne s'affiche que tant que la mise est active pour ce siège sur la street en cours ;
+  une fois la street terminée, seuls les jetons (sans chiffre) restent visibles au pot. Vérifié
+  avec un rythme de clics réaliste (un par un, avec pause) : la mise de BB (15, préflop) reste
+  affichée sous forme de jetons seuls après le passage au flop, pendant que la mise active de
+  Marco_75 (30, flop en cours) affiche bien son montant.
+
+- **2026-07-20 — Replayer : les jetons restent au pot au lieu de disparaître après leur glissement, et 2 bugs corrigés au passage.**
+  Fichier : `src/components/replayer/SeatView.tsx`.
+  Sur retour utilisateur ("il faut que les jetons restent au milieu, pas qu'ils disparaissent") :
+  suppression du fondu vers l'opacité 0 et du `setDisplayBet(undefined)` en fin de glissement — la
+  mise reste maintenant affichée au pot indéfiniment (jusqu'à ce que ce siège mise à nouveau).
+  Deux bugs trouvés en vérifiant ce changement : (1) la cible du glissement était le centre
+  géométrique exact de la table, qui coïncide avec la rangée de cartes du board — les jetons qui
+  restaient en place se retrouvaient donc posés sur les cartes communes. Fix : cible décalée de 55px
+  au-dessus du centre (`potTarget`), dans la zone du pot. (2) L'animation d'apparition (pop-in)
+  d'une nouvelle mise pouvait rester bloquée à son état initial (échelle 0.4, quasi invisible) à
+  cause d'une comparaison manuelle à une ref précédente peu fiable avec les doubles rendus de React.
+  Fix : extraction en sous-composant `BetChipPopIn` remonté via `key={montant}` — React redémarre
+  l'animation nativement à chaque nouveau montant, sans dépendre d'une comparaison manuelle.
+  Note de vérification : l'environnement de preview utilisé pour tester (navigateur automatisé)
+  ne fait tourner `requestAnimationFrame` que de façon très irrégulière, rendant impossible la
+  vérification visuelle fiable du rendu progressif de l'animation elle-même dans cet outil — la
+  logique a été vérifiée par relecture de code (le montage/démontage via `key` est un mécanisme
+  React standard et fiable) plutôt que par capture d'écran de l'animation en cours. Le
+  positionnement final (hors du board) et la persistance (pas de disparition) ont eux été vérifiés.
+
+- **2026-07-20 — Replayer : les jetons glissent vers le pot à la fin d'une street au lieu de disparaître d'un coup.**
+  Fichier : `src/components/replayer/SeatView.tsx` (nouvel état local `displayBet`, nouvelle
+  `Animated.Value` `slideAnim`).
+  `currentBet` (dérivé de l'état de la main pour la street courante) retombe à zéro dès que la
+  street change, ce qui faisait disparaître instantanément les jetons de mise. Fix : un état local
+  `displayBet` retient le dernier montant misé et ne se réinitialise qu'après une animation de
+  450ms glissant les jetons de leur position de repos (42% du chemin vers le centre) jusqu'au pot
+  (100% du chemin) en fondu. Vérifié : comportement stable sur un cycle complet d'autoplay (aucune
+  erreur console), et confirmé avec une durée temporairement allongée (3000ms) que le mécanisme de
+  disparition différée fonctionne avant de revenir à 450ms.
+
+- **2026-07-20 — Replayer : la mise devant chaque siège se décompose en plusieurs jetons empilés.**
+  Fichier : `src/components/replayer/SeatView.tsx` (nouvelle fonction `chipStackFor`).
+  Même avec la recoloration par dénomination, un seul rond générique par mise donnait toujours
+  l'impression d'un jeton unique. Fix : décomposition gloutonne par dénominations décroissantes
+  (cash : 1000/100/25/5/1 ; tournoi : 5000/1000/100/25/10/5/1, palette inchangée), plafonnée à 5
+  jetons visibles, rendus en petite pile décalée (cascade diagonale) au-dessus du montant. Exemples
+  vérifiés : mise 5 → 1 jeton rouge ; mise 15 → 3 jetons rouges ; mise 2 → 2 jetons bleus (9 jetons
+  au total comptés dans le DOM pour ces 4 sièges, tous de la bonne couleur/quantité).
+
+- **2026-07-20 — Replayer : jetons de mise recolorés par dénomination réelle (cash game uniquement).**
+  Fichiers : `src/theme/theme.ts` (nouveau `cashChipColors`), `src/components/replayer/SeatView.tsx`
+  (`chipColorFor` prend désormais `gameType`).
+  La palette de jetons avait été resserrée vers gold/orange/navy plus tôt cette session, rendant
+  plusieurs paliers de montant quasi indiscernables. Retrouvé dans l'historique git (avant cette
+  session) une palette par dénomination bien plus lisible ; l'utilisateur a confirmé/précisé le
+  mapping exact à utiliser, cash game seulement : 1→bleu, 5→rouge, 25→vert, 100→noir, 1000→jaune.
+  Le tournoi garde `chipColors` (palette existante) inchangé. Vérifié : SB(2)→bleu, BB(5)/mise 15→
+  rouge, mise 30→vert, tous corrects.
+
+- **2026-07-20 — Replayer : boutons ‹/› en orange plein (au lieu de translucide) + jetons de mise
+  remplacés par une icône de jeton avec montant en dessous (au lieu d'une pastille avec texte
+  dedans).** Fichiers : `src/components/replayer/PlaybackControls.tsx`, `SeatView.tsx`,
+  `HandReplayer.tsx`. (1) Les boutons retour/avance étaient à 12% d'opacité — peu engageants.
+  Passés à la même teinte pleine que le bouton play (38px→44px, toujours plus petits que le play
+  pour garder la hiérarchie). (2) Sur retour utilisateur (comparaison avec un replayer concurrent) :
+  la mise en cours devant chaque siège devient une icône de jeton (rond, bordure festonnée,
+  couleur par palier de `chipColors`) avec le montant affiché SOUS le jeton plutôt que dans une
+  pastille texte. Ce nouvel élément (jeton + montant, ~32px de haut) ne tenait plus dans le petit
+  espace entre les cartes et le badge (débordait sur les propres cartes du siège ou sur le badge
+  selon la position) : repositionné pour flotter à mi-chemin entre le siège et le centre de la
+  table (fraction de la distance réelle siège→centre, pas un décalage fixe), en terrain dégagé —
+  comme une vraie mise posée devant le joueur plutôt que collée sur son badge. Vérifié : jetons de
+  SB/BB/Hero/Marco_75 tous lisibles et sans chevauchement de texte, y compris pour les sièges très
+  proches de l'axe centre-siège (BB, Hero) où le risque de collision était le plus fort.
+
+- **2026-07-20 — Replayer : les steps "post SB"/"post BB" ne sont plus des clics séparés.**
+  Fichiers : `src/engine/handEngine.ts` (nouvelle fonction `initialReplayStep`),
+  `src/components/replayer/HandReplayer.tsx`.
+  Poster la SB/BB n'est pas une décision du joueur — les rejouer pas à pas ne faisait que coûter
+  deux clics avant d'arriver à la première vraie action. Fix : le replay démarre juste après ces
+  deux posts (`initialReplayStep` compte les actions `post-sb`/`post-bb` en tête de liste), le pot
+  et les stacks les reflètent déjà à l'écran initial, le bouton retour ne permet plus de redescendre
+  en dessous de ce point, et aucune bulle d'action ("poste la grosse blinde…") ne s'affiche au step
+  de départ. Le compteur/la barre de progression n'affichent que les steps "utiles" (décalés de
+  `initialReplayStep`), donc la barre démarre bien vide. Vérifié : la main s'ouvre directement avec
+  "Pot 7" (SB 2 + BB 5) affiché, retour désactivé, et la première action réelle (ex: "UTG se
+  couche") apparaît bien au premier clic.
+
+- **2026-07-20 — Replayer : badges de siège allégés (suppression des capsules pleines) + cartes agrandies au niveau du board.**
+  Fichiers : `src/components/replayer/SeatView.tsx`, `src/components/replayer/HandReplayer.tsx`,
+  `src/engine/layout.ts`.
+  Deux retours utilisateur successifs (comparaison avec un replayer concurrent) : (1) la "bulle"
+  de siège (nom/position/stack dans une capsule pleine avec bordure) était trop lourde visuellement
+  — remplacée par du texte simple (ombre portée pour la lisibilité sur le feutre), le halo actif
+  n'entoure plus qu'une fine bordure autour du texte, "fold" est un simple texte doré discret au
+  lieu d'un badge, nom+position fusionnés puis position retirée entièrement quand un pseudo est
+  défini (juste "Hero", plus "Hero · CO"). (2) Les cartes des joueurs (20×30) étaient trop petites
+  alors que "c'est le cœur du replayer, ce qui attire l'œil" — passées à la taille des cartes du
+  board (34×46, preset `size="medium"` de `CardView`). Ce doublement de hauteur des cartes cassait
+  la marge anti-chevauchement pot/badge calibrée précédemment (`CARD_MARGIN`) : recalculé
+  précisément via mesures DOM réelles plutôt qu'estimation — la contrainte devient asymétrique
+  (le siège du bas déborde désormais du bord de la table côté badge, pas le siège du haut côté pot)
+  car cartes+badge gardent un ordre d'empilement fixe. Solution : centrer le wrapper du siège
+  symétriquement sur sa coordonnée (`translateY` = -moitié de la hauteur totale du contenu, soit
+  -39 au lieu de -30) pour égaliser les deux contraintes plutôt que d'en satisfaire une seule, et
+  agrandi la table elle-même (`aspectRatio` 1.55→1.25, donc plus haute) pour absorber le surcroît de
+  hauteur. Vérifié via mesures DOM exactes : siège du haut (BB) top pile à `svgTop`, siège du bas
+  (Hero) bottom pile à `svgBottom`, marge pot/badge de 20px — zéro rognage, zéro chevauchement.
+
+- **2026-07-20 — Refonte design replayer (mandat "Senior Product Designer") : pot/badge, jeton de mise, halo actif.**
+  Fichiers : `src/engine/layout.ts` (`CARD_MARGIN` 38→30), `src/components/replayer/SeatView.tsx`,
+  `BoardView.tsx`, `ChipsView.tsx`, `CardView.tsx`, `HandReplayer.tsx`.
+  Trois bugs de layout trouvés en vérifiant l'écran à l'état final (main gagnée) :
+  (1) Le pot flottant (pastille "Pot X") et le badge du siège du haut (nom/stack) se chevauchaient
+  de ~23px sur une table mobile compacte (343×221px) — invisible car le badge, peint après le
+  plateau dans le JSX, l'occultait silencieusement. Mesures DOM précises prises pour prouver que
+  les deux contraintes (pas de chevauchement pot/badge ET pas de rognage des cartes du siège par le
+  bord de la table) étaient mathématiquement incompatibles avec les tailles d'éléments d'alors.
+  Fix : réduction des empreintes (cartes 22×30→20×26, padding badge/pastille resserrés), pastille
+  du pot passée en fond opaque + élévation (`zIndex`/`shadow`) pour que le chevauchement résiduel
+  de ~0.5px (badge/pot) soit invisible plutôt que glitché. Note : une première version inversait
+  l'ordre cartes/badge pour les sièges du haut (cartes plus proches du centre) — retirée sur retour
+  utilisateur ("les cartes doivent être au-dessus du pseudo, pas en dessous, sinon c'est dégeu") ;
+  l'ordre est maintenant identique pour tous les sièges (cartes toujours au-dessus du badge), et le
+  chevauchement résiduel avec le pot est géré uniquement par la réduction de tailles + l'opacité de
+  la pastille. (2) `isActive` restait vrai pour le dernier siège à
+  avoir agi même s'il venait de se coucher → halo doré pulsant affiché en même temps que le tag
+  "FOLD" (contradictoire). Fix : `isActive` exclut désormais les sièges couchés (`HandReplayer.tsx`).
+  (3) Le jeton de mise flottant (pastille ronde avec le montant) se déplaçait horizontalement vers
+  le centre de la table pour son animation, ce qui le faisait atterrir sur le texte du badge des
+  sièges latéraux (ex: nom "Marco_75" affiché tronqué "rco_75" par le jeton "70" par-dessus). Fix :
+  jeton repositionné à une position fixe calculée (le point de jonction cartes/badge selon l'ordre
+  du siège) avec une simple animation d'apparition (échelle+fondu) au lieu d'une translation.
+  Vérifié en rejouant une main complète jusqu'au winner (autoplay) : plus aucun texte recouvert,
+  plus de rognage aux bords, halo actif cohérent avec l'état couché/actif.
+
+- **2026-07-20 — Formatage "k" tournoi : suppression des zéros superflus après la virgule.**
+  Fichier : `pokza-app/src/utils/chipFormat.ts`. `toFixed(2)` produisait toujours 2 décimales même
+  pour des montants ronds (200000 → "200,00k" au lieu de "200k"). Fix : arrondi à 2 décimales puis
+  `parseFloat` pour supprimer les zéros de fin avant conversion en texte. Vérifié : 200000 → "200k",
+  225500 → "225,5k", 250669 → "250,67k" (correspond exactement aux exemples demandés). Testé en
+  conditions réelles dans le créateur avec BB=4510/stack=225500 : stacks "225,5k"/"225,4k" (SB après
+  blinde)/"220,99k" (BB), pot "4,61k".
+
+- **2026-07-20 — Replayer : le formatage "k" des montants tournoi ne s'appliquait qu'au créateur, pas à la main publiée.**
+  Fichiers : nouveau `pokza-app/src/utils/chipFormat.ts` (extraction de `formatChipAmount` partagée),
+  `src/engine/handEngine.ts` (`describeAction` formate `action.amount` via `hand.gameType`),
+  `src/components/replayer/SeatView.tsx` / `BoardView.tsx` / `ChipsView.tsx` (nouveau prop `gameType`),
+  `src/components/replayer/HandReplayer.tsx` (transmet `hand.gameType` aux sous-composants).
+  Le fix précédent ne touchait que `StreetStep.tsx` (l'écran de saisie pendant la création) — une fois
+  la main publiée et rejouée dans le replayer, les montants (pot, stacks, mises devant les sièges,
+  libellés d'action) réaffichaient la valeur brute ("100000" au lieu de "100k"). Fix : la fonction de
+  formatage vit maintenant dans un utilitaire partagé, importé à la fois par le créateur et le
+  replayer. Vérifié : main tournoi 50k/100k publiée → replayer affiche "Pot 150,00k", stacks
+  "4950,00k"/"4900,00k", bulles de mise "50,00k"/"100,00k" devant SB/BB.
+
+- **2026-07-20 — Créateur de main : montants en tournoi affichés en "k" au-delà de 1000 (2 décimales).**
+  Fichier : `pokza-app/src/creator/steps/StreetStep.tsx` (`formatChipAmount`).
+  En tournoi les montants dépassent vite 4-5 chiffres et surchargent l'écran (pot, stacks, mises).
+  Fix : au-delà de 1000 jetons, affichage `X,XXk` (2 décimales, virgule) — ex: 1428 → "1,43k".
+  Appliqué à tous les affichages (Pot, stacks restants, "reste X", résumé des actions, chips de
+  taille, "Suivre (X)", "Tapis (X)", placeholder du champ montant). Le cash game n'est pas affecté
+  (valeur brute). Important : seul l'AFFICHAGE est formaté — le champ de saisie du montant garde
+  toujours la valeur numérique brute (ex: "6000"), donc reste éditable/soumis correctement. Vérifié :
+  tournoi BB=1000 → Pot "1,50k", stacks "50,00k"/"49,50k", raccourcis BB "2,00k"/"3,50k"/"6,00k"/
+  "10,00k", clic sur un chip remplit le champ avec "6000" (brut, pas "6,00k").
 
 - **2026-07-20 — Créateur de main : stack effectif par défaut désormais un multiple de BB (cash ET tournoi).**
   Fichier : `pokza-app/src/creator/steps/ContextStep.tsx` (`defaultStackFor`).

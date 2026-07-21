@@ -35,10 +35,11 @@ export function layoutSeats(
   const cx = width / 2;
   const cy = height / 2;
   const rx = (width / 2) * (1 - seatMarginRatio);
-  // Les cartes d'un siège sont dessinées AU-DESSUS de lui (~46px). On plafonne le rayon
-  // vertical pour que les sièges du haut et du bas gardent toujours cette marge dans la
-  // table, sinon leurs cartes débordent et sont coupées par le bord du feutre.
-  const CARD_MARGIN = 46;
+  // Les cartes + le badge (nom, position, stack) d'un siège sont dessinés AU-DESSUS de lui.
+  // On plafonne le rayon vertical pour que les sièges du haut et du bas gardent toujours
+  // cette marge dans la table, sinon leurs cartes/badges débordent et sont coupés par le
+  // bord du feutre — ou chevauchent le pot flottant au centre.
+  const CARD_MARGIN = 39;
   const ry = Math.min((height / 2) * (1 - seatMarginRatio * 0.6), height / 2 - CARD_MARGIN);
 
   return ordered.map((seat, i) => {

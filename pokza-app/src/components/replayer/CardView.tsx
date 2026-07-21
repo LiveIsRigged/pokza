@@ -15,11 +15,15 @@ const RED_SUITS = new Set(['h', 'd']);
 interface CardViewProps {
   card?: Card;
   size?: 'small' | 'medium';
+  /** Dimensions explicites (prioritaires sur `size`), pour un dimensionnement responsive (ex: board) */
+  width?: number;
+  height?: number;
 }
 
-export function CardView({ card, size = 'small' }: CardViewProps) {
-  const dims = size === 'small' ? { width: 22, height: 30 } : { width: 34, height: 46 };
-  const fontSize = size === 'small' ? 11 : 15;
+export function CardView({ card, size = 'small', width, height }: CardViewProps) {
+  const preset = size === 'small' ? { width: 20, height: 26 } : { width: 34, height: 46 };
+  const dims = { width: width ?? preset.width, height: height ?? preset.height };
+  const fontSize = Math.round(dims.height * 0.33);
 
   if (!card) {
     return (

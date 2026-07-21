@@ -1,4 +1,5 @@
 import type { Action, Card, Hand, Street } from '../types/poker';
+import { formatChipAmount } from '../utils/chipFormat';
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river'];
 
@@ -26,6 +27,18 @@ export function totalReplaySteps(hand: Hand): number {
   }
 
   return hand.actions.length + runoutCount;
+}
+
+/**
+ * Poster la SB/BB n'est pas une décision du joueur : on démarre le replay juste après,
+ * pour ne pas faire cliquer sur ces deux steps mécaniques à chaque main.
+ */
+export function initialReplayStep(hand: Hand): number {
+  let i = 0;
+  while (i < hand.actions.length && (hand.actions[i].type === 'post-sb' || hand.actions[i].type === 'post-bb')) {
+    i++;
+  }
+  return i;
 }
 
 /**
@@ -207,25 +220,26 @@ export function determineWinner(hand: Hand): string | null {
 
 export function describeAction(hand: Hand, action: Action): string {
   const who = seatLabel(hand, action.seatId);
+  const amount = action.amount != null ? formatChipAmount(action.amount, hand.gameType) : undefined;
   switch (action.type) {
     case 'post-sb':
-      return `${who} poste la petite blinde (${action.amount})`;
+      return `${who} poste la petite blinde (${amount})`;
     case 'post-bb':
-      return `${who} poste la grosse blinde (${action.amount})`;
+      return `${who} poste la grosse blinde (${amount})`;
     case 'post-ante':
-      return `${who} poste l'ante (${action.amount})`;
+      return `${who} poste l'ante (${amount})`;
     case 'post-straddle':
-      return `${who} straddle (${action.amount})`;
+      return `${who} straddle (${amount})`;
     case 'fold':
       return `${who} se couche`;
     case 'check':
       return `${who} check`;
     case 'call':
-      return `${who} suit (${action.amount})`;
+      return `${who} suit (${amount})`;
     case 'bet':
-      return `${who} mise ${action.amount}`;
+      return `${who} mise ${amount}`;
     case 'raise':
-      return `${who} relance à ${action.amount}`;
+      return `${who} relance à ${amount}`;
     default:
       return who;
   }

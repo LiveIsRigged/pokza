@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import type { Hand } from '../../types/poker';
-import { computeHandState, describeAction, totalReplaySteps } from '../../engine/handEngine';
+import { computeHandState, describeAction, initialReplayStep, totalReplaySteps } from '../../engine/handEngine';
 import { layoutSeats } from '../../engine/layout';
 import { colors } from '../../theme/theme';
 import { TableSurface } from './TableSurface';
@@ -12,12 +12,20 @@ import { PlaybackControls } from './PlaybackControls';
 
 const AUTOPLAY_INTERVAL_MS = 1400;
 
+const STREET_LABELS: Record<string, string> = {
+  preflop: 'Préflop',
+  flop: 'Flop',
+  turn: 'Turn',
+  river: 'River',
+};
+
 interface HandReplayerProps {
   hand: Hand;
 }
 
 export function HandReplayer({ hand }: HandReplayerProps) {
-  const [step, setStep] = useState(0);
+  const initialStep = useMemo(() => initialReplayStep(hand), [hand]);
+  const [step, setStep] = useState(initialStep);
   const [playing, setPlaying] = useState(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -52,7 +60,9 @@ export function HandReplayer({ hand }: HandReplayerProps) {
     setSize({ width, height });
   };
 
-  const actionText = state.lastAction ? describeAction(hand, state.lastAction) : null;
+  // Au step de départ (SB/BB déjà postées), pas de bulle d'action : ce n'est pas une
+  // décision du joueur, il n'y a rien à annoncer avant la première vraie action.
+  const actionText = step > initialStep && state.lastAction ? describeAction(hand, state.lastAction) : null;
 
   const winnerSeat = state.winningSeatId ? hand.seats.find((s) => s.id === state.winningSeatId) : null;
   const winnerSeatCoord = state.winningSeatId
@@ -81,6 +91,8 @@ export function HandReplayer({ hand }: HandReplayerProps) {
                     }
                   : null
               }
+              gameType={hand.gameType}
+              tableWidth={size.width}
             />
           </View>
         )}
@@ -95,7 +107,9 @@ export function HandReplayer({ hand }: HandReplayerProps) {
             folded={state.foldedSeatIds.has(seat.id)}
             stackRemaining={state.stacks[seat.id] ?? seat.startingStack}
             currentBet={state.streetContribution[seat.id]}
-            isActive={state.lastAction?.seatId === seat.id}
+            isActive={state.lastAction?.seatId === seat.id && !state.foldedSeatIds.has(seat.id)}
+            isWinner={state.winningSeatId === seat.id}
+            gameType={hand.gameType}
           />
         ))}
       </View>
@@ -104,11 +118,14 @@ export function HandReplayer({ hand }: HandReplayerProps) {
 
       <PlaybackControls
         playing={playing}
-        canGoBack={step > 0}
+        step={step - initialStep}
+        totalSteps={totalSteps - initialStep}
+        streetLabel={STREET_LABELS[state.currentStreet]}
+        canGoBack={step > initialStep}
         canGoForward={step < totalSteps}
         onBack={() => {
           setPlaying(false);
-          setStep((s) => Math.max(0, s - 1));
+          setStep((s) => Math.max(initialStep, s - 1));
         }}
         onForward={() => {
           setPlaying(false);
@@ -116,7 +133,7 @@ export function HandReplayer({ hand }: HandReplayerProps) {
         }}
         onTogglePlay={() => {
           setPlaying((p) => {
-            if (!p && step >= totalSteps) setStep(0);
+            if (!p && step >= totalSteps) setStep(initialStep);
             return !p;
           });
         }}
@@ -131,7 +148,7 @@ const styles = StyleSheet.create({
   },
   tableArea: {
     width: '100%',
-    aspectRatio: 1.55,
+    aspectRatio: 1.25,
     position: 'relative',
     backgroundColor: colors.feedBackground,
   },

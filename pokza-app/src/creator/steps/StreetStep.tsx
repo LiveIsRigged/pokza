@@ -5,6 +5,7 @@ import { colors, typography } from '../../theme/theme';
 import { getActingOrder, getActingOrderAfter } from '../positions';
 import { WizardScreen } from '../WizardScreen';
 import { MultiCardPicker } from '../MultiCardPicker';
+import { formatChipAmount } from '../../utils/chipFormat';
 
 const STREET_TITLES: Record<Street, string> = {
   preflop: 'Préflop',
@@ -26,13 +27,6 @@ const TOURNAMENT_PREFLOP_BB_MULTIPLES = [2, 3.5, 6, 10];
 
 function formatBbMultiple(n: number): string {
   return `${Number.isInteger(n) ? n : n.toFixed(1)}BB`;
-}
-
-// En tournoi, les montants dépassent vite 4-5 chiffres : au-delà de 1000 jetons, on affiche en
-// "k" (2 décimales, virgule) pour ne pas surcharger l'écran. Le cash game garde la valeur brute.
-function formatChipAmount(n: number, gameType: GameType): string {
-  if (gameType !== 'tournament' || n < 1000) return String(n);
-  return `${(n / 1000).toFixed(2).replace('.', ',')}k`;
 }
 
 interface Snapshot {

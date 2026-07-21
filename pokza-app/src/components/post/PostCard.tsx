@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Post } from '../../types/poker';
-import { colors, typography } from '../../theme/theme';
+import { colors, radius, spacing, typography } from '../../theme/theme';
 import { HandReplayer } from '../replayer/HandReplayer';
 import { VotePoll } from './VotePoll';
 
@@ -85,20 +85,20 @@ export function PostCard({ post }: PostCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.feedBackground,
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 8,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: radius.full,
     backgroundColor: colors.tableFelt,
     alignItems: 'center',
     justifyContent: 'center',
@@ -112,33 +112,33 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   contextLine: {
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   title: {
     color: colors.textPrimary,
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   replayerWrapper: {
-    borderRadius: 12,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: spacing.md,
   },
   engagementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
-    paddingTop: 6,
-    paddingBottom: 4,
+    gap: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(22,35,61,0.15)',
   },
   engagementItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   engagementIcon: {
-    fontSize: 18,
+    fontSize: 20,
     color: colors.textSecondary,
   },
   engagementIconActive: {
@@ -146,11 +146,12 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.1 }],
   },
   engagementCount: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textSecondary,
+    fontWeight: '500',
   },
   engagementCountActive: {
     color: colors.action,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

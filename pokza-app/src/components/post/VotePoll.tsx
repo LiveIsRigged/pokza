@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, typography } from '../../theme/theme';
+import { colors, radius, spacing, typography } from '../../theme/theme';
 
 interface VotePollProps {
   question: string;
@@ -103,38 +103,39 @@ export function VotePoll({ question, options, initialCounts }: VotePollProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 10,
+    marginBottom: spacing.md,
   },
   question: {
-    color: colors.textSecondary,
-    marginBottom: 6,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   buttonsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   bubble: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.full,
     borderWidth: 1,
     borderColor: 'rgba(22,35,61,0.25)',
   },
   bubbleText: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textPrimary,
   },
   resultTrack: {
     position: 'relative',
-    height: 32,
-    borderRadius: 12,
+    height: 36,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: 'rgba(22,35,61,0.15)',
     backgroundColor: 'rgba(22,35,61,0.05)',
     overflow: 'hidden',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.xs + 2,
   },
   resultFill: {
     position: 'absolute',
@@ -153,7 +154,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   resultLabel: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textPrimary,
   },
   resultLabelActive: {
@@ -161,7 +163,7 @@ const styles = StyleSheet.create({
     color: colors.action,
   },
   resultPct: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textSecondary,
     fontWeight: '600',
   },

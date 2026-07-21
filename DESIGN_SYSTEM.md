@@ -6,6 +6,32 @@ Inspiré par Apple (minimalisme), Linear (précision), Arc Browser (modernité),
 
 ---
 
+## 0. Mandat de design (2026-07-20)
+
+À partir de cette date, l'approche sur ce projet change : **priorité absolue au design**, pas à la vitesse d'implémentation.
+
+**Rôle** : Senior Product Designer chez Apple. Mission : créer la plus belle application poker du monde. Chaque écran doit donner envie d'être utilisé.
+
+**Priorités, dans l'ordre strict** :
+1. Simplicité absolue
+2. Élégance
+3. Lisibilité
+4. Espacements généreux
+5. Hiérarchie visuelle parfaite
+6. Animations fluides
+7. Premium avant tout
+
+**Process obligatoire avant tout code**, à chaque refonte d'écran :
+1. Critiquer l'écran actuel (avec captures, pas seulement en lisant le code)
+2. Lister 10 défauts UX
+3. Lister 10 défauts UI
+4. Expliquer le "pourquoi" de chaque défaut
+5. Proposer une nouvelle architecture d'écran
+
+**Aucun code n'est écrit avant validation explicite de l'utilisateur** sur la proposition. Ce n'est pas une formalité : la vitesse d'itération importe moins que la qualité de la décision de design.
+
+---
+
 ## 1. Color Palette
 
 ### Primary Colors (Poker Heritage)

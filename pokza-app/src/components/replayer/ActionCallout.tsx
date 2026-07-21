@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
-import { colors } from '../../theme/theme';
+import { Animated, StyleSheet, Text, View } from 'react-native';
+import { colors, radius } from '../../theme/theme';
 
 interface ActionCalloutProps {
   text: string | null;
@@ -9,33 +9,48 @@ interface ActionCalloutProps {
 
 export function ActionCallout({ text, stepKey }: ActionCalloutProps) {
   const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(6)).current;
 
   useEffect(() => {
     if (!text) return;
     opacity.setValue(1);
+    translateY.setValue(0);
     const timeout = setTimeout(() => {
       Animated.timing(opacity, { toValue: 0, duration: 500, useNativeDriver: true }).start();
-    }, 900);
+    }, 1400);
     return () => clearTimeout(timeout);
-  }, [stepKey, text, opacity]);
-
-  if (!text) return null;
+  }, [stepKey, text, opacity, translateY]);
 
   return (
-    <Animated.View style={[styles.wrapper, { opacity }]}>
-      <Text style={styles.text}>{text}</Text>
-    </Animated.View>
+    <View style={styles.slot}>
+      {text && (
+        <Animated.View style={[styles.pill, { opacity, transform: [{ translateY }] }]}>
+          <Text style={styles.text} numberOfLines={1}>
+            {text}
+          </Text>
+        </Animated.View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  slot: {
     alignItems: 'center',
-    paddingVertical: 6,
+    justifyContent: 'center',
+    minHeight: 34,
+    paddingVertical: 4,
+  },
+  pill: {
+    backgroundColor: colors.tableFelt,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+    maxWidth: '92%',
   },
   text: {
-    color: colors.textSecondary,
-    fontSize: 12,
+    color: colors.textOnFelt,
+    fontSize: 13,
     fontWeight: '600',
   },
 });
