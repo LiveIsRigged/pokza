@@ -1,9 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import type { Hand } from '../../types/poker';
-import { computeHandState, describeAction, initialReplayStep, totalReplaySteps } from '../../engine/handEngine';
-import { layoutSeats } from '../../engine/layout';
+import {
+  computeHandState,
+  describeAction,
+  initialReplayStep,
+  straddleSeatLabel,
+  totalReplaySteps,
+} from '../../engine/handEngine';
+import { boardVerticalOffset, layoutSeats } from '../../engine/layout';
 import { colors } from '../../theme/theme';
+import { useDisplayUnit } from '../../state/displayUnit';
 import { TableSurface } from './TableSurface';
 import { BoardView } from './BoardView';
 import { SeatView } from './SeatView';
@@ -24,6 +31,7 @@ interface HandReplayerProps {
 }
 
 export function HandReplayer({ hand }: HandReplayerProps) {
+  const { useBB, toggleUseBB } = useDisplayUnit();
   const initialStep = useMemo(() => initialReplayStep(hand), [hand]);
   const [step, setStep] = useState(initialStep);
   const [playing, setPlaying] = useState(false);
@@ -62,15 +70,49 @@ export function HandReplayer({ hand }: HandReplayerProps) {
 
   // Au step de départ (SB/BB déjà postées), pas de bulle d'action : ce n'est pas une
   // décision du joueur, il n'y a rien à annoncer avant la première vraie action.
-  const actionText = step > initialStep && state.lastAction ? describeAction(hand, state.lastAction) : null;
+  // `allInSeatIds` persiste jusqu'à la fin de la main (cf. handEngine) : cette action précise n'est
+  // "le" moment du tapis que si son propre siège vient d'y passer ET qu'elle a un montant (fold et
+  // check ne peuvent jamais vider un stack). Ne s'applique que si le step courant EST cette action
+  // (pas un event "reveal" qui suit, cf. ci-dessous) — sinon le prochain texte affiché hériterait
+  // à tort du rouge du tapis qui vient de se produire juste avant.
+  const currentEventIsAction = state.lastEvent?.kind === 'action';
+  const lastActionIsAllIn = Boolean(
+    currentEventIsAction &&
+      state.lastAction &&
+      state.allInSeatIds.has(state.lastAction.seatId) &&
+      state.lastAction.type !== 'fold' &&
+      state.lastAction.type !== 'check'
+  );
+  // Un event "reveal" reste un step à part entière (cf. `buildReplayEvents` — le segment avance,
+  // le board se met à jour, les mises se nettoient), mais n'affiche aucune bulle centrale : la
+  // carte qui tombe se voit déjà sur le board, pas besoin de l'annoncer en plus par du texte.
+  const actionText =
+    step > initialStep && state.lastEvent?.kind === 'action'
+      ? describeAction(hand, state.lastEvent.action, lastActionIsAllIn, useBB)
+      : null;
 
-  const winnerSeat = state.winningSeatId ? hand.seats.find((s) => s.id === state.winningSeatId) : null;
-  const winnerSeatCoord = state.winningSeatId
-    ? seatCoords.find((sc) => sc.seat.id === state.winningSeatId)?.x
-    : null;
-  const winnerCoords = winnerSeatCoord
-    ? seatCoords.find((sc) => sc.seat.id === state.winningSeatId)
-    : null;
+  // Coordonnées ABSOLUES (repère table) de CHAQUE siège gagnant — plusieurs en cas de split pot.
+  const winnerCoordsList = state.winningSeatIds
+    .map((id) => seatCoords.find((sc) => sc.seat.id === id))
+    .filter((sc): sc is (typeof seatCoords)[number] => Boolean(sc));
+
+  // Chaque SeatView ne prend qu'UNE cible (cf. son propre système de glissement à deux segments) :
+  // on lui donne le vainqueur le plus proche plutôt que de fragmenter visuellement le petit tas de
+  // jetons d'un siège perdant entre plusieurs destinations. La pastille du pot, elle, se scinde
+  // réellement en plusieurs parts égales (cf. `BoardView`) — c'est elle qui porte le vrai montant.
+  function nearestWinnerPos(seatX: number, seatY: number): { x: number; y: number } | null {
+    if (winnerCoordsList.length === 0) return null;
+    let best = winnerCoordsList[0];
+    let bestDist = Math.hypot(best.x - seatX, best.y - seatY);
+    for (let i = 1; i < winnerCoordsList.length; i++) {
+      const d = Math.hypot(winnerCoordsList[i].x - seatX, winnerCoordsList[i].y - seatY);
+      if (d < bestDist) {
+        bestDist = d;
+        best = winnerCoordsList[i];
+      }
+    }
+    return { x: best.x, y: best.y };
+  }
 
   return (
     <View style={styles.container}>
@@ -82,39 +124,71 @@ export function HandReplayer({ hand }: HandReplayerProps) {
             <BoardView
               cards={state.board}
               pot={state.potTotal}
-              winningSeatId={state.winningSeatId}
-              winnerSeatCoords={
-                winnerCoords
-                  ? {
-                      x: winnerCoords.x - tableCenter.x,
-                      y: winnerCoords.y - tableCenter.y,
-                    }
-                  : null
-              }
+              winnerTargets={winnerCoordsList.map((wc) => ({
+                x: wc.x - tableCenter.x,
+                y: wc.y - tableCenter.y,
+              }))}
               gameType={hand.gameType}
               tableWidth={size.width}
+              verticalOffset={boardVerticalOffset()}
+              bb={hand.blinds.bb}
+              useBB={useBB}
             />
           </View>
         )}
 
-        {seatCoords.map(({ seat, x, y }) => (
-          <SeatView
-            key={seat.id}
-            seat={seat}
-            x={x}
-            y={y}
-            tableCenter={tableCenter}
-            folded={state.foldedSeatIds.has(seat.id)}
-            stackRemaining={state.stacks[seat.id] ?? seat.startingStack}
-            currentBet={state.streetContribution[seat.id]}
-            isActive={state.lastAction?.seatId === seat.id && !state.foldedSeatIds.has(seat.id)}
-            isWinner={state.winningSeatId === seat.id}
-            gameType={hand.gameType}
-          />
-        ))}
+        {seatCoords.map(({ seat, x, y }) => {
+          // Le libellé "fold" (+ nom estompé) ne concerne qu'un vrai fold, ou le muck classique de
+          // fin de main pour un adversaire non gagnant dont on ne connaît PAS les cartes — jamais
+          // Hero, jamais un adversaire encore actif (mid-hand) qui n'a simplement pas encore agi.
+          const hasWinner = state.winningSeatIds.length > 0;
+          const isWinner = state.winningSeatIds.includes(seat.id);
+          const villainKnownCards = !seat.isHero && Boolean(seat.holeCards);
+          const showFoldLabel =
+            state.foldedSeatIds.has(seat.id) || (hasWinner && !isWinner && !seat.isHero && !villainKnownCards);
+
+          // Dos de carte (pas d'opacité touchée, le siège reste normalement actif) : un adversaire
+          // dont les cartes sont connues (saisies à l'abattage) mais que le créateur a choisi de ne
+          // révéler qu'au showdown (`hand.revealShowdown`) — dos de carte jusqu'à l'event
+          // `revealCards` (cf. `computeHandState`/`buildReplayEvents`), UN CRAN AVANT que le
+          // gagnant ne soit désigné : les mains se dévoilent d'abord, le pot part vers le vainqueur
+          // ensuite, deux steps distincts. Désactivé (défaut) : vraie carte visible dès le début.
+          const showCardBacks = villainKnownCards && Boolean(hand.revealShowdown) && !state.cardsRevealed;
+
+          return (
+            <SeatView
+              key={seat.id}
+              seat={seat}
+              x={x}
+              y={y}
+              tableCenter={tableCenter}
+              folded={showFoldLabel}
+              showCardBacks={showCardBacks}
+              stackRemaining={state.stacks[seat.id] ?? seat.startingStack}
+              currentBet={state.streetContribution[seat.id]}
+              isActive={state.lastAction?.seatId === seat.id && !state.foldedSeatIds.has(seat.id)}
+              isWinner={state.winningSeatIds.includes(seat.id)}
+              isAllIn={state.allInSeatIds.has(seat.id)}
+              // L'équité est une comparaison ENTRE toutes les mains en lice : dès qu'une seule main
+              // du coup est cachée (`revealShowdown`), le % n'est plus interprétable pour AUCUN
+              // siège — y compris Hero, dont le chiffre dépend justement de la main cachée pour
+              // avoir un sens. `equities` n'existe de toute façon que si tous les contendants ont
+              // des cartes connues (cf. `computeHandState`), donc dès que `revealShowdown` est
+              // actif, au moins un adversaire du calcul est forcément caché tant que la main n'est
+              // pas résolue : supprimé pour tout le monde, pas seulement le siège caché. Retombe
+              // sur "ALL-IN" (un fait neutre sur le stack, pas sur la main).
+              equityPct={hand.revealShowdown ? undefined : state.equities?.[seat.id]}
+              winnerSeatPos={nearestWinnerPos(x, y)}
+              gameType={hand.gameType}
+              bb={hand.blinds.bb}
+              useBB={useBB}
+              straddleLabel={straddleSeatLabel(hand.seats, hand.actions, seat.id)}
+            />
+          );
+        })}
       </View>
 
-      <ActionCallout text={actionText} stepKey={step} />
+      <ActionCallout text={actionText} stepKey={step} danger={lastActionIsAllIn} />
 
       <PlaybackControls
         playing={playing}
@@ -131,12 +205,18 @@ export function HandReplayer({ hand }: HandReplayerProps) {
           setPlaying(false);
           setStep((s) => Math.min(totalSteps, s + 1));
         }}
+        onSeek={(i) => {
+          setPlaying(false);
+          setStep(Math.min(totalSteps, initialStep + i + 1));
+        }}
         onTogglePlay={() => {
           setPlaying((p) => {
             if (!p && step >= totalSteps) setStep(initialStep);
             return !p;
           });
         }}
+        useBB={useBB}
+        onToggleUseBB={toggleUseBB}
       />
     </View>
   );
@@ -148,7 +228,11 @@ const styles = StyleSheet.create({
   },
   tableArea: {
     width: '100%',
-    aspectRatio: 1.25,
+    // Ovale plus HAUT que large (l'inverse de l'ancien 1.25) : c'est ce qui crée l'anneau de felt
+    // entre les sièges et le board central. Sans cette hauteur, le board (large) touche presque les
+    // sièges de côté et il n'existe aucun espace "devant le joueur" pour poser une mise sans
+    // chevaucher — aucun algorithme de placement ne peut inventer de l'espace inexistant.
+    aspectRatio: 0.8,
     position: 'relative',
     backgroundColor: colors.feedBackground,
   },
@@ -158,5 +242,9 @@ const styles = StyleSheet.create({
     top: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    // Le pot doit toujours rester visible au-dessus des jetons de mise "posés" (SeatView),
+    // même si un siège vient après lui dans le JSX — le zIndex interne de la pastille ne suffit
+    // pas, il ne joue que face à ses propres frères, pas face à un autre arbre de composants.
+    zIndex: 10,
   },
 });

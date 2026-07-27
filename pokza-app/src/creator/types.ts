@@ -20,14 +20,18 @@ export interface ContextData {
   anteType: AnteType;
   /** Montant de l'ante (par joueur, ou pour la BB si anteType === 'bb') */
   ante: number;
-  /** Straddle (cash game uniquement) : mise volontaire du premier joueur à parler avant les cartes */
-  straddle: boolean;
-  /** Montant du straddle (par défaut 2x la BB) */
+  /** Nombre de straddles consécutifs (cash game uniquement), postés par les joueurs successifs
+   * après la BB : 0 = aucun, 1 = simple, 2 = double, 3 = triple. */
+  straddleCount: 0 | 1 | 2 | 3;
+  /** Montant du premier straddle (par défaut 2x la BB) — le double vaut 2x ce montant, le triple 4x. */
   straddleAmount: number;
 }
 
+export const DESCRIPTION_MAX_LENGTH = 600;
+
 export interface ReviewData {
   title: string;
+  description?: string;
   voteQuestion?: string;
   voteOptions?: string[];
   visibility: Visibility;
@@ -42,6 +46,6 @@ export const DEFAULT_CONTEXT: ContextData = {
   heroPosition: 'CO',
   anteType: 'none',
   ante: 0,
-  straddle: false,
+  straddleCount: 0,
   straddleAmount: 0,
 };

@@ -7,8 +7,17 @@ import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { testPost } from './src/data/testHand';
 import { colors } from './src/theme/theme';
 import type { Post } from './src/types/poker';
+import { DisplayUnitProvider } from './src/state/displayUnit';
 
 export default function App() {
+  return (
+    <DisplayUnitProvider>
+      <AppContent />
+    </DisplayUnitProvider>
+  );
+}
+
+function AppContent() {
   const [fontsLoaded] = useFonts({ Fraunces_400Regular, Fraunces_600SemiBold });
   const [mode, setMode] = useState<'feed' | 'create'>('feed');
   const [posts, setPosts] = useState<Post[]>([testPost]);

@@ -75,6 +75,11 @@ export interface Hand {
   seats: Seat[];
   board: Board;
   actions: Action[];
+  /** Contrôle QUAND les mains adverses saisies à l'abattage deviennent visibles dans le replayer.
+   * Activé : cachées pendant tout le coup, révélées seulement à l'abattage (gagnant ou perdant).
+   * Désactivé (défaut) : visibles dès le début du replay, comme Hero. Sans effet sur un adversaire
+   * dont les cartes n'ont pas été saisies (toujours mucké) ni sur Hero (toujours visible). */
+  revealShowdown?: boolean;
 }
 
 export interface Post {
@@ -87,6 +92,8 @@ export interface Post {
   buyIn?: string;
   level?: string;
   title: string;
+  /** Contexte détaillé de la main, écrit par l'auteur. Limité à 600 caractères (cf. PostCard). */
+  description?: string;
   hand: Hand;
   voteQuestion?: string;
   voteOptions?: string[];

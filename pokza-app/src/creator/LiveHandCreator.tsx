@@ -55,9 +55,19 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
   const [actions, setActions] = useState<Action[]>([]);
   const [activeSeatIds, setActiveSeatIds] = useState<string[]>([]);
   const [board, setBoard] = useState<Board>({});
-  const [review, setReview] = useState<ReviewData>({ title: '', voteQuestion: '', visibility: 'public' });
+  const [review, setReview] = useState<ReviewData>({
+    title: '',
+    description: '',
+    voteQuestion: '',
+    visibility: 'public',
+  });
   // Cartes montrées par les adversaires à l'abattage (seatId -> deux cartes, éventuellement partielles).
   const [revealedCards, setRevealedCards] = useState<Record<string, (Card | undefined)[]>>({});
+  // Réglage global à la main (pas par adversaire, cf. ShowdownStep) : une fois activé, les mains
+  // adverses saisies ci-dessus restent visibles dans le replayer même perdantes. Comme
+  // `review.visibility`, ce n'est pas dans `Snapshot` — persiste tel quel à travers la navigation
+  // arrière/avant plutôt que d'être restauré à une valeur antérieure.
+  const [revealShowdown, setRevealShowdown] = useState(false);
   const [history, setHistory] = useState<Snapshot[]>([]);
   // Change à chaque changement de phase, pour forcer un remount propre des écrans de street
   // (sinon revenir en arrière puis ré-avancer réutilise un composant à l'état "terminé").
@@ -143,6 +153,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
       seats: seatsWithCards,
       board: finalBoard,
       actions: finalActions,
+      revealShowdown,
     };
     const post: Post = {
       id: `post-${Date.now()}`,
@@ -153,6 +164,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
       buyIn: context.buyIn,
       level: context.level,
       title: review.title,
+      description: review.description?.trim() || undefined,
       voteQuestion: review.voteQuestion || undefined,
       voteOptions: review.voteQuestion
         ? (review.voteOptions ?? []).map((o) => o.trim()).filter(Boolean)
@@ -172,9 +184,13 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
       return (
         <ShowdownStep
           villains={villainSeats}
+          seats={seats}
           revealed={revealedCards}
           baseUsedCards={baseUsedCards}
+          actions={actions}
           onChange={(seatId, cards) => setRevealedCards((r) => ({ ...r, [seatId]: cards }))}
+          revealShowdown={revealShowdown}
+          onChangeRevealShowdown={setRevealShowdown}
           onBack={goBack}
           onNext={() => pushSnapshotAndGo('review')}
         />
@@ -187,6 +203,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           onChange={setContext}
           step={step}
           totalSteps={TOTAL_STEPS}
+          onBack={goBack}
           onNext={() => {
             const builtSeats = buildSeats(
               context.numPlayers,
@@ -244,18 +261,21 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
               });
             }
 
-            // Straddle (cash game) : le premier joueur à parler préflop poste un montant
-            // volontaire (généralement 2x BB), qui devient le niveau à suivre. Il agira en
-            // dernier (comme la BB en temps normal), l'action reprenant après lui.
-            if (context.gameType === 'cash' && context.straddle && context.straddleAmount > 0) {
-              const straddlerSeat = getActingOrder(builtSeats, 'preflop')[0];
-              if (straddlerSeat) {
+            // Straddle(s) (cash game) : les joueurs successifs après la BB postent chacun un
+            // montant volontaire qui double à chaque fois (simple, double, triple), devenant le
+            // niveau à suivre. Le dernier straddleur agira en dernier (comme la BB en temps
+            // normal), l'action reprenant après lui.
+            if (context.gameType === 'cash' && context.straddleCount > 0 && context.straddleAmount > 0) {
+              const straddleOrder = getActingOrder(builtSeats, 'preflop');
+              for (let i = 0; i < context.straddleCount; i++) {
+                const straddlerSeat = straddleOrder[i];
+                if (!straddlerSeat) break;
                 blindActions.push({
-                  id: 'straddle',
+                  id: `straddle-${i + 1}`,
                   street: 'preflop',
                   seatId: straddlerSeat.id,
                   type: 'post-straddle',
-                  amount: context.straddleAmount,
+                  amount: context.straddleAmount * 2 ** i,
                   order: order++,
                 });
               }
@@ -285,11 +305,14 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
     case 'street-preflop': {
       const sbSeat = seats.find((s) => s.position === 'SB') ?? seats.find((s) => s.position === 'BTN');
       const bbSeat = seats.find((s) => s.position === 'BB');
-      const straddleAction = actions.find((a) => a.type === 'post-straddle');
+      const straddleActions = actions.filter((a) => a.type === 'post-straddle').sort((a, b) => a.order - b.order);
+      const lastStraddle = straddleActions[straddleActions.length - 1];
       const initialContributions: Record<string, number> = {};
       if (sbSeat) initialContributions[sbSeat.id] = context.sb;
       if (bbSeat) initialContributions[bbSeat.id] = context.bb;
-      if (straddleAction) initialContributions[straddleAction.seatId] = straddleAction.amount ?? 0;
+      for (const straddleAction of straddleActions) {
+        initialContributions[straddleAction.seatId] = straddleAction.amount ?? 0;
+      }
       return (
         <StreetStep
           key={`preflop-${phaseKey}`}
@@ -299,11 +322,12 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           seats={seats}
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
-          initialBetAmount={straddleAction ? straddleAction.amount : context.bb}
+          initialBetAmount={lastStraddle ? lastStraddle.amount : context.bb}
           initialContributions={initialContributions}
           priorCommitted={priorCommittedFor('preflop')}
           anteCommitted={committedBySeat(actions.filter((a) => a.type === 'post-ante'))}
-          firstToActAfterSeatId={straddleAction?.seatId}
+          firstToActAfterSeatId={lastStraddle?.seatId}
+          priorActions={actions}
           bb={context.bb}
           gameType={context.gameType}
           step={step}
@@ -330,6 +354,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
           priorCommitted={priorCommittedFor('flop')}
+          priorActions={actions}
           step={step}
           totalSteps={TOTAL_STEPS}
           onBack={goBack}
@@ -361,6 +386,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
           priorCommitted={priorCommittedFor('turn')}
+          priorActions={actions}
           step={step}
           totalSteps={TOTAL_STEPS}
           onBack={goBack}
@@ -392,6 +418,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
           priorCommitted={priorCommittedFor('river')}
+          priorActions={actions}
           step={step}
           totalSteps={TOTAL_STEPS}
           onBack={goBack}

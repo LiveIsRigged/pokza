@@ -6,6 +6,7 @@ import { getActingOrder, getActingOrderAfter } from '../positions';
 import { WizardScreen } from '../WizardScreen';
 import { MultiCardPicker } from '../MultiCardPicker';
 import { formatChipAmount } from '../../utils/chipFormat';
+import { straddleSeatLabel } from '../../engine/handEngine';
 
 const STREET_TITLES: Record<Street, string> = {
   preflop: 'Préflop',
@@ -25,8 +26,11 @@ const POT_SHORTCUTS: { label: string; fraction: number }[] = [
 const CASH_PREFLOP_BB_MULTIPLES = [3, 4, 5, 10];
 const TOURNAMENT_PREFLOP_BB_MULTIPLES = [2, 3.5, 6, 10];
 
-function formatBbMultiple(n: number): string {
-  return `${Number.isInteger(n) ? n : n.toFixed(1)}BB`;
+// Avec un straddle, le repère "BB" ne veut plus rien dire pour ces raccourcis (le niveau à suivre
+// est déjà le straddle, pas la BB) : suffixe générique "x" plutôt qu'une unité fausse.
+function formatBbMultiple(n: number, hasStraddle: boolean): string {
+  const value = Number.isInteger(n) ? String(n) : n.toFixed(1);
+  return hasStraddle ? `${value}x` : `${value}BB`;
 }
 
 interface Snapshot {
@@ -53,6 +57,9 @@ interface StreetStepProps {
   anteCommitted?: Record<string, number>;
   /** Si un siège a posté un straddle (ou autre mise forcée), l'action reprend juste après lui plutôt qu'à l'ordre naturel */
   firstToActAfterSeatId?: string;
+  /** Actions déjà enregistrées plus tôt dans la main (streets précédentes, dont un éventuel
+   * straddle préflop) — sert uniquement à l'affichage du nom des sièges (cf. `seatDisplay`). */
+  priorActions?: Action[];
   /** BB de la main, utilisée pour les raccourcis de taille en multiples de BB au préflop */
   bb?: number;
   gameType?: GameType;
@@ -63,8 +70,8 @@ interface StreetStepProps {
   totalSteps?: number;
 }
 
-function seatDisplay(seat: Seat): string {
-  const label = seat.playerName ?? seat.position;
+function seatDisplay(seat: Seat, seats: Seat[], priorActions: Action[]): string {
+  const label = seat.playerName ?? straddleSeatLabel(seats, priorActions, seat.id) ?? seat.position;
   return seat.isHero ? `Hero (${label})` : label;
 }
 
@@ -80,6 +87,7 @@ export function StreetStep({
   priorCommitted = {},
   anteCommitted = {},
   firstToActAfterSeatId,
+  priorActions = [],
   bb = 0,
   gameType = 'cash',
   onBack,
@@ -126,12 +134,17 @@ export function StreetStep({
   const potNow = sumValues(priorCommitted) + sumValues(anteCommitted) + sumValues(contributions);
 
   // Raccourcis de taille : en multiples de BB au préflop (le %pot n'est pas le repère habituel
-  // avant le flop), en %pot sur les streets suivantes.
+  // avant le flop), en %pot sur les streets suivantes. Si un straddle a été posté (simple, double
+  // ou triple), le niveau à suivre au préflop n'est plus la BB mais ce straddle
+  // (`initialBetAmount`, déjà égal au montant du DERNIER straddle côté créateur) : les multiples
+  // doivent se baser dessus, sinon "3BB" afficherait un montant sans rapport avec 3x la BB.
+  const hasStraddle = Boolean(firstToActAfterSeatId);
+  const preflopRaiseUnit = street === 'preflop' && hasStraddle ? initialBetAmount : bb;
   const sizeShortcuts: { label: string; amount: number }[] =
     street === 'preflop'
       ? (gameType === 'tournament' ? TOURNAMENT_PREFLOP_BB_MULTIPLES : CASH_PREFLOP_BB_MULTIPLES).map((m) => ({
-          label: formatBbMultiple(m),
-          amount: Math.round(bb * m),
+          label: formatBbMultiple(m, hasStraddle),
+          amount: Math.round(preflopRaiseUnit * m),
         }))
       : POT_SHORTCUTS.map(({ label, fraction }) => ({ label, amount: Math.round(potNow * fraction) }));
 
@@ -297,7 +310,7 @@ export function StreetStep({
           <View style={styles.summary}>
             {recorded.map((a) => (
               <Text key={a.id} style={styles.summaryLine}>
-                {seatDisplay(seats.find((s) => s.id === a.seatId)!)} · {a.type}
+                {seatDisplay(seats.find((s) => s.id === a.seatId)!, seats, priorActions)} · {a.type}
                 {a.amount ? ` ${fmt(a.amount)}` : ''}
               </Text>
             ))}
@@ -309,7 +322,7 @@ export function StreetStep({
               .filter((s) => active.includes(s.id))
               .map((s) => (
                 <View key={s.id} style={styles.stackChip}>
-                  <Text style={styles.stackChipName}>{seatDisplay(s)}</Text>
+                  <Text style={styles.stackChipName}>{seatDisplay(s, seats, priorActions)}</Text>
                   <Text style={styles.stackChipValue}>{fmt(Math.max(remainingFor(s.id), 0))}</Text>
                 </View>
               ))}
@@ -319,7 +332,7 @@ export function StreetStep({
             <>
               <View style={styles.actorRow}>
                 <Text style={[typography.postTitle, styles.actor]}>
-                  {seatDisplay(currentSeat)} agit · reste {fmt(Math.max(remainingFor(currentSeatId), 0))}
+                  {seatDisplay(currentSeat, seats, priorActions)} agit · reste {fmt(Math.max(remainingFor(currentSeatId), 0))}
                 </Text>
                 {history.length > 0 && (
                   <Pressable onPress={handleUndo} style={styles.undoButton}>

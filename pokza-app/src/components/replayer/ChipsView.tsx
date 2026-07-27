@@ -8,15 +8,17 @@ interface ChipsViewProps {
   amount: number;
   gameType?: GameType;
   isWinning?: boolean;
+  bb: number;
+  useBB?: boolean;
 }
 
 // Le pot est une simple pastille lisible plutôt qu'un tas de jetons illustré : plus premier,
 // plus compact, et surtout garanti de ne jamais chevaucher le siège au-dessus (cf. layout.ts).
-export function ChipsView({ amount, gameType = 'cash', isWinning = false }: ChipsViewProps) {
+export function ChipsView({ amount, gameType = 'cash', isWinning = false, bb, useBB = false }: ChipsViewProps) {
   return (
     <View style={[styles.pill, isWinning && styles.pillWinning]}>
       <Text style={[typography.potAmount, styles.amount, isWinning && styles.amountWinning]}>
-        Pot {formatChipAmount(amount, gameType)}
+        Pot {formatChipAmount(amount, gameType, { bb, useBB })}
       </Text>
     </View>
   );

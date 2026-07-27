@@ -1,28 +1,51 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { Card, Seat } from '../../types/poker';
+import type { Action, Card, Seat } from '../../types/poker';
 import { colors, typography } from '../../theme/theme';
 import { WizardScreen } from '../WizardScreen';
 import { MultiCardPicker } from '../MultiCardPicker';
 import { CardView } from '../../components/replayer/CardView';
+import { Chip } from '../Chip';
+import { straddleSeatLabel } from '../../engine/handEngine';
 
 interface ShowdownStepProps {
   /** Sièges adverses encore en jeu à l'abattage, à qui on peut attribuer des cartes */
   villains: Seat[];
+  /** TOUS les sièges de la main (pas seulement les villains) — nécessaire pour calculer le rang
+   * d'un siège dans l'ordre d'action préflop (cf. `straddleSeatLabel`), faux sur un sous-ensemble filtré. */
+  seats: Seat[];
   /** Cartes révélées par siège (seatId -> deux cartes, éventuellement partielles) */
   revealed: Record<string, (Card | undefined)[]>;
   onChange: (seatId: string, cards: (Card | undefined)[]) => void;
   /** Cartes déjà prises par le hero et le board */
   baseUsedCards: Card[];
+  /** Actions de la main (dont un éventuel straddle préflop) — sert uniquement à l'affichage du nom des sièges */
+  actions: Action[];
+  /** Une fois activé, les mains adverses saisies ci-dessous restent visibles dans le replayer même
+   * si elles perdent (sinon mucking classique) — ne concerne jamais Hero, toujours visible dès le
+   * départ. Réglage global à la main, pas par adversaire. */
+  revealShowdown: boolean;
+  onChangeRevealShowdown: (value: boolean) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-function seatLabel(seat: Seat): string {
-  return seat.playerName ?? seat.position;
+function seatLabel(seat: Seat, seats: Seat[], actions: Action[]): string {
+  return seat.playerName ?? straddleSeatLabel(seats, actions, seat.id) ?? seat.position;
 }
 
-export function ShowdownStep({ villains, revealed, onChange, baseUsedCards, onNext, onBack }: ShowdownStepProps) {
+export function ShowdownStep({
+  villains,
+  seats,
+  revealed,
+  onChange,
+  baseUsedCards,
+  actions,
+  revealShowdown,
+  onChangeRevealShowdown,
+  onNext,
+  onBack,
+}: ShowdownStepProps) {
   const [selectedId, setSelectedId] = useState<string>(villains[0]?.id ?? '');
 
   const selectedCards = revealed[selectedId] ?? [];
@@ -43,6 +66,17 @@ export function ShowdownStep({ villains, revealed, onChange, baseUsedCards, onNe
       nextLabel="Continuer"
       onBack={onBack}
     >
+      <Text style={styles.label}>Révéler les mains à l'abattage</Text>
+      <View style={styles.revealRow}>
+        <Chip label="Non" selected={!revealShowdown} onPress={() => onChangeRevealShowdown(false)} />
+        <Chip label="Oui" selected={revealShowdown} onPress={() => onChangeRevealShowdown(true)} />
+      </View>
+      <Text style={styles.revealHint}>
+        {revealShowdown
+          ? "Les cartes saisies ci-dessous resteront cachées pendant tout le coup, et n'apparaîtront qu'à l'abattage — gagnant ou perdant."
+          : 'Les cartes saisies ci-dessous seront visibles dans le replay dès le début, comme celles de Hero.'}
+      </Text>
+
       <View style={styles.villainRow}>
         {villains.map((v) => {
           const cards = revealed[v.id] ?? [];
@@ -53,7 +87,9 @@ export function ShowdownStep({ villains, revealed, onChange, baseUsedCards, onNe
               onPress={() => setSelectedId(v.id)}
               style={[styles.villainChip, isSelected && styles.villainChipSelected]}
             >
-              <Text style={[styles.villainName, isSelected && styles.villainNameSelected]}>{seatLabel(v)}</Text>
+              <Text style={[styles.villainName, isSelected && styles.villainNameSelected]}>
+                {seatLabel(v, seats, actions)}
+              </Text>
               <View style={styles.miniCards}>
                 {[0, 1].map((i) =>
                   cards[i] ? (
@@ -71,7 +107,7 @@ export function ShowdownStep({ villains, revealed, onChange, baseUsedCards, onNe
       {selectedId ? (
         <View style={styles.pickerSection}>
           <Text style={[typography.contextLine, styles.hint]}>
-            Cartes de {seatLabel(villains.find((v) => v.id === selectedId)!)}
+            Cartes de {seatLabel(villains.find((v) => v.id === selectedId)!, seats, actions)}
           </Text>
           <MultiCardPicker
             count={2}
@@ -86,6 +122,24 @@ export function ShowdownStep({ villains, revealed, onChange, baseUsedCards, onNe
 }
 
 const styles = StyleSheet.create({
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  revealRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 6,
+  },
+  revealHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 18,
+  },
   villainRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

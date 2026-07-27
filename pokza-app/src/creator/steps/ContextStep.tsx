@@ -1,11 +1,93 @@
-import React from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleProp, StyleSheet, Text, TextInput, TextStyle, View } from 'react-native';
 import type { Position } from '../../types/poker';
 import { colors } from '../../theme/theme';
 import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
 import { POSITION_SETS } from '../positions';
+import { straddleAwarePositionLabel } from '../../engine/handEngine';
 import type { ContextData } from '../types';
+
+// Un TextInput contrôlé qui reflète `String(nombre)` se mord la queue dès qu'on tape une virgule
+// ou un point : "0." → parseFloat → 0 → réaffiché "0", le "." tapé disparaît aussitôt, rendant
+// tout nombre décimal (ex: blindes 0,25/0,5) impossible à saisir caractère par caractère. On garde
+// donc le texte tapé comme état local propre à l'input, et on ne le resynchronise depuis la valeur
+// numérique que si elle change de source EXTÉRIEURE (preset cliqué...), jamais en écho de sa propre frappe.
+function DecimalTextInput({
+  value,
+  onChangeValue,
+  style,
+  placeholder,
+}: {
+  value: number;
+  onChangeValue: (n: number) => void;
+  style?: StyleProp<TextStyle>;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(String(value));
+
+  useEffect(() => {
+    const parsed = parseFloat(text.replace(',', '.'));
+    const isOwnEcho = parsed === value || (Number.isNaN(parsed) && value === 0);
+    if (!isOwnEcho) setText(String(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <TextInput
+      style={style}
+      keyboardType="decimal-pad"
+      placeholder={placeholder}
+      value={text}
+      onChangeText={(t) => {
+        setText(t);
+        const parsed = parseFloat(t.replace(',', '.'));
+        onChangeValue(Number.isNaN(parsed) ? 0 : parsed);
+      }}
+    />
+  );
+}
+
+// Variante pour un champ facultatif (le stack d'un siège précis, sinon le stack effectif par
+// défaut s'applique) : un champ vidé revient à "pas de valeur" plutôt qu'à 0.
+function OptionalDecimalTextInput({
+  value,
+  onChangeValue,
+  style,
+  placeholder,
+}: {
+  value: number | undefined;
+  onChangeValue: (n: number | undefined) => void;
+  style?: StyleProp<TextStyle>;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(value != null ? String(value) : '');
+
+  useEffect(() => {
+    const parsed = text.trim() === '' ? undefined : parseFloat(text.replace(',', '.'));
+    const isOwnEcho = parsed === value || (typeof parsed === 'number' && Number.isNaN(parsed) && value == null);
+    if (!isOwnEcho) setText(value != null ? String(value) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <TextInput
+      style={style}
+      keyboardType="decimal-pad"
+      placeholder={placeholder}
+      value={text}
+      onChangeText={(t) => {
+        setText(t);
+        if (t.trim() === '') {
+          onChangeValue(undefined);
+          return;
+        }
+        const parsed = parseFloat(t.replace(',', '.'));
+        onChangeValue(Number.isNaN(parsed) ? undefined : parsed);
+      }}
+    />
+  );
+}
 
 const CASH_BLIND_PRESETS: [number, number][] = [
   [1, 2],
@@ -39,13 +121,30 @@ interface ContextStepProps {
   value: ContextData;
   onChange: (value: ContextData) => void;
   onNext: () => void;
+  /** Cette étape est la première du wizard : "retour" ici annule la création et revient au feed. */
+  onBack?: () => void;
   step?: number;
   totalSteps?: number;
 }
 
-export function ContextStep({ value, onChange, onNext, step, totalSteps }: ContextStepProps) {
+export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps }: ContextStepProps) {
   const availablePositions = POSITION_SETS[value.numPlayers] ?? POSITION_SETS[6];
   const heroValid = availablePositions.includes(value.heroPosition);
+
+  // Même résultat que `straddleSeatLabel` dans handEngine.ts (straddle + décalage UTG/UTG1/UTG2),
+  // calculé ici uniquement à partir du rang dans `availablePositions` puisqu'aucune action
+  // n'existe encore à cette étape du formulaire.
+  const straddleCount = value.gameType === 'cash' ? value.straddleCount : 0;
+  const straddleLabelForPosition = (pos: Position): string =>
+    straddleAwarePositionLabel(availablePositions, availablePositions.indexOf(pos), straddleCount);
+
+  // Pour le sélecteur "Ta position" uniquement : le(s) straddleur(s) passent en dernier plutôt
+  // qu'en premier — plus logique visuellement, un straddle est perçu comme un "ajout" plutôt que
+  // la position de référence. Ordre d'action réel (`availablePositions`) inchangé partout ailleurs.
+  const positionChipOrder =
+    straddleCount > 0
+      ? [...availablePositions.slice(straddleCount), ...availablePositions.slice(0, straddleCount)]
+      : availablePositions;
 
   const update = (patch: Partial<ContextData>) => onChange({ ...value, ...patch });
 
@@ -55,6 +154,7 @@ export function ContextStep({ value, onChange, onNext, step, totalSteps }: Conte
       subtitle="Contexte de la main"
       onNext={onNext}
       nextDisabled={!heroValid || !value.sb || !value.bb || !value.effectiveStack}
+      onBack={onBack}
       step={step}
       totalSteps={totalSteps}
     >
@@ -92,22 +192,17 @@ export function ContextStep({ value, onChange, onNext, step, totalSteps }: Conte
           ))}
         </View>
         <View style={styles.inlineInputs}>
-          <TextInput
+          <DecimalTextInput
             style={styles.input}
-            keyboardType="numeric"
             placeholder="SB"
-            value={String(value.sb)}
-            onChangeText={(t) => update({ sb: Number(t) || 0 })}
+            value={value.sb}
+            onChangeValue={(sb) => update({ sb })}
           />
-          <TextInput
+          <DecimalTextInput
             style={styles.input}
-            keyboardType="numeric"
             placeholder="BB"
-            value={String(value.bb)}
-            onChangeText={(t) => {
-              const bb = Number(t) || 0;
-              update({ bb, effectiveStack: defaultStackFor(value.gameType, bb) });
-            }}
+            value={value.bb}
+            onChangeValue={(bb) => update({ bb, effectiveStack: defaultStackFor(value.gameType, bb) })}
           />
         </View>
 
@@ -131,12 +226,11 @@ export function ContextStep({ value, onChange, onNext, step, totalSteps }: Conte
           <Text style={styles.helperText}>Montant de l'ante : {value.bb} (identique à la BB)</Text>
         )}
         {value.anteType === 'per-player' && (
-          <TextInput
+          <DecimalTextInput
             style={styles.input}
-            keyboardType="numeric"
             placeholder="Ante par joueur"
-            value={String(value.ante)}
-            onChangeText={(t) => update({ ante: Number(t) || 0 })}
+            value={value.ante}
+            onChangeValue={(ante) => update({ ante })}
           />
         )}
 
@@ -144,36 +238,49 @@ export function ContextStep({ value, onChange, onNext, step, totalSteps }: Conte
           <>
             <Text style={styles.label}>Straddle</Text>
             <View style={styles.row}>
+              <Chip label="Aucun" selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
               <Chip
-                label="Aucun"
-                selected={!value.straddle}
-                onPress={() => update({ straddle: false })}
+                label="Simple"
+                selected={value.straddleCount === 1}
+                onPress={() => update({ straddleCount: 1, straddleAmount: value.straddleAmount || value.bb * 2 })}
               />
               <Chip
-                label="Straddle"
-                selected={value.straddle}
-                onPress={() => update({ straddle: true, straddleAmount: value.straddleAmount || value.bb * 2 })}
+                label="Double"
+                selected={value.straddleCount === 2}
+                onPress={() => update({ straddleCount: 2, straddleAmount: value.straddleAmount || value.bb * 2 })}
+              />
+              <Chip
+                label="Triple"
+                selected={value.straddleCount === 3}
+                onPress={() => update({ straddleCount: 3, straddleAmount: value.straddleAmount || value.bb * 2 })}
               />
             </View>
-            {value.straddle && (
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                placeholder="Montant du straddle"
-                value={String(value.straddleAmount)}
-                onChangeText={(t) => update({ straddleAmount: Number(t) || 0 })}
-              />
+            {value.straddleCount > 0 && (
+              <>
+                <DecimalTextInput
+                  style={styles.input}
+                  placeholder="Montant du 1er straddle"
+                  value={value.straddleAmount}
+                  onChangeValue={(straddleAmount) => update({ straddleAmount })}
+                />
+                <Text style={styles.helperText}>
+                  {value.straddleCount === 1 && `Straddle : ${formatBlind(value.straddleAmount)}`}
+                  {value.straddleCount === 2 &&
+                    `Straddle ${formatBlind(value.straddleAmount)}, double straddle ${formatBlind(value.straddleAmount * 2)}`}
+                  {value.straddleCount === 3 &&
+                    `Straddle ${formatBlind(value.straddleAmount)}, double ${formatBlind(value.straddleAmount * 2)}, triple ${formatBlind(value.straddleAmount * 4)}`}
+                </Text>
+              </>
             )}
           </>
         )}
 
         <Text style={styles.label}>Stack effectif</Text>
-        <TextInput
+        <DecimalTextInput
           style={styles.input}
-          keyboardType="numeric"
           placeholder="Stack"
-          value={String(value.effectiveStack)}
-          onChangeText={(t) => update({ effectiveStack: Number(t) || 0 })}
+          value={value.effectiveStack}
+          onChangeValue={(effectiveStack) => update({ effectiveStack })}
         />
 
         <Text style={styles.label}>Nombre de joueurs</Text>
@@ -194,17 +301,23 @@ export function ContextStep({ value, onChange, onNext, step, totalSteps }: Conte
 
         <Text style={styles.label}>Ta position</Text>
         <View style={styles.row}>
-          {availablePositions.map((pos: Position) => (
-            <Chip key={pos} label={pos} selected={value.heroPosition === pos} onPress={() => update({ heroPosition: pos })} />
+          {positionChipOrder.map((pos: Position) => (
+            <Chip
+              key={pos}
+              label={straddleLabelForPosition(pos)}
+              selected={value.heroPosition === pos}
+              onPress={() => update({ heroPosition: pos })}
+            />
           ))}
         </View>
 
         <Text style={styles.label}>Joueurs (nom et stack, optionnel)</Text>
         {availablePositions.map((pos) => {
           const isHero = pos === value.heroPosition;
+          const label = straddleLabelForPosition(pos);
           return (
             <View key={pos} style={styles.playerRow}>
-              <Text style={styles.playerRowLabel}>{isHero ? `${pos} (toi)` : pos}</Text>
+              <Text style={styles.playerRowLabel}>{isHero ? `${label} (toi)` : label}</Text>
               {!isHero && (
                 <TextInput
                   style={[styles.input, styles.playerNameInput]}
@@ -213,14 +326,11 @@ export function ContextStep({ value, onChange, onNext, step, totalSteps }: Conte
                   onChangeText={(t) => update({ opponentNames: { ...value.opponentNames, [pos]: t } })}
                 />
               )}
-              <TextInput
+              <OptionalDecimalTextInput
                 style={[styles.input, styles.playerStackInput]}
-                keyboardType="numeric"
                 placeholder={String(value.effectiveStack)}
-                value={value.seatStacks?.[pos] != null ? String(value.seatStacks[pos]) : ''}
-                onChangeText={(t) =>
-                  update({ seatStacks: { ...value.seatStacks, [pos]: t ? Number(t) || 0 : undefined } })
-                }
+                value={value.seatStacks?.[pos]}
+                onChangeValue={(stack) => update({ seatStacks: { ...value.seatStacks, [pos]: stack } })}
               />
             </View>
           );

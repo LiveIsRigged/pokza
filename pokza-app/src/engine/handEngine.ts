@@ -1,42 +1,101 @@
-import type { Action, Card, Hand, Street } from '../types/poker';
-import { formatChipAmount } from '../utils/chipFormat';
+import type { Action, Card, Hand, Position, Seat, Street } from '../types/poker';
+import { formatChipAmount, roundMoney } from '../utils/chipFormat';
+import { bestHandWinners } from './handEvaluator';
+import { computeEquity } from './equity';
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river'];
 
 /**
- * Nombre total de steps pour rejouer une main, incluant les steps de run-out.
- * Un step = soit une action, soit une carte du board révélée pendant le run-out.
- * Ex: tapis au flop avec turn+river distribués → actions.length + 2 steps.
+ * Un "step" de replay est une action, une révélation de street (le board avance), ou la
+ * résolution finale de la main ("showdown"). Les trois sont distingués explicitement pour ne
+ * jamais confondre deux moments différents dans le même step — c'était le cas avant pour
+ * street/action (la street changeait ET la première action de cette street s'appliquaient d'un
+ * coup) et ça l'est resté longtemps pour la toute dernière action/le gagnant (la dernière décision
+ * ET "untel gagne, les jetons glissent vers lui" arrivaient ensemble) : chacun de ces changements
+ * doit rester un clic à part entière.
  */
-export function totalReplaySteps(hand: Hand): number {
-  if (hand.actions.length === 0) return 0;
+export type ReplayEvent =
+  | { kind: 'action'; action: Action }
+  | { kind: 'reveal'; street: Street }
+  | { kind: 'revealCards' }
+  | { kind: 'showdown' };
 
-  const lastAction = hand.actions[hand.actions.length - 1];
-  const lastStreetIndex = STREET_ORDER.indexOf(lastAction.street);
-
-  let runoutCount = 0;
-  for (let i = lastStreetIndex + 1; i < STREET_ORDER.length; i++) {
-    const street = STREET_ORDER[i];
-    if (
-      (street === 'flop' && hand.board.flop) ||
-      (street === 'turn' && hand.board.turn) ||
-      (street === 'river' && hand.board.river)
-    ) {
-      runoutCount++;
-    }
-  }
-
-  return hand.actions.length + runoutCount;
+function hasBoardDataFor(hand: Hand, street: Street): boolean {
+  if (street === 'flop') return Boolean(hand.board.flop);
+  if (street === 'turn') return Boolean(hand.board.turn);
+  if (street === 'river') return Boolean(hand.board.river);
+  return false; // le préflop n'a jamais besoin d'une révélation (cartes en main connues d'emblée)
 }
 
 /**
- * Poster la SB/BB n'est pas une décision du joueur : on démarre le replay juste après,
- * pour ne pas faire cliquer sur ces deux steps mécaniques à chaque main.
+ * Reconstruit la main comme une suite d'événements plutôt qu'une simple liste d'actions : un
+ * changement de street insère un événement "reveal" AVANT la première action de cette street,
+ * qu'il s'agisse d'une transition normale (entre deux actions) ou d'un run-out en fin de main
+ * (plus aucune action, juste les cartes restantes qui tombent) — les deux cas sont désormais
+ * traités de façon uniforme.
+ */
+export function buildReplayEvents(hand: Hand): ReplayEvent[] {
+  if (hand.actions.length === 0) return [];
+
+  const events: ReplayEvent[] = [];
+  const revealed = new Set<Street>(['preflop']);
+
+  for (const action of hand.actions) {
+    if (!revealed.has(action.street) && hasBoardDataFor(hand, action.street)) {
+      events.push({ kind: 'reveal', street: action.street });
+      revealed.add(action.street);
+    }
+    events.push({ kind: 'action', action });
+  }
+
+  const lastStreet = hand.actions[hand.actions.length - 1].street;
+  for (let i = STREET_ORDER.indexOf(lastStreet) + 1; i < STREET_ORDER.length; i++) {
+    const street = STREET_ORDER[i];
+    if (!revealed.has(street) && hasBoardDataFor(hand, street)) {
+      events.push({ kind: 'reveal', street });
+      revealed.add(street);
+    }
+  }
+
+  // Si le créateur a choisi de cacher des mains connues jusqu'au showdown (`revealShowdown`), leur
+  // retournement (dos → face) est lui-même un step à part, AVANT "untel gagne" — sinon les cartes
+  // se dévoilent et le pot part vers le vainqueur dans le même clic, alors que ce sont deux
+  // moments distincts (d'abord on voit les mains, ensuite on voit qui gagne).
+  const hasHiddenReveal = Boolean(hand.revealShowdown) && hand.seats.some((s) => !s.isHero && s.holeCards);
+  if (hasHiddenReveal) {
+    events.push({ kind: 'revealCards' });
+  }
+
+  // Dernier event, toujours : "untel gagne" (ou split) et le glissement des jetons vers le(s)
+  // vainqueur(s) n'apparaissent qu'ici, jamais au même step que la dernière action/révélation qui
+  // précède — cf. `computeHandState`, qui ne détermine le(s) gagnant(s) qu'à ce step précis.
+  events.push({ kind: 'showdown' });
+
+  return events;
+}
+
+/** Nombre total de steps pour rejouer une main (actions + révélations de street, cf. `buildReplayEvents`). */
+export function totalReplaySteps(hand: Hand): number {
+  return buildReplayEvents(hand).length;
+}
+
+/**
+ * Poster la SB/BB (et un éventuel straddle simple/double/triple) n'est pas une décision du
+ * joueur : on démarre le replay juste après, pour ne pas faire cliquer sur ces steps mécaniques
+ * à chaque main. Les mises apparaissent déjà postées dès la première frame (cf. `computeHandState`,
+ * qui inclut toujours tous les events jusqu'à `step` exclu, skippés ou non).
  */
 export function initialReplayStep(hand: Hand): number {
+  const events = buildReplayEvents(hand);
   let i = 0;
-  while (i < hand.actions.length && (hand.actions[i].type === 'post-sb' || hand.actions[i].type === 'post-bb')) {
-    i++;
+  while (i < events.length) {
+    const ev = events[i];
+    const type = ev.kind === 'action' ? ev.action.type : null;
+    if (type === 'post-sb' || type === 'post-bb' || type === 'post-straddle') {
+      i++;
+    } else {
+      break;
+    }
   }
   return i;
 }
@@ -75,6 +134,10 @@ export function committedBySeat(actions: Action[]): Record<string, number> {
 export interface HandState {
   step: number;
   totalSteps: number;
+  /** Street actuellement affichée — avance à chaque événement traité (reveal OU action), qu'il
+   * s'agisse d'une transition normale ou d'un run-out. Pilote à la fois le libellé (PRÉFLOP/FLOP/
+   * TURN/RIVER) et les mises "en cours" (`streetContribution`) : les deux avancent ensemble
+   * puisque c'est la même street, contrairement à l'ancien système à deux valeurs séparées. */
   currentStreet: Street;
   /** IDs des sièges couchés au moment de ce step */
   foldedSeatIds: Set<string>;
@@ -84,18 +147,51 @@ export interface HandState {
   streetContribution: Record<string, number>;
   /** Total du pot (toutes streets confondues) */
   potTotal: number;
+  /** IDs des sièges à tapis (stack à 0, pas couchés) à ce step — persiste jusqu'à la fin de la main */
+  allInSeatIds: Set<string>;
   /** Cartes du board visibles à ce step */
   board: Card[];
-  /** Dernière action jouée (pour le libellé central), ou null au tout début */
+  /** Dernière ACTION jouée (pour les mises/le halo "à toi de jouer"), même si le step courant est
+   * lui-même un événement "reveal" — contrairement à `lastEvent`, ne recule jamais. */
   lastAction: Action | null;
-  /** ID du siège gagnant si déterminable, null si showdown ou main non terminée */
-  winningSeatId: string | null;
+  /** Événement exactement à ce step (action OU reveal) — sert au libellé central : une révélation
+   * affiche "Le flop tombe" etc., une action la description habituelle. `null` avant le tout début. */
+  lastEvent: ReplayEvent | null;
+  /** ID(s) du/des siège(s) gagnant(s) (fold ou showdown résolu — plusieurs en cas de split pot),
+   * tableau vide si main non terminée ou cartes inconnues */
+  winningSeatIds: string[];
+  /** % d'équité par siège (tapis avant la river) : plus aucune action possible, board incomplet,
+   * 2+ joueurs encore en lice avec cartes connues. `null` sinon (pas de situation figée, ou cartes
+   * d'un contendant inconnues). */
+  equities: Record<string, number> | null;
+  /** Vrai à partir de l'event `revealCards` (s'il existe, cf. `buildReplayEvents`) ou, à défaut,
+   * de l'event `showdown` — les mains adverses cachées jusqu'au showdown (`hand.revealShowdown`)
+   * se retournent face visible à ce step précis, un cran AVANT que le gagnant ne soit désigné. */
+  cardsRevealed: boolean;
 }
 
 export function computeHandState(hand: Hand, step: number): HandState {
-  const actionsSoFar = hand.actions.slice(0, step);
+  const events = buildReplayEvents(hand);
+  const eventsSoFar = events.slice(0, step);
+  const lastEvent = eventsSoFar[eventsSoFar.length - 1] ?? null;
+
+  const actionsSoFar: Action[] = [];
+  for (const ev of eventsSoFar) {
+    if (ev.kind === 'action') actionsSoFar.push(ev.action);
+  }
   const lastAction = actionsSoFar[actionsSoFar.length - 1] ?? null;
-  const currentStreet: Street = lastAction ? lastAction.street : 'preflop';
+
+  // Avance à chaque event (reveal OU action), pas seulement à la dernière action — cf. le
+  // commentaire sur `currentStreet` dans `HandState`. Les events terminaux ("revealCards",
+  // "showdown") ne changent pas de street : la main reste sur la dernière street jouée pendant
+  // qu'on révèle les mains puis le gagnant.
+  let currentStreet: Street = 'preflop';
+  for (const ev of eventsSoFar) {
+    if (ev.kind === 'reveal') currentStreet = ev.street;
+    else if (ev.kind === 'action') currentStreet = ev.action.street;
+  }
+
+  const cardsRevealed = eventsSoFar.some((ev) => ev.kind === 'revealCards' || ev.kind === 'showdown');
 
   const foldedSeatIds = new Set<string>();
   const contributions: Record<string, Partial<Record<Street, number>>> = {};
@@ -130,7 +226,20 @@ export function computeHandState(hand: Hand, step: number): HandState {
         potTotal += v;
       }
     }
-    stacks[seat.id] = seat.startingStack - totalContributed;
+    // `roundMoney` : sans effet sur des jetons de tournoi (déjà entiers), corrige les imprécisions
+    // flottantes d'une somme de montants réels fractionnaires (cash game, ex: blindes 0.2/0.4).
+    stacks[seat.id] = roundMoney(seat.startingStack - totalContributed);
+  }
+  potTotal = roundMoney(potTotal);
+
+  // Un siège à 0 (et toujours dans le coup) est à tapis. Basé sur le stack cumulé plutôt que sur
+  // un type d'action dédié (le modèle n'en a pas) : couvre aussi bien un bet/call/raise qui vide
+  // le stack qu'une blinde/ante postée avec un stack déjà très court.
+  const allInSeatIds = new Set<string>();
+  for (const seat of hand.seats) {
+    if (!foldedSeatIds.has(seat.id) && stacks[seat.id] <= 0) {
+      allInSeatIds.add(seat.id);
+    }
   }
 
   // La bulle de mise devant le siège ne montre que la blinde/mise/relance en cours,
@@ -141,68 +250,130 @@ export function computeHandState(hand: Hand, step: number): HandState {
     if (v) streetContribution[seat.id] = v;
   }
 
-  const streetIndex = STREET_ORDER.indexOf(currentStreet);
-
-  // Déterminer quelle street du board afficher : normalement streetIndex,
-  // ou progressivement pendant le run-out si step > actions.length.
-  let displayStreetIndex = streetIndex;
-  if (step > hand.actions.length && lastAction) {
-    const lastStreetIndex = STREET_ORDER.indexOf(lastAction.street);
-    const runoutOffset = step - hand.actions.length; // 1-indexed: 1 = first runout step
-
-    let currentOffset = 0;
-    for (let i = lastStreetIndex + 1; i < STREET_ORDER.length; i++) {
-      const street = STREET_ORDER[i];
-      if (
-        (street === 'flop' && hand.board.flop) ||
-        (street === 'turn' && hand.board.turn) ||
-        (street === 'river' && hand.board.river)
-      ) {
-        currentOffset++;
-        if (currentOffset === runoutOffset) {
-          displayStreetIndex = i;
-          break;
-        }
-      }
-    }
+  // Board : concaténation des cartes de chaque event "reveal" traité jusqu'ici, dans l'ordre —
+  // couvre uniformément les révélations normales ET le run-out de fin de main (même type d'event).
+  const board: Card[] = [];
+  for (const ev of eventsSoFar) {
+    if (ev.kind !== 'reveal') continue;
+    if (ev.street === 'flop' && hand.board.flop) board.push(...hand.board.flop);
+    if (ev.street === 'turn' && hand.board.turn) board.push(hand.board.turn);
+    if (ev.street === 'river' && hand.board.river) board.push(hand.board.river);
   }
 
-  const board: Card[] = [];
-  if (displayStreetIndex >= 1 && hand.board.flop) board.push(...hand.board.flop);
-  if (displayStreetIndex >= 2 && hand.board.turn) board.push(hand.board.turn);
-  if (displayStreetIndex >= 3 && hand.board.river) board.push(hand.board.river);
+  const totalSteps = totalReplaySteps(hand);
 
-  // Au dernier step, déterminer le gagnant
-  let winningSeatId: string | null = null;
-  if (step >= totalReplaySteps(hand)) {
-    winningSeatId = determineWinner(hand);
+  // Au dernier step, déterminer le(s) gagnant(s)
+  let winningSeatIds: string[] = [];
+  if (step >= totalSteps) {
+    winningSeatIds = determineWinner(hand);
+  }
+
+  // Équité "tapis avant la river" : plus aucune action possible (toutes les vraies actions sont
+  // jouées, on n'est plus qu'en train de révéler les cartes du run-out), board pas encore complet,
+  // et au moins 2 joueurs encore en lice avec des cartes connues. Sans quoi impossible/inutile à
+  // calculer (une seule main = déjà gagnante ; cartes inconnues = pas d'équité calculable).
+  let equities: Record<string, number> | null = null;
+  if (winningSeatIds.length === 0 && board.length < 5 && step >= hand.actions.length) {
+    const contenders = hand.seats.filter((s) => !foldedSeatIds.has(s.id));
+    if (contenders.length >= 2 && contenders.every((s) => s.holeCards)) {
+      equities = computeEquity(
+        contenders.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
+        board
+      );
+    }
   }
 
   return {
     step,
-    totalSteps: totalReplaySteps(hand),
+    totalSteps,
     currentStreet,
     foldedSeatIds,
     stacks,
+    allInSeatIds,
     streetContribution,
     potTotal,
     board,
     lastAction,
-    winningSeatId,
+    lastEvent,
+    winningSeatIds,
+    equities,
+    cardsRevealed,
   };
+}
+
+const STRADDLE_RANK_LABELS = ['Straddle', 'Double straddle', 'Triple straddle'];
+
+/** "Straddle" / "Double straddle" / "Triple straddle" selon le rang (0/1/2) du straddleur parmi
+ * les straddles consécutifs de la main. */
+function straddleRankLabel(rank: number): string {
+  return STRADDLE_RANK_LABELS[rank] ?? 'Straddle';
+}
+
+// UTG/UTG1/UTG2 sont des noms "early position" relatifs au PREMIER PARLEUR (pas au bouton) : une
+// fois qu'un straddle absorbe les premiers rangs, ces noms se décalent pour repartir de UTG (ex :
+// UTG1 devient UTG s'il n'y a qu'un simple straddle). LJ/HJ/CO/BTN/SB/BB sont relatifs au bouton et
+// ne bougent eux jamais, quel que soit le straddle.
+const UTG_FAMILY: Position[] = ['UTG', 'UTG1', 'UTG2'];
+
+/**
+ * Libellé de position pour le rang `rank` (0 = premier parleur naturel, avant tout straddle) d'une
+ * table dont l'ordre d'action préflop est `orderedPositions`, compte tenu de `straddleCount`
+ * straddles consécutifs :
+ * - les `straddleCount` premiers rangs deviennent "Straddle"/"Double straddle"/"Triple straddle"
+ *   (ils postent une mise forcée, ils NE parlent PLUS en premier) ;
+ * - les rangs UTG/UTG1/UTG2 restants reprennent un nom en repartant de UTG ;
+ * - les autres (LJ/HJ/CO/BTN/SB/BB) gardent leur nom d'origine.
+ * Partagé entre `straddleSeatLabel` ci-dessous (une fois les actions connues, cf. replayer/
+ * `StreetStep`/`ShowdownStep`) et `ContextStep.tsx` (qui doit afficher le même résultat AVANT que
+ * les actions n'existent, à partir du seul rang dans l'ordre d'action préflop).
+ */
+export function straddleAwarePositionLabel(
+  orderedPositions: Position[],
+  rank: number,
+  straddleCount: number
+): string {
+  if (straddleCount > 0 && rank < straddleCount) return straddleRankLabel(rank);
+  const utgFamilyCount = orderedPositions.filter((p) => UTG_FAMILY.includes(p)).length;
+  if (straddleCount > 0 && rank < utgFamilyCount) return UTG_FAMILY[rank - straddleCount];
+  return orderedPositions[rank];
+}
+
+/** Libellé de position pour ce siège une fois le straddle pris en compte (cf.
+ * `straddleAwarePositionLabel`) — `null` seulement si le siège est introuvable dans `seats`, qui
+ * DOIT être la liste COMPLÈTE des sièges dans l'ordre d'action préflop (celui de `buildSeats`/
+ * `hand.seats`), jamais un sous-ensemble filtré (le rang calculé serait sinon faux). Remplace
+ * l'acronyme de position brut (UTG, HJ...) partout où le siège est affiché SANS nom de joueur
+ * personnalisé (cf. `seatLabel` ci-dessous, et son équivalent côté créateur dans
+ * `StreetStep.tsx`/`ShowdownStep.tsx`). */
+export function straddleSeatLabel(seats: Seat[], actions: Action[], seatId: string): string | null {
+  const rank = seats.findIndex((s) => s.id === seatId);
+  if (rank === -1) return null;
+  const straddleCount = actions.filter((a) => a.type === 'post-straddle').length;
+  return straddleAwarePositionLabel(
+    seats.map((s) => s.position),
+    rank,
+    straddleCount
+  );
 }
 
 function seatLabel(hand: Hand, seatId: string): string {
   const seat = hand.seats.find((s) => s.id === seatId);
-  return seat?.playerName ?? seat?.position ?? '';
+  return seat?.playerName ?? straddleSeatLabel(hand.seats, hand.actions, seatId) ?? seat?.position ?? '';
 }
 
 /**
- * Détermine le gagnant de la main. Retourne l'ID du siège gagnant si déterminable.
- * Cas 1: un seul joueur n'a pas folded → il gagne
- * Cas 2: plusieurs joueurs non-foldés → showdown, on ne peut pas déterminer sans cartes
+ * Détermine le(s) gagnant(s) de la main. Retourne les ID des sièges gagnants si déterminable —
+ * plusieurs en cas de split pot (égalité exacte de main), un tableau vide si indéterminable.
+ * Cas 1 : un seul joueur n'a pas foldé → il gagne seul, sans besoin de connaître les cartes.
+ * Cas 2 : plusieurs joueurs voient le showdown → on compare leur meilleure main de 5 cartes
+ * (2 en main + les 5 du board) via `bestHandWinners`, à condition que le board soit complet. Un
+ * joueur non couché mais dont les cartes n'ont pas été renseignées (le créateur n'a pas rempli
+ * tous les villains au showdown) est traité comme perdant — exclu de la comparaison plutôt que de
+ * rendre toute la main indéterminable — puisqu'une carte inconnue équivaut à une main non montrée
+ * (mucked), qui ne peut pas remporter le pot. Si AUCUN joueur non couché n'a de cartes connues, on
+ * retourne un tableau vide (vraie indétermination).
  */
-export function determineWinner(hand: Hand): string | null {
+export function determineWinner(hand: Hand): string[] {
   const foldedSeatIds = new Set<string>();
   for (const action of hand.actions) {
     if (action.type === 'fold') {
@@ -212,35 +383,70 @@ export function determineWinner(hand: Hand): string | null {
 
   const notFoldedSeats = hand.seats.filter((s) => !foldedSeatIds.has(s.id));
   if (notFoldedSeats.length === 1) {
-    return notFoldedSeats[0].id;
+    return [notFoldedSeats[0].id];
   }
 
-  return null;
+  const { flop, turn, river } = hand.board;
+  if (!flop || !turn || !river) return [];
+  const board: Card[] = [...flop, turn, river];
+
+  const contenders = notFoldedSeats.filter((s) => s.holeCards);
+  if (contenders.length === 0) return [];
+  if (contenders.length === 1) return [contenders[0].id];
+
+  return bestHandWinners(
+    contenders.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
+    board
+  );
 }
 
-export function describeAction(hand: Hand, action: Action): string {
+/**
+ * `isAllIn` : ajoute le suffixe "— ALL-IN" quand cette action précise vide le stack du joueur.
+ * `useBB` : affiche le montant en grosses blindes plutôt qu'en jetons bruts (préférence globale
+ * au feed, cf. `useDisplayUnit`).
+ */
+export function describeAction(hand: Hand, action: Action, isAllIn = false, useBB = false): string {
   const who = seatLabel(hand, action.seatId);
-  const amount = action.amount != null ? formatChipAmount(action.amount, hand.gameType) : undefined;
+  const amount =
+    action.amount != null
+      ? formatChipAmount(action.amount, hand.gameType, { bb: hand.blinds.bb, useBB })
+      : undefined;
+  let base: string;
   switch (action.type) {
     case 'post-sb':
-      return `${who} poste la petite blinde (${amount})`;
+      base = `${who} poste la petite blinde (${amount})`;
+      break;
     case 'post-bb':
-      return `${who} poste la grosse blinde (${amount})`;
+      base = `${who} poste la grosse blinde (${amount})`;
+      break;
     case 'post-ante':
-      return `${who} poste l'ante (${amount})`;
-    case 'post-straddle':
-      return `${who} straddle (${amount})`;
+      base = `${who} poste l'ante (${amount})`;
+      break;
+    case 'post-straddle': {
+      const seat = hand.seats.find((s) => s.id === action.seatId);
+      const label = straddleSeatLabel(hand.seats, hand.actions, action.seatId)!.toLowerCase();
+      // Sans nom de joueur personnalisé, `who` EST déjà ce label ("Straddle"/"Double straddle"/...,
+      // cf. `seatLabel`) : le répéter donnerait "Straddle straddle (10€)".
+      base = seat?.playerName ? `${who} ${label} (${amount})` : `${who} poste (${amount})`;
+      break;
+    }
     case 'fold':
-      return `${who} se couche`;
+      base = `${who} se couche`;
+      break;
     case 'check':
-      return `${who} check`;
+      base = `${who} check`;
+      break;
     case 'call':
-      return `${who} suit (${amount})`;
+      base = `${who} suit (${amount})`;
+      break;
     case 'bet':
-      return `${who} mise ${amount}`;
+      base = `${who} mise ${amount}`;
+      break;
     case 'raise':
-      return `${who} relance à ${amount}`;
+      base = `${who} relance à ${amount}`;
+      break;
     default:
-      return who;
+      base = who;
   }
+  return isAllIn ? `${base} — ALL-IN` : base;
 }

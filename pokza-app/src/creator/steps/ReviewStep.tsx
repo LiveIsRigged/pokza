@@ -3,7 +3,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '../../theme/theme';
 import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
-import type { ReviewData } from '../types';
+import { DESCRIPTION_MAX_LENGTH, type ReviewData } from '../types';
 
 const MAX_VOTE_OPTIONS = 4;
 
@@ -48,6 +48,22 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
           placeholder="Ex : Hero call contre un reg"
           value={value.title}
           onChangeText={(t) => update({ title: t })}
+        />
+
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, styles.labelNoMargin]}>Description (optionnel)</Text>
+          <Text style={styles.counter}>
+            {(value.description ?? '').length}/{DESCRIPTION_MAX_LENGTH}
+          </Text>
+        </View>
+        <TextInput
+          style={[styles.input, styles.descriptionInput]}
+          placeholder="Contexte, action street par street, ce que vous demandez aux lecteurs…"
+          value={value.description ?? ''}
+          onChangeText={(t) => update({ description: t.slice(0, DESCRIPTION_MAX_LENGTH) })}
+          maxLength={DESCRIPTION_MAX_LENGTH}
+          multiline
+          textAlignVertical="top"
         />
 
         <Text style={styles.label}>Question au vote (optionnel)</Text>
@@ -107,6 +123,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  labelNoMargin: {
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  counter: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
   input: {
     borderWidth: 1,
     borderColor: 'rgba(22,35,61,0.25)',
@@ -115,6 +146,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: colors.textPrimary,
+  },
+  descriptionInput: {
+    minHeight: 88,
   },
   optionInput: {
     marginBottom: 8,

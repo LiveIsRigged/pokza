@@ -1,19 +1,82 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Post } from '../../types/poker';
 import { colors, radius, spacing, typography } from '../../theme/theme';
 import { HandReplayer } from '../replayer/HandReplayer';
 import { VotePoll } from './VotePoll';
 
+const DESCRIPTION_LINES = 3;
+
 interface PostCardProps {
   post: Post;
+}
+
+// Tronque la description à 3 lignes avec "… voir plus" collé à la fin de la 3e ligne. Le nombre
+// de lignes que prend le texte complet dépend de la largeur d'écran et de la police — jamais
+// deviné : un exemplaire invisible du même texte, sans limite de lignes, mesure sa hauteur réelle
+// (onLayout) et on la compare à la hauteur du texte tronqué à 3 lignes. `onTextLayout` n'est pas
+// implémenté par react-native-web, donc inutilisable ici.
+function ExpandableDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [truncated, setTruncated] = useState(false);
+  const fullHeight = useRef<number | null>(null);
+  const clampedHeight = useRef<number | null>(null);
+
+  const checkTruncation = () => {
+    if (fullHeight.current != null && clampedHeight.current != null) {
+      setTruncated(fullHeight.current > clampedHeight.current + 1);
+    }
+  };
+
+  return (
+    <View style={styles.descriptionWrapper}>
+      <Text
+        style={[typography.description, styles.description, styles.measure]}
+        onLayout={(e) => {
+          fullHeight.current = e.nativeEvent.layout.height;
+          checkTruncation();
+        }}
+        pointerEvents="none"
+      >
+        {text}
+      </Text>
+      <Text
+        style={[typography.description, styles.description]}
+        numberOfLines={expanded ? undefined : DESCRIPTION_LINES}
+        onLayout={(e) => {
+          if (!expanded) {
+            clampedHeight.current = e.nativeEvent.layout.height;
+            checkTruncation();
+          }
+        }}
+      >
+        {text}
+      </Text>
+      {truncated && !expanded && (
+        <Pressable style={styles.moreOverlay} onPress={() => setExpanded(true)} hitSlop={8}>
+          <Text style={styles.moreLink}>… voir plus</Text>
+        </Pressable>
+      )}
+      {expanded && (
+        <Pressable onPress={() => setExpanded(false)} hitSlop={8}>
+          <Text style={styles.moreLink}>voir moins</Text>
+        </Pressable>
+      )}
+    </View>
+  );
 }
 
 function formatContextLine(post: Post): string {
   const { hand } = post;
   const parts: string[] = [];
   parts.push(hand.gameType === 'cash' ? 'Cash game' : 'Tournoi');
-  parts.push(`${hand.blinds.sb}/${hand.blinds.bb}`);
+  // Un straddle (simple/double/triple) change le niveau de mise à suivre au-delà de la BB : la
+  // dénomination doit le refléter ("5/10/25"), comme on écrirait "1/2/5" pour une table straddlée.
+  const straddleAmounts = hand.actions
+    .filter((a) => a.type === 'post-straddle')
+    .sort((a, b) => a.order - b.order)
+    .map((a) => a.amount ?? 0);
+  parts.push([hand.blinds.sb, hand.blinds.bb, ...straddleAmounts].join('/'));
   if (post.location) parts.push(post.location);
   if (post.buyIn) parts.push(post.buyIn);
   if (post.level) parts.push(post.level);
@@ -56,6 +119,8 @@ export function PostCard({ post }: PostCardProps) {
       <Text style={[typography.contextLine, styles.muted, styles.contextLine]}>{formatContextLine(post)}</Text>
 
       <Text style={[typography.postTitle, styles.title]}>{post.title}</Text>
+
+      {post.description && <ExpandableDescription text={post.description} />}
 
       <View style={styles.replayerWrapper}>
         <HandReplayer hand={post.hand} />
@@ -117,6 +182,33 @@ const styles = StyleSheet.create({
   title: {
     color: colors.textPrimary,
     marginBottom: spacing.sm,
+  },
+  descriptionWrapper: {
+    position: 'relative',
+    marginBottom: spacing.sm,
+  },
+  description: {
+    color: colors.textPrimary,
+  },
+  measure: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    opacity: 0,
+  },
+  moreOverlay: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    paddingLeft: 6,
+    backgroundColor: colors.feedBackground,
+  },
+  moreLink: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    color: colors.action,
   },
   replayerWrapper: {
     borderRadius: radius.lg,

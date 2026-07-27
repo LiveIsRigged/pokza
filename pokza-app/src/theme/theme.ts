@@ -71,6 +71,7 @@ export const typography = {
   dateLocation: { fontFamily: fonts.sans, fontWeight: '400' as const, fontSize: 12 },
   contextLine: { fontFamily: fonts.sans, fontWeight: '400' as const, fontSize: 12 },
   postTitle: { fontFamily: fonts.sans, fontWeight: '700' as const, fontSize: 19 },
+  description: { fontFamily: fonts.sans, fontWeight: '400' as const, fontSize: 14, lineHeight: 20 },
   voteQuestion: { fontFamily: fonts.sans, fontWeight: '600' as const, fontSize: 14 },
   potAmount: { fontFamily: fonts.serif, fontSize: 13 },
   stackAmount: { fontFamily: fonts.serif, fontSize: 13 },

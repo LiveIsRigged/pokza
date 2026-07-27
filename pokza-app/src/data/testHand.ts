@@ -47,6 +47,8 @@ export const testPost: Post = {
   buyIn: undefined,
   level: undefined,
   title: 'Hero call contre un reg au club circus',
+  description:
+    "Cash game 2/5 au Club Circus. Je suis au CO avec QQ, stack de 500. Un reg identifié (HJ) relance à 15, je call pour cacher ma main plutôt que 3-bet et lui donner l'info. BTN et SB foldent, BB complète derrière. Flop K-9-4 rainbow, plutôt mort pour moi. BB check, le reg bet 30 (pot), je call en espérant improve sur un 9 ou un 4, BB fold. Turn un 7, aucun changement apparent pour lui vu son sizing, il envoie quand même 70 sur un pot de 130. Je le sens plutôt sur une paire de rois qu'un bluff pur, mais l'overbet me travaille un peu. River à venir : qu'est-ce que vous auriez fait ?",
   voteQuestion: 'Tu payes cette river ?',
   voteCounts: { Oui: 34, Non: 12 },
   likeCount: 24,

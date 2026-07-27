@@ -8,6 +8,706 @@ Pokza development backlog. All tasks V0-V4. Each task < 1 day of work.
 
 ---
 
+- **2026-07-27 — Rééquilibrage de taille entre le bouton play et les flèches précédent/suivant du replayer.**
+  Fichier : `components/replayer/PlaybackControls.tsx`.
+  Le bouton play (52px) paraissait plus petit visuellement que les flèches (44px) une fois leurs
+  triangles pleins mis côte à côte. Premier réglage (60px/24) corrigé en place après retour
+  utilisateur ("trop gros par rapport aux flèches") : flèches 44→40px (triangle 12/8→10/7), bouton
+  play 52→54px. Icône play (▶) ensuite ajustée seule (20→24) car le triangle blanc paraissait un
+  peu petit par rapport au jeton de 54px une fois celui-ci stabilisé.
+  Vérifié dans le replayer : le bouton play reste le plus imposant des trois sans écraser les
+  flèches à côté, et son triangle blanc remplit correctement le jeton.
+
+- **2026-07-27 — Flèches précédent/suivant du replayer : triangle plein propre au lieu du glyphe texte ‹/›.**
+  Fichier : `components/replayer/PlaybackControls.tsx`.
+  Les glyphes texte `‹`/`›` rendaient fins et pas toujours bien centrés selon la police. Remplacés
+  par un vrai triangle plein (astuce CSS des bordures : `View` de largeur/hauteur 0 avec une seule
+  bordure colorée en blanc, les deux autres transparentes) — forme géométrique nette et identique
+  partout, dans le jeton orange du bouton précédent/suivant.
+  Vérifié dans le replayer : les deux boutons (actif et désactivé/pâle) affichent un triangle blanc
+  bien plein et centré, cohérent avec le bouton play/pause central.
+
+- **2026-07-24 — Quand des mains sont cachées jusqu'au showdown (`revealShowdown`), leur retournement (dos → face) est maintenant un step à part, distinct de "untel gagne le pot".**
+  Fichiers : `engine/handEngine.ts` (`ReplayEvent.revealCards`, `HandState.cardsRevealed`),
+  `components/replayer/HandReplayer.tsx` (`showCardBacks` suit `cardsRevealed`, plus `hasWinner`).
+  Suite du fix précédent (le gagnant est déjà un step séparé de la dernière action) : quand
+  `revealShowdown` est actif, le retournement des cartes cachées ARRIVAIT au même step que la
+  désignation du gagnant — deux moments encore confondus.
+  Fix : `buildReplayEvents` insère un event `{ kind: 'revealCards' }` entre la dernière
+  action/révélation et l'event terminal `{ kind: 'showdown' }`, mais UNIQUEMENT si la main a
+  effectivement une main adverse cachée à révéler (`revealShowdown` actif ET au moins un adversaire
+  avec des cartes saisies) — sinon aucun step superflu n'est ajouté. `computeHandState` expose
+  `cardsRevealed` (vrai dès l'event `revealCards`, ou `showdown` à défaut), et `showCardBacks` dans
+  le replayer s'appuie dessus au lieu de `hasWinner` : les cartes se retournent un cran avant que
+  le gagnant ne soit désigné.
+  Vérifié avec 9 tests unitaires purs (event inséré seulement si pertinent, `cardsRevealed`/
+  `winningSeatIds` distincts à chaque step) puis en replay réel : le step de la dernière action
+  montre encore un dos de carte ; un clic plus loin, la main se retourne (nom toujours blanc, pot
+  encore séparé) ; encore un clic, le nom passe en doré et le pot glisse vers le vainqueur — trois
+  steps, trois moments.
+
+- **2026-07-24 — Le segment "untel gagne" (jetons qui glissent vers le vainqueur) est maintenant un step à part entière, distinct de la dernière action de la main.**
+  Fichier : `engine/handEngine.ts` (`ReplayEvent`, `buildReplayEvents`, `computeHandState`).
+  Avant : `winningSeatIds` (et donc le style "vainqueur" + le glissement des jetons) se déterminait
+  dès le step de la toute DERNIÈRE action ou révélation de la main — la dernière décision ("BB
+  check", "Hero se couche"...) et "voilà qui gagne, les jetons partent vers lui" arrivaient donc
+  dans le même clic, sans transition distincte.
+  Fix : `buildReplayEvents` ajoute désormais un event terminal `{ kind: 'showdown' }` après toutes
+  les actions/révélations — `computeHandState` ne détermine `winningSeatIds` qu'à ce step précis
+  (`step >= totalSteps`, mécanisme déjà en place, simplement décalé d'un cran par ce nouvel event).
+  `currentStreet` ne change pas sur ce dernier event (reste sur la dernière street jouée), et
+  `lastEvent.kind !== 'action'` à ce step supprime naturellement toute bulle d'action (déjà géré
+  par `HandReplayer.tsx`, aucun changement nécessaire côté replayer).
+  Vérifié avec 5 tests unitaires purs (event terminal, +1 step, gagnant absent puis présent d'un
+  cran à l'autre, `lastAction` toujours la vraie dernière action) puis en replay réel : le step du
+  fold affiche encore le pot "177€" au centre, non attribué ; un clic "suivant" de plus fait glisser
+  le pot vers le vainqueur (stack mis à jour) — deux clics, deux moments distincts.
+
+- **2026-07-24 — Le % d'équité ne s'affiche pour PERSONNE (y compris Hero) dès qu'un adversaire du coup a les cartes cachées (`revealShowdown`).**
+  Fichier : `components/replayer/HandReplayer.tsx`.
+  Premier correctif insuffisant : il ne supprimait le % que pour le siège dont les cartes sont
+  cachées, en laissant Hero afficher le sien normalement. Or l'équité est une comparaison ENTRE
+  toutes les mains en lice — un chiffre n'a de sens que si on peut voir ce contre quoi il se
+  compare ; l'afficher pour Hero (ou tout autre siège visible) pendant qu'au moins une main du même
+  calcul reste secrète est tout aussi incohérent que de le montrer pour le siège caché lui-même.
+  Fix : `equities` n'existe de toute façon que si TOUS les contendants ont des cartes connues (cf.
+  `computeHandState`), donc dès que `hand.revealShowdown` est actif, au moins un adversaire du
+  calcul est forcément caché tant que la main n'est pas résolue — condition simplifiée en
+  `equityPct` supprimé pour TOUT le monde dès que `hand.revealShowdown` est vrai, plus seulement
+  pour le siège individuellement caché.
+  Vérifié sur la même main (Hero et un adversaire à tapis avant la river, cartes saisies, "Oui"
+  activé) : aucun pourcentage n'apparaît nulle part sur la page, Hero ET l'adversaire affichent
+  tous deux "ALL-IN".
+
+- **2026-07-24 — Le % d'équité ne s'affiche plus pour un adversaire dont les cartes sont encore cachées (`revealShowdown`).**
+  Fichier : `components/replayer/HandReplayer.tsx`.
+  `computeHandState` calcule le % d'équité (tapis avant la river) à partir des VRAIES cartes de
+  tous les contendants, sans se soucier de `hand.revealShowdown` — un adversaire dont les cartes
+  sont censées rester cachées jusqu'au showdown aurait quand même affiché son % d'équité, révélant
+  la force de sa main en clair pendant qu'elle est censée être secrète.
+  Fix : `equityPct` passé à `SeatView` vaut `undefined` tant que ce siège affiche un dos de carte
+  (`showCardBacks`), quel que soit le résultat déjà calculé par `computeHandState` — retombe sur
+  "ALL-IN" (un fait neutre sur le stack, pas sur la main). Hero et les adversaires dont les cartes
+  sont déjà visibles (revealShowdown désactivé, ou main résolue) ne sont pas concernés.
+  Vérifié sur une main où Hero et un adversaire (cartes saisies, "Oui" activé) sont tous deux à
+  tapis avant la river : au step juste après le tapis, l'adversaire affiche "ALL-IN" (pas de %)
+  avec ses cartes toujours dos caché, tandis que Hero affiche bien son propre % d'équité ("85%") —
+  un seul pourcentage visible sur toute la page.
+
+- **2026-07-24 — Option pour contrôler QUAND une main adverse saisie à l'abattage devient visible dans le replay : dès le début, ou seulement au moment du showdown.**
+  Fichiers : `types/poker.ts` (`Hand.revealShowdown`), `creator/steps/ShowdownStep.tsx`
+  (interrupteur "Révéler les mains à l'abattage"), `creator/LiveHandCreator.tsx`,
+  `components/replayer/HandReplayer.tsx` (`showFoldLabel`/`showCardBacks`, séparés),
+  `components/replayer/SeatView.tsx` (nouvelle prop `showCardBacks`, distincte de `folded`).
+  C'est le CRÉATEUR qui décide, pas le lecteur (pas de révélation interactive côté replay) : un
+  seul interrupteur "Révéler les mains à l'abattage" (Oui/Non, défaut Non) sur l'étape Abattage,
+  global à la main entière — pas par adversaire.
+  - Désactivé (défaut) : les cartes saisies pour un adversaire sont visibles dans le replay dès le
+    début, comme celles de Hero (gagnant ou perdant, jamais muckées).
+  - Activé : ce siège garde ses cartes FACE CACHÉE (comme n'importe quel adversaire dont on ignore
+    la main) PENDANT tout le coup, et elles se retournent face visible dès que la main se résout
+    (showdown) — gagnant ou perdant. Hero n'est jamais concerné (toujours visible dès le départ) ;
+    un adversaire dont les cartes n'ont pas été saisies reste mucké normalement s'il perd, quel que
+    soit ce réglage.
+  Deux itérations avant d'arriver là : la première mélangeait le libellé "fold" et l'opacité des
+  cartes dans une seule prop `folded` de `SeatView`, faisant afficher "fold" à un adversaire
+  toujours en jeu. La deuxième corrigeait ce libellé mais cachait encore les cartes en opacité 0
+  (invisibles, comme un vrai mucking) au lieu de les montrer face cachée — aucun dos de carte
+  visible pendant le coup, alors qu'un adversaire "inconnu" normal en affiche un. Fix final :
+  `showCardBacks` ne touche ni à l'opacité ni au libellé, juste à la valeur passée à `CardView`
+  (`undefined` → dos de carte, comme un adversaire inconnu) tant que la main n'est pas résolue ;
+  la vraie carte apparaît d'un coup dès que la main se résout.
+  Vérifié avec 10 tests unitaires purs (tous les croisements fold/hero/cartes connues/gagnant-
+  perdant/réglage) puis en main réelle : l'adversaire affiche un dos de carte (identique à un
+  adversaire inconnu) pendant tout le coup, sans jamais afficher "fold" ni disparaître, puis ses
+  vraies cartes apparaissent d'un coup exactement au moment du showdown — testé pour une main
+  gagnante et une main perdante.
+
+- **2026-07-24 — Créateur : les raccourcis de relance préflop se basent sur le straddle (simple/double/triple) au lieu de la BB, quand il y en a un.**
+  Fichier : `creator/steps/StreetStep.tsx`.
+  Avec un straddle, le niveau à suivre au préflop n'est plus la BB mais le (dernier) straddle posté
+  — les raccourcis "3BB/4BB/5BB/10BB" continuaient pourtant à multiplier la BB brute, donnant des
+  montants sans rapport avec le niveau réel à suivre (ex : "3BB" à 15€ alors que suivre coûtait déjà
+  20€ de double straddle).
+  Fix : `preflopRaiseUnit` vaut `initialBetAmount` (déjà égal au montant du dernier straddle côté
+  créateur) au lieu de `bb` dès qu'un straddle est en jeu (`firstToActAfterSeatId` défini,
+  uniquement vrai en cas de straddle). Libellés ajustés en conséquence : "BB" serait un mensonge une
+  fois le repère changé, remplacé par "x" générique ("3x" au lieu de "3BB") — comportement inchangé
+  sans straddle.
+  Vérifié sur une main 2/5 en double straddle (10/20) : les raccourcis affichent "3x 60€, 4x 80€,
+  5x 100€, 10x 200€" (3/4/5/10 fois les 20€ du double straddle, pas les 5€ de BB).
+
+- **2026-07-24 — Le(s) straddle(s) n'ont plus leur propre segment/bulle dans le replayer (comme SB/BB), et la dénomination du post affiche le straddle ("Cash game 5/10/25").**
+  Fichiers : `engine/handEngine.ts` (`initialReplayStep`), `components/post/PostCard.tsx`
+  (`formatContextLine`).
+  Poster un straddle (simple/double/triple) n'est pas plus une décision du joueur que poster la
+  SB/BB — `initialReplayStep` skippait déjà `post-sb`/`post-bb` au tout début du replay (pas de
+  bulle "SB poste (2€)", les jetons apparaissent déjà postés dès la première frame) ; `post-straddle`
+  rejoint maintenant cette liste. Le replay démarre directement à la première vraie décision (ex :
+  "HJ se couche"), et le nombre de segments dans la barre de progression diminue d'autant —
+  `computeHandState` incluait déjà tous les events jusqu'au step courant (skippés ou non), donc les
+  stacks/pot reflètent le straddle dès la première frame sans changement nécessaire là.
+  Par ailleurs, `formatContextLine` (ligne "Cash game · X/Y" sous la date) ajoute maintenant le(s)
+  montant(s) de straddle après la BB, dans l'ordre ("5/10" → "5/10/25" pour un simple straddle à
+  25 ; double/triple ajouteraient chacun leur montant).
+  Vérifié en publiant une main 5/10 avec straddle simple à 25 : le sous-titre affiche "Cash game ·
+  5/10/25", et le premier step navigable du replay est "HJ se couche" (le straddleur a déjà 975€ et
+  le pot affiche déjà 40€ dès la première frame, sans bulle "Straddle poste (25€)" dédiée).
+
+- **2026-07-23 — Créateur : dans "Ta position", le(s) chip(s) straddleur(s) s'affichent en dernier plutôt qu'en premier.**
+  Fichier : `creator/steps/ContextStep.tsx` (`positionChipOrder`, nouveau).
+  Plus logique visuellement : un straddle est perçu comme un "ajout" à la table plutôt que la
+  position de référence, il n'a donc pas à occuper le premier créneau de la liste.
+  Fix : `positionChipOrder` réordonne `availablePositions` en déplaçant les `straddleCount`
+  premiers rangs (ceux qui deviennent Straddle/Double straddle/Triple straddle) à la fin, en
+  conservant l'ordre relatif du reste — utilisé UNIQUEMENT pour l'affichage des chips "Ta
+  position" (l'ordre réel d'action préflop `availablePositions`, utilisé partout ailleurs — liste
+  "Joueurs", assignation des straddleurs, ordre d'action du créateur/replayer — reste inchangé).
+  Vérifié sur une main 9-max en double straddle : les chips "Ta position" affichent "UTG, LJ, HJ,
+  CO, BTN, SB, BB, Straddle, Double straddle" (au lieu de "Straddle, Double straddle, UTG,
+  LJ..."), et cliquer sur le chip "Straddle" affecte bien Hero à ce siège (la liste "Joueurs"
+  affiche alors "Straddle (toi)").
+
+- **2026-07-23 — Le siège straddleur n'est plus le "premier parleur" : la position UTG (family UTG/UTG1/UTG2) se décale pour repartir du vrai premier parleur une fois le straddle posté.**
+  Fichiers : `engine/handEngine.ts` (`straddleAwarePositionLabel`, `straddleSeatLabel` — signature
+  changée), `components/replayer/HandReplayer.tsx`, `creator/steps/StreetStep.tsx`,
+  `creator/steps/ShowdownStep.tsx` (+ nouvelle prop `seats`), `creator/LiveHandCreator.tsx`,
+  `creator/steps/ContextStep.tsx`.
+  Constat : "Straddle" est une position relative au siège APRÈS la BB (fait de placement à table),
+  pas au premier à parler (fait d'action) — le straddleur poste une mise forcée mais agit en
+  DERNIER préflop (déjà correct). Donc le nom "UTG" (qui désigne justement "premier à parler")
+  devient disponible pour le siège suivant. Sur une table 7-9 joueurs, ce siège suivant s'appelait
+  UTG1 (ou UTG2) — il doit récupérer le nom UTG, et tout le reste de la "famille" UTG/UTG1/UTG2 se
+  décale d'un cran en cascade. LJ/HJ/CO/BTN/SB/BB sont des noms fixes relatifs au BOUTON : ils ne
+  bougent jamais, peu importe le straddle.
+  Fix : `straddleAwarePositionLabel(orderedPositions, rank, straddleCount)` — fonction pure
+  (aucune dépendance à `Seat`/`Action`) qui centralise cette règle ; réutilisée à la fois par
+  `straddleSeatLabel` (une fois les actions connues) et par `ContextStep.tsx` (avant, à partir du
+  seul rang dans l'ordre des positions). `straddleSeatLabel` prend maintenant `seats` en plus
+  d'`actions` (le rang d'un siège dans l'ordre d'action préflop = son index dans `hand.seats`, qui
+  est TOUJOURS dans cet ordre depuis `buildSeats` — mais faux si on lui passe un sous-ensemble
+  filtré, d'où le nouveau prop `seats` sur `ShowdownStep`, qui n'avait jusqu'ici que `villains`).
+  Vérifié avec 9 tests unitaires purs (6/7/8/9-max, straddle simple/double/triple, cas sans famille
+  UTG) puis en créant une main 9-max avec straddle simple : le formulaire ET le replayer publié
+  affichent "Straddle, UTG, UTG1, LJ, HJ, CO, BTN, SB, BB" (au lieu de "Straddle, UTG1, UTG2, LJ,
+  HJ..."), et "UTG agit" (le nouveau) est bien le premier joueur à devoir prendre une vraie
+  décision, pas le straddleur.
+
+- **2026-07-23 — Le libellé "Straddle" (fix précédent) manquait encore à l'étape 1/7 du créateur (le formulaire "Contexte") — corrigé.**
+  Fichier : `creator/steps/ContextStep.tsx`, `engine/handEngine.ts` (`straddleRankLabel`, extrait).
+  Cause : le fix précédent couvrait tout ce qui s'affiche APRÈS que les actions de straddle existent
+  (généré à l'étape "Contexte" → "Cartes"), mais la liste "Ta position" et "Joueurs (nom et stack)"
+  s'affichent sur l'étape "Contexte" ELLE-MÊME, avant que ces actions n'existent — donc toujours
+  "UTG"/"HJ" bruts, même juste après avoir sélectionné Simple/Double/Triple straddle sur ce même
+  écran.
+  Fix : `straddleRankLabel(rank)` extrait de `straddleSeatLabel` (même tableau de libellés, partagé
+  pour rester synchronisé) ; `ContextStep` calcule directement le rang d'une position dans
+  `availablePositions` (= l'ordre d'action préflop, déjà exactement l'ordre utilisé pour assigner
+  les straddleurs dans `LiveHandCreator.tsx`) sans attendre que les actions existent.
+  Vérifié : double straddle sur une main 6-max 2/5 → les chips "Ta position" affichent "Straddle" /
+  "Double straddle" / CO / BTN / SB / BB (au lieu de "UTG" / "HJ" / ...), et la liste "Joueurs"
+  reprend les mêmes libellés en lignes.
+
+- **2026-07-23 — Quand un straddle est configuré, le(s) siège(s) concerné(s) s'affichent "Straddle" (/"Double straddle"/"Triple straddle") au lieu de l'acronyme de position brut (UTG, HJ...).**
+  Fichiers : `engine/handEngine.ts` (`straddleSeatLabel`, nouveau, exporté), `components/replayer/SeatView.tsx`
+  (`straddleLabel`), `components/replayer/HandReplayer.tsx`, `creator/steps/StreetStep.tsx`,
+  `creator/steps/ShowdownStep.tsx`, `creator/LiveHandCreator.tsx`.
+  Avant : le badge de siège (créateur ET replayer) et le "qui agit" affichaient toujours
+  `playerName ?? position` — un siège straddleur restait "UTG" même une fois le straddle configuré,
+  ce qui masquait visuellement son rôle particulier (mise forcée, agit en dernier).
+  Fix : `straddleSeatLabel(actions, seatId)` (nouveau helper partagé) retourne "Straddle" / "Double
+  straddle" / "Triple straddle" selon le rang du siège parmi les `post-straddle` de la main, sinon
+  `null`. Branché comme fallback ENTRE `playerName` et `position` (`playerName ?? straddleSeatLabel
+  ?? position`) partout où un siège est affiché sans nom personnalisé : badge du replayer, actions
+  "qui agit"/résumé du créateur, onglets de l'abattage. La bulle d'action du straddle lui-même
+  ("Straddle poste (10€)") a été ajustée pour ne pas répéter le mot ("Straddle straddle (10€)")
+  quand le siège n'a pas de nom personnalisé — sinon (nom personnalisé), la phrase garde le mot
+  ("Marco_75 straddle (10€)").
+  Vérifié en créant une main 2/5 avec straddle simple : le créateur affiche "Straddle 490€" (au lieu
+  de "UTG 490€") dans la liste des stacks et l'abattage, et le replayer publié affiche le badge de
+  siège "Straddle" ainsi que la bulle "Straddle poste (10€)".
+
+- **2026-07-23 — Créateur : possibilité de double straddle et triple straddle (cash game uniquement).**
+  Fichiers : `creator/types.ts` (`straddleCount`), `creator/steps/ContextStep.tsx`,
+  `creator/LiveHandCreator.tsx`, `engine/handEngine.ts` (`describeAction`).
+  Avant : un seul straddle possible (booléen `straddle`), posté par le premier joueur à parler
+  préflop. Remplacé par `straddleCount: 0 | 1 | 2 | 3` (Aucun/Simple/Double/Triple) : chaque
+  straddle successif est posté par le joueur suivant dans l'ordre d'action préflop, à 2x le
+  montant du précédent (convention standard : straddle 2x BB, double 4x BB, triple 8x BB — le
+  premier montant reste éditable). Le niveau à suivre et la reprise de l'action après le
+  DERNIER straddleur (qui garde l'option, comme la BB normalement) fonctionnaient déjà pour un
+  straddle simple (`getActingOrderAfter`) et se généralisent sans changement au double/triple —
+  seul le nombre d'actions `post-straddle` à générer et le calcul du montant de chacune ont
+  changé. `describeAction` distingue maintenant "straddle" / "double straddle" / "triple
+  straddle" dans le replay selon le rang de l'action parmi les post-straddle de la main.
+  Vérifié en créant une main 2/5 avec double straddle (UTG 10€, HJ 20€) : l'ordre d'action
+  préflop reprend bien à Hero (CO) après HJ, revient à UTG puis HJ pour leur option de relance
+  après que les autres foldent, et le replay affiche "UTG straddle (10€)" puis "HJ double
+  straddle (20€)" comme deux callouts distincts.
+
+- **2026-07-23 — Blindes fractionnaires (ex : 0.2/0.4) : le pot s'affichait avec des résidus flottants ("0.600000000001€") — corrigé.**
+  Fichiers : `utils/chipFormat.ts` (`roundMoney`), `engine/handEngine.ts` (`computeHandState`),
+  `components/replayer/BoardView.tsx` (`potShares`).
+  Cause : classique erreur d'addition flottante JS (`0.2 + 0.4 === 0.6000000000000001`) — le pot et
+  les stacks cash sont des sommes de montants réels potentiellement fractionnaires, jamais
+  ré-arrondis avant affichage. Un second bug, lié, existait dans le partage d'un split pot :
+  `potShares` distribuait le reste comme s'il s'agissait toujours de jetons entiers (logique
+  correcte en tournoi), ce qui aurait cassé un split pot fractionnaire en cash (ex : pot 0.6€ à
+  partager en 2 aurait donné "1€"/"0€" au lieu de "0.3€"/"0.3€").
+  Fix : `roundMoney(n)` (arrondi au centime) ajouté à `chipFormat.ts`, appliqué dans
+  `formatChipAmount` (branche cash) et à l'accumulation du pot/des stacks dans `computeHandState` —
+  sans effet sur les jetons de tournoi (déjà entiers). `potShares` rendu conscient du `gameType` :
+  arithmétique en centimes entiers pour le cash (au lieu de jetons entiers), inchangée pour le
+  tournoi.
+  Vérifié : main de test 0.2/0.4 (SB complète, tout check jusqu'à river, chop) — le pot affiche
+  proprement "Pot 0.6€" à l'étape intermédiaire (juste après les blindes, avant tout arrondi) puis
+  "Pot 0.8€" en fin de main, et le split pot se répartit exactement en "0.4€"/"0.4€" pour chaque
+  gagnant (confirmé via lecture directe du DOM, pas seulement visuellement) — plus aucun résidu
+  flottant, aucune perte de centime.
+
+- **2026-07-23 — Créateur : impossible de saisir une blinde (ou tout autre montant) inférieure à 1 — corrigé.**
+  Fichier : `creator/steps/ContextStep.tsx`.
+  Cause : les champs SB/BB/ante/straddle/stack étaient des `TextInput` contrôlés directement par
+  `String(nombre)`, mis à jour via `Number(texte) || 0` — un classique piège de saisie décimale :
+  taper "0." donne `Number("0.")=0`, réaffiché "0", le point tapé disparaît aussitôt ; impossible
+  de taper "0,25" caractère par caractère (ça finissait en "25"). Ne touchait pas qu'aux blindes :
+  les 6 champs numériques de cet écran avaient exactement le même défaut.
+  Fix : `DecimalTextInput` (+ `OptionalDecimalTextInput` pour le stack par siège, où un champ vidé
+  doit revenir à "pas de valeur" plutôt qu'à 0) — garde le texte tapé comme état local propre à
+  l'input, ne le resynchronise depuis la valeur numérique que si elle change de source EXTÉRIEURE
+  (preset cliqué), jamais en écho de sa propre frappe. Virgule française acceptée en plus du point.
+  `keyboardType` passé à `decimal-pad` (clavier avec point décimal sur mobile).
+  Vérifié : "0.42" et "0,33" tapés caractère par caractère dans le champ SB s'affichent
+  correctement sans être tronqués. Les raccourcis de blindes cash restent inchangés
+  (1/2, 1/3, 2/5, 5/10) — la demande portait uniquement sur la saisie libre, pas sur les presets.
+
+- **2026-07-23 — Créateur : impossible d'annuler la création d'une main dès la première étape — corrigé.**
+  Fichiers : `creator/steps/ContextStep.tsx`, `creator/LiveHandCreator.tsx`.
+  Cause : `LiveHandCreator` gère déjà l'annulation (`goBack()` appelle `onCancel()` quand
+  l'historique est vide, donc dès la première étape) mais `ContextStep` — la toute première étape
+  du wizard — n'acceptait ni ne transmettait de prop `onBack` à `WizardScreen` : le bouton "‹
+  Retour" ne s'affichait tout simplement jamais sur cet écran précis, alors que la logique
+  d'annulation existait déjà et fonctionnait sur toutes les AUTRES étapes.
+  Fix : `onBack` ajouté aux props de `ContextStep` (transmis à `WizardScreen`), et
+  `onBack={goBack}` branché sur son instanciation dans `LiveHandCreator`.
+  Vérifié : le bouton "‹ Retour" apparaît maintenant dès l'étape 1/7, et y cliquer ramène bien au
+  feed.
+
+- **2026-07-23 — Engine + Replayer : les split pots (égalité exacte) partagent réellement le pot entre tous les gagnants au lieu d'en choisir un seul arbitrairement.**
+  Fichiers : `engine/handEvaluator.ts` (`bestHandWinners`, partagé), `engine/handEngine.ts`
+  (`determineWinner` → `string[]`, `HandState.winningSeatIds`), `components/replayer/BoardView.tsx`
+  (refonte : N parts du pot au lieu d'une), `components/replayer/HandReplayer.tsx`.
+  C'était une limitation documentée depuis la mise en place du showdown : en cas d'égalité exacte,
+  `determineWinner` retournait le premier gagnant trouvé, les autres perdant silencieusement leur
+  part. Extrait la logique de départage (déjà correcte et dupliquée dans `equity.ts`) vers
+  `bestHandWinners`, une seule implémentation réutilisée par les deux. `HandState.winningSeatId`
+  (singulier) devient `winningSeatIds: string[]` (vide si indéterminé) — tous les usages en aval
+  adaptés (`isWinner`/mucking via `.includes()`, cible du jeton de chaque siège = le gagnant le
+  plus proche pour ne pas fragmenter un petit tas de jetons entre plusieurs directions).
+  `BoardView` n'anime plus UNE pastille vers UN point : elle en anime une par gagnant, chacune
+  affichant SA part exacte du pot (répartition entière, le reste va aux premiers de la liste —
+  aucun jeton perdu par arrondi), chacune filant vers son propre gagnant.
+  Vérifié par 5 cas unitaires (chop à 3 sur board qui joue, split à 2 par égalité de kickers,
+  non-régression sur un cas sans égalité, bout en bout via `computeHandState`) puis en navigateur
+  sur une vraie main split : les deux joueurs gagnants restent affichés (aucun ne mucke), et le pot
+  (24€) se scinde bien en deux pastilles "Pot 12€" distinctes, chacune arrivant sur son propre
+  gagnant.
+
+- **2026-07-22 — Replayer : la carte qui tombe et la première décision de la street sont maintenant deux temps distincts (pas le même step).**
+  Fichiers : `engine/handEngine.ts` (refonte du modèle de steps), `components/replayer/HandReplayer.tsx`.
+  Avant, changer de street ET appliquer la première action de cette street se faisaient dans le
+  MÊME step — trop brutal ("la turn tombe" et "SB check" en même temps). Le replay est maintenant
+  reconstruit comme une suite d'ÉVÉNEMENTS (`buildReplayEvents`) plutôt qu'une simple liste
+  d'actions : un changement de street insère un événement "reveal" AVANT la première action de
+  cette street — aussi bien pour une transition normale qu'un run-out en fin de main (même
+  mécanisme, unifié). `currentStreet` avance désormais à CHAQUE événement (reveal ou action), ce
+  qui élimine au passage l'ancien double système `currentStreet`/`displayStreet` (une seule
+  source de vérité maintenant, qui pilote à la fois le libellé et les mises "en cours" — les
+  jetons de la street précédente repartent au pot dès la révélation, pas seulement à la première
+  action suivante).
+  Vérifié par 13 cas unitaires (position exacte des reveals, séparation stricte des deux temps,
+  board/mises qui avancent au bon moment, main de fold-out toujours résolue correctement) puis en
+  navigateur : au flop, le segment avance et le board se met à jour, jetons déjà nettoyés au pot ;
+  le pas suivant affiche "BB check" séparément.
+  Retouche le même jour : les bulles "Le flop tombe"/"La turn tombe"/"La river tombe" ajoutées pour
+  l'event reveal ont été retirées sur retour utilisateur (pas utiles) — l'event reste un step à
+  part entière (le segment avance, board/mises se mettent à jour) mais sans texte affiché ; la
+  bulle centrale ne s'affiche plus que pour les vraies actions.
+
+- **2026-07-22 — Replayer : devise (€) accolée aux montants en cash game (pas en tournoi, pas en mode BB).**
+  Fichier : `utils/chipFormat.ts`.
+  `formatChipAmount` accole maintenant "€" à tout montant cash game affiché tel quel ("10" → "10€"),
+  sauf en mode BB (déjà une unité explicite) ou en tournoi (jetons, pas de l'argent réel — garde
+  son format "k" existant). Devise câblée en dur (`CASH_CURRENCY_SYMBOL`) plutôt qu'un sélecteur —
+  une seule devise pour l'instant par choix explicite, un sélecteur pourra remplacer cette constante
+  plus tard sans toucher au reste.
+  Vérifié : stacks/mises/pot affichent bien "500€", "5€", "Pot 7€" en cash ; bascule en BB → aucune
+  devise mélangée ("100 bb", pas "100€ bb").
+
+- **2026-07-22 — Replayer : à la fin de la main, le(s) perdant(s) mucke(nt) leurs cartes (même animation qu'un fold).**
+  Fichier : `components/replayer/HandReplayer.tsx`.
+  Auparavant, un siège qui allait au showdown et perdait gardait ses cartes visibles indéfiniment
+  après la résolution — seul un fold EN COURS de main les cachait. Le `folded` passé à `SeatView`
+  inclut maintenant aussi : main résolue (`winningSeatId` non nul) ET ce siège n'est pas le
+  vainqueur — réutilise directement l'animation de fold existante (fondu + léger décalage),
+  aucune nouvelle animation à écrire. Le vainqueur seul garde ses cartes visibles.
+  Vérifié sur une main de test (showdown check-down) : les deux joueurs gardent leurs cartes
+  visibles tout du long de la main, puis à la toute fin, le perdant mucke (fold) pendant que le
+  vainqueur garde sa main affichée avec le pot qui arrive sur lui.
+
+- **2026-07-22 — Replayer : % d'équité affiché quand la main part à tapis avant la river.**
+  Fichiers : `engine/equity.ts` (nouveau), `engine/handEngine.ts` (`equities`),
+  `components/replayer/{HandReplayer,SeatView}.tsx`.
+  `computeEquity` évalue chaque contendant sur l'ensemble des run-outs possibles étant donné leurs
+  cartes connues et le board actuel : énumération EXACTE quand il reste ≤2 cartes à distribuer
+  (turn/river déjà là, ≤1035 combinaisons), simulation Monte Carlo (2000 tirages) sinon (préflop/
+  flop, où les ~1,7M combinaisons exactes seraient trop coûteuses côté client). Une main tirée à
+  plusieurs sur un run-out donné partage la part également entre les gagnants.
+  Déclenché dans `computeHandState` uniquement quand : plus aucune vraie action possible (steps de
+  run-out), board incomplet, main non résolue, et 2+ joueurs encore en lice avec cartes connues —
+  couvre le cas visé (tapis) sans ajouter de champ dédié "isAllIn" à la condition, puisque ces
+  critères ne peuvent être réunis QUE via un tapis. `SeatView` affiche le %, à la place du texte
+  ALL-IN/stack habituel (même emplacement, pas d'espace supplémentaire) ; revient automatiquement
+  à ALL-IN une fois la main résolue.
+  Vérifié : 8 cas unitaires (main à cartes déterministe 100/0, deux références préflop connues —
+  AA vs KK ~82%, AK vs QQ ~54,5% — dans la tolérance Monte Carlo, sommes à 100% exactes en
+  énumération, et un cas 3-way recalculé à la main carte par carte confirmant 80,95% pile). Puis
+  bout en bout sur une main de test (tapis préflop A9s vs KQo) : équité affichée et mise à jour
+  correctement à chaque street du run-out (63/38 préflop → 98/2 au flop après le flop favorable →
+  95/5 au turn), et disparaît bien au river une fois le vainqueur déterminé.
+
+- **2026-07-22 — Replayer : option d'affichage des montants en BB, mémorisée pour tout le feed.**
+  Fichiers : `state/displayUnit.tsx` (nouveau), `utils/chipFormat.ts`, `engine/handEngine.ts`
+  (`describeAction`), `components/replayer/{PlaybackControls,HandReplayer,SeatView,BoardView,ChipsView}.tsx`,
+  `App.tsx`.
+  Un seul état partagé (`DisplayUnitProvider`, monté à la racine de l'app) plutôt qu'un état par
+  replayer : le choix fait sur un post s'applique immédiatement à tous les autres, présents et à
+  venir dans le feed. `formatChipAmount` accepte maintenant un `bbOptions` optionnel ({bb, useBB})
+  qui convertit n'importe quel montant en grosses blindes (1 décimale, zéro superflu coupé — ex :
+  500 avec BB=5 → "100 bb", 7 → "1,4 bb"), sans toucher au format "k" existant pour les tournois.
+  Petit toggle "BB" ajouté à côté du libellé de street dans `PlaybackControls`, appliqué à trois
+  endroits : stack sous chaque siège, mise affichée (jeton + bulle d'action "X relance à Y"), et
+  pastille du pot.
+  Vérifié : bascule sur un post → stacks/mises/pot du MÊME post convertis en bb, ET confirmé par
+  requête DOM que le second post du feed (contexte partagé) affiche exactement les mêmes valeurs
+  bb sans avoir été touché directement.
+
+- **2026-07-22 — Replayer : le libellé de street (PRÉFLOP/FLOP/TURN/RIVER) restait figé sur la dernière street jouée pendant le run-out — corrigé.**
+  Fichiers : `engine/handEngine.ts` (`displayStreet`), `components/replayer/HandReplayer.tsx`.
+  Cause : le libellé lisait `state.currentStreet`, dérivé de la street de la dernière VRAIE action —
+  qui se fige dès la fin des actions (mécanisme de run-out déjà rencontré pour d'autres bugs de ce
+  jour). Résultat : un tapis au flop, par exemple, laissait le libellé bloqué sur "Flop" même une
+  fois le turn et la river révélés. `displayStreetIndex` (déjà calculé, sert à afficher les bonnes
+  cartes du board) avance correctement pendant le run-out — il manquait juste une street "affichée"
+  distincte de la street "de mise" (`currentStreet`, qui doit elle rester figée : c'est ce qui pilote
+  correctement `streetContribution`). Ajout de `displayStreet` dans `HandState`, branché sur le
+  libellé à la place de `currentStreet`.
+  Vérifié avec la main de test all-in preflop : le libellé passe bien Préflop→Flop→Turn→River au
+  fil des trois steps de run-out, jusqu'à la fin de la main.
+
+- **2026-07-22 — Replayer : animation ALL-IN en rouge quand un joueur part à tapis.**
+  Fichiers : `engine/handEngine.ts` (`allInSeatIds` + `describeAction`), `components/replayer/SeatView.tsx`,
+  `components/replayer/ActionCallout.tsx`, `components/replayer/HandReplayer.tsx`.
+  Détection basée sur le stack cumulé plutôt qu'un type d'action dédié (le modèle n'en a pas) :
+  `allInSeatIds` (nouveau champ de `HandState`) marque tout siège non couché dont le stack atteint
+  0 — couvre bet/call/raise ET une blinde postée avec un stack déjà très court. Persiste jusqu'à la
+  fin de la main (comme `foldedSeatIds`).
+  Trois signaux réutilisant le langage visuel existant plutôt qu'un nouveau composant :
+  1. Halo rouge fixe autour du badge (remplace le halo doré "à toi de jouer" pour ce siège — les
+     deux ne peuvent pas coexister, un siège à tapis ne rejoue plus) + un pop ponctuel du badge à
+     l'instant du tapis (même ressort que le bounce du vainqueur, réutilisé sans conflit possible).
+  2. Le stack affiché ("X bb") est remplacé par "ALL-IN" en rouge tant que le siège y reste.
+  3. La bulle d'action centrale passe en rouge et ajoute "— ALL-IN" à la description normale
+     (`describeAction` accepte un flag optionnel), uniquement pour L'action précise qui vide le
+     stack — pas pour les steps suivants qui repointent sur la même action (run-out).
+  Vérifié avec une main de test (short stack all-in preflop contre un stack profond) : halo rouge +
+  "ALL-IN" sur le siège concerné, jeton de mise correctement affiché, et bulle d'action confirmée
+  par requête DOM ("ShortStack relance à 20 — ALL-IN", texte blanc sur fond rouge).
+
+- **2026-07-22 — Replayer : bouton donneur (BTN) affiché à côté du siège concerné.**
+  Fichier : `components/replayer/SeatView.tsx`.
+  Petit disque blanc "D" (bordure continue, contrairement au pointillé des jetons de mise, pour
+  bien le distinguer visuellement d'un jeton misé) affiché en permanence sur le siège dont
+  `position === 'BTN'`, sans dépendre du fold/de l'action en cours — c'est un repère de place à
+  table, pas un élément lié à la main. Même principe géométrique que le jeton (sortie du bloc
+  siège dérivée de la direction réelle, pas un décalage fixe à l'écran) mais PERPENDICULAIRE à la
+  direction vers le centre plutôt que vers le centre : le bouton se pose sur le côté du siège,
+  jamais sur le trajet du jeton ni sur le board.
+  Vérifié : reste bien positionné, sans chevauchement, du début à la fin de la main (y compris
+  après le fold du siège BTN et une fois le board complet).
+  Correction du même jour : le bouton apparaissait du côté du siège PRÉCÉDENT (CO) plutôt que du
+  suivant (SB) dans l'ordre de jeu — signe de la perpendiculaire inversé (`(dirY, -dirX)` au lieu
+  de `(-dirY, dirX)`, pour suivre le sens des sièges croissant dans `layoutSeats`). Revérifié : le
+  bouton se pose maintenant bien entre BTN et SB, du bon côté.
+  Seconde correction : un décalage purement perpendiculaire laisse le bouton au même "rayon" que le
+  siège lui-même — trop près du rail sur un siège excentré. Ajout d'une composante vers le centre
+  (`BTN_INWARD_NUDGE`, direction déjà calculée pour le jeton) pour le ramener sur le feutre sans
+  changer de côté — affinée en deux temps (16 puis 40, sur retour visuel de l'utilisateur avec une
+  image de référence d'un autre replayer) jusqu'à une position bien avancée sur le feutre.
+
+- **2026-07-22 — Replayer : les jetons qui filent vers le vainqueur dépassaient la table au lieu de s'arrêter dessus — corrigé.**
+  Fichier : `components/replayer/SeatView.tsx`.
+  Cause : le trajet pot→vainqueur (`winnerSlideAnim`, ajouté plus tôt aujourd'hui) est un décalage
+  calculé DEPUIS le pot (`restLocal`), en supposant que le premier trajet siège→pot (`slideAnim`)
+  est déjà arrivé. Mais pour le siège qui mise sur la toute dernière street jouée, `currentStreet`
+  se fige dès la fin de la main (steps de run-out, cf. `handEngine`) et son `currentBet` ne retombe
+  donc jamais à zéro — le premier trajet ne se déclenche jamais, le jeton reste devant le siège.
+  Le second segment partait alors de ce point resté faux au lieu du pot, et la somme des deux
+  trajets envoyait le jeton bien au-delà du vainqueur, hors de la table.
+  Fix : `slideAnim.setValue(1)` (jeton forcé au pot, sans animation) juste avant de lancer le
+  second trajet — sans effet si le jeton y était déjà (cas normal), corrige uniquement le cas où
+  il ne l'était pas.
+  Vérifié : main de test (Marco gagne par fold, son jeton de mise 70 sur le turn était le cas
+  reproductible) — le jeton et la pastille du pot s'arrêtent maintenant proprement sur lui, plus
+  aucun dépassement de la table.
+
+- **2026-07-22 — Replayer : les segments de progression (au-dessus des boutons play/flèches) sont cliquables pour sauter directement à ce point de la main.**
+  Fichiers : `components/replayer/PlaybackControls.tsx`, `components/replayer/HandReplayer.tsx`.
+  Chaque segment est maintenant un `Pressable` (zone tactile élargie par `paddingVertical` autour
+  de la barre de 3px, sans changer son apparence) qui appelle `onSeek(index)`. `HandReplayer`
+  traduit l'index relatif du segment en step absolu (`initialStep + index + 1`) et met en pause
+  l'autoplay, exactement comme le font déjà les flèches précédent/suivant.
+  Vérifié dans le navigateur : clic sur un segment du milieu → saute au bon point (bon board, bon
+  pot, bonne action affichée) ; clic sur le dernier segment → va jusqu'à la fin (main gagnée par
+  Marco) ; clic sur un segment précoce → revient en arrière jusqu'au préflop correspondant. Les
+  deux sens (avancer/reculer) fonctionnent, en plus du bouton play et des flèches existantes.
+
+- **2026-07-22 — Engine : au showdown, un joueur dont les cartes ne sont pas renseignées est traité comme perdant (exclu), pas comme "main indéterminable".**
+  Fichier : `engine/handEngine.ts` (`determineWinner`).
+  Avant : si UN SEUL joueur non couché au showdown n'avait pas ses cartes renseignées (créateur
+  n'ayant rempli que certains villains), toute la main devenait indéterminable (`null`) — aucun
+  vainqueur, donc ni la pastille du pot ni les jetons ne bougeaient, même si 3 des 4 joueurs
+  avaient des cartes connues et comparables.
+  Désormais, `contenders` filtre aux seuls sièges non couchés dont les cartes sont connues ; le
+  meilleur parmi EUX gagne (une main inconnue = non montrée = ne peut pas remporter le pot, comme
+  une main "mucked" en vrai poker). Seul le cas où PERSONNE n'a de cartes connues reste `null`.
+  Vérifié par 4 cas unitaires : 3 connus/1 inconnu → le meilleur des 3 gagne (l'inconnu perd même
+  s'il aurait pu tenir la main gagnante, invisible pour l'app) ; tous inconnus → `null` ; un seul
+  connu → gagne par défaut.
+
+- **2026-07-22 — Engine : le showdown détermine un vrai vainqueur par la force des mains (pas seulement par élimination sur fold).**
+  Fichiers : `engine/handEvaluator.ts` (nouveau), `engine/handEngine.ts` (`determineWinner`).
+  Avant : `determineWinner` ne gérait que le cas "un seul joueur pas couché → il gagne" ; dès que
+  2+ joueurs allaient au showdown, `winningSeatId` restait `null` pour toujours (donc ni la pastille
+  du pot, ni les jetons du milieu, ne se déplaçaient jamais vers un vainqueur de showdown — la
+  fonctionnalité posée hier ne fonctionnait que pour les mains qui se terminent par un fold).
+  `handEvaluator.ts` évalue une main de 7 cartes (2 en main + 5 au board) en testant les C(7,5)=21
+  combinaisons de 5 cartes, et retourne un rang comparable `[catégorie, ...départages]` (quinte
+  flush en haut, carte haute en bas, avec gestion de la quinte basse A-2-3-4-5). `determineWinner`
+  compare les mains de tous les joueurs encore en lice quand le board est complet ET que leurs
+  cartes sont toutes connues (sinon `null`, indéterminable). Égalité exacte (split pot) : renvoie
+  le premier trouvé — le partage réel du pot entre plusieurs gagnants n'est pas géré, à faire si
+  le besoin se présente.
+  Vérifié : 16 cas unitaires (une catégorie de main par test + comparaisons, quinte basse, égalité)
+  tous corrects ; puis bout en bout via une main de test heads-up jouée jusqu'à la river (check
+  partout, deux paires vs paire de rois) — `computeHandState` résout le bon vainqueur, ET en
+  vérification visuelle dans le replayer, la pastille du pot + le jeton du siège gagnant glissent
+  tous les deux correctement jusqu'à lui (même mécanisme que pour un fold, aucune régression).
+
+- **2026-07-22 — Replayer : en fin de main, les jetons "au pot" (pas seulement la pastille "Pot X") glissent aussi vers le vainqueur.**
+  Fichiers : `components/replayer/HandReplayer.tsx`, `components/replayer/SeatView.tsx`.
+  Avant : seule la pastille "Pot X" (`BoardView`) se déplaçait vers le siège gagnant ; les petits
+  tas de jetons de chaque siège, déjà glissés au pot au fil des streets, restaient immobiles.
+  `HandReplayer` calcule maintenant `winnerSeatPos` (coordonnées ABSOLUES du siège gagnant, même
+  source que le calcul existant pour `BoardView`) et le transmet à chaque `SeatView`. Un second
+  segment d'animation (`winnerSlideAnim`) part du point de repos (au pot) vers ce siège, ne
+  s'active que si le siège a encore un tas affiché (`displayBet`), et s'additionne simplement au
+  premier segment (siège→pot) puisque les deux sont exprimés dans le même repère local.
+  Vérifié : la pastille du pot arrive bien sur le vainqueur (comportement déjà existant, inchangé),
+  aucun jeton ne reste visible ailleurs sur le tapis une fois la main terminée. Limite de la main de
+  test : elle se termine par un fold en cours de street (pas un vrai showdown), donc la mise du
+  dernier miseur ne rejoint jamais le pot avant la fin (bug préexistant, indépendant de ce fix, lié
+  au fait que `currentStreet` se fige pendant le run-out) — le mouvement pot→vainqueur est donc
+  surtout visible sur les jetons des sièges qui ont foldé plus tôt, pas testable finement sur celui
+  du gagnant avec ces données précises.
+
+- **2026-07-21 — Feed : description de post, limitée à 600 caractères, avec troncature "… voir plus" en fin de 3e ligne.**
+  Fichiers : `theme/theme.ts`, `types/poker.ts`, `creator/types.ts` (`DESCRIPTION_MAX_LENGTH`),
+  `creator/steps/ReviewStep.tsx` (champ + compteur live), `creator/LiveHandCreator.tsx`,
+  `components/post/PostCard.tsx` (`ExpandableDescription`), `data/testHand.ts`.
+  Le nombre de lignes réellement pris par le texte dépend de la largeur d'écran et n'est jamais
+  deviné : un exemplaire invisible du texte complet (sans limite de lignes) est mesuré et comparé
+  à la hauteur du texte tronqué à 3 lignes pour détecter le dépassement.
+  Bug corrigé en cours de vérification : la mesure utilisait d'abord `onTextLayout`, qui n'est
+  **pas implémenté par react-native-web** (confirmé dans `node_modules/react-native-web`) — le lien
+  "… voir plus" ne s'affichait donc jamais sur le web, silencieusement (le "…" visible venait du
+  troncature CSS native du navigateur, pas du composant). Remplacé par une mesure via `onLayout`
+  (comparaison de hauteurs), qui fonctionne aussi bien sur web que sur natif.
+  Vérifié à 375px : troncature à 3 lignes + lien orange "… voir plus" correctement positionné en
+  fin de 3e ligne, expansion vers le texte complet + "voir moins", et retour à l'état tronqué —
+  aucun chevauchement visuel constaté.
+
+- **2026-07-21 — Replayer : refonte complète du placement des mises — table plus haute que large + placement radial universel. (résout enfin le problème après ~4 sessions)**
+  Fichiers : `src/components/replayer/HandReplayer.tsx`, `src/components/replayer/SeatView.tsx`,
+  `src/engine/layout.ts`, `src/components/replayer/BoardView.tsx`.
+  Cause racine (enfin identifiée par le calcul, pas par tâtonnement) : sur la table large
+  (`aspectRatio 1.25`), le board (~186px) touchait presque les sièges de côté — l'espace "devant le
+  joueur, vers le centre" n'existait tout simplement pas géométriquement. Aucun algorithme ne peut
+  placer un jeton dans un espace inexistant ; toutes les tentatives précédentes échouaient pour ça.
+  Fix en deux parties, toutes deux universelles (aucune constante calée sur un cas précis) :
+  1. **Table plus haute que large** (`aspectRatio 1.25 → 0.8`, l'inverse exact — "l'ovale dans
+     l'autre sens" suggéré par l'utilisateur). C'est ce qui crée l'anneau de felt entre les sièges
+     et le board central, en remontant la hauteur disponible.
+  2. **Placement radial** (`SeatView`) : chaque jeton se pose sur la ligne siège→centre, juste
+     au-delà du bloc cartes+badge du siège (distance = sortie du bloc + marge + demi-hauteur du
+     jeton, calculée par trigonométrie sur la direction réelle). Deux sièges voisins étant à des
+     angles différents, leurs jetons divergent et ne peuvent structurellement pas se chevaucher —
+     ce que l'ancien décalage purement vertical ne garantissait pas (il envoyait le jeton d'un
+     siège de côté sur le siège empilé en dessous). Suppression de toute la logique
+     fitsRail/fitsBoard/compact : avec l'anneau, un jeton COMPLET et COHÉRENT tient partout.
+  3. **Board en fraction de largeur** (`boardCardSize` : plafond 0.6→0.5 de la largeur de table,
+     min carte 20→18) : sur petit écran le board rétrécit proportionnellement au lieu de rester
+     large et de manger l'anneau — corrige un chevauchement résiduel de Marco au board à 320px.
+  Vérifié par mesure DOM précise (intersection de rectangles, pas à l'œil) sur QUATRE largeurs
+  (320, 375, 700 + logique identique aux autres) et pour les 4 sièges misants (SB, BB, Hero,
+  Marco) : ZÉRO chevauchement avec leurs propres cartes, le siège voisin empilé, le board ou la
+  pastille du pot, à chaque taille. Jetons tous pleins et cohérents, posés devant chaque joueur.
+  Limite connue : testable seulement en 6-max (seule main de test) ; le placement radial est
+  count-agnostic par construction mais le 9-max sur très petit écran reste non vérifié
+  empiriquement (et a un problème préexistant de sièges hors-table, hors périmètre).
+
+- **2026-07-21 — Replayer : jetons réduits de 20% et empilés bien droit plutôt qu'en éventail diagonal, pour gagner de la marge dans les vérifications board/ovale.**
+  Fichier : `src/components/replayer/SeatView.tsx`.
+  Sur suggestion utilisateur : la pile de jetons illustrée s'étalait en éventail diagonal
+  (translateX + translateY par jeton), ce qui lui donnait une largeur (34px) et une hauteur (20px)
+  bien plus grandes que nécessaire — exactement ce qui manquait de marge dans les vérifications
+  `fitsBoard`/`fitsRail`. Fix : jetons individuels réduits de 20% (14px→11px), empilés avec un seul
+  décalage vertical (le "chant" de chaque jeton qui dépasse, comme une vraie pile) au lieu d'un
+  décalage diagonal — la pile occupe désormais une largeur proche d'un seul jeton (17px) au lieu de
+  34px. `CHIP_HEIGHT_FULL` (32→27) et la largeur du conteneur de mise (40→32, donc `CHIP_HALF_WIDTH`
+  20→16) mis à jour en conséquence, ce qui assouplit les deux vérifications de marge. Revérifié par
+  mesure DOM précise sur 3 largeurs (375, 430, 700px) : aucun chevauchement (board, pot, cartes des
+  sièges voisins, propre badge) sur aucune des deux, et le rendu bascule proprement en jeton complet
+  (nouveau style empilé) dès que la marge le permet.
+
+- **2026-07-21 — Replayer : le placement des jetons dépendait de constantes en pixels figées, cassé sur toute autre taille d'écran que celle testée.**
+  Fichiers : `src/engine/layout.ts`, `src/components/replayer/SeatView.tsx`, `src/components/replayer/BoardView.tsx`.
+  Retour utilisateur (avec capture d'écran, écran plus large que mon test) : jetons flottants,
+  disproportionnés. Root cause : les corrections précédentes (`fitsBoard`, la marge de sécurité
+  contre l'ovale, la cible des jetons "posés") mélangeaient des tailles fixes légitimes (police,
+  icônes — qui doivent rester lisibles quel que soit l'écran) avec des DÉCISIONS DE PLACEMENT
+  validées une seule fois à 375px, jamais recalculées à partir de la table réellement rendue.
+  Fix : chaque décision se calcule maintenant à partir de la largeur/hauteur RÉELLES de la table au
+  moment du rendu :
+  - `fitsBoard` (jeton complet ou compact pour BB/Hero) : nouvelle fonction `centerSeatChipFits`
+    dans `layout.ts`, qui recalcule la marge réellement disponible (dérivée de `seatEllipseRy` et
+    de la vraie taille des cartes du board, `boardCardSize`) — remplace l'ancien
+    `fitsBoard = isSideSeat`, qui forçait le rendu compact tout le temps, à toute taille.
+  - `boardCardSize` (taille des cartes du board) : extrait de `BoardView` vers `layout.ts`, SOURCE
+    UNIQUE partagée avec `SeatView` — auparavant dupliqué, donc susceptible de diverger.
+  - Cible des jetons "posés" (`restTarget`) : recalculée à partir de `boardCardSize` +
+    `POT_PILL_HEIGHT`, plus l'ancienne valeur "-30" mesurée une seule fois à 375px.
+  - `boardVerticalOffset` (décalage du board) : vérifié par le calcul qu'il est déjà indépendant de
+    la taille de la table (la hauteur des sièges et des cartes s'annulent dans l'écart BB/Hero,
+    seule l'asymétrie de la pastille du pot compte) — aucun changement nécessaire, mais documenté
+    explicitement pour ne pas le re-casser par erreur plus tard.
+  Vérifié cette fois sur **cinq largeurs d'écran** (320, 375, 430, 700, 1100px), chacune sur un
+  onglet fraîchement chargé (pas de resize sur une page déjà montée, qui peut laisser un rendu
+  périmé) : aucun chevauchement à aucune taille, et le rendu bascule correctement de compact
+  (mobile) à complet (grand écran) quand la marge réelle le permet — comportement adaptatif, pas
+  figé sur un seul cas testé.
+
+- **2026-07-21 — Replayer : implémentation de l'architecture retenue après revue design (anneau/décalage vers le rail + board et pot recentrés).**
+  Fichiers : `src/engine/layout.ts` (nouveau), `src/components/replayer/SeatView.tsx`,
+  `src/components/replayer/BoardView.tsx`, `src/components/replayer/HandReplayer.tsx`.
+  Suite à la revue d'architecture (schémas comparés, décision : recentrer le bloc board+pot plutôt
+  que décaler les jetons des sièges du milieu sur le côté) :
+  - `layout.ts` exporte désormais la géométrie du contenu d'un siège (hauteur cartes/badge) et
+    `boardVerticalOffset()` — une seule source de vérité, partagée entre le placement des sièges,
+    des mises, et du board, pour ne plus jamais désynchroniser ces constantes entre fichiers.
+  - `BoardView` reçoit un `verticalOffset` (calculé dans `HandReplayer`) qui recentre le bloc
+    board + pot : celui-ci n'était pas symétrique (seule la pastille du pot dépasse d'un côté des
+    cartes), ce qui donnait bien plus de marge à Hero qu'à BB — pas une particularité de BB, un
+    défaut de centrage. `SeatView` n'a donc plus besoin du décalage latéral arbitraire (`CENTER_DODGE`)
+    précédemment utilisé pour éviter le pot.
+  - Vérification par mesure DOM précise (pas juste visuelle) : une fois le board recentré, la marge
+    réellement disponible pour BB et Hero (118px entre leurs bords internes, cartes+pot en prenant
+    64) s'est révélée insuffisante pour la pile de jetons illustrée pleine taille (~38px par côté
+    nécessaires, seulement ~54px disponibles au total) — un chevauchement de plusieurs pixels
+    persistait malgré le recentrage, contrairement à ce que l'estimation initiale (au brouillon)
+    laissait penser. Root cause : les sièges "du milieu" ont structurellement moins de marge
+    verticale que les sièges de côté (rayon de l'ellipse plafonné par `CARD_MARGIN` pour éviter un
+    bug précédent). Fix : rendu compact (point coloré + montant en ligne, `BetChipPopIn` prop
+    `compact`) pour les sièges du milieu (BB, Hero) uniquement — décidé par la même règle
+    géométrique que la direction du jeton (`isSideSeat`), pas par un cas spécial nommé. Revérifié :
+    BB (marge 7px avec le pot), Hero (marge ~10px avec le board), SB/Marco (jeton complet, aucun
+    chevauchement avec BTN/UTG) — tous positifs, mesurés dans le DOM réel, pas estimés sur schéma.
+  - Non commité : en attente de validation utilisateur avant commit.
+
+- **2026-07-21 — Replayer : la mise active de Marco (et par symétrie SB, BTN, UTG) débordait de l'ovale de la table dans son coin.**
+  Fichier : `src/components/replayer/SeatView.tsx`.
+  Retour utilisateur (avec capture d'écran) : chez Marco_75, le jeton + "15" recouvrait son propre
+  nom/stack et débordait visiblement de la table dans le coin bas-droit. Root cause : la table est
+  un OVALE (`TableSurface` dessine deux `<Ellipse>`, rx=largeur/2, ry=hauteur/2), pas un rectangle —
+  à un angle diagonal, l'ovale rentre bien avant les bords de la zone de jeu. Le fix précédent (pousser
+  les sièges de côté "vers le rail") restait dans les limites largeur/hauteur mais pouvait déborder
+  de l'ovale lui-même dans les coins. Une première tentative de correction (clamp de la position sur
+  l'ovale) a créé une régression inverse : le jeton reculait alors sur les propres cartes du siège.
+  Fix retenu : la décision jeton complet / compact (déjà introduite pour BB/Hero face au board)
+  s'appuie maintenant sur DEUX contraintes mesurées, pas une seule — la place disponible face au
+  board (sièges du milieu) ET la place disponible face à l'ovale (calculée par siège, à sa position
+  horizontale réelle) — et bascule en compact dès que l'une des deux ne suffit pas pour la pile
+  pleine taille. Toujours décidé par la géométrie mesurée, jamais par le nom du siège. Revérifié par
+  capture d'écran fraîche : Marco et SB restent maintenant dans l'ovale, sans chevaucher leurs
+  propres cartes.
+
+- **2026-07-21 — Replayer : la mise active d'un siège recouvrait encore le siège VOISIN (empilé du même côté) et la pastille "Pot X".**
+  Fichier : `src/components/replayer/SeatView.tsx`.
+  Retour utilisateur (avec capture d'écran) : après le fix géométrique précédent (qui dégageait bien
+  les cartes/le stack DU SIÈGE LUI-MÊME), un nouveau chevauchement est apparu — la mise de SB
+  atterrissait sur les cartes de BTN, empilé juste en dessous sur le même côté de la table. Root
+  cause : sur une table à 6 sièges, deux sièges sont toujours empilés du même côté (SB/BTN à gauche,
+  UTG/Marco à droite) ; comme les deux poussaient leur jeton "vers le centre" (même logique que les
+  sièges du milieu isolés, BB/Hero), ils convergeaient tous les deux dans le même espace réduit entre
+  eux. Un décalage horizontal (`HORIZONTAL_PUSH`) avait été essayé en rustine mais s'est avéré
+  insuffisant à toute valeur raisonnable (soit ça chevauchait encore, soit ça débordait du feutre).
+  Fix : distinction entre sièges "de côté" (x nettement différent du centre — SB/BTN/UTG/Marco) et
+  sièges "du milieu" (BB/Hero) ; un siège de côté pousse maintenant son jeton VERS LE RAIL (à
+  l'opposé du centre, cet espace n'étant occupé par aucun autre siège) plutôt que vers le centre —
+  suppression du `horizontalBias` devenu inutile. Deuxième chevauchement trouvé en vérifiant : BB et
+  Hero (sièges du milieu) poussaient toujours pile vers le centre, exactement là où flotte la
+  pastille "Pot X" — fix : léger décalage horizontal (`CENTER_DODGE`, 46px) ajouté uniquement pour
+  ces deux sièges, sans toucher leur position verticale. Vérifié par mesures DOM précises : jeton de
+  SB/Marco plus aucun chevauchement avec BTN/UTG (siège voisin empilé), jeton de BB séparé de la
+  pastille "Pot X" par 4px, et toutes les positions restent dans les limites du feutre.
+
+- **2026-07-20 — Replayer : la mise active recouvrait encore les cartes/le stack — position calculée explicitement au lieu d'une direction.**
+  Fichier : `src/components/replayer/SeatView.tsx`.
+  Retour utilisateur (avec capture d'écran) : SB sur ses cartes, BB sur son stack, Marco/Hero à 15
+  aussi sur leurs cartes. Root cause : un déplacement "vers le centre" (direction + distance fixe)
+  ne suffit pas à sortir de la zone cartes+badge, qui occupe presque toute la largeur ET la hauteur
+  du wrapper du siège — une poussée diagonale modeste y reste. Fix : position calculée
+  explicitement à partir de la géométrie connue du wrapper (hauteur cartes + badge), du côté qui
+  fait face au centre de la table (`isTopHalf`) : juste sous le badge pour les sièges du haut,
+  juste au-dessus des cartes pour ceux du bas — sans décalage horizontal, donc toujours centré
+  "devant" le siège. Vérifié par mesures DOM précises sur les 4 sièges (BB, SB, Hero, Marco) :
+  chevauchement nul avec leurs propres cartes/nom/stack dans chaque cas.
+
+- **2026-07-20 — Replayer : la mise active flotte trop loin des sièges excentrés (SB) — déplacement fixe au lieu d'une fraction.**
+  Fichier : `src/components/replayer/SeatView.tsx`.
+  Retour utilisateur : les blindes restaient mal placées, "pas assez devant le joueur". Root cause :
+  la position active se calculait comme une FRACTION (42%) de la distance jusqu'à une cible
+  partagée — donc plus un siège est loin de cette cible (SB, sur le côté, vs BB tout proche), plus
+  son jeton s'éloignait en valeur absolue, perdant tout lien visuel avec son siège. Fix : direction
+  normalisée + déplacement fixe de 30px vers le centre, identique pour tous les sièges quel que
+  soit leur angle — chaque jeton reste maintenant à la même distance de son propre siège. Vérifié :
+  SB et BB montrent tous les deux leur jeton collé à leurs propres cartes.
+
+- **2026-07-20 — Replayer : mise active et mise "posée" séparées en deux cibles distinctes.**
+  Fichiers : `src/components/replayer/SeatView.tsx`, `HandReplayer.tsx`.
+  Retour utilisateur : (1) la mise active de SB/BB était mal placée (trop sur le côté pour SB,
+  sur les cartes pour BB) ; (2) les mises "posées" au pot semblaient en vrac et trop proches de BB
+  (on aurait dit sa propre mise) plutôt qu'un seul tas discret. Root cause : les deux états (mise
+  active à 42% du chemin, mise posée glissée à 100%) partageaient la même cible, donc reculer la
+  cible pour corriger le repos décalait aussi la position active. Fix : `activeTarget` (décalage
+  modeste, -50, calibré pour dégager les propres cartes du siège) et `restTarget` (décalage -30,
+  bien plus proche du pot que du siège) sont maintenant deux points indépendants. Root cause n°2 :
+  le pot (dans `BoardView`, zIndex interne) se faisait quand même recouvrir par les jetons "posés"
+  car son zIndex ne joue que face à ses propres frères, pas face à l'arbre `SeatView` — corrigé en
+  donnant à `boardWrapper` (dans `HandReplayer`) un zIndex supérieur à tous les sièges. Résultat :
+  les mises posées se fondent maintenant discrètement derrière la pastille "Pot X" (un seul endroit
+  bien identifié), et les mises actives ne débordent plus sur les cartes.
+
 - **2026-07-20 — Replayer : les jetons "posés" au pot cachaient le stack de BB — surcharge corrigée.**
   Fichier : `src/components/replayer/SeatView.tsx`.
   Deux causes : (1) tous les sièges glissaient jusqu'au même point exact (le pot), donc leurs piles
