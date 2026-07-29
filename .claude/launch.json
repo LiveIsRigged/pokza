@@ -6,6 +6,12 @@
       "runtimeExecutable": "/bin/bash",
       "runtimeArgs": ["-c", "export PATH=/opt/homebrew/bin:$PATH && cd /Users/victorhoogstoel/Desktop/Pokza/pokza-app && npx expo start --web"],
       "port": 8081
+    },
+    {
+      "name": "pokza-web-tunnel",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "export PATH=/opt/homebrew/bin:$PATH && cd /Users/victorhoogstoel/Desktop/Pokza/pokza-app && npx expo start --web --tunnel"],
+      "port": 8081
     }
   ]
 }
