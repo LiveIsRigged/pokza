@@ -8,6 +8,830 @@ Pokza development backlog. All tasks V0-V4. Each task < 1 day of work.
 
 ---
 
+- **2026-07-29 — Routage web des liens de partage/invitation (`navigation/deepLink`).**
+  Les boutons Partager (main) et Partager mon lien d'invitation, ainsi que le QR code, construisaient
+  des URL `pokza.app/invite/:id` et `pokza.app/post/:id` qui ne menaient nulle part (aucun routage).
+  Nouveau module `navigation/deepLink.ts` : `webOrigin()` résout l'origine réelle à l'exécution
+  (localhost en dev, domaine déployé en prod) au lieu d'un domaine codé en dur — `share.ts` s'en sert
+  désormais. `readInitialDeepLink()` lit `window.location.pathname` au chargement (web uniquement) et
+  le traduit en intention : `/invite/:userId` → ouvre le profil de la personne (bouton "Ajouter en
+  ami"), `/post/:postId` → ouvre la main. `clearDeepLinkFromUrl()` remet l'URL à la racine via
+  `history.replaceState` une fois le lien consommé (évite de rejouer au refresh/retour navigateur).
+  `App.tsx` consomme le lien une seule fois dès que le profil est prêt ; nouvel état `postReturnMode`
+  pour que le retour d'une main aille au feed (arrivée par lien) ou aux notifications (ouverture
+  normale). Vérifié dans le navigateur : `/invite/<id>` atterrit bien sur le profil cible avec
+  "Ajouter en ami" et l'URL nettoyée ; `tsc` sans erreur ; aucune erreur console.
+  Limite connue : en dev Metro sert le fallback SPA, donc les liens marchent localhost ; le vrai
+  fonctionnement public attend le déploiement avec un hébergement à fallback SPA.
+
+- **2026-07-29 — Suggestions d'amis + aperçu "amis en commun que tu connais déjà".**
+  Dernier des trois chantiers issus de la réflexion RGPD/croissance. Deux nouvelles fonctions SQL
+  `SECURITY DEFINER` (`auth.uid()` toujours forcé côté "moi", jamais un tiers arbitraire — même
+  garde-fou que `mutual_friend_count` existant) :
+  `mutual_friends_preview(p_other)` renvoie l'intersection entre MES amis et ceux de `p_other` —
+  littéralement la définition d'un "ami en commun", donc par construction ça ne peut renvoyer QUE
+  des gens déjà dans ma propre liste d'amis : aucune information nouvelle n'est révélée (l'astuce
+  suggérée par la réflexion IA en amont). `suggested_friends()` classe les amis d'amis par nombre
+  d'amis en commun décroissant, exclut soi-même et toute relation déjà existante (ami confirmé OU
+  demande en attente dans un sens ou l'autre) — jamais la liste d'amis d'un tiers exposée, juste un
+  compte agrégé par candidat.
+  Affichage : `ProfileScreen` montre désormais une ligne "🤝 Amis en commun : Alice, Bob et 2 de
+  plus" sous le bouton d'ami (seulement si non-vide, échoue silencieusement sinon — pas une info
+  critique). `AddFriendsScreen` gagne un troisième onglet "Suggestions" listant les amis d'amis
+  avec leur nombre d'amis en commun, cliquable vers le profil (réutilise `onSelectProfile`, renommé
+  depuis `onScannedProfile` puisqu'il sert maintenant aussi bien au scan qu'aux suggestions).
+  Vérifié par API avec un scénario à 5 comptes de test jetables (M, F1, F2, X, Y) : M ami avec F1 et
+  F2 ; F1 ami avec X et Y ; F2 ami avec Y — `mutual_friends_preview` vu par M sur X renvoie
+  exactement `[F1]` (pas F2, qui n'est pas ami avec X) ; `suggested_friends` vu par M renvoie `[Y
+  (2 amis en commun), X (1 ami en commun)]`, bien classé ; après envoi d'une demande d'ami de M vers
+  X, X disparaît des suggestions (exclusion des relations en attente confirmée). Toutes les
+  relations de test supprimées ensuite (les 5 profils restent, comme d'habitude — pas de suppression
+  possible via l'API). Dans le navigateur : onglet "Suggestions" affiche correctement le message
+  d'état vide (aucune suggestion actuellement pour le vrai compte), aucune erreur console.
+  **Non vérifié visuellement** : le rendu de la ligne "amis en commun" sur `ProfileScreen` avec un
+  cas non-vide — la logique est prouvée par API, mais pas encore vue à l'écran (aurait nécessité de
+  créer des relations d'amitié sur le vrai compte `pokza_founder`, écarté pour ne pas toucher à ses
+  vraies données sans lui demander). `tsc --noEmit` propre.
+
+- **2026-07-29 — Ajouter des amis par QR code (scan en vrai) + lien d'invitation partageable.**
+  Suite à la réflexion RGPD/croissance (consultation IA sur la stratégie légale), fonctionnalité
+  classée verte ("risque quasi nul, bénéfice croissance élevé") : nouvel écran
+  `src/friends/AddFriendsScreen.tsx`, accessible depuis le menu latéral ("Ajouter des amis" 🤝),
+  avec deux onglets.
+  **"Mon code"** : QR code (`react-native-qrcode-svg`, nouvelle dépendance) encodant
+  `pokza:friend:{userId}` — l'id utilisateur existant sert directement de code, aucune nouvelle
+  colonne SQL nécessaire. Plus un bouton "Partager mon lien d'invitation" qui réutilise EXACTEMENT
+  le mécanisme déjà construit pour le partage d'une main (`Share.share` natif, repli
+  copier-coller sur desktop) — cette logique a été extraite de `PostCard.tsx` vers
+  `src/utils/share.ts` (`shareOrCopy`) pour être partagée entre les deux écrans plutôt que dupliquée.
+  Même lien `https://pokza.app/invite/{userId}`, même limite assumée : ne mène nulle part tant que
+  l'app n'est pas déployée avec un vrai routage.
+  **"Scanner"** : caméra (`expo-camera`, nouvelle dépendance + plugin `app.json` avec message de
+  permission en français) qui décode les QR codes ; un code reconnu (préfixe `pokza:friend:`)
+  ouvre directement le profil de la personne scannée (réutilise la page de profil existante, avec
+  son bouton "Ajouter en ami" déjà là — pas de nouvelle logique de demande d'ami dupliquée). Scanner
+  son propre code affiche un message au lieu de naviguer. Fonctionne **dès maintenant**, sans
+  attendre le déploiement — deux personnes qui ont Pokza ouvert se scannent et se retrouvent.
+  **Incohérence découverte en lisant le code source d'`expo-camera`** (la doc officielle ne le
+  précise pas) : sur web, `onBarcodeScanned` reçoit `{ nativeEvent: { data } }`, alors que l'exemple
+  natif officiel destructure `{ data }` directement — signe que le natif ne wrappe probablement pas
+  de la même façon. Le handler lit les deux formes plutôt que de parier sur une seule, faute de
+  pouvoir tester sur un vrai appareil dans cette session.
+  Vérifié dans le navigateur : QR code bien rendu (3 coins de repérage visibles), bouton de partage
+  fonctionnel (confirmé par instrumentation console, comme pour le partage de post — même
+  mécanisme), onglet "Scanner" affiche correctement l'écran de permission caméra et ne plante pas
+  quand l'accès caméra est refusé/indisponible (navigateur de test sans caméra réelle). **Non
+  vérifié** : la détection réelle d'un QR par la caméra et la navigation qui en découle — nécessite
+  un vrai appareil avec caméra, à tester au prochain essai sur téléphone. `tsc --noEmit` propre.
+
+- **2026-07-29 — Inscription réservée aux personnes majeures (18 ans et plus).**
+  Suite à une réflexion RGPD/conformité menée avec l'utilisateur (consultation d'une IA sur la
+  stratégie légale, hors code) : la date de naissance était déjà collectée à l'inscription mais
+  jamais vérifiée au-delà de sa validité de format — n'importe quel âge passait. Signalé comme un
+  signal déclencheur à traiter tôt (mineurs + contexte poker), indépendamment des autres décisions
+  de conformité.
+  Double vérification, comme pour l'unicité du pseudo : côté client (`isAtLeastAge`, retour
+  immédiat sans aller-retour réseau) ET côté base (contrainte `check` sur
+  `profiles_private.date_naissance`), cette dernière étant la vraie protection — un appel API
+  direct pourrait contourner le client. Code `23514` (violation de contrainte) mappé vers un
+  message clair, sur le même principe que `23505` déjà géré pour le pseudo dupliqué.
+  Vérifié par API sur un compte de test jetable : date de naissance de 16 ans → 400/23514 avec le
+  bon message ; date de naissance de 30 ans → 204 (succès). Contrairement à ce qui avait été noté
+  initialement ici, la ligne `profiles` (pseudo `age_test_adult_1785337799`) n'a **pas** pu être
+  supprimée par API — `profiles` n'a pas de policy DELETE, comme déjà documenté pour d'autres
+  comptes fantômes ; le `204` d'une requête DELETE ne garantit pas qu'une ligne ait été touchée.
+  Reste en base, visible dans la recherche, à supprimer manuellement avec le compte `auth.users`
+  associé (nécessite `service_role`). `tsc --noEmit` propre.
+
+- **2026-07-29 — Bouton de partage (↗) fonctionnel.**
+  L'icône existait déjà dans la barre d'engagement mais ne faisait rien. Utilise `Share.share`
+  (React Native) : ouvre le partage natif (WhatsApp, Discord, Messages…) sur mobile et sur web
+  mobile ; sur desktop, où `navigator.share` n'existe pas, bascule automatiquement sur un
+  copier-coller silencieux (`expo-clipboard`, nouvelle dépendance) avec un petit texte de
+  confirmation ("Lien copié dans le presse-papiers !") qui disparaît après 2,5s. Si la personne
+  annule un vrai partage natif, rien ne se passe — comportement standard, pas traité comme un échec.
+  **Limite connue et assumée** : l'app n'a pas encore de routage par URL ni de déploiement web, donc
+  le lien partagé (`https://pokza.app/post/{id}`) ne mène nulle part pour l'instant — décision prise
+  avec l'utilisateur de construire le mécanisme dès maintenant plutôt que d'attendre le déploiement,
+  pour ne rien avoir à refaire ce jour-là.
+  Vérifié dans le navigateur (desktop, donc chemin "copier-coller") : `console.log` temporaire a
+  confirmé toute la chaîne réelle sur un clic effectif — `handleShare` appelé, `Share.share` rejette
+  bien avec "not supported", écriture presse-papiers réussie, texte de confirmation déclenché.
+  La confirmation visuelle du texte à l'écran n'a pas pu être capturée par une capture d'écran
+  (le replayer de démonstration du post de test rejoue automatiquement et déplace le contenu entre
+  le clic et la capture) — sans rapport avec le code, uniquement une contrainte de l'environnement
+  de test automatisé. `tsc --noEmit` propre.
+
+- **2026-07-29 — La couronne du fondateur s'affiche aussi sur ses posts dans le groupe.**
+  Déjà présente dans la liste des membres (`GroupScreen`), la distinction 👑 du fondateur apparaît
+  maintenant aussi à côté de son nom sur ses propres mains partagées dans la page du groupe — nouveau
+  prop `isGroupFounder` sur `PostCard`, calculé simplement (`post.authorId === group.ownerId`) là où
+  `GroupScreen` a déjà `group` en portée. Vérifié dans le navigateur sur le groupe "Les français".
+
+- **2026-07-29 — Visionneuse plein écran pour les photos/GIF de commentaire.**
+  Un tap sur la vignette compacte d'un commentaire (photo ou GIF) l'ouvre désormais en grand dans
+  une visionneuse plein écran (fond sombre, `resizeMode="contain"`, bouton ✕) — referme au tap sur
+  le fond ou sur le ✕. Contrairement à la vignette dans le fil, où toute bande est un défaut, ici
+  une bande autour de l'image en plein écran est normale et attendue (comme n'importe quelle
+  visionneuse photo). Vérifié dans le navigateur : ouverture au tap sur un GIF de commentaire
+  existant, image affichée en grand sans déformation, fermeture par les deux méthodes.
+
+- **2026-07-29 — Correction (v2) : les vignettes photo/GIF de commentaire restaient trop grandes et
+  affichaient des bandes grises.**
+  Un premier correctif (affichage selon `aspectRatio` + `resizeMode="contain"` + plafond de 280px
+  de haut) évitait bien le recadrage, mais gardait une largeur forcée à 100% de la bulle — presque
+  toujours différente du vrai ratio de l'image, donc `contain` ajoutait quasi systématiquement des
+  bandes vides (pilier/lettrebox) en plus d'un rendu bien trop imposant comparé à la référence
+  Instagram. Nouveau retour utilisateur avec capture à l'appui a confirmé les deux problèmes.
+  Fix définitif : calcul explicite (`fitWithinBox`) d'une taille `{width, height}` finale qui
+  respecte EXACTEMENT le ratio réel de l'image tout en tenant dans un plafond de 200×200 — la boîte
+  ne peut alors jamais différer du ratio de l'image, donc `cover`/`contain` deviennent équivalents
+  et aucune bande n'est plus possible, quel que soit le format (paysage, portrait, carré). Taille
+  compacte façon vignette Instagram plutôt que pleine largeur.
+  Toujours basé sur les colonnes `image_width`/`image_height` de `comments` (photo : dimensions
+  réelles renvoyées par `resizeToBase64` après redimensionnement ; GIF : dimensions connues via
+  GIPHY). Repli sur un ratio 4/3 pour les commentaires antérieurs à l'ajout de ces colonnes.
+  Vérifié dans le navigateur sur un post de test jetable avec deux commentaires aux dimensions
+  réelles connues (paysage 480×360, portrait 270×480) : boîtes rendues à exactement 200×150 et
+  113×200 (ratios 1.333 et 0.565, identiques aux ratios sources), aucune bande, aucun recadrage.
+  Post et commentaires de test supprimés après vérification. `tsc --noEmit` propre.
+
+- **2026-07-29 — Commentaires avec photo ou GIF.**
+  Deux pièces jointes possibles par commentaire, une à la fois (en choisir une remplace l'autre) :
+  une photo depuis la galerie, ou un GIF cherché via GIPHY (nouveau module `src/data/gifs.ts` +
+  écran `src/components/post/GifPicker.tsx`, tendances par défaut, recherche avec 400ms de
+  temporisation). Le texte devient optionnel : un commentaire peut n'être qu'une image.
+  **Différence volontaire avec les avatars** : une photo de commentaire peut appartenir à une main
+  **privée** ou de **groupe**, donc son bucket (`comment-photos`) est **privé** (contrairement à
+  `avatars`/`group-avatars`) — l'affichage passe par une URL signée temporaire (1h), régénérée à
+  chaque chargement des commentaires. La policy de lecture s'appuie sur celle déjà en place sur
+  `comments` (visible seulement si la main l'est) plutôt que de la dupliquer : si la ligne
+  `comments` n'est pas visible pour l'appelant, `exists()` échoue automatiquement.
+  Nouveau module partagé `src/data/images.ts` étendu : `resizeToBase64` (recadrage désactivé,
+  contrairement à `cropAndResizeToBase64` pour les avatars — une photo de commentaire garde sa
+  forme) et `uploadPrivateImage` (upload sans URL publique, pour un bucket privé).
+  **Bug trouvé et corrigé pendant la vérification** : la contrainte "texte ou pièce jointe
+  obligatoire" ajoutée côté base bloquait le cas "photo seule" — la ligne `comments` doit exister
+  AVANT de connaître son id (utilisé comme chemin de stockage), donc un instant transitoire sans
+  aucun des trois. Retirée : le client garantit déjà cette règle (bouton "Envoyer" désactivé sinon).
+  Si l'envoi de la photo échoue après coup, le commentaire tout juste créé est supprimé plutôt que
+  laissé orphelin sans image.
+  Vérifié en deux temps : (1) dans le navigateur sur le vrai post de l'utilisateur — sélecteur de
+  GIF (tendances + recherche "poker"), aperçu avant envoi avec bouton "Envoyer" activé sans texte,
+  **retiré sans envoyer** pour ne rien ajouter au vrai post ; (2) par API sur une main de test
+  privée jetable — commentaire GIF seul, commentaire photo seule (upload, lien signé, lecture
+  refusée pour un autre utilisateur ET pour anonyme, "Object not found" sans confirmer l'existence),
+  tout supprimé ensuite. `tsc --noEmit` propre, aucune erreur console.
+
+- **2026-07-29 — Petite distinction visuelle pour le membre fondateur d'un groupe privé.**
+  Un 👑 accolé au pseudo du créateur dans la liste "Membres" de `GroupScreen` (`m.userId ===
+  group.ownerId`) — cohérent avec le tag "en attente" déjà présent pour les invitations et le
+  langage d'icônes déjà utilisé partout ailleurs dans l'app (📷, ✏️, 🗑️…). Vérifié dans le
+  navigateur sur le vrai groupe de l'utilisateur, couronne bien affichée à côté du fondateur.
+  `tsc --noEmit` propre, aucune erreur console.
+
+- **2026-07-29 — Photo et description pour les groupes privés, réservées au créateur.**
+  Extension du système d'avatar déjà construit pour les profils : nouveau module partagé
+  `src/data/images.ts` (sélection, cadrage/redimensionnement, envoi vers un bucket) factorisé hors
+  de `src/data/avatars.ts`, réutilisé par un nouveau `src/data/groupAvatars.ts`. `AvatarCropper` et
+  `Avatar` sont restés inchangés — le second gagne juste un prop `shape` ('circle' pour une
+  personne, 'square' pour un groupe, même distinction visuelle que l'ancienne initiale). Nouvel
+  écran `EditGroupScreen` (description, 300 caractères, compteur), même mécanique que
+  `EditProfileScreen`. Modifiable uniquement par le créateur du groupe — cohérent avec le reste
+  (lui seul invite/supprime déjà) ; policy déjà existante (`update using(owner_id = auth.uid())`),
+  aucun ajout nécessaire côté `groups` pour l'autoriser.
+  Nouveau bucket `group-avatars`, **lecture publique** — décision prise avec l'utilisateur après
+  explication du compromis réel : une photo de groupe privé n'apparaît jamais dans le feed public
+  (contrairement à un avatar perso), donc le public-read laisse une fenêtre théorique sur la
+  photo SEULE si son URL exacte fuitait ailleurs — jamais sur le nom, les membres ou les mains du
+  groupe, toujours protégés par RLS. Écriture réservée au créateur (chemin `{groupId}/avatar.jpg`).
+  **Bug trouvé et corrigé en vérifiant** : la première version de la policy d'écriture comparait
+  `(storage.foldername(name))[1]` à l'id du groupe, mais `name` à l'intérieur du `exists (select
+  from groups g where ...)` se résolvait à `groups.name` (le NOM du groupe) plutôt qu'au chemin du
+  fichier envoyé — `groups` a elle-même une colonne `name`, donc SQL préfère la table la plus
+  proche. Résultat : la comparaison ne correspondait jamais à rien, upload refusé même pour le
+  créateur. Fix : qualifier explicitement `storage.objects.name`.
+  Vérifié en deux temps, comme pour le profil : (1) dans le navigateur, sur le vrai groupe de
+  l'utilisateur — rendu de l'avatar carré et du bouton "Modifier le groupe", saisie de la
+  description avec compteur, **annulé sans enregistrer** ; le sélecteur de fichier système
+  lui-même n'a pas pu être testé de bout en bout ici (l'injection de fichier de test qui avait
+  fonctionné pour l'avatar personnel s'est montrée trop instable dans cet environnement — sans
+  rapport avec le code de l'app, qui réutilise le composant de cadrage déjà validé à l'identique).
+  (2) Par API sur un groupe jetable créé pour l'occasion : upload par le créateur (200), lecture
+  publique anonyme (200), upload refusé pour un non-créateur (403), mise à jour de la description
+  (200), description à 301 caractères refusée (400/23514), modification refusée pour un
+  non-créateur (RLS filtre silencieusement, 0 ligne modifiée) — groupe et fichier de test supprimés
+  ensuite (le fichier lié à un groupe déjà supprimé est resté orphelin, la policy de suppression
+  exige de prouver qu'on est le créateur d'un groupe qui n'existe plus : comportement attendu, sans
+  conséquence, un seul petit fichier de test que rien ne référence).
+  `tsc --noEmit` propre, aucune erreur console.
+
+- **2026-07-29 — Édition du profil après inscription (pseudo, préférence d'affichage, format,
+  fréquence, description) + reformulation du résumé par défaut.**
+  Jusqu'ici `CompleteProfileScreen` ne s'exécutait qu'à la création du compte (`hasProfile ===
+  false`), laissant pseudo/format favori/fréquence de jeu verrouillés à vie ensuite. Aucune SQL
+  nouvelle nécessaire pour ces champs : la policy de modification ajoutée pour l'avatar autorisait
+  déjà la mise à jour de n'importe quelle colonne de `profiles`.
+  **Nouvelle colonne `bio`** (texte libre façon Instagram, 150 caractères, contrainte `check`
+  côté base en plus de la limite dans le champ) — script SQL exécuté par l'utilisateur.
+  Nouvel écran `src/profile/EditProfileScreen.tsx` (affiché en overlay par-dessus `ProfileScreen`,
+  même mécanique que `AvatarCropper`) : pseudo, choix pseudo/nom, description avec compteur
+  "X/150", format favori, fréquence de jeu. Prénom/nom/date de naissance restent verrouillés —
+  privés, dans `profiles_private`, rarement à corriger. `data/profiles.ts` : `updateProfile()`
+  relit le profil après écriture plutôt que de reconstruire `displayName` à la main, pour rester
+  sur la même source de vérité (`get_display_name`) que partout ailleurs.
+  **Retour utilisateur en cours de route** : le résumé par défaut ("Cash game live · Très
+  régulièrement...") ne coulait pas bien, et une description ne faisait que s'ajouter dessus au
+  lieu de le remplacer. Fix : `playerSummary()` dans `profileOptions.ts` réduit les 4 fréquences à
+  2 catégories ("régulier" = régulièrement/très régulièrement, "occasionnel" = les deux autres) et
+  produit "Joueur régulier de cash game live" ; la description, quand elle existe, **remplace**
+  entièrement ce résumé au lieu de s'afficher en plus.
+  Vérifié en deux temps pour ne jamais toucher aux vraies données du compte réel connecté dans le
+  navigateur de test (`pokza_founder`, qui avait déjà sa propre vraie photo — signe que l'upload
+  d'avatar fonctionne aussi en usage réel) : (1) interaction complète de l'écran d'édition dans le
+  navigateur — pré-remplissage correct, compteur de description en temps réel, sélection des puces
+  — puis **annulé sans enregistrer** ; (2) l'enregistrement réel, l'unicité du pseudo (409/23505,
+  message "Ce pseudo est déjà pris" déjà géré comme à l'inscription) et la contrainte de longueur
+  de la description (400/23514) vérifiés par API sur un compte de test dédié, remis dans son état
+  d'origine ensuite. `tsc --noEmit` propre, aucune erreur console.
+
+- **2026-07-29 — Cadrage manuel de la photo de profil (déplacer + zoomer) avant l'envoi.**
+  Suite au retour utilisateur : la version précédente uploadait la photo telle quelle et laissait
+  l'affichage ("cover") en centrer automatiquement le milieu — sur une photo mal cadrée (sujet
+  décentré), le résultat pouvait mal rendre sans aucun moyen de corriger.
+  Nouvel écran `AvatarCropper` (`src/components/ui/AvatarCropper.tsx`), affiché juste après avoir
+  choisi une photo : elle est montrée en entier dans un cercle, déplaçable au doigt/à la souris
+  (`PanResponder`, disponible tel quel sur le web via `react-native-web`) et zoomable via deux
+  boutons +/-. Le zoom minimal est calculé pour que le cercle soit toujours entièrement rempli
+  (jamais de bord vide), le déplacement est borné pour la même raison, et zoomer garde le point
+  actuellement au centre du cercle plutôt que de recadrer autour d'un coin.
+  `src/data/avatars.ts` : `pickAvatarImage` ne demande plus de recadrage natif à `expo-image-picker`
+  (`allowsEditing` n'avait de toute façon aucun effet sur le web, autant avoir le même parcours de
+  cadrage partout) ; `uploadAvatar` prend maintenant la région carrée choisie et appelle
+  `ImageManipulator.crop()` avant `resize()`, donc c'est la vraie zone choisie qui part en base —
+  l'affichage circulaire ne fait plus qu'arrondir une image déjà carrée, il ne cache plus rien de
+  surprenant.
+  Vérifié en conditions réelles dans le navigateur, sur le compte réel de l'utilisateur (sans
+  jamais envoyer de donnée : le sélecteur de fichier système ne pouvant pas être piloté depuis le
+  navigateur automatisé, une image de test à 4 quadrants colorés a été injectée directement dans le
+  champ caché du sélecteur pour déclencher l'écran de cadrage) : glisser révèle bien le quadrant
+  opposé au sens du geste, zoomer avant/arrière se fait bien autour du centre visible et se bloque
+  exactement aux bornes sans jamais montrer de vide, "Annuler" ferme l'écran sans aucun appel
+  réseau (le profil et l'avatar restent inchangés — vérifié par capture d'écran après coup).
+  `tsc --noEmit` propre, aucune erreur console.
+
+- **2026-07-29 — Photo de profil : affichage partout + upload/suppression sur sa propre page.**
+  La donnée `avatar_url` était déjà remontée par toutes les vues (feed, recherche, groupes,
+  invitations, notifications) mais **affichée nulle part** — chaque avatar de l'app était un rond
+  coloré avec l'initiale du pseudo. Comportement voulu par l'utilisateur : **par défaut le logo
+  Pokza** (pas encore créé) **si personne n'a choisi de photo**, la photo sinon. En attendant le
+  logo, l'initiale reste l'avatar par défaut — construite comme la SEULE pièce à changer plus tard
+  (`DefaultAvatar` dans `src/components/ui/Avatar.tsx`), pour que brancher le logo, ou revenir en
+  arrière si un logo identique pour tout le monde rend le feed trop uniforme, tienne en une ligne.
+  Nouveau composant partagé `Avatar` (photo ronde + repli sur l'initiale), branché dans `PostCard`,
+  `SideMenu`, `ProfileScreen` (avatar principal + invitations d'amis en attente), `SearchScreen`,
+  `GroupScreen` (membres). Les avatars de **groupe** (initiale du nom du groupe) restent inchangés,
+  hors sujet.
+  **Upload** (`src/data/avatars.ts`) : sélection via `expo-image-picker`, redimensionnement au plus
+  petit côté à 512px via la nouvelle API `ImageManipulator.manipulate().resize().renderAsync()`
+  (l'ancienne `manipulateAsync` est dépréciée en SDK 57), conversion du base64 renvoyé en octets via
+  `base64-js` — `fetch(uri).then(r => r.blob())`, la méthode la plus évidente, produit des fichiers
+  de 0 octet avec Supabase en React Native, ce détour fonctionne aussi bien sur mobile que web.
+  Chemin fixe `{userId}/avatar.jpg` (un seul fichier par personne, jamais d'orphelins) avec un
+  paramètre `?v=timestamp` sur l'URL enregistrée pour forcer le rechargement après un remplacement
+  (sinon l'ancienne photo resterait affichée, mise en cache par le navigateur/CDN). Bouton photo
+  visible uniquement sur son propre profil (badge appareil-photo sur l'avatar), avec "Retirer la
+  photo" quand une photo existe.
+  SQL exécuté par l'utilisateur (bucket `avatars` en lecture publique, écriture/suppression limitée
+  à son propre dossier, plus une policy de modification de `profiles` qui servira aussi à l'édition
+  de profil à venir).
+  Vérifié en conditions réelles : le sélecteur de fichier système ne peut pas être piloté depuis le
+  navigateur automatisé, donc le remplacement du chemin fichier a été testé directement par API
+  (upload d'une image de test dans le bucket + mise à jour de `avatar_url`), puis l'app rechargée a
+  bien affiché la vraie photo sur la page de profil et dans le menu latéral. Le bouton **"Retirer la
+  photo" a lui été testé par un vrai clic dans l'app** : retour immédiat à l'initiale partout,
+  confirmé côté base (`avatar_url` à `null`, fichier supprimé du bucket — 400 au lieu de 200).
+  `tsc --noEmit` propre, aucune erreur console à aucune étape.
+  **Non fait ici, volontairement** : l'ajout de la photo à l'inscription (friction inutile à ce
+  moment) et l'édition du reste du profil (pseudo/format favori/fréquence), qui reste la prochaine
+  tâche.
+
+- **2026-07-29 — Feed rafraîchissable et paginé : voir les mains des autres sans recharger la page.**
+  Jusqu'ici `fetchFeed()` chargeait **toutes** les mains visibles d'un coup, une seule fois au
+  démarrage. Avec plusieurs personnes qui postent, rien n'apparaissait sans recharger le navigateur
+  — ce qui rendait un test à plusieurs à peu près impossible.
+  **Pagination** : `fetchFeed(offset)` avec `FEED_PAGE_SIZE = 10` et un bouton "Charger plus de
+  mains" qui disparaît quand la dernière page est atteinte (une page incomplète = fin du feed).
+  Ajout d'un **tri secondaire par date** dans la requête, qui n'est pas cosmétique : `affinity_score`
+  produit énormément d'ex æquo (tous les inconnus sans ami commun partagent le même score) et sans
+  départage stable Postgres peut renvoyer ces lignes dans un ordre différent d'un appel à l'autre —
+  une même main apparaîtrait alors sur deux pages, ou sur aucune. Les deux points de fusion de
+  listes dédoublonnent quand même par id, parce qu'une main publiée entre deux pages décale la
+  fenêtre : deux cartes identiques feraient planter le rendu (clés React en double).
+  **Rafraîchissement** : `RefreshControl` (geste "tirer pour rafraîchir") **plus** un rechargement
+  automatique quand l'app redevient active. Les deux sont nécessaires, pas redondants — j'ai lu la
+  source de `react-native-web` : son `RefreshControl` est un composant vide qui jette `onRefresh` et
+  rend un simple `View`, donc le geste n'existe **que** sur téléphone. `AppState`, lui, est branché
+  sur `visibilitychange` côté web : revenir sur l'onglet (ou sur l'app depuis le multitâche du
+  téléphone) recharge le feed et le compteur de notifications. C'est le seul moyen de voir du
+  nouveau sur navigateur sans recharger la page entière.
+  Le rechargement **fusionne** au lieu de remplacer quand plusieurs pages sont déjà chargées :
+  sinon un simple aller-retour sur l'onglet renverrait l'utilisateur en haut du feed, les mains
+  qu'il avait déroulées disparaissant sous ses yeux.
+  Vérifié en navigateur avec 12 mains de test créées pour l'occasion : 10 affichées + bouton, clic →
+  12 sans doublon et bouton disparu ; puis une main publiée par API **pendant que l'onglet était en
+  arrière-plan**, retour sur l'onglet → elle apparaît en tête sans rechargement, et la 2e page
+  déjà chargée est toujours là. Les 13 mains de test ont ensuite été supprimées et le feed vérifié
+  revenu à son état initial. Aucune erreur console.
+  **Non vérifié comportementalement** : le geste de tirage lui-même, impossible à déclencher sur
+  navigateur de bureau — il ne pourra l'être qu'à l'essai sur téléphone.
+
+- **2026-07-29 — Page dédiée à une main : les notifications ouvrent enfin ce dont elles parlent.**
+  Jusqu'ici, cliquer sur "Julien a aimé ta main" ouvrait le **profil** de Julien plutôt que la main
+  elle-même — la seule destination existante pour une notification était `onSelectProfile`, alors
+  que `notifications_feed` renvoie bien `post_id` depuis le début. Nouvel écran `PostScreen.tsx` :
+  une seule `PostCard` (le même composant que le feed, pour ne pas donner l'impression d'une main
+  différente) alimentée par une nouvelle fonction `fetchPost(postId)` sur la vue
+  `posts_feed_with_group`. En `maybeSingle()` et pas `single()` : si la main a été supprimée, est
+  repassée en privé ou si le groupe a été quitté depuis l'envoi de la notification, RLS renvoie
+  zéro ligne — cas d'affichage normal ("Cette main n'est plus disponible."), pas une erreur.
+  `NotificationsScreen` route maintenant vers cette page dès qu'une notification porte un `post_id`
+  (like, commentaire, réponse, "ami a posté", "main postée dans un groupe privé") — avant même de
+  regarder le groupe, puisqu'une notif de main parle d'une main précise, pas du groupe entier.
+  Seule exception : `group_invite` continue d'ouvrir le profil de l'inviteur, parce que la page du
+  groupe reste inaccessible tant que l'invitation n'est pas acceptée (`is_group_member` exige le
+  statut accepté) — les boutons Accepter/Refuser de la ligne restent le vrai chemin pour ce cas.
+  Une notification de commentaire (`post_comment`/`comment_reply`/`comment_like`) ouvre en plus
+  directement le fil de commentaires (nouvelle prop `initialCommentsOpen` sur `PostCard`) : le
+  commentaire est ce que l'utilisateur vient lire, pas seulement la main.
+  L'écran de modification peut désormais aussi être ouvert depuis cette page (`editReturnMode`
+  gagne la valeur `'post'`) et y revenir après enregistrement.
+  **Deux bugs préexistants corrigés au passage**, découverts en écrivant `fetchPost` : (1)
+  `rowToPost` ne recopiait jamais `group_id` depuis la ligne de la vue — un post de groupe rouvert
+  en modification perdait son groupe et le bouton Enregistrer restait désactivé ; (2) le feed n'est
+  chargé qu'une fois au démarrage, donc une main publiée depuis un autre appareil après ce
+  chargement n'y figure pas — si on arrive dessus via une notification puis qu'on clique modifier,
+  `editingPost` ne la trouvait pas dans `posts`. Un repli (`onLoaded` remonte la main fraîchement
+  chargée par `PostScreen`) couvre ce second cas.
+  Vérifié avec deux comptes de test créés pour l'occasion (main publique de l'un, like + commentaire
+  de l'autre) : notification "a aimé" → main seule affichée avec bons compteurs ; notification "a
+  commenté" → main + panneau de commentaires déjà ouvert avec le bon commentaire ; modification
+  depuis cette page → pré-remplie, enregistrement ramène bien sur la page de la main ; main
+  supprimée puis notification rouverte → "Cette main n'est plus disponible." sans erreur. Aucune
+  erreur console à aucune étape.
+
+- **2026-07-29 — Vocabulaire et icône des groupes : "groupe privé" partout, trèfle remplacé par 👥.**
+  Deux retours de l'utilisateur, appliqués ensemble. D'abord l'icône : le ♣ utilisé pour l'entrée
+  "Mes groupes" du menu et pour les 3 types de notification de groupe a été remplacé par 👥. Les
+  **deux autres ♣ du code n'ont pas été touchés** (`MultiCardPicker.tsx:12` et `CardView.tsx:9`) :
+  ce sont de vraies couleurs de cartes, pas de la décoration — un remplacement global aurait cassé
+  le sélecteur de cartes. Ensuite le libellé : chaque occurrence visible par l'utilisateur dit
+  maintenant "groupe privé" et plus seulement "groupe", dans `App.tsx`, `GroupsListScreen.tsx`,
+  `GroupScreen.tsx`, `NotificationsScreen.tsx`, `ReviewStep.tsx` et `EditPostScreen.tsx` — y compris
+  le chip de visibilité du créateur et de l'écran de modification, le sélecteur "Quel groupe privé ?",
+  les confirmations de suppression et les 3 textes de notification. La raison est produit, pas
+  cosmétique : "groupe" seul laisse croire à un espace public type page Facebook, alors que le
+  contenu n'y est visible que des membres acceptés. Vérifié écran par écran dans le navigateur
+  (menu, liste, page de groupe, écran de modification), console sans erreur.
+
+- **2026-07-29 — Groupes privés : dernière étape du chantier "réseau social" (public / privé / groupe, avec page dédiée par groupe).**
+  Deux tables : `groups` (id, name, owner_id) et `group_members` (group_id, user_id, status
+  pending/accepted, invited_by), sur le même modèle que `friend_requests` — invitation et
+  appartenance sont la même ligne, accepter = passer le statut, refuser/quitter/retirer un membre =
+  supprimer la ligne. Le créateur devient automatiquement membre accepté à la création, via une RPC
+  `create_group` qui fait les deux insertions (groupe + appartenance du créateur) en une seule
+  opération SECURITY DEFINER : sans ça un groupe pourrait exister brièvement sans aucun membre si le
+  réseau coupe entre les deux écritures.
+  **Seul le créateur peut inviter** (policy INSERT sur `group_members` : `invited_by = auth.uid()`
+  + créateur du groupe + statut forcé à `pending`) et **une main d'un groupe supprimé repasse en
+  privé** (trigger `BEFORE DELETE` sur `groups` qui met à jour les posts concernés avant que la
+  suppression n'ait lieu, sinon la contrainte de clé étrangère `posts.group_id` bloquerait le delete)
+  — les deux décisions demandées explicitement par l'utilisateur.
+  **Bug de récursion RLS rencontré et corrigé en cours de route** : la policy de lecture de `groups`
+  interrogeait directement `group_members`, qui interrogeait directement `groups` en retour →
+  boucle infinie (`infinite recursion detected in policy`), qui rendait TOUTE lecture de groupe et
+  même la vue `notifications_feed` (qui fait un join vers `groups`) inutilisable pour tout le monde.
+  J'avais bien empêché la récursion *à l'intérieur* de `group_members` (fonction SECURITY DEFINER
+  `is_group_member`), mais pas ce cas *croisé* entre les deux tables. Corrigé en ajoutant
+  `is_group_owner` (même principe) et en remplaçant **toutes** les sous-requêtes brutes
+  inter-tables par des appels à ces deux fonctions, qui contournent RLS et cassent donc le cycle.
+  **Second bug trouvé en vérifiant** : après ce correctif, un invité *en attente* ne voyait plus le
+  nom du groupe auquel il était invité (`is_group_member` exige `status = 'accepted'`, trop strict
+  pour ce cas). Ajouté `is_group_participant` (accepted OU pending) utilisée uniquement pour la
+  lecture du nom du groupe — `is_group_member` reste stricte pour la visibilité du contenu et de la
+  liste complète des membres, qu'un invité non encore accepté ne doit pas voir.
+  Vue `posts_feed_with_group` : construite PAR-DESSUS `posts_feed` (comme `posts_ranked` avant elle),
+  simple jointure ajoutant `group_id` sans dupliquer la logique de résolution auteur/compteurs.
+  Notifications étendues avec 3 types : `group_invite`, `group_accept`, `group_posted` — ce dernier
+  systématique et SANS le plafond de 12h qui s'applique à "ami qui poste en public" (le cercle d'un
+  groupe est déjà volontairement restreint, décision explicite de l'utilisateur).
+  Écrans : `src/groups/GroupsListScreen.tsx` (liste + création inline) et
+  `src/groups/GroupScreen.tsx` (membres, inviter, quitter/supprimer avec confirmation, mains du
+  groupe). `SearchScreen` gagne un `inviteMode` réutilisant l'écran existant plutôt que d'en dupliquer
+  un. Chip "Groupe" ajouté dans le créateur de main et l'écran d'édition (n'apparaît que si
+  l'utilisateur a au moins un groupe). "Mes groupes" rejoint le menu latéral ☰.
+  Vérifié à la fois par REST avec 3 comptes de test (création, auto-appartenance du créateur,
+  invitation, refus d'inviter par un non-créateur, acceptation, post de groupe, notification reçue
+  par le membre, invisibilité pour un tiers extérieur, suppression du groupe → post repassé en
+  privé + `group_members` vidée en cascade) et dans le navigateur avec le vrai compte (création,
+  page de groupe, chip visibilité + sélecteur dans l'édition, suppression avec confirmation).
+  Aucune erreur console à aucune étape.
+
+- **2026-07-28 — Système de notifications, fusionné avec l'ancien écran Invitations (📥 devient 🔔).**
+  Sept types couverts : like sur une main, like sur un commentaire, commentaire sur sa main,
+  réponse à son commentaire, demande d'ami reçue, demande d'ami acceptée, ami qui poste une main
+  publique. Le vote sur un sondage ne notifie personne (choix délibéré : un vote est pensé comme
+  un geste discret, contrairement au like qui est un signal social affiché).
+  Écriture entièrement par déclencheurs SQL (SECURITY DEFINER, même schéma que les compteurs de
+  likes/commentaires) plutôt que par l'app : infalsifiable, et fonctionne quel que soit l'endroit
+  d'où vient l'action. Deux règles anti-bruit systématiques : (1) jamais de notification à
+  soi-même (ex: liker sa propre main) ; (2) retirer un like ou annuler/refuser une demande d'ami
+  retire la notification correspondante plutôt que de la laisser traîner comme obsolète.
+  Cas particulier "un ami poste une main publique" : plafonné à UNE notification toutes les 12h,
+  tous amis confondus, sur demande explicite de l'utilisateur (un ami actif en génèrerait sinon une
+  par main). Choix déterministe plutôt qu'un tirage aléatoire ("une notif sur trois") : plus
+  prévisible, plus facile à expliquer si un réglage utilisateur est ajouté un jour. Implémenté par
+  une condition `not exists` dans le déclencheur (`notify_friend_posted`), pas de file d'attente —
+  les posts sautés dans la fenêtre ne ressurgissent pas plus tard. Ne se déclenche que sur la
+  création d'une main, jamais sur un changement de visibilité a posteriori. Les mains de groupe
+  (visibility='group') seront traitées séparément avec une notification systématique une fois les
+  groupes construits — sur demande explicite de l'utilisateur, contrairement au cas public throttlé.
+  Sécurité : la table `notifications` n'a NI policy INSERT NI policy DELETE pour `authenticated` —
+  toute écriture passe par les fonctions SECURITY DEFINER, qui contournent RLS comme le fait déjà
+  `mutual_friend_count`. La policy UPDATE existe (pour marquer "lu") mais un `revoke`/`grant` limite
+  la modification à la seule colonne `read_at` : sans cette restriction de colonne, RLS (qui ne
+  filtre que des LIGNES, jamais des colonnes) aurait aussi permis à un utilisateur de réécrire
+  l'auteur ou le type de ses propres notifications.
+  Vue `notifications_feed` (security_invoker = on, même piège que pour `posts_feed`/`posts_ranked`
+  lors du chantier précédent) résout nom/avatar de l'auteur de l'action et titre/lieu de la main
+  concernée côté base — le texte "Paul a posté une main à Las Vegas 2026" vient de là.
+  `src/data/notifications.ts` (nouveau) : fetchNotifications/fetchUnreadNotificationCount/
+  markNotificationRead/markAllNotificationsRead.
+  `src/notifications/NotificationsScreen.tsx` remplace `src/invitations/InvitationsScreen.tsx`
+  (supprimé) : les demandes d'ami gardent leurs boutons Accepter/Refuser inline (comportement
+  identique à l'ancien écran — la ligne disparaît de la vue une fois traitée, même si la notif
+  persiste en base comme historique), les autres types sont des lignes cliquables qui ouvrent le
+  profil de l'auteur de l'action (pas de vue "un seul post" dans l'app pour l'instant, donc pas de
+  lien direct vers le post exact — à revoir si une telle vue est construite un jour) et se marquent
+  lues au clic. Ouvrir l'écran marque aussi tout comme lu automatiquement (comme la plupart des
+  centres de notifications). `App.tsx` : mode `invitations` renommé `notifications`, badge basé sur
+  `fetchUnreadNotificationCount()` au lieu du nombre de demandes en attente.
+  Sur demande explicite de l'utilisateur, les invitations en attente restent aussi consultables
+  depuis son propre profil : nouvelle section dans `ProfileScreen.tsx` (visible seulement si
+  `isOwnProfile`), qui réutilise telles quelles les fonctions de `friends.ts` déjà écrites pour
+  l'ancien écran Invitations plutôt qu'une nouvelle abstraction partagée (les deux emplacements
+  chargent les données différemment — vue générique pour l'un, requête ciblée pour l'autre — donc
+  pas encore assez similaires pour justifier un composant commun). `onSelectProfile` réintroduit
+  comme prop optionnelle de `ProfileScreen` pour permettre ce lien (à ne pas confondre avec la
+  fonctionnalité de liste d'amis publique annulée plus tôt pour raisons RGPD — ceci n'expose que
+  ses propres demandes en attente, jamais le graphe social d'un tiers).
+  Vérifié en conditions réelles avec trois comptes de test (A, B, C) couvrant les 15 comportements
+  attendus dans l'ordre : demande d'ami → notif reçue ; acceptation → notif à l'émetteur d'origine ;
+  main publique postée → notif "ami a posté" avec le bon lieu ; une 2e main postée dans la foulée →
+  toujours une seule notif "ami a posté" (plafond 12h vérifié dans son sens "supprime l'excédent" —
+  la remise à zéro après 12h n'a PAS pu être vérifiée par le comportement, faute de clé service_role
+  pour antidater une ligne, seulement relue dans le code du déclencheur, même limitation assumée que
+  pour le plafond d'amis en commun) ; like → notif → retrait du like → notif supprimée ; like sur
+  son propre post → aucune notif (garde-fou) ; commentaire → notif ; réponse à ce commentaire →
+  notif au bon destinataire (l'auteur du commentaire parent, pas l'auteur de la main) ; like sur un
+  commentaire → notif → retrait → notif supprimée ; demande d'ami refusée → notif supprimée ;
+  isolation RLS confirmée (un tiers ne peut lire les notifications d'un autre même avec un filtre
+  explicite dessus) ; restriction de colonne confirmée (modifier `type` échoue en 403, modifier
+  `read_at` réussit) ; comptage des non-lues correct. Toutes les données de test supprimées après
+  coup ; les 3 comptes fantômes restants nécessitent la suppression manuelle habituelle
+  (`delete from auth.users`, RLS n'autorisant pas la suppression de `profiles` via l'API).
+
+- **2026-07-28 — Les visibilités "public" et "privé" sont enfin respectées à la lecture (bug préexistant corrigé).**
+  Les chips Public/Privé existaient depuis longtemps dans le créateur et l'édition
+  (`ReviewStep.tsx`, `EditPostScreen.tsx`) mais rien ne filtrait dessus : une main "Privé" restait
+  lisible par tout le monde. Corrigé par une policy RLS unique sur `posts` : lecture si
+  `visibility = 'public'` OU `author_id = auth.uid()`. Insert/update/delete restreints à l'auteur
+  (ces règles n'existaient pas explicitement non plus, elles reposaient sur le comportement par
+  défaut).
+  Point technique qui aurait pu rendre le correctif inopérant sans qu'on s'en aperçoive : le feed
+  ne lit pas `posts` directement, il passe par les vues `posts_feed`/`posts_ranked`. Par défaut,
+  Postgres évalue les policies RLS d'une vue avec les droits de son créateur (le rôle admin), pas
+  du visiteur — poser la règle sur la table seule n'aurait donc rien changé à ce que le feed
+  affiche. Les deux vues sont passées en `security_invoker = on` pour forcer l'évaluation avec les
+  droits du lecteur réel.
+  Vérifié en conditions réelles avec un nouveau compte de test (`priv_test`, créé et supprimé pour
+  l'occasion) : un post posté en "privé" est absent en lecture anonyme sur les trois surfaces
+  (table `posts`, vue `posts_feed`, vue `posts_ranked`) mais reste visible par son auteur sur les
+  trois ; le post public existant (`test` de pokza_founder) reste lisible normalement. Les likes
+  ont aussi été revérifiés après coup (comptage toujours correct) pour s'assurer que le changement
+  RLS n'avait rien cassé de collatéral. Post et like de test supprimés après vérification.
+  Les mains "Groupe" restent invisibles pour tout le monde sauf leur auteur tant que
+  [[groupes]] n'existe pas — sans conséquence actuellement, aucune main n'est dans ce cas.
+
+- **2026-07-28 — Menu latéral ouvert par une pile de jetons, à la place du bouton Déconnexion en haut.**
+  La barre du haut arrivait à saturation (Créer une main, 🔍, 📥, Déconnexion) alors qu'il reste des
+  fonctionnalités à y brancher. Plutôt qu'une barre d'onglets en bas — écartée parce que Pokza n'a
+  qu'une seule destination fréquente, le feed, et qu'une barre à 5 onglets serait surtout composée
+  de cases vides — un panneau latéral façon Facebook, qui devient le rangement de tout ce qui ne
+  mérite pas une place permanente à l'écran.
+  `src/components/ui/ChipStackIcon.tsx` : trois jetons empilés vus de côté. La silhouette est
+  volontairement identique à celle d'un menu hamburger (trois barres horizontales de même largeur,
+  aucun décalage) — c'est ce qui garantit qu'on comprend l'icône sans réfléchir ; l'alternance
+  navy/or et la tranche cerclée ne sont qu'un habillage poker par-dessus. Rien à recycler côté
+  visuel : le replayer ne dessine aucun jeton, son pot est une pastille (choix assumé, cf. le
+  commentaire en tête de `ChipsView.tsx`).
+  `src/components/ui/SideMenu.tsx` : panneau de 288 px qui glisse depuis la gauche (translation +
+  fondu du voile, 220 ms). Il reste monté pendant l'animation de fermeture, sinon il disparaîtrait
+  d'un coup au lieu de glisser. La carte de profil en haut EST l'entrée "Mon profil" — une ligne
+  "Mon profil" séparée aurait fait doublon dans le menu même qu'on crée pour désencombrer.
+  Déconnexion en bas. Une prop `items` est prévue pour les entrées à venir ("Mes groupes"), avec
+  pastille de comptage optionnelle.
+  "Créer un groupe" n'ira PAS dans ce menu : ce sera un bouton à l'intérieur de la page Mes groupes.
+  On crée un groupe deux fois dans sa vie, ça ne justifie pas une ligne permanente.
+  📥 reste dans la barre du haut et n'ira pas dans le menu : c'est le seul élément qui porte un
+  badge, et un badge caché derrière un menu est une notification que personne ne voit.
+  Vérifié dans le navigateur en 1280 px et en 375 px : ouverture par l'icône, fermeture par le
+  voile, "Voir mon profil" ouvre bien son propre profil (sans le bloc d'amitié, comme attendu).
+  Aucune erreur console, typecheck propre.
+
+- **2026-07-28 — Le feed est classé par affinité sociale (amis + amis en commun + récence) au lieu de l'ordre chronologique (étape 4 du chantier "réseau social").**
+  SQL : fonction `mutual_friend_count(p_other)` et vue `posts_ranked`, construite PAR-DESSUS
+  `posts_feed` (pas de duplication de sa logique). Barème : auteur ami ou soi-même = +30, chaque
+  ami en commun = +3 (plafonné à 8 amis), moins l'âge du post en jours. Un inconnu n'est jamais
+  masqué, seulement moins prioritaire — sinon rencontrer de nouvelles personnes deviendrait
+  impossible sur une app qui démarre. Barème facile à recalibrer : ce sont trois nombres dans la vue.
+  Le plafond était initialement à 10, ce qui portait le bonus max des amis communs à 10 × 3 = 30,
+  soit exactement le bonus d'amitié : un inconnu avec 10+ amis communs arrivait donc à égalité avec
+  un ami direct (les deux bonus s'additionnant, un ami n'était jamais en dessous, mais l'égalité
+  n'était pas voulue). Descendu à 8 sur remarque de l'utilisateur : le bonus max tombe à 24,
+  strictement sous les 30 de l'amitié, donc un ami passe toujours devant à âge égal.
+  Confidentialité : compter les amis en commun oblige à lire la liste d'amis d'un tiers, ce que RLS
+  interdit. `mutual_friend_count` est donc en SECURITY DEFINER mais volontairement étroite — elle ne
+  renvoie QU'UN COMPTE (jamais la liste) et le "moi" de la comparaison est forcé à `auth.uid()`,
+  donc impossible d'interroger la relation entre deux tiers ni de reconstituer une liste d'amis.
+  Une version rendant les listes d'amis publiques a été codée puis annulée après discussion :
+  l'article 25 du RGPD (protection des données par défaut) vise directement ce cas, d'autant qu'une
+  amitié est une donnée à deux et que le contexte poker rend le graphe social plus sensible. Le
+  classement n'en avait de toute façon pas besoin. À reprendre plus tard sous forme d'un réglage
+  par utilisateur (tout le monde / mes amis / personne) si la découverte de proche en proche est
+  souhaitée. `src/data/posts.ts` : `fetchFeed()` (vue `posts_ranked`, tri par `affinity_score`)
+  séparé de `fetchPosts(authorId)` (page de profil, resté chronologique — le classement social n'a
+  pas de sens quand tout vient de la même personne).
+  Vérifié en conditions réelles avec trois comptes de test et des scores exacts, vu depuis
+  `amie_test` : (1) le post d'un AMI vieux de 5 jours (score 24,98) passe devant celui d'un inconnu
+  vieux de 10 h (-0,42) — l'ordre chronologique l'aurait mis en dernier, donc le boost d'amitié est
+  bien ce qui décide ; (2) deux posts d'inconnus datés à la seconde près identique se départagent
+  d'exactement 3,00 points, soit précisément le poids d'un ami en commun (2,58 contre -0,42), l'âge
+  étant neutralisé. L'app consomme bien la vue et affiche l'ordre classé. Aucune erreur console.
+  Le passage du plafond de 10 à 8 n'a PAS été vérifié par le comportement : il aurait fallu un
+  compte ayant plus de 8 amis en commun, donc une douzaine de comptes de test supplémentaires,
+  non supprimables avec la clé publique (nettoyage manuel dans le dashboard). Vérifié à la place
+  par lecture de la définition réelle de la vue en base (`pg_get_viewdef`), qui montre bien
+  `LEAST(r.mutual_friend_count, 8)` — `least()` étant une fonction native de Postgres.
+
+- **2026-07-28 — Système d'ami : demande, boîte "Invitations", acceptation, retrait avec confirmation (étape 3 du chantier "réseau social").**
+  À la demande de l'utilisateur, deux règles précises : impossible d'envoyer une demande à
+  quelqu'un qui nous en a déjà envoyé une (on voit sa demande à accepter à la place du bouton
+  "Ajouter en ami") ; retirer un ami demande une confirmation, comme pour la suppression d'un post.
+  SQL : table `friend_requests` (sender_id, receiver_id, status pending/accepted, clé primaire
+  composite). Trois policies RLS notables : SELECT visible par les deux parties ; INSERT en son
+  propre nom uniquement, avec un `not exists` qui bloque la demande si la personne visée a déjà une
+  demande en attente vers nous (la règle métier est donc appliquée aussi côté base, pas seulement
+  dans l'interface) ; UPDATE (passage à `accepted`) réservé au destinataire, pour empêcher
+  l'expéditeur de s'auto-accepter. Refuser/annuler/retirer un ami sont tous les trois une simple
+  suppression de la ligne (delete autorisé aux deux parties) — pas de statut "declined" séparé.
+  `src/data/friends.ts` : `fetchFriendStatus`, `sendFriendRequest`, `acceptFriendRequest`,
+  `deleteFriendRelation` (réutilisée pour les trois cas de suppression), `fetchPendingRequests`.
+  `ProfileScreen.tsx` : bouton contextuel selon la relation (Ajouter en ami / Demande envoyée ·
+  Annuler / Accepter la demande d'ami / ✓ Amis · Retirer avec confirmation inline "Non"/"Oui,
+  retirer"). Nouvel écran `src/invitations/InvitationsScreen.tsx` (liste des demandes reçues,
+  Accepter/Refuser). `App.tsx` : icône 📥 avec badge de compteur à côté de 🔍, nouveau mode
+  `invitations`.
+  Vérifié en conditions réelles avec un second compte de test (`amie_test`, créé pour l'occasion) :
+  recherche "pokza" depuis amie_test → profil de pokza_founder → "Ajouter en ami" → "Demande
+  envoyée · Annuler" affiché → connecté en tant que pokza_founder, badge "1" sur 📥 → boîte
+  Invitations affiche "amie_test" avec Refuser/Accepter → Accepter → profil d'amie_test affiche
+  "✓ Amis" → "Retirer" → confirmation "Retirer cet ami ? Non/Oui, retirer" → "Non" annule bien →
+  "Retirer" à nouveau → "Oui, retirer" → retour à "Ajouter en ami", confirmé identique après
+  rechargement complet de la page (donc bien supprimé côté serveur, pas juste en local). Aucune
+  erreur console à aucune étape.
+
+- **2026-07-28 — Correctif : un vote posé depuis la page de profil n'apparaissait pas en revenant sur le feed.**
+  Signalé par l'utilisateur juste après l'ajout de la recherche/profil. `VotePoll.tsx` gardait son
+  vote dans un état local initialisé une seule fois au montage (`useState(myVote ?? null)`) ; comme
+  `postId` ne change jamais pour un post donné, le composant n'est jamais démonté en revenant d'un
+  profil consulté — il ignorait donc silencieusement la nouvelle valeur de `myVote` reçue en props
+  après le rafraîchissement du feed (`refreshFeed()` ajouté dans le correctif précédent).
+  `VotePoll.tsx` : nouveau `useEffect` qui resynchronise `voted`/`counts` et les animations à chaque
+  fois que `myVote`/`initialCounts` changent réellement (donc uniquement sur un vrai refetch, pas
+  sur un re-render sans rapport — les autres posts gardent la même référence d'objet quand un seul
+  post est modifié via `.map()`, l'effet ne se redéclenche pas pour eux).
+  Vérifié en conditions réelles : vote retiré au préalable (confirmé vide en base) → ouverture du
+  profil "pokza_founder" → vote "non" → confirmé "1 vote" sur le profil → clic sur la flèche retour
+  (sans recharger la page) → le feed affiche immédiatement "✓ non · 1 · 100%", alors qu'avant le
+  correctif il serait resté bloqué sur les boutons oui/non. Aucune erreur console.
+
+- **2026-07-28 — Recherche de pseudo et page de profil consultable (première étape du chantier "réseau social" : recherche → profil → amis → groupes → classement du feed par affinité).**
+  Jusqu'ici impossible de retrouver quelqu'un dans l'app ni de voir son profil autrement que le
+  sien propre à la création.
+  Pas de nouveau SQL : la table `profiles` (pseudo, avatar_url, format favori, fréquence de jeu)
+  était déjà publiquement lisible depuis la mise en place de la base — seul `profiles_private`
+  (prénom/nom/date de naissance) reste protégé, jamais touché ici.
+  `src/data/profiles.ts` : `searchProfiles(query)` (recherche `ilike` sur le pseudo, jusqu'à 20
+  résultats) et `fetchProfile(id)` (ligne `profiles` + `get_display_name` en un seul aller,
+  résolution du nom d'affichage cohérente avec le reste de l'app). `src/data/posts.ts` :
+  `fetchPosts()` accepte maintenant un `authorId` optionnel pour filtrer les posts d'un profil.
+  `src/profile/profileOptions.ts` : libellés FORMAT_OPTIONS/FREQUENCE_OPTIONS extraits de
+  `CompleteProfileScreen` pour être réutilisés sur la page de profil (une seule source, pas de
+  duplication).
+  Nouveaux écrans : `src/search/SearchScreen.tsx` (champ de recherche avec léger débounce, liste de
+  résultats pseudo + avatar) et `src/profile/ProfileScreen.tsx` (avatar, nom d'affichage, format
+  favori/fréquence, puis la liste de ses posts — comportements like/suppression/édition identiques
+  au feed principal). `PostCard.tsx` : header auteur (avatar + nom) devenu pressable via un nouveau
+  prop `onPressAuthor`, pour ouvrir le profil de l'auteur directement depuis le feed. `App.tsx` :
+  nouveau bouton 🔍 à côté de "+ Créer une main", deux nouveaux modes `search`/`profile`, le feed
+  se recharge automatiquement en revenant d'un profil consulté (évite un feed périmé après un
+  like/suppression fait depuis là-bas), et l'édition d'un post rouvert depuis un profil y ramène
+  après sauvegarde plutôt que de basculer sur le feed.
+  Vérifié en conditions réelles : recherche "pokza" → résultat "pokza_founder" affiché → clic →
+  page de profil correcte (avatar, "Cash game live · Très régulièrement", ses posts) → clic sur
+  le nom d'auteur depuis le feed → même page de profil ouverte directement → édition d'un post
+  depuis le profil → "Retour" ramène bien au profil (pas au feed) → retour au feed depuis le profil
+  fonctionne. Aucune erreur console à aucune étape.
+
+- **2026-07-28 — Un vote déjà posé peut maintenant être retiré, pour permettre de revoter.**
+  Jusqu'ici un vote était définitif une fois posé (cf. entrée précédente) — l'utilisateur a demandé
+  la possibilité de décocher. Première version avec un lien dédié "Annuler mon vote" sous les
+  résultats, remplacée à la demande de l'utilisateur par une interaction plus légère : recliquer sur
+  l'option déjà votée (surlignée, avec ✓) l'annule, sans élément d'interface supplémentaire.
+  SQL : ajout de la politique RLS manquante `for delete using (auth.uid() = user_id)` sur
+  `public.votes` (seule SELECT-tous et INSERT-son-propre-vote existaient ; sans cette politique,
+  une suppression aurait été silencieusement bloquée par RLS — 0 ligne affectée, pas d'erreur).
+  `src/data/posts.ts` : nouvelle fonction `retractVote(postId, userId)` (delete sur `post_id`+
+  `user_id`, même schéma que `setLiked()` pour un unlike). `VotePoll.tsx` : la ligne de résultat déjà
+  votée devient elle-même pressable et appelle `retractVote`, avec mise à jour optimiste (décrémente
+  le compteur, repasse aux boutons de vote, réinitialise les animations) et retour en arrière propre
+  si l'appel échoue.
+  Vérifié en conditions réelles sur le post "test"/question "tapis" : vote "oui" → confirmé en base
+  via requête REST directe (table `votes`) → clic sur "✓ oui" → retour aux boutons oui/non → confirmé
+  vide en base via la même requête REST → revote → de nouveau confirmé en base. Aucune erreur console
+  à aucune étape.
+
+- **2026-07-28 — Le vote ("Tu payes cette river ?") est maintenant persisté en base, au lieu de vivre uniquement en état local.**
+  Comme pour les likes/commentaires avant eux : un vote disparaissait au rechargement et n'était vu
+  de personne d'autre. Un seul vote par utilisateur et par post, définitif (l'interface ne permettait
+  déjà pas de changer d'avis une fois voté, donc pas de politique UPDATE nécessaire).
+  SQL : table `votes` (clé primaire composite post/utilisateur). L'ancienne colonne
+  `posts.vote_counts` n'a jamais été mise à jour par rien depuis sa création (toujours vide) —
+  supprimée, remplacée par un calcul en direct dans `posts_feed` (`jsonb_object_agg` groupé par
+  option) ; la vue expose aussi `my_vote` (l'option déjà choisie par l'utilisateur courant, pour
+  rouvrir un post déjà voté directement sur les résultats plutôt que de réafficher les boutons).
+  `src/data/posts.ts` : `castVote()`. `VotePoll.tsx` : accepte maintenant `postId`/`currentUserId`/
+  `myVote`, appelle `castVote` au vote (avec retour en arrière propre si l'appel échoue), et saute
+  l'animation d'apparition des résultats quand le vote vient d'une session précédente (pas de
+  réanimation à chaque fois qu'on rouvre un post déjà voté).
+  Vérifié en conditions réelles sur une main existante avec une question de vote : vote "oui" →
+  résultats affichés (100%, 1 vote) → confirmé identique après rechargement complet de la page
+  (résultats directement affichés, pas les boutons). Aucune erreur console.
+
+- **2026-07-28 — Les commentaires s'ouvrent maintenant dans une modale plein écran façon réseau social (Instagram), plus une expansion inline façon forum ; ajout du like sur chaque commentaire.**
+  Aperçu visuel validé avec l'utilisateur avant codage (mockup HTML) : feuille glissant du bas,
+  feed visible en transparence derrière, en-tête "Commentaires" + croix pour fermer, liste à
+  défilement propre, saisie fixée en bas.
+  `CommentsSection.tsx` transformé en modale (`Modal` de React Native, déjà inclus — aucune
+  dépendance ajoutée) pilotée par `visible`/`onClose` au lieu d'un simple rendu conditionnel inline ;
+  recharge les commentaires à chaque ouverture (pas seulement au premier montage, pour voir les
+  commentaires ajoutés par d'autres entre deux ouvertures).
+  SQL : table `comment_likes` (une ligne par utilisateur/commentaire) + colonne
+  `comments.like_count` maintenue par trigger SECURITY DEFINER (même principe que les likes de
+  post) ; `comments_feed` étendue avec `like_count`/`liked_by_me`. `src/data/comments.ts` :
+  `setCommentLiked()`. Chaque commentaire affiche maintenant ♡/♥ + compteur, à côté du lien
+  "Répondre" déjà existant.
+  Vérifié en conditions réelles sur une main déjà existante avec plusieurs commentaires/réponses :
+  la modale s'ouvre bien par-dessus le feed (feed visible en transparence en haut) ; like sur un
+  commentaire → cœur plein, compteur à 1, confirmé après rechargement complet de la page (donc bien
+  en base) ; fermeture par la croix ramène proprement au feed. Aucune erreur console.
+
+- **2026-07-28 — Likes et commentaires réels (avec réponses à un commentaire), persistés en base.**
+  SQL : tables `likes` (une ligne par utilisateur/post, clé primaire composite) et `comments`
+  (`parent_comment_id` nullable → réponse à un commentaire, une seule profondeur volontairement,
+  pas de fil imbriqué à l'infini). `posts.like_count`/`comment_count` maintenus par des triggers
+  SECURITY DEFINER (liker le post de quelqu'un d'autre nécessite de modifier SON compteur, hors de
+  portée normale de RLS pour l'utilisateur qui like — d'où le SECURITY DEFINER, strictement limité à
+  cette incrémentation). Nouvelle vue `comments_feed` (résout l'auteur via `get_display_name`,
+  comme `posts_feed`) ; `posts_feed` étendue avec `liked_by_me` (le post courant a-t-il été liké par
+  l'utilisateur connecté). RLS `comments` : visible/commentable seulement si le post l'est
+  (public, ou privé + on en est l'auteur).
+  Nouveaux fichiers : `src/data/comments.ts`, `src/components/post/CommentsSection.tsx` (liste
+  imbriquée premier niveau + réponses indentées, bouton "Répondre" par commentaire, bandeau "Réponse
+  à X" avec annulation). `PostCard.tsx` : le ♡/♥ et son compteur utilisent maintenant
+  `post.likedByMe`/`likeCount` réels (plus l'ancien état local factice) ; la bulle 💬 déplie/replie
+  les commentaires.
+  Bug trouvé et corrigé pendant la vérification : le compteur de commentaires dans la barre
+  d'engagement ne bougeait pas après ajout/suppression (il ne lisait que `post.commentCount`, figé
+  depuis le dernier chargement du feed, sans savoir que `CommentsSection` venait d'ajouter une
+  ligne) — corrigé avec un callback `onCountChange` qui ajuste un compteur local dans `PostCard`
+  (delta correct aussi à la suppression d'un commentaire qui a des réponses : tout ce qui disparaît
+  est décompté, pas seulement la ligne cliquée).
+  Vérifié en conditions réelles : like → cœur plein, compteur à 1, survit à un rechargement complet ;
+  unlike → retour à 0 ; commentaire ajouté → apparaît immédiatement ; réponse ajoutée → bien
+  indentée sous son parent ; compteur d'engagement passé à 2 (commentaire + réponse), confirmé après
+  rechargement complet (donc bien en base, pas juste local) ; suppression du post → cascade
+  vérifiée par requête directe (`comments` et `likes` vides après coup). Aucune erreur console.
+
+- **2026-07-28 — Possibilité de modifier un post déjà publié (titre, description, lieu, buy-in, niveau, vote, visibilité).**
+  Le déroulé de la main (cartes, actions, board) reste figé après publication — seul le texte/
+  contexte est modifiable, décision confirmée avec l'utilisateur (pas besoin de rouvrir tout le
+  wizard multi-étapes pour ça).
+  Nouveau fichier `src/post/EditPostScreen.tsx` : formulaire dédié (pas de réutilisation du wizard
+  de création, qui contient plein de champs hors-sujet ici comme les blindes/sièges), pré-rempli
+  avec les valeurs actuelles du post. `src/data/posts.ts` : `updatePost()` (ne touche jamais à la
+  colonne `hand`). `App.tsx` : nouveau mode `'edit'`, bascule dessus via l'icône ✏️ ajoutée dans
+  `PostCard.tsx` à côté de 🗑 (visible uniquement sur ses propres posts).
+  Vérifié en conditions réelles : titre/description modifiés, question de vote ajoutée après coup,
+  visibilité changée en "Privé" → tout s'affiche immédiatement, ET survit à un rechargement complet
+  de la page (donc bien enregistré en base, pas juste en local) — ce qui confirme au passage que la
+  règle RLS corrigée plus tôt (l'auteur peut relire ses propres posts privés) fonctionne réellement,
+  pas seulement en théorie. Aucune erreur console.
+
+- **2026-07-28 — Les mains créées sont maintenant persistées dans Supabase (lecture, création, suppression), au lieu de vivre uniquement en mémoire.**
+  SQL exécuté par l'utilisateur : règle `posts` SELECT corrigée pour qu'un auteur puisse relire ses
+  propres posts privés (`visibility = 'public' or auth.uid() = author_id`, remplace l'ancienne
+  règle qui ne laissait voir que le public, même à l'auteur) ; vue `posts_feed` qui résout le nom
+  d'auteur via `get_display_name` directement en base, pour que l'app n'ait qu'une seule requête à
+  faire pour afficher le feed.
+  Nouveau fichier `src/data/posts.ts` : `fetchPosts()` (lit `posts_feed`), `createPost()` (insère
+  dans `posts`, laisse Postgres générer le vrai UUID plutôt que l'ancien id local `post-${Date.now()}`),
+  `deletePost()`. `App.tsx` : le feed se charge désormais depuis Supabase au montage (fini le post de
+  démonstration statique — `src/data/testHand.ts` supprimé, plus référencé nulle part) ; "Créer une
+  main" écrit vraiment en base ; suppression optimiste (retirée localement tout de suite, restaurée
+  si l'appel réseau échoue). `PostCard.tsx` : icône 🗑 visible uniquement sur ses propres posts, avec
+  confirmation inline ("Supprimer ce post ? Oui/Non") avant suppression réelle — pas de suppression
+  accidentelle en un seul clic.
+  Vérifié en conditions réelles avec le compte `pokza_founder` : main créée → confirmée présente en
+  base via requête REST directe (UUID généré par Postgres) → survit à un rechargement complet de la
+  page → suppression confirmée → disparaît du feed ET de la base (revérifié par requête REST).
+  Aucune erreur console à aucune étape.
+
+- **2026-07-27 — Le siège de Hero dans le replayer affichait sa position (ex: "CO") au lieu de "Hero".**
+  Fichier : `components/replayer/SeatView.tsx`.
+  Bug préexistant, indépendant du changement d'auteur ci-dessous : le calcul du libellé de siège
+  (`seat.playerName ?? straddleLabel ?? seat.position`) n'a jamais eu de cas spécifique pour Hero —
+  ça ne se voyait pas parce que la main de démonstration (`data/testHand.ts`) avait "Hero" codé en
+  dur comme `playerName` de son siège, masquant le problème. Toute main réellement créée via le
+  formulaire (où Hero n'a jamais de `playerName`, cf. `creator/positions.ts`) retombait donc sur
+  l'acronyme de position brut. Fix : `seat.isHero` vérifié en premier, retombe toujours sur "Hero"
+  peu importe la position ou un éventuel nom personnalisé (que Hero n'a de toute façon jamais).
+  Vérifié en créant une vraie main (position CO, cartes AK) : le siège du bas affiche bien "Hero",
+  les autres gardent leur position (SB, UTG, BTN, HJ, BB). Aucune erreur console.
+
+- **2026-07-27 — Le créateur de main utilise maintenant le vrai profil connecté comme auteur du post, au lieu de "Hero" en dur.**
+  Fichiers : `creator/LiveHandCreator.tsx` (nouvelles props `authorId`/`authorName`, utilisées dans
+  `finalize()` à la place des valeurs `'user-1'`/`'Hero'` codées en dur), `src/state/profile.tsx`
+  (`useProfileStatus` renvoie maintenant aussi `displayName`, obtenu via la fonction SQL
+  `get_display_name` déjà existante — un seul appel sert à la fois à savoir si le profil existe ET
+  quel nom afficher), `App.tsx` (passe `authorId={session.user.id}` et
+  `authorName={displayName}` au créateur).
+  Ne touche pas au concept distinct de "Hero" DANS la main (le siège qui représente le narrateur
+  dans le replayer) — seul le nom d'auteur affiché en haut du post change.
+  Vérifié dans l'app : main créée avec le compte réel de l'utilisateur (pseudo `pokza_founder`) →
+  le post publié affiche bien "pokza_founder" comme auteur (avatar "P"), plus "Hero". Aucune erreur
+  console.
+
+- **2026-07-27 — Structure de la base de données Supabase (`profiles`, `profiles_private`, `posts`) + écran "complète ton profil".**
+  SQL exécuté par l'utilisateur dans le SQL Editor Supabase (pas de fichier de migration local pour
+  l'instant) : table `profiles` (publique : pseudo unique, avatar_url, préférence d'affichage,
+  format favori, fréquence de jeu) ; table `profiles_private` (prénom, nom, date de naissance —
+  RLS strict "propriétaire uniquement", jamais exposée à qui que ce soit d'autre) ; fonction
+  `get_display_name(profile_id)` en SECURITY DEFINER qui renvoie le pseudo ou "prénom nom" selon la
+  préférence choisie, sans jamais exposer les colonnes brutes ni la date de naissance ; fonction
+  `create_profile(...)` (SECURITY INVOKER) qui crée les deux lignes (`profiles` + `profiles_private`)
+  en une seule transaction, pour ne jamais laisser un profil à moitié créé si une des deux échoue
+  (ex: pseudo déjà pris). Table `posts` avec la main stockée en JSONB (pas de découpage relationnel,
+  vu que sa forme évolue encore régulièrement).
+  Nouveaux fichiers app : `src/state/profile.tsx` (`useProfileStatus`, sait si le compte courant a
+  déjà un profil), `src/profile/CompleteProfileScreen.tsx` (formulaire pseudo/prénom/nom/préférence
+  d'affichage/date de naissance/format favori/fréquence de jeu, avec rappel explicite que
+  prénom+nom+date de naissance restent privés). `App.tsx` : après la session, si aucun profil
+  n'existe encore pour ce compte, affiche cet écran avant le feed.
+  Vérifié en conditions réelles (requêtes REST directes + parcours dans l'app) : `profiles` et
+  `posts` lisibles publiquement (vides avant tout post/profil) ; `profiles_private` bien
+  inaccessible via la clé anon (RLS). Un compte de test s'est vu proposer l'écran de complétion (pas
+  encore de profil), a rempli le formulaire, et `create_profile` a bien inséré les deux lignes :
+  `profiles` contient le pseudo/préférences en clair (vérifié via requête REST), `profiles_private`
+  reste vide côté anon (donc bien caché), et `get_display_name` renvoie correctement "qa_tester".
+  Aucune erreur console à aucune étape.
+
+- **2026-07-27 — Ajout de la connexion joueurs (Supabase Auth) : écran login/signup, session persistée, gate sur toute l'app.**
+  Nouveaux fichiers : `src/state/auth.tsx` (`AuthProvider`/`useAuth`, écoute `supabase.auth.onAuthStateChange`
+  + `getSession()` au démarrage), `src/auth/AuthScreen.tsx` (email/mot de passe, bascule connexion/inscription,
+  affiche les erreurs Supabase telles quelles). `App.tsx` : enveloppé dans `AuthProvider`, affiche
+  `AuthScreen` tant qu'il n'y a pas de session, ajoute un bouton "Déconnexion" dans le feed.
+  Vérifié en conditions réelles (pas de mock) : une inscription avec un email `@example.com` a été
+  rejetée par Supabase lui-même ("Email address ... is invalid", domaine test connu) — preuve que la
+  requête atteint bien l'API. La confirmation par email (activée par défaut) a vite buté sur la
+  limite d'envoi du service email par défaut de Supabase ("rate limit exceeded") — désactivée pour le
+  développement (dashboard Supabase > Authentication > Providers > Email), à réactiver avec un vrai
+  fournisseur SMTP (ex. Resend) avant ouverture publique. Confirmation désactivée confirmée bien
+  prise en compte : cycle complet vérifié — inscription → session immédiate (pas d'email à attendre)
+  → feed affiché avec bouton "Déconnexion" → déconnexion → retour à l'écran de connexion. Aucune
+  erreur console à aucune étape.
+
 - **2026-07-27 — Rééquilibrage de taille entre le bouton play et les flèches précédent/suivant du replayer.**
   Fichier : `components/replayer/PlaybackControls.tsx`.
   Le bouton play (52px) paraissait plus petit visuellement que les flèches (44px) une fois leurs
