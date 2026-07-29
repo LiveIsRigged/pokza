@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '../../theme/theme';
+import type { Group } from '../../data/groups';
 import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
 import { DESCRIPTION_MAX_LENGTH, type ReviewData } from '../types';
@@ -14,9 +15,11 @@ interface ReviewStepProps {
   onBack: () => void;
   step?: number;
   totalSteps?: number;
+  /** Groupes dont l'utilisateur est membre — le chip "Groupe privé" n'apparaît que s'il y en a au moins un. */
+  groups: Group[];
 }
 
-export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps }: ReviewStepProps) {
+export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps, groups }: ReviewStepProps) {
   const update = (patch: Partial<ReviewData>) => onChange({ ...value, ...patch });
 
   const voteOptions = value.voteOptions ?? ['', ''];
@@ -36,7 +39,7 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
       subtitle="Derniers détails"
       onNext={onSubmit}
       nextLabel="Publier la main"
-      nextDisabled={!value.title.trim()}
+      nextDisabled={!value.title.trim() || (value.visibility === 'group' && !value.groupId)}
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
@@ -105,9 +108,27 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
 
         <Text style={styles.label}>Visibilité</Text>
         <View style={styles.row}>
-          <Chip label="Public" selected={value.visibility === 'public'} onPress={() => update({ visibility: 'public' })} />
-          <Chip label="Privé" selected={value.visibility === 'private'} onPress={() => update({ visibility: 'private' })} />
+          <Chip label="Public" selected={value.visibility === 'public'} onPress={() => update({ visibility: 'public', groupId: undefined })} />
+          <Chip label="Privé" selected={value.visibility === 'private'} onPress={() => update({ visibility: 'private', groupId: undefined })} />
+          {groups.length > 0 && (
+            <Chip
+              label="Groupe privé"
+              selected={value.visibility === 'group'}
+              onPress={() => update({ visibility: 'group', groupId: value.groupId ?? groups[0].id })}
+            />
+          )}
         </View>
+
+        {value.visibility === 'group' && groups.length > 0 && (
+          <>
+            <Text style={styles.label}>Quel groupe privé ?</Text>
+            <View style={styles.row}>
+              {groups.map((g) => (
+                <Chip key={g.id} label={g.name} selected={value.groupId === g.id} onPress={() => update({ groupId: g.id })} />
+              ))}
+            </View>
+          </>
+        )}
       </View>
     </WizardScreen>
   );
@@ -155,6 +176,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   previewRow: {
     flexDirection: 'row',

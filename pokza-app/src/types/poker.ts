@@ -97,9 +97,44 @@ export interface Post {
   hand: Hand;
   voteQuestion?: string;
   voteOptions?: string[];
-  /** Nombre de votes déjà reçus par option (clé = texte de l'option) */
+  /** Nombre de votes déjà reçus par option (clé = texte de l'option), calculé en direct côté base
+   * à partir de la table `votes` — jamais stocké tel quel sur le post. */
   voteCounts?: Record<string, number>;
+  /** Option déjà choisie par l'utilisateur courant, s'il a déjà voté (cf. vue `posts_feed`). */
+  myVote?: string;
   likeCount: number;
   commentCount: number;
+  /** Vrai si l'utilisateur courant a déjà liké ce post (résolu côté base, cf. vue `posts_feed`). */
+  likedByMe?: boolean;
+  /** Renseignés seulement dans le feed principal (vue `posts_ranked`), qui classe par affinité
+   * sociale — absents sur la page de profil, qui reste chronologique. */
+  authorIsFriend?: boolean;
+  mutualFriendCount?: number;
   visibility: Visibility;
+  /** Requis si `visibility === 'group'`. */
+  groupId?: string;
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  /** Absent pour un commentaire de premier niveau, sinon id du commentaire auquel il répond —
+   * une seule profondeur de réponse (pas de réponse à une réponse), volontairement simple. */
+  parentCommentId?: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+  likeCount: number;
+  likedByMe: boolean;
+  /** Lien signé temporaire (bucket privé) vers la photo jointe — absent si le commentaire n'en a
+   * pas. Régénéré à chaque chargement, ne jamais le mettre en cache au-delà de la session. */
+  imageUrl?: string;
+  /** URL GIPHY directe — publique par nature (un GIF choisi dans une recherche), pas besoin de
+   * lien signé contrairement à une photo personnelle. */
+  gifUrl?: string;
+  /** Dimensions réelles de la photo/du GIF joint — permet d'afficher selon les vraies proportions
+   * (plafonnées en hauteur) plutôt que de recadrer dans une boîte de taille arbitraire. */
+  mediaWidth?: number;
+  mediaHeight?: number;
 }

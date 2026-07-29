@@ -2,13 +2,30 @@ import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Post } from '../../types/poker';
 import { colors, radius, spacing, typography } from '../../theme/theme';
+import { Avatar } from '../ui/Avatar';
 import { HandReplayer } from '../replayer/HandReplayer';
 import { VotePoll } from './VotePoll';
+import { CommentsSection } from './CommentsSection';
+import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 
 const DESCRIPTION_LINES = 3;
 
 interface PostCardProps {
   post: Post;
+  currentUserId: string;
+  currentUserName: string;
+  /** Vrai si l'utilisateur connecté est l'auteur — seul cas où modifier/supprimer est proposé. */
+  isOwnPost?: boolean;
+  /** Vrai si l'auteur est le fondateur du groupe dans lequel ce post est affiché — même distinction
+   * (👑) que dans la liste des membres du groupe, cf. GroupScreen. */
+  isGroupFounder?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onToggleLike?: () => void;
+  onPressAuthor?: () => void;
+  /** Ouvre les commentaires dès l'affichage — utilisé quand la carte est atteinte depuis une
+   * notification de commentaire, où le commentaire EST ce qu'on vient lire. */
+  initialCommentsOpen?: boolean;
 }
 
 // Tronque la description à 3 lignes avec "… voir plus" collé à la fin de la 3e ligne. Le nombre
@@ -88,33 +105,79 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export function PostCard({ post }: PostCardProps) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(post.likeCount);
+function buildShareContent(post: Post): { title: string; message: string; url: string } {
+  const url = `${POKZA_WEB_ORIGIN}/post/${post.id}`;
+  return { title: post.title, message: `${post.title} — ${formatContextLine(post)}`, url };
+}
+
+export function PostCard({
+  post,
+  currentUserId,
+  currentUserName,
+  isOwnPost,
+  isGroupFounder,
+  onEdit,
+  onDelete,
+  onToggleLike,
+  onPressAuthor,
+  initialCommentsOpen,
+}: PostCardProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showComments, setShowComments] = useState(Boolean(initialCommentsOpen));
+  // `post` vient du parent et ne se remet à jour que si le feed est rechargé — le compteur affiché
+  // ici doit réagir immédiatement quand `CommentsSection` ajoute/supprime un commentaire.
+  const [commentCountDelta, setCommentCountDelta] = useState(0);
+  const commentCount = post.commentCount + commentCountDelta;
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
 
   const voteOptions = post.voteOptions && post.voteOptions.length >= 2 ? post.voteOptions : ['Oui', 'Non'];
 
-  const toggleLike = () => {
-    setLiked((prev) => {
-      setLikeCount((c) => (prev ? c - 1 : c + 1));
-      return !prev;
-    });
+  const handleShare = async () => {
+    const outcome = await shareOrCopy(buildShareContent(post));
+    if (outcome === 'copied') setShareFeedback('Lien copié dans le presse-papiers !');
+    else if (outcome === 'unavailable') setShareFeedback("Le partage n'est pas disponible ici.");
+    if (outcome === 'copied' || outcome === 'unavailable') setTimeout(() => setShareFeedback(null), 2500);
   };
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarInitial}>{post.authorName.charAt(0).toUpperCase()}</Text>
-        </View>
-        <View>
-          <Text style={typography.authorName}>{post.authorName}</Text>
-          <Text style={[typography.dateLocation, styles.muted]}>
-            {formatDate(post.createdAt)}
-            {post.location ? ` · ${post.location}` : ''}
-          </Text>
-        </View>
+        <Pressable style={styles.authorPressable} onPress={onPressAuthor} disabled={!onPressAuthor}>
+          <Avatar url={post.authorAvatarUrl} name={post.authorName} size={36} />
+          <View style={styles.headerText}>
+            <Text style={typography.authorName}>
+              {post.authorName}
+              {isGroupFounder && ' 👑'}
+            </Text>
+            <Text style={[typography.dateLocation, styles.muted]}>
+              {formatDate(post.createdAt)}
+              {post.location ? ` · ${post.location}` : ''}
+            </Text>
+          </View>
+        </Pressable>
+        {isOwnPost && !confirmingDelete && (
+          <View style={styles.ownPostActions}>
+            <Pressable style={styles.deleteButton} onPress={onEdit} hitSlop={8}>
+              <Text style={styles.deleteButtonText}>✏️</Text>
+            </Pressable>
+            <Pressable style={styles.deleteButton} onPress={() => setConfirmingDelete(true)} hitSlop={8}>
+              <Text style={styles.deleteButtonText}>🗑</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
+
+      {isOwnPost && confirmingDelete && (
+        <View style={styles.confirmDeleteRow}>
+          <Text style={styles.confirmDeleteText}>Supprimer ce post ?</Text>
+          <Pressable onPress={() => setConfirmingDelete(false)} hitSlop={8}>
+            <Text style={styles.confirmDeleteCancel}>Non</Text>
+          </Pressable>
+          <Pressable onPress={onDelete} hitSlop={8}>
+            <Text style={styles.confirmDeleteConfirm}>Oui, supprimer</Text>
+          </Pressable>
+        </View>
+      )}
 
       <Text style={[typography.contextLine, styles.muted, styles.contextLine]}>{formatContextLine(post)}</Text>
 
@@ -127,22 +190,44 @@ export function PostCard({ post }: PostCardProps) {
       </View>
 
       {post.voteQuestion && (
-        <VotePoll question={post.voteQuestion} options={voteOptions} initialCounts={post.voteCounts} />
+        <VotePoll
+          postId={post.id}
+          currentUserId={currentUserId}
+          question={post.voteQuestion}
+          options={voteOptions}
+          initialCounts={post.voteCounts}
+          myVote={post.myVote}
+        />
       )}
 
       <View style={styles.engagementRow}>
-        <Pressable style={styles.engagementItem} onPress={toggleLike}>
-          <Text style={[styles.engagementIcon, liked && styles.engagementIconActive]}>{liked ? '♥' : '♡'}</Text>
-          <Text style={[styles.engagementCount, liked && styles.engagementCountActive]}>{likeCount}</Text>
+        <Pressable style={styles.engagementItem} onPress={onToggleLike}>
+          <Text style={[styles.engagementIcon, post.likedByMe && styles.engagementIconActive]}>
+            {post.likedByMe ? '♥' : '♡'}
+          </Text>
+          <Text style={[styles.engagementCount, post.likedByMe && styles.engagementCountActive]}>
+            {post.likeCount}
+          </Text>
         </Pressable>
-        <View style={styles.engagementItem}>
+        <Pressable style={styles.engagementItem} onPress={() => setShowComments(true)}>
           <Text style={styles.engagementIcon}>💬</Text>
-          <Text style={styles.engagementCount}>{post.commentCount}</Text>
-        </View>
-        <View style={styles.engagementItem}>
+          <Text style={styles.engagementCount}>{commentCount}</Text>
+        </Pressable>
+        <Pressable style={styles.engagementItem} onPress={handleShare}>
           <Text style={styles.engagementIcon}>↗</Text>
-        </View>
+        </Pressable>
       </View>
+
+      {shareFeedback && <Text style={styles.shareFeedback}>{shareFeedback}</Text>}
+
+      <CommentsSection
+        visible={showComments}
+        onClose={() => setShowComments(false)}
+        postId={post.id}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        onCountChange={(delta) => setCommentCountDelta((d) => d + delta)}
+      />
     </View>
   );
 }
@@ -160,18 +245,50 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.tableFelt,
+  authorPressable: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.sm,
   },
-  avatarInitial: {
-    color: colors.gold,
+  headerText: {
+    flex: 1,
+  },
+  deleteButton: {
+    padding: spacing.xs,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+  },
+  ownPostActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  confirmDeleteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: 'rgba(192,57,43,0.08)',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  confirmDeleteText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  confirmDeleteCancel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  confirmDeleteConfirm: {
+    fontSize: 13,
+    color: '#C0392B',
     fontWeight: '700',
-    fontSize: 14,
   },
   muted: {
     color: colors.textSecondary,
@@ -245,5 +362,11 @@ const styles = StyleSheet.create({
   engagementCountActive: {
     color: colors.action,
     fontWeight: '700',
+  },
+  shareFeedback: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    paddingTop: spacing.xs,
   },
 });

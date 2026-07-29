@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Action, Board, Card, Hand, Post, Seat } from '../types/poker';
+import type { Group } from '../data/groups';
 import { ContextStep } from './steps/ContextStep';
 import { HoleCardsStep } from './steps/HoleCardsStep';
 import { StreetStep } from './steps/StreetStep';
@@ -43,11 +44,14 @@ interface Snapshot {
 }
 
 interface LiveHandCreatorProps {
+  authorId: string;
+  authorName: string;
   onCreated: (post: Post) => void;
   onCancel: () => void;
+  groups: Group[];
 }
 
-export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
+export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, groups }: LiveHandCreatorProps) {
   const [phase, setPhase] = useState<Phase>('context');
   const [context, setContext] = useState<ContextData>(DEFAULT_CONTEXT);
   const [seats, setSeats] = useState<Seat[]>([]);
@@ -157,8 +161,8 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
     };
     const post: Post = {
       id: `post-${Date.now()}`,
-      authorId: 'user-1',
-      authorName: 'Hero',
+      authorId,
+      authorName,
       createdAt: new Date().toISOString(),
       location: context.location,
       buyIn: context.buyIn,
@@ -172,6 +176,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
       likeCount: 0,
       commentCount: 0,
       visibility: review.visibility,
+      groupId: review.groupId,
       hand,
     };
     onCreated(post);
@@ -448,6 +453,7 @@ export function LiveHandCreator({ onCreated, onCancel }: LiveHandCreatorProps) {
           totalSteps={TOTAL_STEPS}
           onBack={goBack}
           onSubmit={() => finalize(actions, board)}
+          groups={groups}
         />
       );
 

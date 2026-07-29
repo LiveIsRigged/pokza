@@ -401,7 +401,9 @@ export function SeatView({
     y: seatAnchor.y + perpY * btnDistance + dirY * BTN_INWARD_NUDGE,
   };
 
-  const displayName = seat.playerName ?? straddleLabel ?? seat.position;
+  // Hero garde toujours "Hero" — jamais sa position ni un nom personnalisé (buildSeats ne lui en
+  // assigne d'ailleurs jamais) : c'est le narrateur de la main, pas un joueur identifié par siège.
+  const displayName = seat.isHero ? 'Hero' : seat.playerName ?? straddleLabel ?? seat.position;
 
   return (
     <View style={[styles.wrapper, { left: x, top: y }]} pointerEvents="none">

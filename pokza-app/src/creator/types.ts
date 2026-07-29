@@ -35,6 +35,8 @@ export interface ReviewData {
   voteQuestion?: string;
   voteOptions?: string[];
   visibility: Visibility;
+  /** Requis si `visibility === 'group'`. */
+  groupId?: string;
 }
 
 export const DEFAULT_CONTEXT: ContextData = {
