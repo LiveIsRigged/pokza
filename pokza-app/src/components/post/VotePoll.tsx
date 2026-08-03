@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { errorMessage } from '../../utils/errorMessage';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../../theme/theme';
 import { castVote, retractVote } from '../../data/posts';
@@ -96,7 +97,7 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
       setVoted(null);
       resultsAnim.setValue(0);
       options.forEach((opt) => barWidths[opt].setValue(0));
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -123,7 +124,7 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
       options.forEach((opt) => {
         barWidths[opt].setValue(total > 0 ? (previousCounts[opt] ?? 0) / total : 0);
       });
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 

@@ -141,7 +141,11 @@ interface NewPostInput {
 }
 
 /** Insère le post et renvoie la version complète (id/date/compteurs réels attribués par la base). */
-export async function createPost(input: NewPostInput, authorName: string): Promise<Post> {
+export async function createPost(
+  input: NewPostInput,
+  authorName: string,
+  authorAvatarUrl?: string
+): Promise<Post> {
   const { data, error } = await supabase
     .from('posts')
     .insert({
@@ -163,7 +167,7 @@ export async function createPost(input: NewPostInput, authorName: string): Promi
   return rowToPost({
     ...data,
     author_name: authorName,
-    author_avatar_url: null,
+    author_avatar_url: authorAvatarUrl ?? null,
     liked_by_me: false,
     vote_counts: {},
     my_vote: null,

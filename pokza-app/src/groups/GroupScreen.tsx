@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import {
@@ -57,7 +58,7 @@ export function GroupScreen({
         setLoading(false);
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
         setLoading(false);
       });
   };
@@ -73,7 +74,7 @@ export function GroupScreen({
       if (!image) return;
       setCropTarget(image);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -88,7 +89,7 @@ export function GroupScreen({
       const url = await uploadGroupAvatar(groupId, image.uri, region);
       setGroup((g) => (g ? { ...g, avatarUrl: url } : g));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setAvatarUploading(false);
     }
@@ -101,7 +102,7 @@ export function GroupScreen({
       await removeGroupAvatar(groupId);
     } catch (err) {
       setGroup((g) => (g ? { ...g, avatarUrl: previous } : g));
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -117,7 +118,7 @@ export function GroupScreen({
       await removeGroupMember(groupId, userId);
     } catch (err) {
       setMembers(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -130,7 +131,7 @@ export function GroupScreen({
       }
       onBack();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
       setConfirmingLeave(false);
     }
   };
@@ -142,7 +143,7 @@ export function GroupScreen({
       await deletePost(postId);
     } catch (err) {
       setPosts(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -167,7 +168,7 @@ export function GroupScreen({
             : post
         )
       );
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 

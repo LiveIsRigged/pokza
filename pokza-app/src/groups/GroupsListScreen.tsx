@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
@@ -29,7 +30,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : String(err));
+          setError(errorMessage(err));
           setLoading(false);
         }
       });
@@ -48,7 +49,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
       setNewName('');
       onSelectGroup(groupId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setSubmitting(false);
     }

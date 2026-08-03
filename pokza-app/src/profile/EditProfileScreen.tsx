@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
-import { updateProfile, type ProfileDetails } from '../data/profiles';
+import { deleteOwnAccount, updateProfile, type ProfileDetails } from '../data/profiles';
+import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS } from './profileOptions';
 
 const BIO_MAX_LENGTH = 150;
+const PSEUDO_MAX_LENGTH = 24;
 
 interface EditProfileScreenProps {
   profile: ProfileDetails;
@@ -27,8 +30,24 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
   const [frequenceJeu, setFrequenceJeu] = useState(profile.frequenceJeu);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const canSubmit = pseudo.trim().length > 0 && !submitting;
+
+  const handleDeleteAccount = async () => {
+    setDeleteError(null);
+    setDeletingAccount(true);
+    try {
+      await deleteOwnAccount(userId);
+      await supabase.auth.signOut();
+    } catch (err) {
+      setDeletingAccount(false);
+      setConfirmingDelete(false);
+      setDeleteError(errorMessage(err));
+    }
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -44,7 +63,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
       onSaved(updated);
     } catch (err) {
       const code = (err as { code?: string })?.code;
-      setError(code === '23505' ? 'Ce pseudo est déjà pris, choisis-en un autre.' : err instanceof Error ? err.message : String(err));
+      setError(code === '23505' ? 'Ce pseudo est déjà pris, choisis-en un autre.' : errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -62,7 +81,14 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
         <Text style={styles.title}>Modifier mon profil</Text>
 
         <Text style={styles.label}>Pseudo</Text>
-        <TextInput style={styles.input} value={pseudo} onChangeText={setPseudo} autoCapitalize="none" placeholder="Ton pseudo sur Pokza" />
+        <TextInput
+          style={styles.input}
+          value={pseudo}
+          onChangeText={setPseudo}
+          autoCapitalize="none"
+          placeholder="Ton pseudo sur Pokza"
+          maxLength={PSEUDO_MAX_LENGTH}
+        />
 
         <Text style={styles.label}>Afficher sur Pokza</Text>
         <View style={styles.row}>
@@ -104,6 +130,34 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
         <Pressable style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]} onPress={handleSave} disabled={!canSubmit}>
           {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Enregistrer</Text>}
         </Pressable>
+
+        {deleteError && <Text style={styles.error}>{deleteError}</Text>}
+
+        <View style={styles.dangerZone}>
+          {!confirmingDelete ? (
+            <Pressable onPress={() => setConfirmingDelete(true)} hitSlop={8}>
+              <Text style={styles.deleteLink}>Supprimer mon compte</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.confirmRow}>
+              <Text style={styles.confirmText}>
+                Supprimer définitivement ton compte, tes mains et tes commentaires ?
+              </Text>
+              <View style={styles.confirmButtonsRow}>
+                <Pressable onPress={() => setConfirmingDelete(false)} hitSlop={8} disabled={deletingAccount}>
+                  <Text style={styles.confirmCancel}>Non</Text>
+                </Pressable>
+                <Pressable onPress={handleDeleteAccount} hitSlop={8} disabled={deletingAccount}>
+                  {deletingAccount ? (
+                    <ActivityIndicator size="small" color="#C0392B" />
+                  ) : (
+                    <Text style={styles.confirmConfirm}>Oui, supprimer</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -198,5 +252,38 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
+  },
+  dangerZone: {
+    marginTop: 32,
+    alignItems: 'center',
+  },
+  deleteLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  confirmRow: {
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  confirmText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  confirmButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  confirmCancel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  confirmConfirm: {
+    fontSize: 13,
+    color: '#C0392B',
+    fontWeight: '700',
   },
 });

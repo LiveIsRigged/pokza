@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
@@ -51,7 +52,7 @@ export function SearchScreen({
           setLoading(false);
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : String(err));
+          setError(errorMessage(err));
           setLoading(false);
         });
     }, 300);
@@ -73,7 +74,7 @@ export function SearchScreen({
         );
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(errorMessage(err));
       });
     return () => {
       cancelled = true;

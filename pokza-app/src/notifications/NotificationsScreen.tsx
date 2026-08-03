@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
 import {
@@ -117,7 +118,7 @@ export function NotificationsScreen({
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
         setLoading(false);
       });
     return () => {
@@ -135,7 +136,7 @@ export function NotificationsScreen({
         next.delete(n.id);
         return next;
       });
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -149,7 +150,7 @@ export function NotificationsScreen({
         next.delete(n.id);
         return next;
       });
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -164,7 +165,7 @@ export function NotificationsScreen({
         next.delete(n.id);
         return next;
       });
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -179,7 +180,7 @@ export function NotificationsScreen({
         next.delete(n.id);
         return next;
       });
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 

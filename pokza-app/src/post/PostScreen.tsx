@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing } from '../theme/theme';
 import { deletePost, fetchPost, setLiked } from '../data/posts';
@@ -55,7 +56,7 @@ export function PostScreen({
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
         setLoading(false);
       });
     return () => {
@@ -69,7 +70,7 @@ export function PostScreen({
       await deletePost(postId);
       onBack();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -81,7 +82,7 @@ export function PostScreen({
       await setLiked(postId, currentUserId, nextLiked);
     } catch (err) {
       setPost(post); // `post` est la valeur capturée avant la mise à jour optimiste
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 

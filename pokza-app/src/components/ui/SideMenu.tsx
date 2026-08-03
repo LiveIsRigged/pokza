@@ -38,9 +38,13 @@ export function SideMenu({
   // Le panneau doit rester monté pendant l'animation de fermeture, sinon il disparaît d'un coup
   // au lieu de glisser vers la gauche.
   const [rendered, setRendered] = useState(visible);
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
 
   useEffect(() => {
     if (visible) setRendered(true);
+    // Rouvrir le menu doit toujours retomber sur l'entrée normale, pas sur une confirmation
+    // laissée ouverte lors d'une fermeture précédente (tap en dehors du menu, par exemple).
+    if (!visible) setConfirmingSignOut(false);
     Animated.timing(anim, {
       toValue: visible ? 1 : 0,
       duration: 220,
@@ -89,10 +93,24 @@ export function SideMenu({
 
         <View style={styles.spacer} />
 
-        <Pressable style={styles.row} onPress={onSignOut}>
-          <Text style={styles.rowIcon}>⏻</Text>
-          <Text style={styles.rowLabelMuted}>Déconnexion</Text>
-        </Pressable>
+        {!confirmingSignOut ? (
+          <Pressable style={styles.row} onPress={() => setConfirmingSignOut(true)}>
+            <Text style={styles.rowIcon}>⏻</Text>
+            <Text style={styles.rowLabelMuted}>Déconnexion</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.confirmRow}>
+            <Text style={styles.confirmText}>Se déconnecter ?</Text>
+            <View style={styles.confirmButtonsRow}>
+              <Pressable onPress={() => setConfirmingSignOut(false)} hitSlop={8}>
+                <Text style={styles.confirmCancel}>Non</Text>
+              </Pressable>
+              <Pressable onPress={onSignOut} hitSlop={8}>
+                <Text style={styles.confirmConfirm}>Oui, déconnecter</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </Animated.View>
     </View>
   );
@@ -179,5 +197,29 @@ const styles = StyleSheet.create({
   },
   spacer: {
     flex: 1,
+  },
+  confirmRow: {
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xs,
+    gap: spacing.sm,
+  },
+  confirmText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  confirmButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  confirmCancel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  confirmConfirm: {
+    fontSize: 13,
+    color: '#C0392B',
+    fontWeight: '700',
   },
 });

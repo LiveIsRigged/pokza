@@ -258,6 +258,13 @@ export function SeatView({
         duration: 800,
         useNativeDriver: true,
       }).start();
+    } else {
+      // Symétrique du cas ci-dessus : en reculant dans le replayer depuis après la résolution de
+      // la main vers un step antérieur, `winnerSeatPos` redevient null mais rien ne remettait
+      // jusqu'ici `winnerSlideAnim` à 0 — les jetons restaient à l'opacité réduite du vainqueur
+      // (0.3) alors que la main n'est plus donnée pour terminée à ce step. Remise à zéro instantanée
+      // (pas d'animation) : ce n'est pas un geste à montrer, juste un état à corriger.
+      winnerSlideAnim.setValue(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winnerSeatPos]);

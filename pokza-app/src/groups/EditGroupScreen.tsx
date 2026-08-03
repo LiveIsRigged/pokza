@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
 import { updateGroupDescription } from '../data/groups';
@@ -27,7 +28,7 @@ export function EditGroupScreen({ groupId, initialDescription, onCancel, onSaved
       await updateGroupDescription(groupId, description);
       onSaved(description.trim());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setSubmitting(false);
     }

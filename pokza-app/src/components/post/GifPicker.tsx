@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { errorMessage } from '../../utils/errorMessage';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radius, spacing } from '../../theme/theme';
 import { fetchTrendingGifs, searchGifs, type GifResult } from '../../data/gifs';
@@ -26,7 +27,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
     setError(null);
     searchGifs(text)
       .then(setResults)
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
   };
 
@@ -37,7 +38,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
     setError(null);
     fetchTrendingGifs()
       .then(setResults)
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
@@ -104,7 +105,7 @@ function SuggestionsTab({
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : String(err));
+          setError(errorMessage(err));
           setLoading(false);
         }
       });
@@ -120,7 +121,7 @@ function SuggestionsTab({
       await acceptFriendRequest(senderId, currentUserId);
     } catch (err) {
       setPending(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -131,7 +132,7 @@ function SuggestionsTab({
       await deleteFriendRelation(currentUserId, senderId);
     } catch (err) {
       setPending(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 

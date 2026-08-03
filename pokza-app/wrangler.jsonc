@@ -1,0 +1,16 @@
+{
+  // Déploiement web sur Cloudflare Workers (static assets). Pas de champ "main" : tant qu'il n'y a
+  // que du statique à servir, aucun script Worker n'est nécessaire. Il en faudra un le jour où on
+  // voudra injecter les balises Open Graph des mains partagées côté serveur (vignettes WhatsApp /
+  // Discord), ce que l'export statique seul ne permet pas.
+  "name": "pokza",
+  "compatibility_date": "2026-07-30",
+  "assets": {
+    // Produit par `npm run build:web` (expo export --platform web).
+    "directory": "./dist/",
+    // Indispensable : l'export ne génère qu'un seul index.html, donc sans ce fallback toute arrivée
+    // directe sur /post/:id ou /invite/:id renvoie 404 (vérifié). Tous les liens partagés en
+    // dépendent.
+    "not_found_handling": "single-page-application"
+  }
+}

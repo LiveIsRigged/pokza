@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { errorMessage } from '../../utils/errorMessage';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Comment } from '../../types/poker';
 import { createComment, deleteComment, fetchComments, setCommentLiked } from '../../data/comments';
@@ -166,7 +167,7 @@ export function CommentsSection({
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
         setLoading(false);
       });
     return () => {
@@ -184,7 +185,7 @@ export function CommentsSection({
       setPickedImage(image);
       setPickedGif(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -218,7 +219,7 @@ export function CommentsSection({
       setPickedGif(null);
       setReplyingTo(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -236,7 +237,7 @@ export function CommentsSection({
     } catch (err) {
       setComments(previous);
       onCountChange?.(removedCount);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -255,7 +256,7 @@ export function CommentsSection({
           c.id === comment.id ? { ...c, likedByMe: !nextLiked, likeCount: c.likeCount + (nextLiked ? -1 : 1) } : c
         )
       );
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 

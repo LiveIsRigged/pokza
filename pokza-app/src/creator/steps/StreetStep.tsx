@@ -221,6 +221,39 @@ export function StreetStep({
     finishIfDone(nextQueue, nextActive, nextRecorded);
   };
 
+  // Raccourci "fold jusqu'à" : coucher d'un coup tous les sièges de la file AVANT le siège visé,
+  // au lieu de cliquer Fold un par un — le cas le plus courant en préflop (personne d'intéressant
+  // devant une position donnée). Un seul appel à `pushHistory` pour tout le lot : "Annuler" défait
+  // le raccourci en un clic plutôt que de devoir remonter fold par fold. `pushAction` n'est
+  // volontairement pas réutilisé en boucle : il lit `recorded`/`orderCounter` depuis la closure du
+  // render en cours, donc plusieurs appels d'affilée dans la même passe se marcheraient dessus
+  // (chacun ignorant les folds déjà accumulés par les précédents) — l'accumulation se fait ici dans
+  // des variables locales, avec un seul set d'état à la fin.
+  const handleFoldUntil = (targetSeatId: string) => {
+    const targetIndex = queue.indexOf(targetSeatId);
+    if (targetIndex <= 0) return;
+    pushHistory();
+    let nextRecorded = recorded;
+    let nextActive = active;
+    let remainingQueue = queue;
+    let counter = orderCounter;
+    for (let i = 0; i < targetIndex; i++) {
+      const foldingSeatId = remainingQueue[0];
+      nextRecorded = [
+        ...nextRecorded,
+        { id: `${street}-${counter}`, street, seatId: foldingSeatId, type: 'fold', amount: undefined, order: counter },
+      ];
+      nextActive = nextActive.filter((id) => id !== foldingSeatId);
+      remainingQueue = remainingQueue.slice(1);
+      counter += 1;
+    }
+    setRecorded(nextRecorded);
+    setOrderCounter(counter);
+    setActive(nextActive);
+    setQueue(remainingQueue);
+    finishIfDone(remainingQueue, nextActive, nextRecorded);
+  };
+
   const handleCheck = () => {
     pushHistory();
     const nextRecorded = pushAction('check', undefined);
@@ -332,7 +365,13 @@ export function StreetStep({
             <>
               <View style={styles.actorRow}>
                 <Text style={[typography.postTitle, styles.actor]}>
-                  {seatDisplay(currentSeat, seats, priorActions)} agit · reste {fmt(Math.max(remainingFor(currentSeatId), 0))}
+                  {/* "Hero agit", jamais "Hero (CO) agit" : sur cette ligne, Hero c'est déjà "toi"
+                      sans ambiguïté possible — la position entre parenthèses n'ajoute rien qu'un
+                      autre joueur ne pourrait tirer du contexte, contrairement au résumé des
+                      actions et à la liste des stacks juste au-dessus, où elle aide à s'y retrouver
+                      entre plusieurs sièges. */}
+                  {currentSeat.isHero ? 'Hero' : seatDisplay(currentSeat, seats, priorActions)} agit · reste{' '}
+                  {fmt(Math.max(remainingFor(currentSeatId), 0))}
                 </Text>
                 {history.length > 0 && (
                   <Pressable onPress={handleUndo} style={styles.undoButton}>
@@ -377,7 +416,27 @@ export function StreetStep({
                   </View>
                 </View>
               ) : (
-                <View style={styles.row}>
+                <>
+                  {queue.length > 1 && (
+                    <View style={styles.foldUntilSection}>
+                      <Text style={styles.foldUntilLabel}>Fold rapide jusqu'à</Text>
+                      <View style={styles.potShortcutsRow}>
+                        {queue.slice(1).map((seatId) => {
+                          const seat = seats.find((s) => s.id === seatId)!;
+                          return (
+                            <Pressable
+                              key={seatId}
+                              style={styles.foldUntilChip}
+                              onPress={() => handleFoldUntil(seatId)}
+                            >
+                              <Text style={styles.foldUntilChipText}>{seatDisplay(seat, seats, priorActions)}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+                  <View style={styles.row}>
                   {canCheck ? (
                     <Pressable style={styles.actionButton} onPress={handleCheck}>
                       <Text style={styles.actionText}>Check</Text>
@@ -402,7 +461,8 @@ export function StreetStep({
                   <Pressable style={styles.allInButton} onPress={handleAllIn}>
                     <Text style={styles.allInText}>Tapis ({fmt(currentRemaining)})</Text>
                   </Pressable>
-                </View>
+                  </View>
+                </>
               )}
             </>
           ) : (
@@ -472,6 +532,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.tableFelt,
+  },
+  foldUntilSection: {
+    marginBottom: 14,
+  },
+  foldUntilLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  foldUntilChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.2)',
+    backgroundColor: 'rgba(22,35,61,0.04)',
+  },
+  foldUntilChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
   summary: {
     marginBottom: 12,

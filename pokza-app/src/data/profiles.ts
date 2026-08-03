@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { removeAvatar } from './avatars';
 
 export interface ProfileSummary {
   id: string;
@@ -14,6 +15,7 @@ export interface ProfileDetails extends ProfileSummary {
   frequenceJeu: string;
   /** Description libre façon Instagram, 150 caractères max (contrainte vérifiée côté base). */
   bio?: string;
+  createdAt: string;
 }
 
 /** Recherche par pseudo — seule colonne de `profiles` conçue pour être publique et cherchable
@@ -35,7 +37,7 @@ export async function fetchProfile(id: string): Promise<ProfileDetails> {
   const [{ data: row, error: rowError }, { data: displayName, error: nameError }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, pseudo, avatar_url, display_preference, format_favori, frequence_jeu, bio')
+      .select('id, pseudo, avatar_url, display_preference, format_favori, frequence_jeu, bio, created_at')
       .eq('id', id)
       .single(),
     supabase.rpc('get_display_name', { profile_id: id }),
@@ -51,6 +53,7 @@ export async function fetchProfile(id: string): Promise<ProfileDetails> {
     formatFavori: row.format_favori,
     frequenceJeu: row.frequence_jeu,
     bio: row.bio ?? undefined,
+    createdAt: row.created_at,
   };
 }
 
@@ -77,4 +80,21 @@ export async function updateProfile(userId: string, edits: ProfileEditInput): Pr
     .eq('id', userId);
   if (error) throw error;
   return fetchProfile(userId);
+}
+
+/**
+ * Supprime définitivement le compte : la fonction `delete_own_account` (SECURITY DEFINER, cf.
+ * script SQL fourni) supprime la ligne `auth.users`, ce qui entraîne en cascade `profiles`,
+ * `profiles_private` et tout ce qui les référence (posts, commentaires, amitiés, groupes…).
+ * L'avatar est retiré avant l'appel — une fois le compte supprimé, plus rien ne permet de
+ * retrouver son chemin de stockage pour le nettoyer après coup.
+ */
+export async function deleteOwnAccount(userId: string): Promise<void> {
+  try {
+    await removeAvatar(userId);
+  } catch {
+    // Sans conséquence : un avatar orphelin dans le bucket ne doit jamais bloquer la suppression.
+  }
+  const { error } = await supabase.rpc('delete_own_account');
+  if (error) throw error;
 }

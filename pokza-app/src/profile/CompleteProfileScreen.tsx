@@ -23,6 +23,7 @@ function parseBirthDate(day: string, month: string, year: string): string | null
 }
 
 const MINIMUM_AGE = 18;
+const PSEUDO_MAX_LENGTH = 24;
 
 /** Compare année/mois/jour un à un plutôt que de soustraire des millisecondes — insensible aux
  * fuseaux horaires et aux années bissextiles, qui rendraient un calcul par différence peu fiable
@@ -100,7 +101,14 @@ export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps
       <Text style={styles.subtitle}>Dernière étape avant de rejoindre Pokza</Text>
 
       <Text style={styles.label}>Pseudo</Text>
-      <TextInput style={styles.input} value={pseudo} onChangeText={setPseudo} autoCapitalize="none" placeholder="Ton pseudo sur Pokza" />
+      <TextInput
+        style={styles.input}
+        value={pseudo}
+        onChangeText={setPseudo}
+        autoCapitalize="none"
+        placeholder="Ton pseudo sur Pokza"
+        maxLength={PSEUDO_MAX_LENGTH}
+      />
 
       <Text style={styles.label}>Prénom</Text>
       <TextInput style={styles.input} value={prenom} onChangeText={setPrenom} placeholder="Prénom" />

@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
+import { errorMessage } from './src/utils/errorMessage';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts, Fraunces_400Regular, Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
+// Import par graisse, et non depuis la racine de `@expo-google-fonts/fraunces` : son index.js fait
+// un `require()` des 18 graisses au niveau module, que Metro ne peut pas élaguer — importer quoi que
+// ce soit depuis la racine embarquait donc 1,4 Mo de polices dont 1,2 Mo jamais utilisées.
+import { useFonts } from 'expo-font';
+import { Fraunces_400Regular } from '@expo-google-fonts/fraunces/400Regular';
+import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
 import { ActivityIndicator, AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
@@ -11,6 +17,7 @@ import { DisplayUnitProvider } from './src/state/displayUnit';
 import { AuthProvider, useAuth } from './src/state/auth';
 import { useProfileStatus } from './src/state/profile';
 import { AuthScreen } from './src/auth/AuthScreen';
+import { NewPasswordScreen } from './src/auth/NewPasswordScreen';
 import { CompleteProfileScreen } from './src/profile/CompleteProfileScreen';
 import { ProfileScreen } from './src/profile/ProfileScreen';
 import { SearchScreen } from './src/search/SearchScreen';
@@ -23,9 +30,11 @@ import { SideMenu } from './src/components/ui/SideMenu';
 import { ChipStackIcon } from './src/components/ui/ChipStackIcon';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
 import { GroupScreen } from './src/groups/GroupScreen';
-import { fetchMyGroups, inviteToGroup, type Group } from './src/data/groups';
+import { fetchMyGroups, fetchPendingGroupInvites, inviteToGroup, type Group } from './src/data/groups';
+import { fetchPendingRequests } from './src/data/friends';
 import { AddFriendsScreen } from './src/friends/AddFriendsScreen';
 import { FriendsListScreen } from './src/friends/FriendsListScreen';
+import { InvitationsScreen } from './src/invitations/InvitationsScreen';
 import { clearDeepLinkFromUrl, readInitialDeepLink } from './src/navigation/deepLink';
 
 export default function App() {
@@ -40,7 +49,7 @@ export default function App() {
 
 function AppContent() {
   const [fontsLoaded] = useFonts({ Fraunces_400Regular, Fraunces_600SemiBold });
-  const { session, loading } = useAuth();
+  const { session, loading, passwordRecovery, clearPasswordRecovery } = useAuth();
   const {
     hasProfile,
     displayName,
@@ -61,6 +70,7 @@ function AppContent() {
     | 'post'
     | 'addFriends'
     | 'myFriends'
+    | 'invitations'
   >('feed');
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   // Où revenir une fois l'édition terminée : le feed, le profil, la page du groupe ou la page de la
@@ -82,6 +92,7 @@ function AppContent() {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
 
@@ -97,7 +108,7 @@ function AppContent() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setPostsError(err instanceof Error ? err.message : String(err));
+        setPostsError(errorMessage(err));
         setPostsLoading(false);
       });
     return () => {
@@ -112,9 +123,25 @@ function AppContent() {
       .catch(() => {});
   };
 
+  // Demandes d'ami + invitations de groupe en attente, pour le badge "Mes invitations" du menu
+  // latéral — même duo de requêtes que celles utilisées par l'écran lui-même, juste réduites à un
+  // compte total ici.
+  const refreshPendingInvitationsCount = () => {
+    if (!session) return;
+    Promise.all([fetchPendingRequests(session.user.id), fetchPendingGroupInvites(session.user.id)])
+      .then(([requests, invites]) => setPendingInvitationsCount(requests.length + invites.length))
+      .catch(() => {});
+  };
+
   useEffect(() => {
     if (!hasProfile) return;
     refreshUnreadNotificationCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasProfile]);
+
+  useEffect(() => {
+    if (!hasProfile) return;
+    refreshPendingInvitationsCount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasProfile]);
 
@@ -146,7 +173,7 @@ function AppContent() {
       });
       setPostsError(null);
     } catch (err) {
-      setPostsError(err instanceof Error ? err.message : String(err));
+      setPostsError(errorMessage(err));
     }
   };
 
@@ -168,7 +195,7 @@ function AppContent() {
       });
       setHasMorePosts(older.length === FEED_PAGE_SIZE);
     } catch (err) {
-      setPostsError(err instanceof Error ? err.message : String(err));
+      setPostsError(errorMessage(err));
     } finally {
       setLoadingMore(false);
     }
@@ -184,6 +211,7 @@ function AppContent() {
       if (state === 'active') {
         refreshFeed();
         refreshUnreadNotificationCount();
+        refreshPendingInvitationsCount();
       }
     });
     return () => subscription?.remove();
@@ -224,7 +252,7 @@ function AppContent() {
       // Restaure la liste si la suppression échoue côté serveur (ex: coupure réseau) — l'utilisateur
       // ne doit pas croire le post supprimé alors qu'il existe toujours réellement.
       setPosts(previous);
-      setPostsError(err instanceof Error ? err.message : String(err));
+      setPostsError(errorMessage(err));
     }
   };
 
@@ -251,7 +279,7 @@ function AppContent() {
             : post
         )
       );
-      setPostsError(err instanceof Error ? err.message : String(err));
+      setPostsError(errorMessage(err));
     }
   };
 
@@ -274,7 +302,16 @@ function AppContent() {
     );
   }
 
-  if (profileLoading) {
+  if (passwordRecovery) {
+    return (
+      <View style={styles.container}>
+        <NewPasswordScreen onDone={clearPasswordRecovery} onCancel={clearPasswordRecovery} />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  if (profileLoading || hasProfile === null) {
     return <View style={styles.container} />;
   }
 
@@ -311,12 +348,13 @@ function AppContent() {
                   visibility: draftPost.visibility,
                   groupId: draftPost.groupId,
                 },
-                draftPost.authorName
+                draftPost.authorName,
+                myAvatarUrl
               );
               setPosts((p) => [saved, ...p]);
               setMode('feed');
             } catch (err) {
-              setPostsError(err instanceof Error ? err.message : String(err));
+              setPostsError(errorMessage(err));
             }
           }}
         />
@@ -343,7 +381,7 @@ function AppContent() {
               setEditingPostId(null);
               setMode(editReturnMode);
             } catch (err) {
-              setPostsError(err instanceof Error ? err.message : String(err));
+              setPostsError(errorMessage(err));
             }
           }}
         />
@@ -390,6 +428,26 @@ function AppContent() {
             setPostReturnMode('notifications');
             setMode('post');
           }}
+        />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  if (mode === 'invitations') {
+    return (
+      <View style={styles.container}>
+        <InvitationsScreen
+          currentUserId={session.user.id}
+          onBack={() => {
+            setMode('feed');
+            refreshPendingInvitationsCount();
+          }}
+          onSelectProfile={(profileId) => {
+            setViewingProfileId(profileId);
+            setMode('profile');
+          }}
+          onInvitationHandled={refreshPendingInvitationsCount}
         />
         <StatusBar style="dark" />
       </View>
@@ -536,7 +594,7 @@ function AppContent() {
             try {
               await inviteToGroup(invitingGroupId, profileId, session.user.id);
             } catch (err) {
-              setPostsError(err instanceof Error ? err.message : String(err));
+              setPostsError(errorMessage(err));
             }
           }}
         />
@@ -628,6 +686,15 @@ function AppContent() {
         displayName={displayName ?? 'Joueur'}
         avatarUrl={myAvatarUrl}
         items={[
+          {
+            label: 'Mes invitations',
+            icon: '✉️',
+            badge: pendingInvitationsCount,
+            onPress: () => {
+              setMenuOpen(false);
+              setMode('invitations');
+            },
+          },
           {
             label: 'Ajouter des amis',
             icon: '🤝',

@@ -92,9 +92,20 @@ export function HandReplayer({ hand }: HandReplayerProps) {
       : null;
 
   // Coordonnées ABSOLUES (repère table) de CHAQUE siège gagnant — plusieurs en cas de split pot.
+  // Décalées de quelques pixels vers le centre de la table (au lieu du point d'ancrage exact du
+  // siège, qui est aussi celui de son bloc cartes+badge) : sans ce nudge, la pastille de pot qui
+  // glisse jusqu'au vainqueur atterrit pile sur ses cartes plutôt qu'à côté, illisible dès qu'il y
+  // a un split pot.
+  const WINNER_TARGET_NUDGE = 48;
   const winnerCoordsList = state.winningSeatIds
     .map((id) => seatCoords.find((sc) => sc.seat.id === id))
-    .filter((sc): sc is (typeof seatCoords)[number] => Boolean(sc));
+    .filter((sc): sc is (typeof seatCoords)[number] => Boolean(sc))
+    .map((sc) => {
+      const dx = tableCenter.x - sc.x;
+      const dy = tableCenter.y - sc.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      return { ...sc, x: sc.x + (dx / dist) * WINNER_TARGET_NUDGE, y: sc.y + (dy / dist) * WINNER_TARGET_NUDGE };
+    });
 
   // Chaque SeatView ne prend qu'UNE cible (cf. son propre système de glissement à deux segments) :
   // on lui donne le vainqueur le plus proche plutôt que de fragmenter visuellement le petit tas de

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import { fetchProfile, type ProfileDetails } from '../data/profiles';
@@ -23,6 +24,13 @@ import { PostCard } from '../components/post/PostCard';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
 import { playerSummary } from './profileOptions';
+
+/** Même format que les dates de main affichées sur `PostCard` (ex: "29 juil. 2026") — cohérence
+ * visuelle entre les deux, pas de format de date différent selon l'écran. */
+function formatJoinDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 function mutualFriendsLabel(pseudos: string[]): string {
   const prefix = pseudos.length === 1 ? 'Ami en commun' : 'Amis en commun';
@@ -84,7 +92,7 @@ export function ProfileScreen({
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
         setLoading(false);
       });
     return () => {
@@ -100,7 +108,7 @@ export function ProfileScreen({
         if (!cancelled) setPendingRequests(data);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(errorMessage(err));
       });
     return () => {
       cancelled = true;
@@ -140,7 +148,7 @@ export function ProfileScreen({
     } catch (err) {
       setPendingRequests(previous);
       setFriends((f) => f.filter((fr) => fr.id !== senderId));
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -151,7 +159,7 @@ export function ProfileScreen({
       await deleteFriendRelation(currentUserId, senderId);
     } catch (err) {
       setPendingRequests(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -163,7 +171,7 @@ export function ProfileScreen({
         if (!cancelled) setFriendStatus(status);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(errorMessage(err));
       });
     return () => {
       cancelled = true;
@@ -193,7 +201,7 @@ export function ProfileScreen({
       await sendFriendRequest(currentUserId, profileId);
     } catch (err) {
       setFriendStatus(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -204,7 +212,7 @@ export function ProfileScreen({
       await acceptFriendRequest(profileId, currentUserId);
     } catch (err) {
       setFriendStatus(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -216,7 +224,7 @@ export function ProfileScreen({
       await deleteFriendRelation(currentUserId, profileId);
     } catch (err) {
       setFriendStatus(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -226,7 +234,7 @@ export function ProfileScreen({
       if (!image) return;
       setCropTarget(image);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -242,7 +250,7 @@ export function ProfileScreen({
       setProfile((p) => (p ? { ...p, avatarUrl: url } : p));
       onProfileChanged?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setAvatarUploading(false);
     }
@@ -256,7 +264,7 @@ export function ProfileScreen({
       onProfileChanged?.();
     } catch (err) {
       setProfile((p) => (p ? { ...p, avatarUrl: previous } : p));
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -273,7 +281,7 @@ export function ProfileScreen({
       await deletePost(postId);
     } catch (err) {
       setPosts(previous);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -298,7 +306,7 @@ export function ProfileScreen({
             : post
         )
       );
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   };
 
@@ -346,6 +354,10 @@ export function ProfileScreen({
               ) : (
                 <Text style={styles.subtitle}>{playerSummary(profile.formatFavori, profile.frequenceJeu)}</Text>
               )}
+              <Text style={styles.metaLine}>
+                {posts.length} main{posts.length !== 1 ? 's' : ''} partagée{posts.length !== 1 ? 's' : ''} · Membre
+                depuis {formatJoinDate(profile.createdAt)}
+              </Text>
 
               {isOwnProfile && (
                 <View style={styles.ownProfileActions}>
@@ -559,6 +571,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
     lineHeight: 20,
+  },
+  metaLine: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 6,
+    textAlign: 'center',
   },
   editProfileButton: {
     borderWidth: 1,

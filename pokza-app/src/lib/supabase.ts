@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Expo n'inline QUE les variables préfixées EXPO_PUBLIC_ (et seulement via `process.env.NOM_STATIQUE`,
 // pas d'accès dynamique) — cf. https://docs.expo.dev/guides/environment-variables/. C'est voulu ici :
@@ -20,7 +21,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    // Pas de redirection OAuth via URL de navigateur sur mobile natif.
-    detectSessionInUrl: false,
+    // Pas de redirection OAuth via URL de navigateur sur mobile natif — mais nécessaire sur web
+    // pour que le lien "mot de passe oublié" reçu par email (token dans l'URL) établisse une
+    // session de récupération au chargement (cf. NewPasswordScreen).
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
