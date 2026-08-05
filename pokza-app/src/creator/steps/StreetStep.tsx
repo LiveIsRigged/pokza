@@ -45,6 +45,9 @@ interface Snapshot {
 interface StreetStepProps {
   street: Street;
   boardCount: number;
+  /** Nombre de cartes du SECOND board à saisir sur cette street (double board bomb pot) — 0 = un
+   * seul board. Quand > 0, deux sélecteurs sont affichés et les deux boards doivent être remplis. */
+  boardCount2?: number;
   usedCardsElsewhere: Card[];
   seats: Seat[];
   activeSeatIds: string[];
@@ -64,8 +67,13 @@ interface StreetStepProps {
   bb?: number;
   gameType?: GameType;
   onBack: () => void;
-  onComplete: (boardCards: Card[], actions: Action[], remainingActiveSeatIds: string[]) => void;
-  onHandEndsEarly: (boardCards: Card[], actions: Action[], remainingActiveSeatIds: string[]) => void;
+  onComplete: (boardCards: Card[], board2Cards: Card[], actions: Action[], remainingActiveSeatIds: string[]) => void;
+  onHandEndsEarly: (
+    boardCards: Card[],
+    board2Cards: Card[],
+    actions: Action[],
+    remainingActiveSeatIds: string[]
+  ) => void;
   step?: number;
   totalSteps?: number;
 }
@@ -78,6 +86,7 @@ function seatDisplay(seat: Seat, seats: Seat[], priorActions: Action[]): string 
 export function StreetStep({
   street,
   boardCount,
+  boardCount2 = 0,
   usedCardsElsewhere,
   seats,
   activeSeatIds,
@@ -97,6 +106,7 @@ export function StreetStep({
   totalSteps,
 }: StreetStepProps) {
   const [boardCards, setBoardCards] = useState<(Card | undefined)[]>(Array(boardCount).fill(undefined));
+  const [boardCards2, setBoardCards2] = useState<(Card | undefined)[]>(Array(boardCount2).fill(undefined));
 
   // Chips qu'un siège peut engager sur CETTE street (son stack restant en début de street).
   // L'ante posté sur cette street est de l'argent mort indépendant du niveau de mise à suivre :
@@ -124,7 +134,7 @@ export function StreetStep({
   const [enteringAmount, setEnteringAmount] = useState<'bet' | 'raise' | null>(null);
   const [history, setHistory] = useState<Snapshot[]>([]);
 
-  const boardComplete = boardCards.every(Boolean);
+  const boardComplete = boardCards.every(Boolean) && boardCards2.every(Boolean);
   const fmt = (n: number) => formatChipAmount(n, gameType);
 
   // Pot total en direct : ce qui a été misé sur les streets précédentes (déjà réglé) + l'ante de
@@ -165,6 +175,7 @@ export function StreetStep({
       .map((s) => s.id);
 
   const finalBoard = () => boardCards.filter(Boolean) as Card[];
+  const finalBoard2 = () => boardCards2.filter(Boolean) as Card[];
 
   const pushHistory = () => {
     setHistory((h) => [...h, { queue, active, betAmount, contributions, recorded, orderCounter }]);
@@ -201,11 +212,11 @@ export function StreetStep({
 
   const finishIfDone = (nextQueue: string[], nextActive: string[], nextRecorded: Action[]) => {
     if (nextActive.length <= 1) {
-      onHandEndsEarly(finalBoard(), nextRecorded, nextActive);
+      onHandEndsEarly(finalBoard(), finalBoard2(), nextRecorded, nextActive);
       return true;
     }
     if (nextQueue.length === 0) {
-      onComplete(finalBoard(), nextRecorded, nextActive);
+      onComplete(finalBoard(), finalBoard2(), nextRecorded, nextActive);
       return true;
     }
     return false;
@@ -319,16 +330,33 @@ export function StreetStep({
     >
       {boardCount > 0 && (
         <View style={styles.boardSection}>
+          {boardCount2 > 0 && <Text style={styles.boardLabel}>Board 1</Text>}
           <MultiCardPicker
             count={boardCount}
             selected={boardCards}
-            disabledCards={usedCardsElsewhere}
+            // En double board, une carte prise sur le board 2 ne doit pas être re-sélectionnable ici.
+            disabledCards={[...usedCardsElsewhere, ...(boardCards2.filter(Boolean) as Card[])]}
             onChange={(next) => {
               const filled = [...next];
               while (filled.length < boardCount) filled.push(undefined);
               setBoardCards(filled);
             }}
           />
+          {boardCount2 > 0 && (
+            <>
+              <Text style={[styles.boardLabel, styles.boardLabel2]}>Board 2</Text>
+              <MultiCardPicker
+                count={boardCount2}
+                selected={boardCards2}
+                disabledCards={[...usedCardsElsewhere, ...(boardCards.filter(Boolean) as Card[])]}
+                onChange={(next) => {
+                  const filled = [...next];
+                  while (filled.length < boardCount2) filled.push(undefined);
+                  setBoardCards2(filled);
+                }}
+              />
+            </>
+          )}
         </View>
       )}
 
@@ -469,7 +497,7 @@ export function StreetStep({
             // Plus personne ne peut agir (tous les joueurs restants sont à tapis) : on passe la street.
             <View>
               <Text style={styles.allInNote}>Les joueurs restants sont à tapis.</Text>
-              <Pressable style={styles.primaryButton} onPress={() => onComplete(finalBoard(), [], active)}>
+              <Pressable style={styles.primaryButton} onPress={() => onComplete(finalBoard(), finalBoard2(), [], active)}>
                 <Text style={styles.primaryText}>Continuer</Text>
               </Pressable>
             </View>
@@ -483,6 +511,17 @@ export function StreetStep({
 const styles = StyleSheet.create({
   boardSection: {
     marginBottom: 8,
+  },
+  boardLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  boardLabel2: {
+    marginTop: 8,
   },
   actionSection: {
     borderTopWidth: StyleSheet.hairlineWidth,

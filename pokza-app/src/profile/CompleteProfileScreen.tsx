@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
 import { colors, radius } from '../theme/theme';
-import { FORMAT_OPTIONS, FREQUENCE_OPTIONS } from './profileOptions';
+import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
 interface CompleteProfileScreenProps {
   onComplete: () => void;
@@ -46,6 +46,9 @@ export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
   const [formatFavori, setFormatFavori] = useState<string | null>(null);
+  // Variante préférée : pré-sélectionnée sur Hold'em (le défaut) pour ne pas ajouter de friction —
+  // le champ n'est donc jamais vide et n'entre pas dans `canSubmit`.
+  const [varianteFavorite, setVarianteFavorite] = useState<string>('nlhe');
   const [frequenceJeu, setFrequenceJeu] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,9 +83,9 @@ export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps
       p_nom: nom.trim(),
       p_date_naissance: dateNaissance,
     });
-    setSubmitting(false);
 
     if (rpcError) {
+      setSubmitting(false);
       if (rpcError.code === '23505') {
         setError('Ce pseudo est déjà pris, choisis-en un autre.');
       } else if (rpcError.code === '23514') {
@@ -92,6 +95,20 @@ export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps
       }
       return;
     }
+
+    // La variante n'est pas gérée par `create_profile` (RPC SECURITY DEFINER qu'on ne veut pas
+    // réécrire à l'aveugle) : la ligne est créée avec le défaut 'nlhe', on ne fait un update de
+    // suivi que si l'utilisateur a choisi une autre variante. Le self-update est autorisé par RLS
+    // (même chemin que l'écran d'édition). Un échec ici ne bloque pas l'entrée — la préférence
+    // reste modifiable depuis le profil.
+    if (varianteFavorite !== 'nlhe') {
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user) {
+        await supabase.from('profiles').update({ variante_favorite: varianteFavorite }).eq('id', userData.user.id);
+      }
+    }
+
+    setSubmitting(false);
     onComplete();
   };
 
@@ -161,6 +178,14 @@ export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps
           <Chip key={opt.value} label={opt.label} selected={formatFavori === opt.value} onPress={() => setFormatFavori(opt.value)} />
         ))}
       </View>
+
+      <Text style={styles.label}>Variante préférée</Text>
+      <View style={styles.row}>
+        {VARIANTE_OPTIONS.map((opt) => (
+          <Chip key={opt.value} label={opt.label} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
+        ))}
+      </View>
+      <Text style={styles.reassurance}>Les mains de cette variante remonteront un peu dans ton fil. Modifiable à tout moment.</Text>
 
       <Text style={styles.label}>À quelle fréquence joues-tu au poker ?</Text>
       <View style={styles.column}>

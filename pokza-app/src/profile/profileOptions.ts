@@ -9,6 +9,14 @@ export const FORMAT_OPTIONS = [
   { value: 'spins', label: 'Spins' },
 ] as const;
 
+// Variante préférée : sert à faire remonter dans le feed les mains de ce type (cf. vue SQL
+// `posts_ranked`). Valeurs alignées sur `Variant` (types/poker.ts) — le défaut est 'nlhe'.
+export const VARIANTE_OPTIONS = [
+  { value: 'nlhe', label: "Hold'em" },
+  { value: 'plo', label: 'PLO' },
+  { value: 'plo5', label: 'PLO5' },
+] as const;
+
 export const FREQUENCE_OPTIONS = [
   { value: 'tres_occasionnel', label: 'Très occasionnellement (moins de deux fois par mois)' },
   { value: 'occasionnel', label: "Occasionnellement (moins d'une fois par semaine)" },

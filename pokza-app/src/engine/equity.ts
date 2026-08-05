@@ -1,4 +1,4 @@
-import type { Card, Rank, Suit } from '../types/poker';
+import type { Card, Rank, Suit, Variant } from '../types/poker';
 import { bestHandWinners } from './handEvaluator';
 
 const ALL_RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
@@ -11,7 +11,7 @@ function cardKey(c: Card): string {
 
 export interface EquityContender {
   seatId: string;
-  holeCards: [Card, Card];
+  holeCards: Card[];
 }
 
 // Préflop/flop tapis (3 ou 4 cartes à venir) : énumérer tous les run-outs exacts serait bien trop
@@ -57,11 +57,14 @@ function sampleWithoutReplacement<T>(arr: T[], k: number): T[] {
  * possibles, étant donné leurs cartes connues et le board actuel (0 à 100). Un split exact entre
  * plusieurs gagnants sur un run-out donné partage la part également entre eux pour ce tirage.
  */
-export function computeEquity(contenders: EquityContender[], board: Card[]): Record<string, number> {
+export function computeEquity(
+  contenders: EquityContender[],
+  board: Card[],
+  variant: Variant = 'nlhe'
+): Record<string, number> {
   const usedKeys = new Set<string>();
   for (const c of contenders) {
-    usedKeys.add(cardKey(c.holeCards[0]));
-    usedKeys.add(cardKey(c.holeCards[1]));
+    for (const card of c.holeCards) usedKeys.add(cardKey(card));
   }
   for (const c of board) usedKeys.add(cardKey(c));
 
@@ -73,7 +76,7 @@ export function computeEquity(contenders: EquityContender[], board: Card[]): Rec
 
   let simCount = 0;
   const tally = (fullBoard: Card[]) => {
-    const winners = bestHandWinners(contenders, fullBoard);
+    const winners = bestHandWinners(contenders, fullBoard, variant);
     const share = 1 / winners.length;
     for (const w of winners) totals[w] += share;
     simCount++;

@@ -10,6 +10,12 @@ export interface BBDisplayOptions {
 // de devise n'ait qu'un seul endroit à toucher.
 const CASH_CURRENCY_SYMBOL = '€';
 
+/** Suffixe de devise à accoler à une dénomination de blindes ("2/5" → "2/5€") : la devise en cash,
+ * rien en tournoi (les jetons ne sont pas de l'argent réel). */
+export function cashCurrencySuffix(gameType: GameType): string {
+  return gameType === 'cash' ? CASH_CURRENCY_SYMBOL : '';
+}
+
 /**
  * Arrondit un montant d'argent réel au centime (2 décimales) — élimine les imprécisions flottantes
  * classiques d'une addition (0.2 + 0.4 → 0.6000000000000001 en JS). Toute somme d'argent réel

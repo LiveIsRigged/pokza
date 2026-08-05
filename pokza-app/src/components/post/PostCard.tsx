@@ -7,6 +7,7 @@ import { HandReplayer } from '../replayer/HandReplayer';
 import { VotePoll } from './VotePoll';
 import { CommentsSection } from './CommentsSection';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
+import { formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
 
 const DESCRIPTION_LINES = 3;
 
@@ -83,17 +84,28 @@ function ExpandableDescription({ text }: { text: string }) {
   );
 }
 
+const VARIANT_LABEL: Record<string, string> = { plo: 'PLO', plo5: 'PLO5' };
+
 function formatContextLine(post: Post): string {
   const { hand } = post;
   const parts: string[] = [];
   parts.push(hand.gameType === 'cash' ? 'Cash game' : 'Tournoi');
-  // Un straddle (simple/double/triple) change le niveau de mise à suivre au-delà de la BB : la
-  // dénomination doit le refléter ("5/10/25"), comme on écrirait "1/2/5" pour une table straddlée.
-  const straddleAmounts = hand.actions
-    .filter((a) => a.type === 'post-straddle')
-    .sort((a, b) => a.order - b.order)
-    .map((a) => a.amount ?? 0);
-  parts.push([hand.blinds.sb, hand.blinds.bb, ...straddleAmounts].join('/'));
+  // Variante en préfixe de la dénomination (Hold'em implicite → rien) : donne "PLO 2/5€" ou
+  // "PLO bomb pot 5€" en un seul segment fluide, plutôt que des morceaux séparés par des points.
+  const variantPrefix = VARIANT_LABEL[hand.variant] ? `${VARIANT_LABEL[hand.variant]} ` : '';
+  if (hand.bombPot) {
+    // Bomb pot : pas de blindes — le montant de l'ante (stocké comme `bb`, cf. finalize) suffit.
+    parts.push(`${variantPrefix}bomb pot ${formatChipAmount(hand.blinds.bb, hand.gameType)}`);
+  } else {
+    // Un straddle (simple/double/triple) change le niveau de mise à suivre au-delà de la BB : la
+    // dénomination doit le refléter ("5/10/25"), comme on écrirait "1/2/5" pour une table straddlée.
+    const straddleAmounts = hand.actions
+      .filter((a) => a.type === 'post-straddle')
+      .sort((a, b) => a.order - b.order)
+      .map((a) => a.amount ?? 0);
+    const stakes = [hand.blinds.sb, hand.blinds.bb, ...straddleAmounts].join('/') + cashCurrencySuffix(hand.gameType);
+    parts.push(`${variantPrefix}${stakes}`);
+  }
   if (post.location) parts.push(post.location);
   if (post.buyIn) parts.push(post.buyIn);
   if (post.level) parts.push(post.level);

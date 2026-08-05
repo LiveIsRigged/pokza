@@ -1,4 +1,4 @@
-import type { Card, Rank } from '../types/poker';
+import type { Card, Rank, Variant } from '../types/poker';
 
 const RANK_ORDER: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const RANK_VALUE: Record<Rank, number> = RANK_ORDER.reduce((acc, r, i) => {
@@ -13,16 +13,16 @@ const RANK_VALUE: Record<Rank, number> = RANK_ORDER.reduce((acc, r, i) => {
  */
 export type HandRank = number[];
 
-function combinations5(cards: Card[]): Card[][] {
-  const results: Card[][] = [];
-  const combo: Card[] = [];
+function chooseK<T>(arr: T[], k: number): T[][] {
+  const results: T[][] = [];
+  const combo: T[] = [];
   function backtrack(start: number) {
-    if (combo.length === 5) {
+    if (combo.length === k) {
       results.push([...combo]);
       return;
     }
-    for (let i = start; i < cards.length; i++) {
-      combo.push(cards[i]);
+    for (let i = start; i < arr.length; i++) {
+      combo.push(arr[i]);
       backtrack(i + 1);
       combo.pop();
     }
@@ -76,20 +76,46 @@ export function compareHandRanks(a: HandRank, b: HandRank): number {
   return 0;
 }
 
-/** Meilleure main de 5 cartes parmi les `cards` fournies (typiquement 7 : 2 en main + 5 au board). */
+/** Meilleure main de 5 cartes parmi les `cards` fournies (typiquement 7 : 2 en main + 5 au board).
+ * Hold'em uniquement : n'importe quelles 5 des cartes disponibles (on peut jouer le board). */
 export function bestHandRank(cards: Card[]): HandRank {
   if (cards.length < 5) throw new Error('bestHandRank requires at least 5 cards');
   let best: HandRank | null = null;
-  for (const combo of combinations5(cards)) {
+  for (const combo of chooseK(cards, 5)) {
     const rank = evaluate5(combo);
     if (!best || compareHandRanks(rank, best) > 0) best = rank;
   }
   return best!;
 }
 
+/**
+ * Meilleure main pour une variante Omaha (PLO/PLO5) : EXACTEMENT 2 cartes fermées + EXACTEMENT 3 du
+ * board. C'est la règle fondamentale qui distingue l'Omaha du Hold'em — on ne peut jamais jouer le
+ * board, ni utiliser 1, 3 ou 4 cartes de sa main. Suppose `board.length >= 3` (toujours vrai à
+ * l'évaluation : le board est complété à 5 cartes avant tout calcul de gagnant ou d'équité).
+ */
+function bestOmahaHandRank(holeCards: Card[], board: Card[]): HandRank {
+  let best: HandRank | null = null;
+  for (const hole2 of chooseK(holeCards, 2)) {
+    for (const board3 of chooseK(board, 3)) {
+      const rank = evaluate5([...hole2, ...board3]);
+      if (!best || compareHandRanks(rank, best) > 0) best = rank;
+    }
+  }
+  if (!best) throw new Error('bestOmahaHandRank requires >= 2 hole cards and >= 3 board cards');
+  return best;
+}
+
+/** Meilleure main d'un joueur selon la variante — aiguille vers la règle Hold'em (5 libres parmi 7)
+ * ou Omaha (2 en main + 3 au board obligatoires). Point d'entrée unique pour ne jamais dupliquer le
+ * choix de règle entre la désignation du gagnant et le calcul d'équité. */
+export function bestHandForVariant(holeCards: Card[], board: Card[], variant: Variant): HandRank {
+  return variant === 'nlhe' ? bestHandRank([...holeCards, ...board]) : bestOmahaHandRank(holeCards, board);
+}
+
 export interface HandContender {
   seatId: string;
-  holeCards: [Card, Card];
+  holeCards: Card[];
 }
 
 /**
@@ -99,11 +125,11 @@ export interface HandContender {
  * chaque run-out simulé (`equity.computeEquity`) — une seule implémentation, pas de logique de
  * départage dupliquée entre les deux.
  */
-export function bestHandWinners(contenders: HandContender[], board: Card[]): string[] {
-  let bestRank = bestHandRank([...contenders[0].holeCards, ...board]);
+export function bestHandWinners(contenders: HandContender[], board: Card[], variant: Variant = 'nlhe'): string[] {
+  let bestRank = bestHandForVariant(contenders[0].holeCards, board, variant);
   let winners = [contenders[0].seatId];
   for (let i = 1; i < contenders.length; i++) {
-    const rank = bestHandRank([...contenders[i].holeCards, ...board]);
+    const rank = bestHandForVariant(contenders[i].holeCards, board, variant);
     const cmp = compareHandRanks(rank, bestRank);
     if (cmp > 0) {
       bestRank = rank;

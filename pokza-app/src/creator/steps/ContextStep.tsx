@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleProp, StyleSheet, Text, TextInput, TextStyle, View } from 'react-native';
 import type { Position } from '../../types/poker';
+import { holeCardCount } from '../../types/poker';
 import { colors } from '../../theme/theme';
 import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
@@ -146,7 +147,25 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
       ? [...availablePositions.slice(straddleCount), ...availablePositions.slice(0, straddleCount)]
       : availablePositions;
 
-  const update = (patch: Partial<ContextData>) => onChange({ ...value, ...patch });
+  // Plafond de joueurs imposé par le jeu de 52 cartes en double board : chaque joueur prend
+  // `holeCardCount` cartes et les deux boards en prennent 10, donc joueurs × cartes + 10 ≤ 52.
+  // Seul le PLO5 double board mord réellement (max 8) ; PLO et Hold'em restent à 9.
+  const maxPlayersFor = (ctx: ContextData): number =>
+    ctx.bombPot && ctx.doubleBoard ? Math.min(9, Math.floor((52 - 10) / holeCardCount(ctx.variant))) : 9;
+  const maxPlayers = maxPlayersFor(value);
+
+  const update = (patch: Partial<ContextData>) => {
+    const next = { ...value, ...patch };
+    // Si le changement (variante, double board...) réduit le plafond sous le nombre courant, on
+    // ramène le nombre de joueurs au max — et on répare la position du héros si elle n'existe plus.
+    const max = maxPlayersFor(next);
+    if (next.numPlayers > max) {
+      next.numPlayers = max;
+      const positions = POSITION_SETS[max] ?? POSITION_SETS[6];
+      if (!positions.includes(next.heroPosition)) next.heroPosition = positions[0];
+    }
+    onChange(next);
+  };
 
   return (
     <WizardScreen
@@ -159,6 +178,13 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
       totalSteps={totalSteps}
     >
       <View>
+        <Text style={styles.label}>Variante</Text>
+        <View style={styles.row}>
+          <Chip label="Hold'em" selected={value.variant === 'nlhe'} onPress={() => update({ variant: 'nlhe' })} />
+          <Chip label="PLO" selected={value.variant === 'plo'} onPress={() => update({ variant: 'plo' })} />
+          <Chip label="PLO5" selected={value.variant === 'plo5'} onPress={() => update({ variant: 'plo5' })} />
+        </View>
+
         <Text style={styles.label}>Type de partie</Text>
         <View style={styles.row}>
           <Chip
@@ -180,6 +206,47 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           />
         </View>
 
+        <Text style={styles.label}>Format</Text>
+        <View style={styles.row}>
+          <Chip label="Classique" selected={!value.bombPot} onPress={() => update({ bombPot: false })} />
+          <Chip
+            label="Bomb pot"
+            selected={value.bombPot}
+            // À l'activation, l'ante de la bombe démarre sur la valeur de la BB (repère naturel), et
+            // le straddle n'a plus de sens (pas de preflop) : on le remet à zéro.
+            onPress={() => update({ bombPot: true, bombAnte: value.bombAnte || value.bb, straddleCount: 0 })}
+          />
+        </View>
+        {value.bombPot && (
+          <Text style={styles.helperText}>
+            Pas de preflop : chaque joueur poste l'ante ci-dessous, puis on joue flop, turn et river.
+          </Text>
+        )}
+
+        {value.bombPot ? (
+          <>
+            <Text style={styles.label}>Ante par joueur (la bombe)</Text>
+            <DecimalTextInput
+              style={styles.input}
+              placeholder="Ante"
+              value={value.bombAnte}
+              onChangeValue={(bombAnte) => update({ bombAnte })}
+            />
+
+            <Text style={styles.label}>Boards</Text>
+            <View style={styles.row}>
+              <Chip label="1 board" selected={!value.doubleBoard} onPress={() => update({ doubleBoard: false })} />
+              <Chip label="2 boards" selected={value.doubleBoard} onPress={() => update({ doubleBoard: true })} />
+            </View>
+            {value.doubleBoard && (
+              <Text style={styles.helperText}>
+                Deux boards : chacun remporte la moitié du pot (gagner les deux = scoop).
+                {maxPlayers < 9 ? ` Limité à ${maxPlayers} joueurs dans cette variante (52 cartes).` : ''}
+              </Text>
+            )}
+          </>
+        ) : (
+          <>
         <Text style={styles.label}>Blindes</Text>
         <View style={styles.row}>
           {(value.gameType === 'tournament' ? TOURNAMENT_BLIND_PRESETS : CASH_BLIND_PRESETS).map(([sb, bb]) => (
@@ -274,6 +341,8 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
             )}
           </>
         )}
+          </>
+        )}
 
         <Text style={styles.label}>Stack effectif</Text>
         <DecimalTextInput
@@ -285,7 +354,9 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
 
         <Text style={styles.label}>Nombre de joueurs</Text>
         <View style={styles.row}>
-          {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+          {[2, 3, 4, 5, 6, 7, 8, 9]
+            .filter((n) => n <= maxPlayers)
+            .map((n) => (
             <Chip
               key={n}
               label={String(n)}

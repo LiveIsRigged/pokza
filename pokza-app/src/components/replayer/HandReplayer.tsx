@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import type { Hand } from '../../types/poker';
+import { holeCardCount } from '../../types/poker';
 import {
   computeHandState,
   describeAction,
@@ -97,15 +98,35 @@ export function HandReplayer({ hand }: HandReplayerProps) {
   // glisse jusqu'au vainqueur atterrit pile sur ses cartes plutôt qu'à côté, illisible dès qu'il y
   // a un split pot.
   const WINNER_TARGET_NUDGE = 48;
+  const nudgeTowardCenter = (sc: { x: number; y: number }) => {
+    const dx = tableCenter.x - sc.x;
+    const dy = tableCenter.y - sc.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    return { x: sc.x + (dx / dist) * WINNER_TARGET_NUDGE, y: sc.y + (dy / dist) * WINNER_TARGET_NUDGE };
+  };
   const winnerCoordsList = state.winningSeatIds
     .map((id) => seatCoords.find((sc) => sc.seat.id === id))
     .filter((sc): sc is (typeof seatCoords)[number] => Boolean(sc))
-    .map((sc) => {
-      const dx = tableCenter.x - sc.x;
-      const dy = tableCenter.y - sc.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      return { ...sc, x: sc.x + (dx / dist) * WINNER_TARGET_NUDGE, y: sc.y + (dy / dist) * WINNER_TARGET_NUDGE };
-    });
+    .map((sc) => ({ ...sc, ...nudgeTowardCenter(sc) }));
+
+  // Parts de pot à faire glisser vers chaque vainqueur, avec leur MONTANT réel (cf. `potAwards`) —
+  // gère le double board où les parts ne sont pas égales (0,5/0,5, scoop, ou 0,25/0,75). Les montants
+  // sont calculés à l'unité près (centime en cash, jeton en tournoi) et le reste d'arrondi va à la
+  // dernière part, pour que la somme des parts égale exactement le pot.
+  const potUnit = hand.gameType === 'cash' ? 100 : 1;
+  const totalPotUnits = Math.round(state.potTotal * potUnit);
+  let allocatedUnits = 0;
+  const winnerShares = state.potAwards
+    .map((award, i) => {
+      const sc = seatCoords.find((s) => s.seat.id === award.seatId);
+      if (!sc) return null;
+      const units =
+        i === state.potAwards.length - 1 ? totalPotUnits - allocatedUnits : Math.round(totalPotUnits * award.fraction);
+      allocatedUnits += units;
+      const nudged = nudgeTowardCenter(sc);
+      return { x: nudged.x - tableCenter.x, y: nudged.y - tableCenter.y, amount: units / potUnit };
+    })
+    .filter((s): s is { x: number; y: number; amount: number } => s !== null);
 
   // Chaque SeatView ne prend qu'UNE cible (cf. son propre système de glissement à deux segments) :
   // on lui donne le vainqueur le plus proche plutôt que de fragmenter visuellement le petit tas de
@@ -134,11 +155,9 @@ export function HandReplayer({ hand }: HandReplayerProps) {
           <View style={[styles.boardWrapper, { width: size.width, height: size.height }]} pointerEvents="none">
             <BoardView
               cards={state.board}
+              cards2={hand.board2 ? state.board2 : undefined}
               pot={state.potTotal}
-              winnerTargets={winnerCoordsList.map((wc) => ({
-                x: wc.x - tableCenter.x,
-                y: wc.y - tableCenter.y,
-              }))}
+              winnerShares={winnerShares}
               gameType={hand.gameType}
               tableWidth={size.width}
               verticalOffset={boardVerticalOffset()}
@@ -194,6 +213,7 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               bb={hand.blinds.bb}
               useBB={useBB}
               straddleLabel={straddleSeatLabel(hand.seats, hand.actions, seat.id)}
+              holeCardCount={holeCardCount(hand.variant)}
             />
           );
         })}
@@ -205,7 +225,11 @@ export function HandReplayer({ hand }: HandReplayerProps) {
         playing={playing}
         step={step - initialStep}
         totalSteps={totalSteps - initialStep}
-        streetLabel={STREET_LABELS[state.currentStreet]}
+        // Un bomb pot n'a pas de preflop : le tout premier frame (antes postés, flop pas encore
+        // révélé) affiche "Bomb pot" plutôt que "Préflop", qui n'aurait aucun sens ici.
+        streetLabel={
+          hand.bombPot && state.currentStreet === 'preflop' ? 'Bomb pot' : STREET_LABELS[state.currentStreet]
+        }
         canGoBack={step > initialStep}
         canGoForward={step < totalSteps}
         onBack={() => {

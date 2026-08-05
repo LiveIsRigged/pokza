@@ -9,6 +9,8 @@ import { Chip } from '../Chip';
 import { straddleSeatLabel } from '../../engine/handEngine';
 
 interface ShowdownStepProps {
+  /** Nombre de cartes fermées par joueur selon la variante : 2 (Hold'em), 4 (PLO) ou 5 (PLO5). */
+  count: number;
   /** Sièges adverses encore en jeu à l'abattage, à qui on peut attribuer des cartes */
   villains: Seat[];
   /** TOUS les sièges de la main (pas seulement les villains) — nécessaire pour calculer le rang
@@ -35,6 +37,7 @@ function seatLabel(seat: Seat, seats: Seat[], actions: Action[]): string {
 }
 
 export function ShowdownStep({
+  count,
   villains,
   seats,
   revealed,
@@ -91,7 +94,7 @@ export function ShowdownStep({
                 {seatLabel(v, seats, actions)}
               </Text>
               <View style={styles.miniCards}>
-                {[0, 1].map((i) =>
+                {Array.from({ length: count }).map((_, i) =>
                   cards[i] ? (
                     <CardView key={i} card={cards[i]} size="small" />
                   ) : (
@@ -110,7 +113,7 @@ export function ShowdownStep({
             Cartes de {seatLabel(villains.find((v) => v.id === selectedId)!, seats, actions)}
           </Text>
           <MultiCardPicker
-            count={2}
+            count={count}
             selected={selectedCards}
             disabledCards={disabledForSelected}
             onChange={(next) => onChange(selectedId, next)}

@@ -46,6 +46,9 @@ interface SeatViewProps {
   /** "Straddle" / "Double straddle" / "Triple straddle" si ce siège a posté un straddle — remplace
    * l'acronyme de position (UTG, HJ...) tant qu'aucun nom de joueur personnalisé n'est défini. */
   straddleLabel?: string | null;
+  /** Nombre de cartes fermées à afficher selon la variante (2/4/5) — utilisé pour dessiner le bon
+   * nombre de dos de carte quand la main de l'adversaire est inconnue ou masquée. */
+  holeCardCount: number;
 }
 
 const CASH_DENOMS = [1000, 100, 25, 5, 1] as const;
@@ -53,6 +56,21 @@ const TOURNAMENT_DENOMS = [5000, 1000, 100, 25, 10, 5, 1] as const;
 const MAX_VISIBLE_CHIPS = 3;
 const BTN_MARKER_SIZE = 20;
 const BTN_CLEARANCE = 4;
+
+// Cartes fermées d'un siège. À 2 cartes (Hold'em) : côte à côte, sans rotation, comme avant. À 4-5
+// cartes (PLO/PLO5) : éventail légèrement chevauché et incliné.
+//
+// Taille de l'éventail : Hero (toujours en bas AU CENTRE de la table, donc horizontalement dégagé
+// quel que soit le nombre de joueurs, et c'est LA main qu'on veut lire) a de grandes cartes ; les
+// adversaires, qui peuvent se retrouver collés au bord de l'écran sur les tables pleines, gardent
+// des cartes plus petites pour ne pas être coupés. Les deux hauteurs restent ≤ 46 (l'enveloppe
+// réservée par le layout, cf. SEAT_CARDS_HEIGHT dans engine/layout.ts) : rien ne déborde sur le board.
+const HOLE_CARD_2 = { w: 34, h: 46 };
+const HOLE_CARD_FAN_HERO = { w: 31, h: 42 };
+const HOLE_CARD_FAN_VILLAIN = { w: 25, h: 34 };
+const FAN_OVERLAP = 0.44; // fraction d'une carte masquée par la suivante
+const FAN_ANGLE = 5; // degrés d'inclinaison entre deux cartes voisines
+const FAN_ARC = 2; // px : les cartes extérieures descendent légèrement (galbe d'éventail)
 
 // Jetons 20% plus petits qu'à l'origine (14px → 11px) et empilés bien droit plutôt qu'en éventail
 // diagonal : la pile occupe une largeur proche d'un seul jeton, ce qui laisse plus de marge contre
@@ -191,6 +209,7 @@ export function SeatView({
   bb,
   useBB = false,
   straddleLabel = null,
+  holeCardCount,
 }: SeatViewProps) {
   const cardOpacity = useRef(new Animated.Value(1)).current;
   const cardOffset = useRef(new Animated.Value(0)).current;
@@ -420,8 +439,31 @@ export function SeatView({
           { opacity: cardOpacity, transform: [{ translateY: cardOffset }] },
         ]}
       >
-        <CardView card={showCardBacks ? undefined : seat.holeCards?.[0]} size="medium" />
-        <CardView card={showCardBacks ? undefined : seat.holeCards?.[1]} size="medium" />
+        {(() => {
+          // Nombre de cartes à dessiner : la vraie longueur si la main est connue, sinon le nombre
+          // imposé par la variante (dos de carte pour un adversaire inconnu ou masqué).
+          const n = seat.holeCards?.length ?? holeCardCount;
+          const fan = n >= 4;
+          const dims = fan ? (seat.isHero ? HOLE_CARD_FAN_HERO : HOLE_CARD_FAN_VILLAIN) : HOLE_CARD_2;
+          return Array.from({ length: n }).map((_, i) => {
+            const card = showCardBacks || !seat.holeCards ? undefined : seat.holeCards[i];
+            const centered = i - (n - 1) / 2;
+            return (
+              <View
+                key={i}
+                style={{
+                  marginLeft: i === 0 ? 0 : fan ? -dims.w * FAN_OVERLAP : 3,
+                  zIndex: i,
+                  transform: fan
+                    ? [{ rotate: `${centered * FAN_ANGLE}deg` }, { translateY: Math.abs(centered) * FAN_ARC }]
+                    : undefined,
+                }}
+              >
+                <CardView card={card} width={dims.w} height={dims.h} />
+              </View>
+            );
+          });
+        })()}
       </Animated.View>
 
       <Animated.View style={[styles.badge, { transform: [{ scale: winnerScale }] }]}>
@@ -516,7 +558,9 @@ const styles = StyleSheet.create({
   },
   cardsRow: {
     flexDirection: 'row',
-    gap: 3,
+    alignItems: 'center',
+    // Espacement/chevauchement géré par le marginLeft de chaque carte (cf. rendu de l'éventail),
+    // pas par `gap` : les deux se cumuleraient sinon.
     marginBottom: 4,
   },
   badge: {

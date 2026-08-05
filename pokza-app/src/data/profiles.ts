@@ -12,6 +12,8 @@ export interface ProfileDetails extends ProfileSummary {
   displayName: string;
   displayPreference: 'pseudo' | 'nom';
   formatFavori: string;
+  /** Variante préférée ('nlhe' | 'plo' | 'plo5') — fait remonter ces mains dans le feed. */
+  varianteFavorite: string;
   frequenceJeu: string;
   /** Description libre façon Instagram, 150 caractères max (contrainte vérifiée côté base). */
   bio?: string;
@@ -37,7 +39,7 @@ export async function fetchProfile(id: string): Promise<ProfileDetails> {
   const [{ data: row, error: rowError }, { data: displayName, error: nameError }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, pseudo, avatar_url, display_preference, format_favori, frequence_jeu, bio, created_at')
+      .select('id, pseudo, avatar_url, display_preference, format_favori, variante_favorite, frequence_jeu, bio, created_at')
       .eq('id', id)
       .single(),
     supabase.rpc('get_display_name', { profile_id: id }),
@@ -51,6 +53,7 @@ export async function fetchProfile(id: string): Promise<ProfileDetails> {
     displayName: displayName ?? row.pseudo,
     displayPreference: row.display_preference,
     formatFavori: row.format_favori,
+    varianteFavorite: row.variante_favorite ?? 'nlhe',
     frequenceJeu: row.frequence_jeu,
     bio: row.bio ?? undefined,
     createdAt: row.created_at,
@@ -61,6 +64,7 @@ export interface ProfileEditInput {
   pseudo: string;
   displayPreference: 'pseudo' | 'nom';
   formatFavori: string;
+  varianteFavorite: string;
   frequenceJeu: string;
   bio?: string;
 }
@@ -74,6 +78,7 @@ export async function updateProfile(userId: string, edits: ProfileEditInput): Pr
       pseudo: edits.pseudo,
       display_preference: edits.displayPreference,
       format_favori: edits.formatFavori,
+      variante_favorite: edits.varianteFavorite,
       frequence_jeu: edits.frequenceJeu,
       bio: edits.bio?.trim() || null,
     })

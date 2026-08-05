@@ -8,13 +8,15 @@ import { ChipsView } from './ChipsView';
 
 interface BoardViewProps {
   cards: Card[];
+  /** Second board (double board bomb pot) — affiché sous le premier. Absent = un seul board. */
+  cards2?: Card[];
   pot: number;
-  /** Coordonnées (relatives au centre de la table) d'un vainqueur, une entrée par vainqueur —
-   * tableau vide si la main n'est pas encore résolue (la pastille reste alors immobile, montant
-   * complet). Plusieurs entrées = split pot : le montant se répartit à parts égales (le reste va
-   * aux premiers vainqueurs de la liste) entre autant de pastilles, chacune filant vers SON
-   * vainqueur plutôt qu'une seule pastille vers un seul gagnant arbitraire. */
-  winnerTargets: { x: number; y: number }[];
+  /** Une part de pot qui file vers un vainqueur : sa position (relative au centre de la table) et son
+   * MONTANT explicite. Tableau vide tant que la main n'est pas résolue (la pastille reste alors
+   * immobile, montant complet). Les montants sont fournis tels quels (plutôt que recalculés en parts
+   * égales) car un double board partage rarement à égalité — ex : un board gagné seul (0,5 du pot) +
+   * un board partagé (0,25 chacun). */
+  winnerShares: { x: number; y: number; amount: number }[];
   gameType?: GameType;
   /** Largeur de la table : sert à dimensionner les cartes pour qu'elles ne débordent jamais sur les sièges. */
   tableWidth?: number;
@@ -25,18 +27,6 @@ interface BoardViewProps {
 }
 
 const CARD_GAP = 4;
-
-/** Répartit `pot` en `n` parts dont la somme vaut exactement `pot` (le reste va aux premières
- * parts) — un vrai split pot ne perd jamais d'unité par arrondi. En cash game l'unité est le
- * centime (montant réel, potentiellement fractionnaire) ; en tournoi c'est le jeton entier. */
-function potShares(pot: number, n: number, gameType: GameType): number[] {
-  if (n <= 0) return [];
-  const unit = gameType === 'cash' ? 100 : 1;
-  const totalUnits = Math.round(pot * unit);
-  const baseUnits = Math.floor(totalUnits / n);
-  const remainderUnits = totalUnits - baseUnits * n;
-  return Array.from({ length: n }, (_, i) => (baseUnits + (i < remainderUnits ? 1 : 0)) / unit);
-}
 
 // Une part du pot qui file vers UN vainqueur. Composant à part (plutôt qu'une boucle de hooks dans
 // `BoardView`) car chaque part a besoin de ses propres valeurs animées indépendantes — le nombre de
@@ -76,10 +66,34 @@ function PotShare({
   );
 }
 
+/** Une rangée de 5 emplacements de board (cartes révélées ou trous vides). */
+function BoardRow({
+  cards,
+  cardWidth,
+  cardHeight,
+  style,
+}: {
+  cards: Card[];
+  cardWidth: number;
+  cardHeight: number;
+  style?: object;
+}) {
+  return (
+    <View style={[styles.cardsRow, { gap: CARD_GAP }, style]}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View key={i} style={{ width: cardWidth, height: cardHeight }}>
+          {cards[i] ? <CardView card={cards[i]} width={cardWidth} height={cardHeight} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function BoardView({
   cards,
+  cards2,
   pot,
-  winnerTargets,
+  winnerShares,
   gameType = 'cash',
   tableWidth = 0,
   verticalOffset = 0,
@@ -90,27 +104,31 @@ export function BoardView({
   // dimensionne à partir de la largeur réelle de la table plutôt qu'une taille fixe (même formule
   // que `SeatView`, via `boardCardSize`, pour que les deux calculs restent synchronisés).
   const { width: cardWidth, height: cardHeight } = boardCardSize(tableWidth);
-  const shares = potShares(pot, winnerTargets.length, gameType);
+  const doubleBoard = Boolean(cards2);
 
   return (
     <View style={[styles.wrapper, { transform: [{ translateY: verticalOffset }] }]} pointerEvents="none">
       <View style={styles.chipsFloat}>
-        {winnerTargets.length === 0 ? (
+        {winnerShares.length === 0 ? (
           <ChipsView amount={pot} gameType={gameType} isWinning={false} bb={bb} useBB={useBB} />
         ) : (
-          winnerTargets.map((target, i) => (
-            <PotShare key={i} amount={shares[i]} gameType={gameType} bb={bb} useBB={useBB} target={target} />
+          winnerShares.map((share, i) => (
+            <PotShare
+              key={i}
+              amount={share.amount}
+              gameType={gameType}
+              bb={bb}
+              useBB={useBB}
+              target={{ x: share.x, y: share.y }}
+            />
           ))
         )}
       </View>
 
-      <View style={[styles.cardsRow, { gap: CARD_GAP }]}>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <View key={i} style={{ width: cardWidth, height: cardHeight }}>
-            {cards[i] ? <CardView card={cards[i]} width={cardWidth} height={cardHeight} /> : null}
-          </View>
-        ))}
-      </View>
+      <BoardRow cards={cards} cardWidth={cardWidth} cardHeight={cardHeight} />
+      {doubleBoard && (
+        <BoardRow cards={cards2!} cardWidth={cardWidth} cardHeight={cardHeight} style={styles.secondBoard} />
+      )}
     </View>
   );
 }
@@ -139,5 +157,9 @@ const styles = StyleSheet.create({
   },
   cardsRow: {
     flexDirection: 'row',
+  },
+  // Le second board se pose juste sous le premier, avec un petit écart pour bien les distinguer.
+  secondBoard: {
+    marginTop: 6,
   },
 });

@@ -23,8 +23,9 @@ export interface Seat {
   playerName?: string;
   isHero: boolean;
   startingStack: number;
-  /** Connues seulement pour le hero, ou si un joueur a montré ses cartes */
-  holeCards?: [Card, Card];
+  /** Connues seulement pour le hero, ou si un joueur a montré ses cartes. Longueur variable selon la
+   * variante : 2 en Hold'em, 4 en PLO, 5 en PLO5 (cf. `holeCardCount`). */
+  holeCards?: Card[];
 }
 
 export interface Board {
@@ -56,8 +57,14 @@ export interface Action {
 }
 
 export type GameType = 'cash' | 'tournament';
-export type Variant = 'nlhe' | 'plo';
+export type Variant = 'nlhe' | 'plo' | 'plo5';
 export type Visibility = 'public' | 'private' | 'group';
+
+/** Nombre de cartes fermées par joueur selon la variante : 2 en Hold'em, 4 en PLO, 5 en PLO5.
+ * Tolérant à `undefined` (anciennes mains sans champ `variant`) → 2, le défaut Hold'em. */
+export function holeCardCount(variant: Variant | undefined): number {
+  return variant === 'plo5' ? 5 : variant === 'plo' ? 4 : 2;
+}
 
 export interface Blinds {
   sb: number;
@@ -74,7 +81,16 @@ export interface Hand {
   visibility: Visibility;
   seats: Seat[];
   board: Board;
+  /** Second board d'un bomb pot en "double board" : deux boards distincts sont distribués, chacun
+   * remporte la moitié du pot (gagner les deux = scoop). Absent = un seul board (cas normal). Les
+   * cartes des deux boards se révèlent ensemble à chaque street (même event `reveal`). */
+  board2?: Board;
   actions: Action[];
+  /** Bomb pot : pas de preflop, chaque joueur poste un ante fixe (la "bombe") et on voit le flop
+   * directement, puis mises normales flop/turn/river. Techniquement, la main n'a que des `post-ante`
+   * en preflop (un par siège) et aucune blinde. Ce drapeau ne sert qu'à l'affichage (libellé) — le
+   * moteur reconstitue tout à partir des actions. Absent/false = main classique. */
+  bombPot?: boolean;
   /** Contrôle QUAND les mains adverses saisies à l'abattage deviennent visibles dans le replayer.
    * Activé : cachées pendant tout le coup, révélées seulement à l'abattage (gagnant ou perdant).
    * Désactivé (défaut) : visibles dès le début du replay, comme Hero. Sans effet sur un adversaire

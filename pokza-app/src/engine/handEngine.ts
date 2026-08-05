@@ -1,4 +1,4 @@
-import type { Action, Card, Hand, Position, Seat, Street } from '../types/poker';
+import type { Action, Board, Card, Hand, Position, Seat, Street } from '../types/poker';
 import { formatChipAmount, roundMoney } from '../utils/chipFormat';
 import { bestHandWinners } from './handEvaluator';
 import { computeEquity } from './equity';
@@ -80,18 +80,21 @@ export function totalReplaySteps(hand: Hand): number {
 }
 
 /**
- * Poster la SB/BB (et un éventuel straddle simple/double/triple) n'est pas une décision du
- * joueur : on démarre le replay juste après, pour ne pas faire cliquer sur ces steps mécaniques
- * à chaque main. Les mises apparaissent déjà postées dès la première frame (cf. `computeHandState`,
- * qui inclut toujours tous les events jusqu'à `step` exclu, skippés ou non).
+ * Poster la SB/BB, les antes (dont la "bombe" d'un bomb pot) et un éventuel straddle n'est pas une
+ * décision du joueur : on démarre le replay juste après ces mises forcées, pour ne pas faire cliquer
+ * sur ces steps mécaniques à chaque main — d'autant plus pertinent en bomb pot, où chaque joueur
+ * poste un ante (jusqu'à 9 clics mécaniques sinon). Les mises apparaissent déjà postées dès la
+ * première frame (cf. `computeHandState`, qui inclut toujours tous les events jusqu'à `step` exclu,
+ * skippés ou non).
  */
+const MECHANICAL_POSTS = new Set(['post-sb', 'post-bb', 'post-ante', 'post-straddle']);
 export function initialReplayStep(hand: Hand): number {
   const events = buildReplayEvents(hand);
   let i = 0;
   while (i < events.length) {
     const ev = events[i];
     const type = ev.kind === 'action' ? ev.action.type : null;
-    if (type === 'post-sb' || type === 'post-bb' || type === 'post-straddle') {
+    if (type && MECHANICAL_POSTS.has(type)) {
       i++;
     } else {
       break;
@@ -151,6 +154,9 @@ export interface HandState {
   allInSeatIds: Set<string>;
   /** Cartes du board visibles à ce step */
   board: Card[];
+  /** Cartes du SECOND board visibles à ce step (double board bomb pot) — tableau vide si la main n'a
+   * qu'un board. Se révèle en même temps que `board` (même event `reveal`). */
+  board2: Card[];
   /** Dernière ACTION jouée (pour les mises/le halo "à toi de jouer"), même si le step courant est
    * lui-même un événement "reveal" — contrairement à `lastEvent`, ne recule jamais. */
   lastAction: Action | null;
@@ -160,6 +166,9 @@ export interface HandState {
   /** ID(s) du/des siège(s) gagnant(s) (fold ou showdown résolu — plusieurs en cas de split pot),
    * tableau vide si main non terminée ou cartes inconnues */
   winningSeatIds: string[];
+  /** Répartition détaillée du pot par siège (fractions) — utile au double board où les parts ne sont
+   * pas égales. Vide tant que la main n'est pas résolue. Cohérent avec `winningSeatIds` (mêmes sièges). */
+  potAwards: PotAward[];
   /** % d'équité par siège (tapis avant la river) : plus aucune action possible, board incomplet,
    * 2+ joueurs encore en lice avec cartes connues. `null` sinon (pas de situation figée, ou cartes
    * d'un contendant inconnues). */
@@ -242,43 +251,61 @@ export function computeHandState(hand: Hand, step: number): HandState {
     }
   }
 
-  // La bulle de mise devant le siège ne montre que la blinde/mise/relance en cours,
-  // pas l'ante : l'ante part directement au pot (dead money), il ne reste pas "devant" le joueur.
+  // La bulle de mise devant le siège ne montre que la blinde/mise/relance en cours, pas l'ante :
+  // l'ante part directement au pot (dead money), il ne reste pas "devant" le joueur.
+  //
+  // EXCEPTION bomb pot : l'ante EST la bombe, on le montre devant chaque joueur sur le premier
+  // segment (street preflop) pour que le bomb pot se lise d'un coup d'œil ; il glissera au pot quand
+  // le flop tombera (comme une blinde ordinaire, cf. l'animation de fin de street dans SeatView).
   const streetContribution: Record<string, number> = {};
   for (const seat of hand.seats) {
-    const v = contributions[seat.id]?.[currentStreet];
+    const bet = contributions[seat.id]?.[currentStreet] ?? 0;
+    const bombAnte = hand.bombPot ? anteContributions[seat.id]?.[currentStreet] ?? 0 : 0;
+    const v = bet + bombAnte;
     if (v) streetContribution[seat.id] = v;
   }
 
-  // Board : concaténation des cartes de chaque event "reveal" traité jusqu'ici, dans l'ordre —
+  // Board(s) : concaténation des cartes de chaque event "reveal" traité jusqu'ici, dans l'ordre —
   // couvre uniformément les révélations normales ET le run-out de fin de main (même type d'event).
+  // Le second board (double board bomb pot) se révèle en même temps, cran par cran.
   const board: Card[] = [];
+  const board2: Card[] = [];
+  const pushStreet = (dest: Card[], b: Board | undefined, street: Street) => {
+    if (!b) return;
+    if (street === 'flop' && b.flop) dest.push(...b.flop);
+    if (street === 'turn' && b.turn) dest.push(b.turn);
+    if (street === 'river' && b.river) dest.push(b.river);
+  };
   for (const ev of eventsSoFar) {
     if (ev.kind !== 'reveal') continue;
-    if (ev.street === 'flop' && hand.board.flop) board.push(...hand.board.flop);
-    if (ev.street === 'turn' && hand.board.turn) board.push(hand.board.turn);
-    if (ev.street === 'river' && hand.board.river) board.push(hand.board.river);
+    pushStreet(board, hand.board, ev.street);
+    pushStreet(board2, hand.board2, ev.street);
   }
 
   const totalSteps = totalReplaySteps(hand);
 
-  // Au dernier step, déterminer le(s) gagnant(s)
+  // Au dernier step, déterminer le(s) gagnant(s) et la répartition du pot.
   let winningSeatIds: string[] = [];
+  let potAwards: PotAward[] = [];
   if (step >= totalSteps) {
-    winningSeatIds = determineWinner(hand);
+    potAwards = determinePotAwards(hand);
+    winningSeatIds = potAwards.map((a) => a.seatId);
   }
 
   // Équité "tapis avant la river" : plus aucune action possible (toutes les vraies actions sont
   // jouées, on n'est plus qu'en train de révéler les cartes du run-out), board pas encore complet,
   // et au moins 2 joueurs encore en lice avec des cartes connues. Sans quoi impossible/inutile à
   // calculer (une seule main = déjà gagnante ; cartes inconnues = pas d'équité calculable).
+  // Double board : l'équité par board n'est pas encore calculée — on la masque plutôt que d'afficher
+  // un chiffre faux (cf. phase 2, à compléter).
   let equities: Record<string, number> | null = null;
-  if (winningSeatIds.length === 0 && board.length < 5 && step >= hand.actions.length) {
+  if (!hand.board2 && winningSeatIds.length === 0 && board.length < 5 && step >= hand.actions.length) {
     const contenders = hand.seats.filter((s) => !foldedSeatIds.has(s.id));
     if (contenders.length >= 2 && contenders.every((s) => s.holeCards)) {
       equities = computeEquity(
         contenders.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
-        board
+        board,
+        hand.variant
       );
     }
   }
@@ -293,9 +320,11 @@ export function computeHandState(hand: Hand, step: number): HandState {
     streetContribution,
     potTotal,
     board,
+    board2,
     lastAction,
     lastEvent,
     winningSeatIds,
+    potAwards,
     equities,
     cardsRevealed,
   };
@@ -361,43 +390,73 @@ function seatLabel(hand: Hand, seatId: string): string {
   return seat?.playerName ?? straddleSeatLabel(hand.seats, hand.actions, seatId) ?? seat?.position ?? '';
 }
 
+/** Part du pot attribuée à un siège, en FRACTION du pot total (0..1). En simple board, un gagnant
+ * unique a 1, un split à N a 1/N. En double board, chaque board vaut 0,5 : un siège qui gagne un
+ * seul board a 0,5 (0,25 s'il le partage), un scoop des deux a 1. */
+export interface PotAward {
+  seatId: string;
+  fraction: number;
+}
+
+/** 5 cartes complètes d'un board, ou `null` s'il est incomplet (ne devrait pas arriver au showdown). */
+function completeBoard(board: Board | undefined): Card[] | null {
+  if (!board?.flop || !board.turn || !board.river) return null;
+  return [...board.flop, board.turn, board.river];
+}
+
 /**
- * Détermine le(s) gagnant(s) de la main. Retourne les ID des sièges gagnants si déterminable —
- * plusieurs en cas de split pot (égalité exacte de main), un tableau vide si indéterminable.
- * Cas 1 : un seul joueur n'a pas foldé → il gagne seul, sans besoin de connaître les cartes.
- * Cas 2 : plusieurs joueurs voient le showdown → on compare leur meilleure main de 5 cartes
- * (2 en main + les 5 du board) via `bestHandWinners`, à condition que le board soit complet. Un
- * joueur non couché mais dont les cartes n'ont pas été renseignées (le créateur n'a pas rempli
- * tous les villains au showdown) est traité comme perdant — exclu de la comparaison plutôt que de
- * rendre toute la main indéterminable — puisqu'une carte inconnue équivaut à une main non montrée
- * (mucked), qui ne peut pas remporter le pot. Si AUCUN joueur non couché n'a de cartes connues, on
- * retourne un tableau vide (vraie indétermination).
+ * Répartit le pot entre les sièges (cf. `PotAward`). Gère à la fois le simple board et le double
+ * board d'un bomb pot (`hand.board2`) : chaque board distribue sa moitié (ou la totalité s'il est
+ * seul) au(x) meilleur(s) sa main, cumulées par siège — un scoop des deux boards récupère donc tout.
+ *
+ * Cas 1 : un seul joueur n'a pas foldé → il rafle tout, sans besoin de connaître les cartes.
+ * Cas 2 : abattage → sur CHAQUE board complet, on compare la meilleure main de 5 cartes selon la
+ * variante (Hold'em : 5 libres ; Omaha : 2 en main + 3 du board), à la manière de `bestHandWinners`.
+ * Un joueur non couché mais dont les cartes n'ont pas été saisies est traité comme mucked (exclu),
+ * pas comme rendant la main indéterminable. Renvoie un tableau vide si rien n'est déterminable.
  */
-export function determineWinner(hand: Hand): string[] {
+export function determinePotAwards(hand: Hand): PotAward[] {
   const foldedSeatIds = new Set<string>();
   for (const action of hand.actions) {
-    if (action.type === 'fold') {
-      foldedSeatIds.add(action.seatId);
-    }
+    if (action.type === 'fold') foldedSeatIds.add(action.seatId);
   }
 
   const notFoldedSeats = hand.seats.filter((s) => !foldedSeatIds.has(s.id));
   if (notFoldedSeats.length === 1) {
-    return [notFoldedSeats[0].id];
+    return [{ seatId: notFoldedSeats[0].id, fraction: 1 }];
   }
-
-  const { flop, turn, river } = hand.board;
-  if (!flop || !turn || !river) return [];
-  const board: Card[] = [...flop, turn, river];
 
   const contenders = notFoldedSeats.filter((s) => s.holeCards);
   if (contenders.length === 0) return [];
-  if (contenders.length === 1) return [contenders[0].id];
 
-  return bestHandWinners(
-    contenders.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
-    board
-  );
+  // Un seul board en temps normal ; deux en double board (chacun pèse alors la moitié du pot).
+  const boards = [hand.board, ...(hand.board2 ? [hand.board2] : [])]
+    .map(completeBoard)
+    .filter((b): b is Card[] => b !== null);
+  if (boards.length === 0) return [];
+  const sharePerBoard = 1 / boards.length;
+
+  const fractions = new Map<string, number>();
+  for (const board of boards) {
+    const winners =
+      contenders.length === 1
+        ? [contenders[0].id]
+        : bestHandWinners(
+            contenders.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
+            board,
+            hand.variant
+          );
+    const perWinner = sharePerBoard / winners.length;
+    for (const id of winners) fractions.set(id, (fractions.get(id) ?? 0) + perWinner);
+  }
+
+  return [...fractions.entries()].map(([seatId, fraction]) => ({ seatId, fraction }));
+}
+
+/** ID des sièges gagnants (au moins une part du pot). Enveloppe `determinePotAwards` pour les
+ * usages qui n'ont besoin que du surlignage (pas des montants). */
+export function determineWinner(hand: Hand): string[] {
+  return determinePotAwards(hand).map((a) => a.seatId);
 }
 
 /**

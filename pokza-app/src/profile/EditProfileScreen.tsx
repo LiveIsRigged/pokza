@@ -5,7 +5,7 @@ import { colors, radius, spacing } from '../theme/theme';
 import { deleteOwnAccount, updateProfile, type ProfileDetails } from '../data/profiles';
 import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
-import { FORMAT_OPTIONS, FREQUENCE_OPTIONS } from './profileOptions';
+import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
 const BIO_MAX_LENGTH = 150;
 const PSEUDO_MAX_LENGTH = 24;
@@ -27,6 +27,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
   const [displayPreference, setDisplayPreference] = useState<'pseudo' | 'nom'>(profile.displayPreference);
   const [bio, setBio] = useState(profile.bio ?? '');
   const [formatFavori, setFormatFavori] = useState(profile.formatFavori);
+  const [varianteFavorite, setVarianteFavorite] = useState(profile.varianteFavorite);
   const [frequenceJeu, setFrequenceJeu] = useState(profile.frequenceJeu);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
         pseudo: pseudo.trim(),
         displayPreference,
         formatFavori,
+        varianteFavorite,
         frequenceJeu,
         bio,
       });
@@ -117,6 +119,14 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
             <Chip key={opt.value} label={opt.label} selected={formatFavori === opt.value} onPress={() => setFormatFavori(opt.value)} />
           ))}
         </View>
+
+        <Text style={styles.label}>Variante préférée</Text>
+        <View style={styles.row}>
+          {VARIANTE_OPTIONS.map((opt) => (
+            <Chip key={opt.value} label={opt.label} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
+          ))}
+        </View>
+        <Text style={styles.hint}>Les mains de cette variante remontent un peu dans ton fil.</Text>
 
         <Text style={styles.label}>À quelle fréquence joues-tu au poker ?</Text>
         <View style={styles.column}>
@@ -227,6 +237,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  hint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 6,
+    lineHeight: 17,
   },
   column: {
     flexDirection: 'column',

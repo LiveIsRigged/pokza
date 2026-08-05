@@ -124,6 +124,8 @@ export function AuthScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
               returnKeyType="go"
               onSubmitEditing={handleForgotPassword}
               onKeyPress={onEnterKey(handleForgotPassword)}
@@ -160,6 +162,8 @@ export function AuthScreen() {
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
         returnKeyType="next"
         onSubmitEditing={() => passwordRef.current?.focus()}
         onKeyPress={onEnterKey(() => passwordRef.current?.focus())}
@@ -173,6 +177,8 @@ export function AuthScreen() {
         placeholder="Mot de passe"
         placeholderTextColor={colors.textSecondary}
         secureTextEntry
+        autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
+        textContentType={mode === 'signUp' ? 'newPassword' : 'password'}
         returnKeyType={mode === 'signUp' ? 'next' : 'go'}
         onSubmitEditing={() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit())}
         onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit()))}
@@ -187,6 +193,8 @@ export function AuthScreen() {
           placeholder="Confirme le mot de passe"
           placeholderTextColor={colors.textSecondary}
           secureTextEntry
+          autoComplete="new-password"
+          textContentType="newPassword"
           returnKeyType="go"
           onSubmitEditing={handleSubmit}
           onKeyPress={onEnterKey(handleSubmit)}

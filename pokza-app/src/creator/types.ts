@@ -1,9 +1,20 @@
-import type { GameType, Position, Visibility } from '../types/poker';
+import type { GameType, Position, Variant, Visibility } from '../types/poker';
 
 export type AnteType = 'none' | 'bb' | 'per-player';
 
 export interface ContextData {
   gameType: GameType;
+  /** Variante jouée : Hold'em (2 cartes), PLO (4) ou PLO5 (5). Détermine le nombre de cartes
+   * fermées saisies par joueur (cf. `holeCardCount`) et la règle d'évaluation des mains. */
+  variant: Variant;
+  /** Bomb pot : pas de preflop, chaque joueur poste `bombAnte` et on va direct au flop. Quand actif,
+   * les blindes/straddle/ante classiques sont remplacés par le seul champ `bombAnte`. */
+  bombPot: boolean;
+  /** Montant de l'ante posté par CHAQUE joueur en bomb pot (ignoré si `bombPot` est faux). */
+  bombAnte: number;
+  /** Double board (bomb pot uniquement) : deux boards, moitié du pot chacun. Ignoré si `bombPot`
+   * est faux. */
+  doubleBoard: boolean;
   sb: number;
   bb: number;
   effectiveStack: number;
@@ -41,6 +52,10 @@ export interface ReviewData {
 
 export const DEFAULT_CONTEXT: ContextData = {
   gameType: 'cash',
+  variant: 'nlhe',
+  bombPot: false,
+  bombAnte: 5,
+  doubleBoard: false,
   sb: 2,
   bb: 5,
   effectiveStack: 500,
