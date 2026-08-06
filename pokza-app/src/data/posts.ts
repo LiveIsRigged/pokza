@@ -28,6 +28,8 @@ interface PostFeedRow {
   mutual_friend_count?: number;
   /** Présent uniquement via la vue `posts_feed_with_group` (page d'un groupe). */
   group_id?: string | null;
+  /** Présent uniquement via la vue `posts_ranked` (feed principal) — cf. pastille 👥 du `PostCard`. */
+  group_name?: string | null;
 }
 
 function rowToPost(row: PostFeedRow): Post {
@@ -52,6 +54,7 @@ function rowToPost(row: PostFeedRow): Post {
     likedByMe: row.liked_by_me,
     visibility: row.visibility,
     groupId: row.group_id ?? undefined,
+    groupName: row.group_name ?? undefined,
     authorIsFriend: row.author_is_friend,
     mutualFriendCount: row.mutual_friend_count,
   };
@@ -91,7 +94,29 @@ export async function fetchPosts(authorId: string): Promise<Post[]> {
     .eq('author_id', authorId)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data as PostFeedRow[]).map(rowToPost);
+  return attachGroupNames((data as PostFeedRow[]).map(rowToPost));
+}
+
+/** `posts_feed` n'expose pas `group_id`/nom du groupe (contrairement à `posts_ranked`) — complété
+ * ici par deux petites requêtes plutôt qu'en modifiant la vue, pour ne pas risquer de casser son
+ * ordre de colonnes (cf. l'incident `CREATE OR REPLACE VIEW` sur `posts_ranked`). Alimente le badge
+ * 👥 du `PostCard` sur la page de profil, sans jamais le faire apparaître sur la page du groupe
+ * lui-même (qui continue de lire `posts_feed_with_group` via `fetchGroupPosts`, non touchée ici). */
+async function attachGroupNames(posts: Post[]): Promise<Post[]> {
+  const groupPostIds = posts.filter((p) => p.visibility === 'group').map((p) => p.id);
+  if (groupPostIds.length === 0) return posts;
+  const { data: postRows, error: postError } = await supabase.from('posts').select('id, group_id').in('id', groupPostIds);
+  if (postError) throw postError;
+  const groupIdByPostId = new Map((postRows ?? []).map((r) => [r.id, r.group_id as string | null]));
+  const groupIds = Array.from(new Set(Array.from(groupIdByPostId.values()).filter((id): id is string => Boolean(id))));
+  if (groupIds.length === 0) return posts;
+  const { data: groupRows, error: groupError } = await supabase.from('groups').select('id, name').in('id', groupIds);
+  if (groupError) throw groupError;
+  const nameById = new Map((groupRows ?? []).map((g) => [g.id, g.name as string]));
+  return posts.map((p) => {
+    const groupId = groupIdByPostId.get(p.id);
+    return groupId ? { ...p, groupId, groupName: nameById.get(groupId) ?? undefined } : p;
+  });
 }
 
 /** Mains d'un groupe (page dédiée) : ordre chronologique, comme la page de profil — un groupe est

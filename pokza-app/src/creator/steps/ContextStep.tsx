@@ -180,7 +180,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
       <View>
         <Text style={styles.label}>Variante</Text>
         <View style={styles.row}>
-          <Chip label="Hold'em" selected={value.variant === 'nlhe'} onPress={() => update({ variant: 'nlhe' })} />
+          <Chip label="NLHE" selected={value.variant === 'nlhe'} onPress={() => update({ variant: 'nlhe' })} />
           <Chip label="PLO" selected={value.variant === 'plo'} onPress={() => update({ variant: 'plo' })} />
           <Chip label="PLO5" selected={value.variant === 'plo5'} onPress={() => update({ variant: 'plo5' })} />
         </View>

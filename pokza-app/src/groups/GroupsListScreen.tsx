@@ -5,6 +5,8 @@ import { colors, radius, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';
 
+const GROUP_NAME_MAX_LENGTH = 30;
+
 interface GroupsListScreenProps {
   currentUserId: string;
   onBack: () => void;
@@ -86,7 +88,8 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
               style={styles.input}
               placeholder="Nom du groupe privé"
               value={newName}
-              onChangeText={setNewName}
+              onChangeText={(text) => setNewName(text.slice(0, GROUP_NAME_MAX_LENGTH))}
+              maxLength={GROUP_NAME_MAX_LENGTH}
               autoFocus
             />
             <View style={styles.createActions}>

@@ -49,6 +49,8 @@ interface ProfileScreenProps {
   onBack: () => void;
   onEditPost: (postId: string) => void;
   onSelectProfile?: (profileId: string) => void;
+  /** Ouvre la page du groupe depuis la pastille 👥 d'une main de groupe. */
+  onOpenGroup?: (groupId: string) => void;
   /** Ouvre l'écran séparé « Mes amis » (uniquement sur son propre profil). */
   onOpenFriends?: () => void;
   /** Prévient l'écran parent qu'il faut rafraîchir sa propre copie du profil (menu latéral) —
@@ -63,6 +65,7 @@ export function ProfileScreen({
   onBack,
   onEditPost,
   onSelectProfile,
+  onOpenGroup,
   onOpenFriends,
   onProfileChanged,
 }: ProfileScreenProps) {
@@ -477,6 +480,7 @@ export function ProfileScreen({
                   onDelete={() => handleDelete(post.id)}
                   onEdit={() => onEditPost(post.id)}
                   onToggleLike={() => handleToggleLike(post.id)}
+                  onOpenGroup={onOpenGroup}
                 />
               ))
             )}

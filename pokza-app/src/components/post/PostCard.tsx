@@ -27,6 +27,9 @@ interface PostCardProps {
   /** Ouvre les commentaires dès l'affichage — utilisé quand la carte est atteinte depuis une
    * notification de commentaire, où le commentaire EST ce qu'on vient lire. */
   initialCommentsOpen?: boolean;
+  /** Ouvre la page du groupe depuis la pastille 👥. Absent (ex. sur la page du groupe lui-même) →
+   * la pastille ne s'affiche de toute façon jamais là puisque `groupName` n'y est pas renseigné. */
+  onOpenGroup?: (groupId: string) => void;
 }
 
 // Tronque la description à 3 lignes avec "… voir plus" collé à la fin de la 3e ligne. Le nombre
@@ -84,14 +87,14 @@ function ExpandableDescription({ text }: { text: string }) {
   );
 }
 
-const VARIANT_LABEL: Record<string, string> = { plo: 'PLO', plo5: 'PLO5' };
+const VARIANT_LABEL: Record<string, string> = { nlhe: 'NLHE', plo: 'PLO', plo5: 'PLO5' };
 
 function formatContextLine(post: Post): string {
   const { hand } = post;
   const parts: string[] = [];
   parts.push(hand.gameType === 'cash' ? 'Cash game' : 'Tournoi');
-  // Variante en préfixe de la dénomination (Hold'em implicite → rien) : donne "PLO 2/5€" ou
-  // "PLO bomb pot 5€" en un seul segment fluide, plutôt que des morceaux séparés par des points.
+  // Variante en préfixe de la dénomination : donne "NLHE 2/5€", "PLO 2/5€" ou "PLO bomb pot 5€" en
+  // un seul segment fluide, plutôt que des morceaux séparés par des points.
   const variantPrefix = VARIANT_LABEL[hand.variant] ? `${VARIANT_LABEL[hand.variant]} ` : '';
   if (hand.bombPot) {
     // Bomb pot : pas de blindes — le montant de l'ante (stocké comme `bb`, cf. finalize) suffit.
@@ -133,6 +136,7 @@ export function PostCard({
   onToggleLike,
   onPressAuthor,
   initialCommentsOpen,
+  onOpenGroup,
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [showComments, setShowComments] = useState(Boolean(initialCommentsOpen));
@@ -167,6 +171,23 @@ export function PostCard({
             </Text>
           </View>
         </Pressable>
+        {post.visibility === 'private' && (
+          <View style={styles.visibilityBadge}>
+            <Text style={styles.visibilityBadgeText}>🔒 Privé</Text>
+          </View>
+        )}
+        {post.visibility === 'group' && post.groupName && (
+          <Pressable
+            style={styles.visibilityBadge}
+            onPress={() => post.groupId && onOpenGroup?.(post.groupId)}
+            disabled={!onOpenGroup || !post.groupId}
+            hitSlop={4}
+          >
+            <Text style={styles.visibilityBadgeText} numberOfLines={1}>
+              👥 {post.groupName}
+            </Text>
+          </Pressable>
+        )}
         {isOwnPost && !confirmingDelete && (
           <View style={styles.ownPostActions}>
             <Pressable style={styles.deleteButton} onPress={onEdit} hitSlop={8}>
@@ -275,6 +296,19 @@ const styles = StyleSheet.create({
   ownPostActions: {
     flexDirection: 'row',
     gap: spacing.xs,
+  },
+  visibilityBadge: {
+    flexShrink: 0,
+    maxWidth: 140,
+    backgroundColor: colors.feedBackground,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  visibilityBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textPrimary,
   },
   confirmDeleteRow: {
     flexDirection: 'row',

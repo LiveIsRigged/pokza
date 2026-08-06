@@ -129,6 +129,10 @@ export interface Post {
   visibility: Visibility;
   /** Requis si `visibility === 'group'`. */
   groupId?: string;
+  /** Nom du groupe, pour la pastille 👥. Renseigné dans le feed principal (vue `posts_ranked`) et
+   * sur la page de profil (complété par `attachGroupNames`) — volontairement absent sur la page du
+   * groupe lui-même, où rappeler le groupe n'aurait aucun sens. */
+  groupName?: string;
 }
 
 export interface Comment {

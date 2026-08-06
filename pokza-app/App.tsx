@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { errorMessage } from './src/utils/errorMessage';
 import { StatusBar } from 'expo-status-bar';
 // Import par graisse, et non depuis la racine de `@expo-google-fonts/fraunces` : son index.js fait
@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces/400Regular';
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
-import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { createPost, deletePost, fetchFeed, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
@@ -28,7 +28,7 @@ import { supabase } from './src/lib/supabase';
 import { fetchUnreadNotificationCount } from './src/data/notifications';
 import { SideMenu } from './src/components/ui/SideMenu';
 import { PullToRefresh } from './src/components/ui/PullToRefresh';
-import { ChipStackIcon } from './src/components/ui/ChipStackIcon';
+import { FeedHeader } from './src/components/ui/FeedHeader';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
 import { GroupScreen } from './src/groups/GroupScreen';
 import { fetchMyGroups, fetchPendingGroupInvites, inviteToGroup, type Group } from './src/data/groups';
@@ -99,6 +99,17 @@ function AppContent() {
   const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
+
+  // Barre d'actions fixe : 0 = déployée (haut du feed), 1 = compacte (feed défilé). On n'anime que
+  // lorsqu'on franchit le petit seuil, pas à chaque événement de scroll.
+  const headerCompact = useRef(new Animated.Value(0)).current;
+  const headerIsCompact = useRef(false);
+  const handleFeedScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const compact = e.nativeEvent.contentOffset.y > 8;
+    if (compact === headerIsCompact.current) return;
+    headerIsCompact.current = compact;
+    Animated.timing(headerCompact, { toValue: compact ? 1 : 0, duration: 150, useNativeDriver: false }).start();
+  };
 
   useEffect(() => {
     if (!hasProfile) return;
@@ -512,6 +523,10 @@ function AppContent() {
             setViewingProfileId(profileId);
             setMode('profile');
           }}
+          onOpenGroup={(groupId) => {
+            setViewingGroupId(groupId);
+            setMode('group');
+          }}
           onOpenFriends={() => setMode('myFriends')}
         />
         <StatusBar style="dark" />
@@ -636,30 +651,22 @@ function AppContent() {
 
   return (
     <View style={styles.container}>
+      <FeedHeader
+        compact={headerCompact}
+        onOpenMenu={() => setMenuOpen(true)}
+        onCreate={() => setMode('create')}
+        onSearch={() => setMode('search')}
+        onNotifications={() => setMode('notifications')}
+        unreadCount={unreadNotificationCount}
+      />
       <PullToRefresh
+        style={styles.feedScroll}
         contentContainerStyle={styles.scrollContent}
         refreshing={refreshing}
         onRefresh={handlePullToRefresh}
+        onScroll={handleFeedScroll}
+        scrollEventThrottle={16}
       >
-        <View style={styles.topRow}>
-          <Pressable style={styles.menuButton} onPress={() => setMenuOpen(true)} hitSlop={8}>
-            <ChipStackIcon />
-          </Pressable>
-          <Pressable style={styles.createButton} onPress={() => setMode('create')}>
-            <Text style={styles.createButtonText}>+ Créer une main</Text>
-          </Pressable>
-          <Pressable style={styles.searchButton} onPress={() => setMode('search')} hitSlop={8}>
-            <Text style={styles.searchButtonText}>🔍</Text>
-          </Pressable>
-          <Pressable style={styles.searchButton} onPress={() => setMode('notifications')} hitSlop={8}>
-            <Text style={styles.searchButtonText}>🔔</Text>
-            {unreadNotificationCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadNotificationCount}</Text>
-              </View>
-            )}
-          </Pressable>
-        </View>
         {postsError && <Text style={styles.statusText}>{postsError}</Text>}
         {postsLoading ? (
           <Text style={styles.statusText}>Chargement des mains…</Text>
@@ -683,6 +690,10 @@ function AppContent() {
               onPressAuthor={() => {
                 setViewingProfileId(post.authorId);
                 setMode('profile');
+              }}
+              onOpenGroup={(groupId) => {
+                setViewingGroupId(groupId);
+                setMode('group');
               }}
             />
           ))
@@ -762,60 +773,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.feedBackground,
   },
-  scrollContent: {
-    paddingTop: 50,
-    paddingBottom: 40,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 14,
-    marginBottom: 10,
-  },
-  createButton: {
+  feedScroll: {
     flex: 1,
-    backgroundColor: colors.action,
-    borderRadius: 20,
-    paddingVertical: 12,
-    alignItems: 'center',
   },
-  createButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  searchButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
-    position: 'relative',
-  },
-  searchButtonText: {
-    fontSize: 15,
-  },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    paddingHorizontal: 3,
-    backgroundColor: colors.action,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  menuButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 12,
+  scrollContent: {
+    paddingTop: 8,
+    paddingBottom: 40,
   },
   statusText: {
     marginHorizontal: 14,
