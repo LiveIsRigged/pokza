@@ -10,6 +10,9 @@ interface ProfileStatus {
   /** Photo de profil du compte courant — sert au menu latéral, seul endroit hors de la page de
    * profil elle-même qui affiche "mon" avatar. */
   avatarUrl: string | undefined;
+  /** Compte admin (présent dans la table `admins`) — n'affiche la page Stats que pour lui. Simple
+   * gating d'UI : la vraie protection est côté base (fonction `get_admin_stats`). */
+  isAdmin: boolean;
   loading: boolean;
   refetch: () => void;
 }
@@ -22,6 +25,7 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refetchCount, setRefetchCount] = useState(0);
 
@@ -30,6 +34,7 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
       setHasProfile(null);
       setDisplayName(null);
       setAvatarUrl(undefined);
+      setIsAdmin(false);
       setLoading(false);
       return;
     }
@@ -38,11 +43,20 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
     Promise.all([
       supabase.rpc('get_display_name', { profile_id: userId }),
       supabase.from('profiles').select('avatar_url').eq('id', userId).maybeSingle(),
-    ]).then(([{ data: name }, { data: row }]) => {
+      // Vérif admin isolée : une erreur ici (table absente, réseau) ne doit jamais casser le
+      // chargement du nom/avatar → on absorbe l'échec en "non-admin".
+      supabase
+        .from('admins')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle()
+        .then((r) => r, () => ({ data: null })),
+    ]).then(([{ data: name }, { data: row }, { data: adminRow }]) => {
       if (cancelled) return;
       setHasProfile(Boolean(name));
       setDisplayName(name ?? null);
       setAvatarUrl(row?.avatar_url ?? undefined);
+      setIsAdmin(Boolean(adminRow));
       setLoading(false);
     });
     return () => {
@@ -52,5 +66,5 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
 
   const refetch = useCallback(() => setRefetchCount((c) => c + 1), []);
 
-  return { hasProfile, displayName, avatarUrl, loading, refetch };
+  return { hasProfile, displayName, avatarUrl, isAdmin, loading, refetch };
 }

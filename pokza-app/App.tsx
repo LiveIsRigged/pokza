@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces/400Regular';
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
-import { ActivityIndicator, AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { createPost, deletePost, fetchFeed, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
@@ -27,6 +27,7 @@ import { PostScreen } from './src/post/PostScreen';
 import { supabase } from './src/lib/supabase';
 import { fetchUnreadNotificationCount } from './src/data/notifications';
 import { SideMenu } from './src/components/ui/SideMenu';
+import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { ChipStackIcon } from './src/components/ui/ChipStackIcon';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
 import { GroupScreen } from './src/groups/GroupScreen';
@@ -35,6 +36,7 @@ import { fetchPendingRequests } from './src/data/friends';
 import { AddFriendsScreen } from './src/friends/AddFriendsScreen';
 import { FriendsListScreen } from './src/friends/FriendsListScreen';
 import { InvitationsScreen } from './src/invitations/InvitationsScreen';
+import { StatsScreen } from './src/stats/StatsScreen';
 import { clearDeepLinkFromUrl, readInitialDeepLink } from './src/navigation/deepLink';
 
 export default function App() {
@@ -54,6 +56,7 @@ function AppContent() {
     hasProfile,
     displayName,
     avatarUrl: myAvatarUrl,
+    isAdmin,
     loading: profileLoading,
     refetch: refetchProfile,
   } = useProfileStatus(session?.user.id);
@@ -71,6 +74,7 @@ function AppContent() {
     | 'addFriends'
     | 'myFriends'
     | 'invitations'
+    | 'stats'
   >('feed');
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   // Où revenir une fois l'édition terminée : le feed, le profil, la page du groupe ou la page de la
@@ -619,11 +623,23 @@ function AppContent() {
     );
   }
 
+  // Réservé aux admins. Double garde : l'entrée de menu n'apparaît que pour un admin, et même en
+  // forçant ce mode la fonction SQL `get_admin_stats` refuse un non-admin.
+  if (mode === 'stats' && isAdmin) {
+    return (
+      <View style={styles.container}>
+        <StatsScreen onBack={() => setMode('feed')} />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <ScrollView
+      <PullToRefresh
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handlePullToRefresh} />}
+        refreshing={refreshing}
+        onRefresh={handlePullToRefresh}
       >
         <View style={styles.topRow}>
           <Pressable style={styles.menuButton} onPress={() => setMenuOpen(true)} hitSlop={8}>
@@ -680,7 +696,7 @@ function AppContent() {
             )}
           </Pressable>
         )}
-      </ScrollView>
+      </PullToRefresh>
       <SideMenu
         visible={menuOpen}
         displayName={displayName ?? 'Joueur'}
@@ -711,6 +727,19 @@ function AppContent() {
               setMode('groups');
             },
           },
+          // Uniquement pour le compte admin (fondateur).
+          ...(isAdmin
+            ? [
+                {
+                  label: 'Statistiques',
+                  icon: '📊',
+                  onPress: () => {
+                    setMenuOpen(false);
+                    setMode('stats');
+                  },
+                },
+              ]
+            : []),
         ]}
         onClose={() => setMenuOpen(false)}
         onOpenProfile={() => {
