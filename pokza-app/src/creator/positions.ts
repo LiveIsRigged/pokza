@@ -1,6 +1,6 @@
 import type { Position, Seat, Street } from '../types/poker';
 
-export const CANON_ORDER: Position[] = ['UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+export const CANON_ORDER: Position[] = ['UTG', 'UTG1', 'UTG2', 'UTG3', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
 
 /** Sièges présents à table selon le nombre de joueurs, dans l'ordre naturel de jeu (préflop). */
 export const POSITION_SETS: Record<number, Position[]> = {
@@ -12,6 +12,7 @@ export const POSITION_SETS: Record<number, Position[]> = {
   7: ['UTG', 'UTG1', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
   8: ['UTG', 'UTG1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
   9: ['UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  10: ['UTG', 'UTG1', 'UTG2', 'UTG3', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
 };
 
 export function buildSeats(

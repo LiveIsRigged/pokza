@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleProp, StyleSheet, Text, TextInput, TextStyle, View } from 'react-native';
+import { StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
 import type { Position } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
 import { colors } from '../../theme/theme';
@@ -147,11 +147,14 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
       ? [...availablePositions.slice(straddleCount), ...availablePositions.slice(0, straddleCount)]
       : availablePositions;
 
-  // Plafond de joueurs imposé par le jeu de 52 cartes en double board : chaque joueur prend
-  // `holeCardCount` cartes et les deux boards en prennent 10, donc joueurs × cartes + 10 ≤ 52.
-  // Seul le PLO5 double board mord réellement (max 8) ; PLO et Hold'em restent à 9.
-  const maxPlayersFor = (ctx: ContextData): number =>
-    ctx.bombPot && ctx.doubleBoard ? Math.min(9, Math.floor((52 - 10) / holeCardCount(ctx.variant))) : 9;
+  // Plafond de joueurs imposé par le jeu de 52 cartes : chaque joueur prend `holeCardCount` cartes,
+  // le(s) board(s) en prennent 5 (ou 10 en double board), donc joueurs × cartes + board ≤ 52.
+  // Plafonné à 10 en dur (au-delà, ce n'est plus une vraie table). Concrètement : NLHE et PLO
+  // atteignent 10, le PLO5 reste à 9 (10 × 5 + 5 = 55 > 52), et le PLO5 double board tombe à 8.
+  const maxPlayersFor = (ctx: ContextData): number => {
+    const boardCards = ctx.bombPot && ctx.doubleBoard ? 10 : 5;
+    return Math.min(10, Math.floor((52 - boardCards) / holeCardCount(ctx.variant)));
+  };
   const maxPlayers = maxPlayersFor(value);
 
   const update = (patch: Partial<ContextData>) => {
@@ -206,26 +209,32 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           />
         </View>
 
-        <Text style={styles.label}>Format</Text>
-        <View style={styles.row}>
-          <Chip label="Classique" selected={!value.bombPot} onPress={() => update({ bombPot: false })} />
-          <Chip
-            label="Bomb pot"
-            selected={value.bombPot}
-            // À l'activation, l'ante de la bombe démarre sur la valeur de la BB (repère naturel), et
-            // le straddle n'a plus de sens (pas de preflop) : on le remet à zéro.
-            onPress={() => update({ bombPot: true, bombAnte: value.bombAnte || value.bb, straddleCount: 0 })}
+        {/* Format spécial et rare : un interrupteur discret plutôt qu'un choix de premier plan.
+            Éteint (défaut, main classique), il n'y a rien à cocher — juste une ligne sobre. */}
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel}>Bomb pot</Text>
+          <Switch
+            value={!!value.bombPot}
+            onValueChange={(on) =>
+              on
+                ? // À l'activation, l'ante de la bombe démarre sur la valeur de la BB (repère
+                  // naturel), et le straddle n'a plus de sens (pas de preflop) : on le remet à zéro.
+                  update({ bombPot: true, bombAnte: value.bombAnte || value.bb, straddleCount: 0 })
+                : update({ bombPot: false })
+            }
+            trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
+            thumbColor="#fff"
+            ios_backgroundColor="rgba(22,35,61,0.18)"
+            // `thumbColor` ne pilote QUE le pouce éteint sur react-native-web ; en position allumée il
+            // retombe sur son teal Material par défaut. On repasse donc le pouce en blanc via son prop
+            // hérité `activeThumbColor` (ignoré côté natif, où `thumbColor` couvre déjà les deux états).
+            {...({ activeThumbColor: '#fff' } as object)}
           />
         </View>
-        {value.bombPot && (
-          <Text style={styles.helperText}>
-            Pas de preflop : chaque joueur poste l'ante ci-dessous, puis on joue flop, turn et river.
-          </Text>
-        )}
 
         {value.bombPot ? (
           <>
-            <Text style={styles.label}>Ante par joueur (la bombe)</Text>
+            <Text style={styles.label}>Ante par joueur</Text>
             <DecimalTextInput
               style={styles.input}
               placeholder="Ante"
@@ -241,7 +250,6 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
             {value.doubleBoard && (
               <Text style={styles.helperText}>
                 Deux boards : chacun remporte la moitié du pot (gagner les deux = scoop).
-                {maxPlayers < 9 ? ` Limité à ${maxPlayers} joueurs dans cette variante (52 cartes).` : ''}
               </Text>
             )}
           </>
@@ -354,7 +362,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
 
         <Text style={styles.label}>Nombre de joueurs</Text>
         <View style={styles.row}>
-          {[2, 3, 4, 5, 6, 7, 8, 9]
+          {[2, 3, 4, 5, 6, 7, 8, 9, 10]
             .filter((n) => n <= maxPlayers)
             .map((n) => (
             <Chip
@@ -369,6 +377,12 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
             />
           ))}
         </View>
+        {maxPlayers < 10 && (
+          // Le jeu de 52 cartes borne la table : ex. PLO5 (5 cartes/joueur) plafonne à 9 en simple
+          // board, à 8 en double board. On explique la borne plutôt que de faire disparaître le chip 10
+          // sans raison visible.
+          <Text style={styles.helperText}>Limité à {maxPlayers} joueurs dans cette variante (jeu de 52 cartes).</Text>
+        )}
 
         <Text style={styles.label}>Ta position</Text>
         <View style={styles.row}>
@@ -491,5 +505,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginBottom: 6,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    marginBottom: 4,
+    paddingVertical: 4,
+  },
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
 });

@@ -265,6 +265,34 @@ export function StreetStep({
     finishIfDone(remainingQueue, nextActive, nextRecorded);
   };
 
+  // Pendant de "fold jusqu'à" quand personne n'a misé (betAmount === 0) : passer d'un coup tous les
+  // sièges AVANT le siège visé en "check". Utile typiquement au flop d'un bomb pot, où checker est
+  // l'action naturelle (rien à suivre) — sans retirer "fold jusqu'à", qui reste pertinent (certaines
+  // salles jouent le bomb pot en "fold or pot"). Même accumulation locale que `handleFoldUntil` pour
+  // ne pas se marcher dessus sur les lectures de closure ; les checks ne changent NI le niveau de mise
+  // NI la liste des joueurs actifs, donc `active` est inchangé.
+  const handleCheckUntil = (targetSeatId: string) => {
+    const targetIndex = queue.indexOf(targetSeatId);
+    if (targetIndex <= 0) return;
+    pushHistory();
+    let nextRecorded = recorded;
+    let remainingQueue = queue;
+    let counter = orderCounter;
+    for (let i = 0; i < targetIndex; i++) {
+      const checkingSeatId = remainingQueue[0];
+      nextRecorded = [
+        ...nextRecorded,
+        { id: `${street}-${counter}`, street, seatId: checkingSeatId, type: 'check', amount: undefined, order: counter },
+      ];
+      remainingQueue = remainingQueue.slice(1);
+      counter += 1;
+    }
+    setRecorded(nextRecorded);
+    setOrderCounter(counter);
+    setQueue(remainingQueue);
+    finishIfDone(remainingQueue, active, nextRecorded);
+  };
+
   const handleCheck = () => {
     pushHistory();
     const nextRecorded = pushAction('check', undefined);
@@ -445,6 +473,26 @@ export function StreetStep({
                 </View>
               ) : (
                 <>
+                  {betAmount === 0 && queue.length > 1 && (
+                    // Personne n'a misé : proposer aussi le batch "check" (cf. handleCheckUntil).
+                    <View style={styles.foldUntilSection}>
+                      <Text style={styles.foldUntilLabel}>Check rapide jusqu'à</Text>
+                      <View style={styles.potShortcutsRow}>
+                        {queue.slice(1).map((seatId) => {
+                          const seat = seats.find((s) => s.id === seatId)!;
+                          return (
+                            <Pressable
+                              key={seatId}
+                              style={styles.checkUntilChip}
+                              onPress={() => handleCheckUntil(seatId)}
+                            >
+                              <Text style={styles.foldUntilChipText}>{seatDisplay(seat, seats, priorActions)}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
                   {queue.length > 1 && (
                     <View style={styles.foldUntilSection}>
                       <Text style={styles.foldUntilLabel}>Fold rapide jusqu'à</Text>
@@ -590,6 +638,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(22,35,61,0.2)',
     backgroundColor: 'rgba(22,35,61,0.04)',
+  },
+  // Même forme que les chips "fold jusqu'à" mais teinte felt distincte : les deux rangées listent les
+  // mêmes sièges pour des actions opposées, la couleur évite le mauvais tap.
+  checkUntilChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.35)',
+    backgroundColor: 'rgba(22,35,61,0.1)',
   },
   foldUntilChipText: {
     fontSize: 12,

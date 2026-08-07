@@ -14,7 +14,7 @@ export interface Card {
 export type Street = 'preflop' | 'flop' | 'turn' | 'river';
 
 export type Position =
-  | 'UTG' | 'UTG1' | 'UTG2' | 'LJ' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB';
+  | 'UTG' | 'UTG1' | 'UTG2' | 'UTG3' | 'LJ' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB';
 
 export interface Seat {
   id: string;

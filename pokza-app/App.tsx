@@ -26,7 +26,7 @@ import { EditPostScreen } from './src/post/EditPostScreen';
 import { PostScreen } from './src/post/PostScreen';
 import { supabase } from './src/lib/supabase';
 import { fetchUnreadNotificationCount } from './src/data/notifications';
-import { SideMenu } from './src/components/ui/SideMenu';
+import { SideMenu, useMenuEdgeSwipe } from './src/components/ui/SideMenu';
 import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { FeedHeader } from './src/components/ui/FeedHeader';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
@@ -98,6 +98,9 @@ function AppContent() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Le menu s'ouvre en glissant du bord gauche vers le centre (plus de bouton dans la barre du
+  // haut) ; désactivé pendant qu'il est ouvert, où c'est le geste inverse qui a la main.
+  const menuEdgeSwipe = useMenuEdgeSwipe(() => setMenuOpen(true), !menuOpen);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
 
   // Barre d'actions fixe : 0 = déployée (haut du feed), 1 = compacte (feed défilé). On n'anime que
@@ -333,7 +336,7 @@ function AppContent() {
   if (!hasProfile) {
     return (
       <View style={styles.container}>
-        <CompleteProfileScreen onComplete={refetchProfile} />
+        <CompleteProfileScreen onComplete={refetchProfile} onBack={() => supabase.auth.signOut()} />
         <StatusBar style="dark" />
       </View>
     );
@@ -650,7 +653,7 @@ function AppContent() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...menuEdgeSwipe.panHandlers}>
       <FeedHeader
         compact={headerCompact}
         onOpenMenu={() => setMenuOpen(true)}

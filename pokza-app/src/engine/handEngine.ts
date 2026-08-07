@@ -342,7 +342,7 @@ function straddleRankLabel(rank: number): string {
 // fois qu'un straddle absorbe les premiers rangs, ces noms se décalent pour repartir de UTG (ex :
 // UTG1 devient UTG s'il n'y a qu'un simple straddle). LJ/HJ/CO/BTN/SB/BB sont relatifs au bouton et
 // ne bougent eux jamais, quel que soit le straddle.
-const UTG_FAMILY: Position[] = ['UTG', 'UTG1', 'UTG2'];
+const UTG_FAMILY: Position[] = ['UTG', 'UTG1', 'UTG2', 'UTG3'];
 
 /**
  * Libellé de position pour le rang `rank` (0 = premier parleur naturel, avant tout straddle) d'une

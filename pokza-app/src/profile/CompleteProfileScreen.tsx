@@ -7,6 +7,9 @@ import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOp
 
 interface CompleteProfileScreenProps {
   onComplete: () => void;
+  /** Revenir en arrière depuis cet écran = se déconnecter : le compte existe déjà (l'inscription
+   * est faite), mais tant que le profil n'est pas créé il n'y a rien d'autre où aller. */
+  onBack: () => void;
 }
 
 // Construit une date ISO (YYYY-MM-DD) à partir de jour/mois/année saisis séparément, et vérifie
@@ -24,6 +27,7 @@ function parseBirthDate(day: string, month: string, year: string): string | null
 
 const MINIMUM_AGE = 18;
 const PSEUDO_MAX_LENGTH = 24;
+const BIO_MAX_LENGTH = 150;
 
 /** Compare année/mois/jour un à un plutôt que de soustraire des millisecondes — insensible aux
  * fuseaux horaires et aux années bissextiles, qui rendraient un calcul par différence peu fiable
@@ -37,10 +41,11 @@ function isAtLeastAge(dateNaissanceIso: string, minimumAge: number): boolean {
   return age >= minimumAge;
 }
 
-export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps) {
+export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScreenProps) {
   const [pseudo, setPseudo] = useState('');
   const [prenom, setPrenom] = useState('');
   const [nom, setNom] = useState('');
+  const [bio, setBio] = useState('');
   const [displayPreference, setDisplayPreference] = useState<'pseudo' | 'nom'>('pseudo');
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
@@ -96,15 +101,18 @@ export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps
       return;
     }
 
-    // La variante n'est pas gérée par `create_profile` (RPC SECURITY DEFINER qu'on ne veut pas
-    // réécrire à l'aveugle) : la ligne est créée avec le défaut 'nlhe', on ne fait un update de
-    // suivi que si l'utilisateur a choisi une autre variante. Le self-update est autorisé par RLS
-    // (même chemin que l'écran d'édition). Un échec ici ne bloque pas l'entrée — la préférence
-    // reste modifiable depuis le profil.
-    if (varianteFavorite !== 'nlhe') {
+    // Ni la variante ni la description ne sont gérées par `create_profile` (RPC SECURITY DEFINER
+    // qu'on ne veut pas réécrire à l'aveugle) : la ligne est créée avec leurs défauts, et on ne fait
+    // un update de suivi que si l'utilisateur s'est écarté de ces défauts. Le self-update est
+    // autorisé par RLS (même chemin que l'écran d'édition). Un échec ici ne bloque pas l'entrée —
+    // les deux champs restent modifiables depuis le profil.
+    const followUp: { variante_favorite?: string; bio?: string } = {};
+    if (varianteFavorite !== 'nlhe') followUp.variante_favorite = varianteFavorite;
+    if (bio.trim()) followUp.bio = bio.trim();
+    if (Object.keys(followUp).length > 0) {
       const { data: userData } = await supabase.auth.getUser();
       if (userData.user) {
-        await supabase.from('profiles').update({ variante_favorite: varianteFavorite }).eq('id', userData.user.id);
+        await supabase.from('profiles').update(followUp).eq('id', userData.user.id);
       }
     }
 
@@ -114,6 +122,10 @@ export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Pressable style={styles.backButton} onPress={onBack} hitSlop={8} disabled={submitting}>
+        <Text style={styles.backText}>‹ Retour</Text>
+      </Pressable>
+
       <Text style={styles.title}>Complète ton profil</Text>
       <Text style={styles.subtitle}>Dernière étape avant de rejoindre Pokza</Text>
 
@@ -172,6 +184,22 @@ export function CompleteProfileScreen({ onComplete }: CompleteProfileScreenProps
       </View>
       <Text style={styles.reassurance}>Ta date de naissance reste privée — elle n'est jamais affichée, quel que soit ton choix ci-dessus.</Text>
 
+      <View style={styles.bioLabelRow}>
+        <Text style={styles.label}>Description (optionnel)</Text>
+        <Text style={styles.bioCounter}>
+          {bio.length}/{BIO_MAX_LENGTH}
+        </Text>
+      </View>
+      <TextInput
+        style={[styles.input, styles.bioInput]}
+        value={bio}
+        onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
+        placeholder="Quelques mots sur toi…"
+        multiline
+        maxLength={BIO_MAX_LENGTH}
+      />
+      <Text style={styles.reassurance}>Affichée sur ton profil. Tu peux la laisser vide et l'écrire plus tard.</Text>
+
       <Text style={styles.label}>Format favori</Text>
       <View style={styles.row}>
         {FORMAT_OPTIONS.map((opt) => (
@@ -210,6 +238,15 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
     backgroundColor: colors.feedBackground,
   },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  backText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.action,
+  },
   title: {
     fontSize: 28,
     fontWeight: '700',
@@ -247,6 +284,19 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 6,
     lineHeight: 17,
+  },
+  bioLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  bioCounter: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  bioInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
   row: {
     flexDirection: 'row',

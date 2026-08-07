@@ -14,11 +14,15 @@ interface FeedHeaderProps {
 }
 
 /**
- * Barre d'actions FIXE en haut du feed (menu · créer · recherche · notifications) : elle ne défile
- * plus avec le contenu, donc reste accessible en permanence. Au défilement, elle se "compacte"
+ * Barre d'actions FIXE en haut du feed (créer · recherche · notifications) : elle ne défile plus
+ * avec le contenu, donc reste accessible en permanence. Au défilement, elle se "compacte"
  * légèrement — on resserre seulement les marges verticales de la barre, le design des boutons ne
  * change pas (« + Créer une main » garde son libellé). Un fin séparateur apparaît une fois défilé
  * pour détacher la barre du feed.
+ *
+ * Le menu latéral s'ouvre de DEUX façons : le bouton ☰ ci-dessous (repli visible, indispensable sur
+ * desktop) et le glissement du bord gauche vers le centre (cf. `useMenuEdgeSwipe` dans SideMenu),
+ * plus naturel sur mobile.
  */
 export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifications, unreadCount }: FeedHeaderProps) {
   const paddingTop = compact.interpolate({ inputRange: [0, 1], outputRange: [48, 30] });

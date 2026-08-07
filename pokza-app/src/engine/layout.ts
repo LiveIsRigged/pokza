@@ -1,6 +1,6 @@
 import type { Position, Seat } from '../types/poker';
 
-const CANON_ORDER: Position[] = ['UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+const CANON_ORDER: Position[] = ['UTG', 'UTG1', 'UTG2', 'UTG3', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
 
 /** Réordonne les sièges en partant du hero (toujours en position 0), dans l'ordre réel de jeu autour de la table. */
 export function orderSeatsFromHero(seats: Seat[]): Seat[] {
