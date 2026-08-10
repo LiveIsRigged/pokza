@@ -7,6 +7,7 @@ import { pickImage, type PickedImage } from '../../data/images';
 import type { GifResult } from '../../data/gifs';
 import { colors, radius, spacing } from '../../theme/theme';
 import { GifPicker } from './GifPicker';
+import { ReportModal } from '../moderation/ReportModal';
 
 interface CommentsSectionProps {
   visible: boolean;
@@ -27,6 +28,8 @@ interface CommentRowProps {
   onToggleLike: () => void;
   onOpenMedia: (uri: string) => void;
   canDelete: boolean;
+  /** Fourni uniquement pour les commentaires des AUTRES → affiche le lien « Signaler ». */
+  onReport?: () => void;
 }
 
 /**
@@ -90,8 +93,26 @@ function MediaViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   );
 }
 
-function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpenMedia, canDelete }: CommentRowProps) {
+function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpenMedia, canDelete, onReport }: CommentRowProps) {
   const mediaUri = comment.imageUrl ?? comment.gifUrl;
+
+  // Commentaire modéré : la RLS ne le laisse voir qu'à son auteur → bandeau à la place du contenu,
+  // sans média, sans actions (like/répondre/supprimer). Invisible pour tous les autres.
+  if (comment.modStatus && comment.modStatus !== 'visible') {
+    return (
+      <View style={[styles.commentRow, indented && styles.commentRowIndented]}>
+        <View style={[styles.commentBubble, styles.commentModerated]}>
+          <Text style={styles.commentAuthor}>{comment.authorName}</Text>
+          <Text style={styles.commentModeratedText}>
+            {comment.modStatus === 'removed'
+              ? '🚫 Commentaire retiré par la modération'
+              : '🙈 Commentaire masqué par la modération'}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.commentRow, indented && styles.commentRowIndented]}>
       <View style={styles.commentBubble}>
@@ -119,6 +140,11 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpen
           {onReply && (
             <Pressable onPress={onReply} hitSlop={8}>
               <Text style={styles.replyLink}>Répondre</Text>
+            </Pressable>
+          )}
+          {onReport && (
+            <Pressable onPress={onReport} hitSlop={8}>
+              <Text style={styles.reportLink}>Signaler</Text>
             </Pressable>
           )}
         </View>
@@ -154,6 +180,7 @@ export function CommentsSection({
   const [pickedGif, setPickedGif] = useState<GifResult | null>(null);
   const [gifPickerOpen, setGifPickerOpen] = useState(false);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [reportingComment, setReportingComment] = useState<Comment | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -290,6 +317,7 @@ export function CommentsSection({
                   onToggleLike={() => handleToggleLike(comment)}
                   onOpenMedia={setViewerUri}
                   canDelete={comment.authorId === currentUserId}
+                  onReport={comment.authorId !== currentUserId ? () => setReportingComment(comment) : undefined}
                 />
                 {repliesFor(comment.id).map((reply) => (
                   <CommentRow
@@ -300,6 +328,7 @@ export function CommentsSection({
                     onToggleLike={() => handleToggleLike(reply)}
                     onOpenMedia={setViewerUri}
                     canDelete={reply.authorId === currentUserId}
+                    onReport={reply.authorId !== currentUserId ? () => setReportingComment(reply) : undefined}
                   />
                 ))}
               </View>
@@ -361,6 +390,14 @@ export function CommentsSection({
 
       <GifPicker visible={gifPickerOpen} onClose={() => setGifPickerOpen(false)} onSelect={handleSelectGif} />
       {viewerUri && <MediaViewer uri={viewerUri} onClose={() => setViewerUri(null)} />}
+      <ReportModal
+        visible={reportingComment != null}
+        onClose={() => setReportingComment(null)}
+        reporterId={currentUserId}
+        targetType="comment"
+        targetId={reportingComment?.id ?? ''}
+        targetLabel="ce commentaire"
+      />
     </Modal>
   );
 }
@@ -448,6 +485,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textPrimary,
   },
+  commentModerated: {
+    backgroundColor: 'rgba(192,57,43,0.06)',
+  },
+  commentModeratedText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: '#C0392B',
+    marginTop: 2,
+  },
   commentMedia: {
     borderRadius: radius.sm,
     marginTop: 4,
@@ -481,6 +527,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.action,
+  },
+  reportLink: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   commentDelete: {
     fontSize: 14,

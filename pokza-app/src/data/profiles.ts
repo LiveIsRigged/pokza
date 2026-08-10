@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { removeAvatar } from './avatars';
+import { resetAnalytics } from '../analytics';
 
 export interface ProfileSummary {
   id: string;
@@ -102,4 +103,7 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
   }
   const { error } = await supabase.rpc('delete_own_account');
   if (error) throw error;
+  // §9.5 (volet client) : oublie l'identité analytics locale. La purge des données déjà envoyées
+  // à PostHog se fera côté serveur (edge function + Personal API Key), à faire séparément.
+  resetAnalytics();
 }

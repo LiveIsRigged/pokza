@@ -6,6 +6,11 @@ import { Avatar } from '../ui/Avatar';
 import { HandReplayer } from '../replayer/HandReplayer';
 import { VotePoll } from './VotePoll';
 import { CommentsSection } from './CommentsSection';
+import { OverflowMenu, type OverflowMenuItem } from '../ui/OverflowMenu';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
+import { ReportModal } from '../moderation/ReportModal';
+import { blockUser } from '../../data/blocks';
+import { errorMessage } from '../../utils/errorMessage';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 import { formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
 
@@ -30,6 +35,11 @@ interface PostCardProps {
   /** Ouvre la page du groupe depuis la pastille 👥. Absent (ex. sur la page du groupe lui-même) →
    * la pastille ne s'affiche de toute façon jamais là puisque `groupName` n'y est pas renseigné. */
   onOpenGroup?: (groupId: string) => void;
+  /** Fourni → propose « Bloquer l'auteur » dans le menu ⋯ (feed principal). Le blocage est déjà
+   * effectué en base quand ce callback est appelé ; le parent n'a plus qu'à retirer localement les
+   * mains de cet auteur (la RLS les masque déjà côté serveur). Absent (page de profil) → pas d'option
+   * de blocage ici, elle vit dans l'en-tête du profil. */
+  onBlockAuthor?: (authorId: string) => void;
 }
 
 // Tronque la description à 3 lignes avec "… voir plus" collé à la fin de la 3e ligne. Le nombre
@@ -125,7 +135,19 @@ function buildShareContent(post: Post): { title: string; message: string; url: s
   return { title: post.title, message: `${post.title} — ${formatContextLine(post)}`, url };
 }
 
-export function PostCard({
+/**
+ * Enrobe la carte d'une barrière d'erreur : une main malformée (ou tout autre plantage de rendu)
+ * n'affecte que SA carte — repli discret à sa place — au lieu de blanchir tout le feed.
+ */
+export function PostCard(props: PostCardProps) {
+  return (
+    <ErrorBoundary label={`PostCard ${props.post.id}`}>
+      <PostCardInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function PostCardInner({
   post,
   currentUserId,
   currentUserName,
@@ -137,8 +159,11 @@ export function PostCard({
   onPressAuthor,
   initialCommentsOpen,
   onOpenGroup,
+  onBlockAuthor,
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [showComments, setShowComments] = useState(Boolean(initialCommentsOpen));
   // `post` vient du parent et ne se remet à jour que si le feed est rechargé — le compteur affiché
   // ici doit réagir immédiatement quand `CommentsSection` ajoute/supprime un commentaire.
@@ -154,6 +179,55 @@ export function PostCard({
     else if (outcome === 'unavailable') setShareFeedback("Le partage n'est pas disponible ici.");
     if (outcome === 'copied' || outcome === 'unavailable') setTimeout(() => setShareFeedback(null), 2500);
   };
+
+  const handleBlockAuthor = async () => {
+    try {
+      await blockUser(currentUserId, post.authorId);
+      onBlockAuthor?.(post.authorId);
+    } catch (err) {
+      setShareFeedback(errorMessage(err));
+      setTimeout(() => setShareFeedback(null), 2500);
+    }
+  };
+
+  // Menu ⋯ (uniquement sur les mains des autres) : signaler, et bloquer l'auteur quand le parent le
+  // permet (feed principal). Sur sa propre main, ce sont les boutons éditer/supprimer qui s'affichent.
+  const menuItems: OverflowMenuItem[] = [
+    { label: 'Signaler cette main', icon: '🚩', onPress: () => setReportOpen(true) },
+    ...(onBlockAuthor
+      ? [{ label: `Bloquer ${post.authorName}`, icon: '🚫', destructive: true, onPress: handleBlockAuthor }]
+      : []),
+  ];
+
+  // Contenu modéré : la RLS ne le laisse passer qu'à son propre auteur → on lui montre un bandeau à
+  // la place de la main (jamais de disparition silencieuse), et on masque tout le reste (replay,
+  // vote, engagement). Pour tous les autres, cette carte n'existe simplement pas dans le feed.
+  if (post.modStatus && post.modStatus !== 'visible') {
+    const removed = post.modStatus === 'removed';
+    return (
+      <View style={styles.card}>
+        <View style={styles.header}>
+          <Pressable style={styles.authorPressable} onPress={onPressAuthor} disabled={!onPressAuthor}>
+            <Avatar url={post.authorAvatarUrl} name={post.authorName} size={36} />
+            <View style={styles.headerText}>
+              <Text style={typography.authorName}>{post.authorName}</Text>
+              <Text style={[typography.dateLocation, styles.muted]}>{formatDate(post.createdAt)}</Text>
+            </View>
+          </Pressable>
+        </View>
+        <View style={styles.moderationBanner}>
+          <Text style={styles.moderationBannerTitle}>
+            {removed ? '🚫 Retiré par la modération' : '🙈 Masqué par la modération'}
+          </Text>
+          <Text style={styles.moderationBannerText}>
+            {removed
+              ? "Cette main a été retirée car elle ne respecte pas nos règles. Toi seul vois encore ce bandeau — elle n'est plus visible par les autres joueurs."
+              : "Cette main a été masquée par la modération. Elle n'est plus visible par les autres joueurs."}
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.card}>
@@ -197,6 +271,11 @@ export function PostCard({
               <Text style={styles.deleteButtonText}>🗑</Text>
             </Pressable>
           </View>
+        )}
+        {!isOwnPost && (
+          <Pressable style={styles.deleteButton} onPress={() => setMenuOpen(true)} hitSlop={8}>
+            <Text style={styles.overflowIcon}>⋯</Text>
+          </Pressable>
         )}
       </View>
 
@@ -261,6 +340,16 @@ export function PostCard({
         currentUserName={currentUserName}
         onCountChange={(delta) => setCommentCountDelta((d) => d + delta)}
       />
+
+      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} />
+      <ReportModal
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        reporterId={currentUserId}
+        targetType="post"
+        targetId={post.id}
+        targetLabel="cette main"
+      />
     </View>
   );
 }
@@ -292,6 +381,12 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     fontSize: 16,
+  },
+  overflowIcon: {
+    fontSize: 20,
+    lineHeight: 20,
+    fontWeight: '700',
+    color: colors.textSecondary,
   },
   ownPostActions: {
     flexDirection: 'row',
@@ -414,5 +509,25 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontStyle: 'italic',
     paddingTop: spacing.xs,
+  },
+  moderationBanner: {
+    backgroundColor: 'rgba(192,57,43,0.08)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(192,57,43,0.25)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  moderationBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#C0392B',
+    marginBottom: 2,
+  },
+  moderationBannerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
   },
 });

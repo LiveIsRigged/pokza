@@ -2,9 +2,12 @@ import React, { useRef, useState } from 'react';
 import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { trackEvent } from '../analytics';
 import { colors, radius } from '../theme/theme';
 import { webOrigin } from '../navigation/deepLink';
 import { passwordError } from './passwordRules';
+import { LegalScreen } from '../legal/LegalScreen';
+import type { LegalDocId } from '../legal/legalContent';
 
 type Mode = 'signIn' | 'signUp' | 'forgotPassword';
 
@@ -38,13 +41,18 @@ function translateAuthError(message: string): string {
 export function AuthScreen() {
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signUpMessage, setSignUpMessage] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  // Consentement obligatoire à l'inscription (18 ans + CGU + confidentialité) et lecture des textes.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDocId | null>(null);
 
+  const confirmEmailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
@@ -52,6 +60,7 @@ export function AuthScreen() {
     setError(null);
     setSignUpMessage(null);
     setResetSent(false);
+    setAcceptedTerms(false);
   };
 
   const switchMode = (next: Mode) => {
@@ -64,9 +73,21 @@ export function AuthScreen() {
     setSignUpMessage(null);
 
     if (mode === 'signUp') {
+      // Ressaisie de l'email : garde-fou anti-faute de frappe (aucun mail de vérification n'est
+      // envoyé). Comparaison normalisée — l'email est insensible à la casse et aux espaces autour.
+      if (email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase()) {
+        setError('Les deux adresses email ne correspondent pas.');
+        return;
+      }
       const pwError = passwordError(password, confirmPassword);
       if (pwError) {
         setError(pwError);
+        return;
+      }
+      // Garde aussi utile que le bouton désactivé : la touche Entrée déclenche handleSubmit
+      // directement, sans passer par l'état "disabled" du bouton.
+      if (!acceptedTerms) {
+        setError('Pour créer un compte, tu dois certifier avoir 18 ans et accepter les conditions.');
         return;
       }
     }
@@ -85,6 +106,7 @@ export function AuthScreen() {
     // En signUp, si la confirmation par email est activée côté projet, il n'y a pas encore de
     // session à ce stade (AuthProvider ne bascule donc pas tout seul vers le feed) : on l'explique.
     if (mode === 'signUp') {
+      trackEvent('signed_up');
       setSignUpMessage('Compte créé. Si la confirmation par email est activée sur le projet, vérifie ta boîte mail avant de te connecter.');
     }
   };
@@ -165,12 +187,31 @@ export function AuthScreen() {
         autoComplete="email"
         textContentType="emailAddress"
         returnKeyType="next"
-        onSubmitEditing={() => passwordRef.current?.focus()}
-        onKeyPress={onEnterKey(() => passwordRef.current?.focus())}
+        onSubmitEditing={() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus())}
+        onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus()))}
         blurOnSubmit={false}
         value={email}
         onChangeText={setEmail}
       />
+      {mode === 'signUp' && (
+        <TextInput
+          ref={confirmEmailRef}
+          style={styles.input}
+          placeholder="Confirme ton email"
+          placeholderTextColor={colors.textSecondary}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          onKeyPress={onEnterKey(() => passwordRef.current?.focus())}
+          blurOnSubmit={false}
+          value={confirmEmail}
+          onChangeText={setConfirmEmail}
+        />
+      )}
       <TextInput
         ref={passwordRef}
         style={styles.input}
@@ -203,6 +244,25 @@ export function AuthScreen() {
         />
       )}
 
+      {mode === 'signUp' && (
+        <Pressable style={styles.consentRow} onPress={() => setAcceptedTerms((v) => !v)}>
+          <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+            {acceptedTerms && <Text style={styles.checkboxTick}>✓</Text>}
+          </View>
+          <Text style={styles.consentText}>
+            Je certifie avoir 18 ans et j'accepte les{' '}
+            <Text style={styles.consentLink} onPress={() => setLegalDoc('cgu')}>
+              conditions d'utilisation
+            </Text>{' '}
+            et la{' '}
+            <Text style={styles.consentLink} onPress={() => setLegalDoc('confidentialite')}>
+              politique de confidentialité
+            </Text>
+            .
+          </Text>
+        </Pressable>
+      )}
+
       {mode === 'signIn' && (
         <Pressable onPress={() => switchMode('forgotPassword')} hitSlop={8}>
           <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
@@ -213,9 +273,12 @@ export function AuthScreen() {
       {signUpMessage && <Text style={styles.info}>{signUpMessage}</Text>}
 
       <Pressable
-        style={[styles.submitButton, (submitting || !email || !password) && styles.submitButtonDisabled]}
+        style={[
+          styles.submitButton,
+          (submitting || !email || !password || (mode === 'signUp' && !acceptedTerms)) && styles.submitButtonDisabled,
+        ]}
         onPress={handleSubmit}
-        disabled={submitting || !email || !password}
+        disabled={submitting || !email || !password || (mode === 'signUp' && !acceptedTerms)}
       >
         {submitting ? (
           <ActivityIndicator color="#fff" />
@@ -229,6 +292,12 @@ export function AuthScreen() {
           {mode === 'signIn' ? "Pas de compte ? Crée-en un" : 'Déjà un compte ? Connecte-toi'}
         </Text>
       </Pressable>
+
+      {legalDoc && (
+        <View style={styles.legalOverlay}>
+          <LegalScreen initialDocId={legalDoc} onBack={() => setLegalDoc(null)} />
+        </View>
+      )}
     </View>
   );
 }
@@ -275,6 +344,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'right',
     marginBottom: 16,
+  },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 16,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.action,
+    borderColor: colors.action,
+  },
+  checkboxTick: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+  },
+  consentLink: {
+    color: colors.action,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  legalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 20,
   },
   error: {
     color: '#C0392B',

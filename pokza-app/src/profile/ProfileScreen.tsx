@@ -23,6 +23,9 @@ import type { Post } from '../types/poker';
 import { PostCard } from '../components/post/PostCard';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
+import { OverflowMenu, type OverflowMenuItem } from '../components/ui/OverflowMenu';
+import { ReportModal } from '../components/moderation/ReportModal';
+import { blockUser, isBlockedByMe, unblockUser } from '../data/blocks';
 import { playerSummary } from './profileOptions';
 
 /** Même format que les dates de main affichées sur `PostCard` (ex: "29 juil. 2026") — cohérence
@@ -53,6 +56,8 @@ interface ProfileScreenProps {
   onOpenGroup?: (groupId: string) => void;
   /** Ouvre l'écran séparé « Mes amis » (uniquement sur son propre profil). */
   onOpenFriends?: () => void;
+  /** Ouvre l'écran « Comptes bloqués » depuis les réglages (« Modifier mon profil »). */
+  onOpenBlocked?: () => void;
   /** Prévient l'écran parent qu'il faut rafraîchir sa propre copie du profil (menu latéral) —
    * après un changement d'avatar, de pseudo ou de préférence d'affichage. */
   onProfileChanged?: () => void;
@@ -67,6 +72,7 @@ export function ProfileScreen({
   onSelectProfile,
   onOpenGroup,
   onOpenFriends,
+  onOpenBlocked,
   onProfileChanged,
 }: ProfileScreenProps) {
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
@@ -82,6 +88,10 @@ export function ProfileScreen({
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [cropTarget, setCropTarget] = useState<PickedImage | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  // null tant qu'on ne sait pas encore ; pertinent uniquement pour le profil d'un autre.
+  const [blocked, setBlocked] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -196,6 +206,56 @@ export function ProfileScreen({
       cancelled = true;
     };
   }, [profileId, isOwnProfile]);
+
+  useEffect(() => {
+    if (isOwnProfile) return;
+    let cancelled = false;
+    isBlockedByMe(currentUserId, profileId)
+      .then((v) => {
+        if (!cancelled) setBlocked(v);
+      })
+      .catch(() => {
+        if (!cancelled) setBlocked(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId, currentUserId, isOwnProfile]);
+
+  const handleBlock = async () => {
+    try {
+      await blockUser(currentUserId, profileId);
+      // Le blocage rompt l'amitié et masque les mains de l'autre (RLS) — on reflète les deux
+      // localement sans attendre un rechargement : plus d'actions ami, plus de mains affichées.
+      setBlocked(true);
+      setFriendStatus('none');
+      setPosts([]);
+      setMutualFriends([]);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
+  const handleUnblock = async () => {
+    try {
+      await unblockUser(currentUserId, profileId);
+      setBlocked(false);
+      // Les mains redeviennent visibles côté serveur : on les recharge (l'amitié rompue, elle, ne
+      // se restaure pas — il faudra refaire une demande, comme après un simple retrait d'ami).
+      const fresh = await fetchPosts(profileId);
+      setPosts(fresh);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
+  // Menu ⋯ de l'en-tête, uniquement sur le profil d'un autre : signaler le compte, bloquer/débloquer.
+  const menuItems: OverflowMenuItem[] = [
+    { label: 'Signaler ce joueur', icon: '🚩', onPress: () => setReportOpen(true) },
+    blocked
+      ? { label: 'Débloquer', icon: '↩️', onPress: handleUnblock }
+      : { label: 'Bloquer ce joueur', icon: '🚫', destructive: true, onPress: handleBlock },
+  ];
 
   const handleSendFriendRequest = async () => {
     const previous = friendStatus;
@@ -320,6 +380,11 @@ export function ProfileScreen({
           <Pressable onPress={onBack} hitSlop={8}>
             <Text style={styles.backArrow}>←</Text>
           </Pressable>
+          {!isOwnProfile && (
+            <Pressable onPress={() => setMenuOpen(true)} hitSlop={8}>
+              <Text style={styles.overflowIcon}>⋯</Text>
+            </Pressable>
+          )}
         </View>
 
         {error && <Text style={styles.statusText}>{error}</Text>}
@@ -375,7 +440,7 @@ export function ProfileScreen({
                 </View>
               )}
 
-              {!isOwnProfile && friendStatus && (
+              {!isOwnProfile && !blocked && friendStatus && (
                 <View style={styles.friendSection}>
                   {friendStatus === 'none' && (
                     <Pressable style={styles.friendButton} onPress={handleSendFriendRequest}>
@@ -414,7 +479,7 @@ export function ProfileScreen({
                 </View>
               )}
 
-              {!isOwnProfile && mutualFriends.length > 0 && (
+              {!isOwnProfile && !blocked && mutualFriends.length > 0 && (
                 <View style={styles.mutualFriendsRow}>
                   <View style={styles.mutualAvatarsStack}>
                     {mutualFriends.slice(0, 3).map((f, i) => (
@@ -467,7 +532,18 @@ export function ProfileScreen({
               </View>
             )}
 
-            {posts.length === 0 ? (
+            {blocked ? (
+              <View style={styles.blockedNotice}>
+                <Text style={styles.blockedTitle}>Tu as bloqué ce joueur</Text>
+                <Text style={styles.blockedText}>
+                  Ses mains et ses interactions te sont masquées, et il ne peut plus t'envoyer de
+                  demande d'ami. Tu peux le débloquer à tout moment.
+                </Text>
+                <Pressable style={styles.unblockButton} onPress={handleUnblock}>
+                  <Text style={styles.unblockButtonText}>Débloquer</Text>
+                </Pressable>
+              </View>
+            ) : posts.length === 0 ? (
               <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
             ) : (
               posts.map((post) => (
@@ -487,6 +563,16 @@ export function ProfileScreen({
           </>
         )}
       </ScrollView>
+
+      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} />
+      <ReportModal
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        reporterId={currentUserId}
+        targetType="user"
+        targetId={profileId}
+        targetLabel={profile?.displayName ?? 'ce joueur'}
+      />
       {cropTarget && (
         <AvatarCropper
           uri={cropTarget.uri}
@@ -502,6 +588,7 @@ export function ProfileScreen({
           userId={currentUserId}
           onCancel={() => setEditingProfile(false)}
           onSaved={handleProfileSaved}
+          onOpenBlocked={onOpenBlocked}
         />
       )}
     </View>
@@ -519,6 +606,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginHorizontal: 14,
     marginBottom: 10,
   },
@@ -526,6 +616,48 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: colors.textPrimary,
     paddingHorizontal: 4,
+  },
+  overflowIcon: {
+    fontSize: 22,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    paddingHorizontal: 4,
+  },
+  blockedNotice: {
+    marginHorizontal: 14,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(192,57,43,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(192,57,43,0.2)',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  blockedTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#C0392B',
+  },
+  blockedText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  unblockButton: {
+    marginTop: spacing.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.25)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 8,
+  },
+  unblockButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
   },
   header: {
     alignItems: 'center',

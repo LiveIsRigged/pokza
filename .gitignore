@@ -1,2 +1,8 @@
 # macOS
 .DS_Store
+
+# Supabase CLI cache (local state, jamais versionné)
+supabase/.temp/
+
+# Identifiants seed de DEV — ne pas publier sur le repo public
+docs/dev/seed-passwords.sql

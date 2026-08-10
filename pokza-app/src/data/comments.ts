@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Comment } from '../types/poker';
+import type { Comment, ModStatus } from '../types/poker';
 import { resizeToBase64, uploadPrivateImage, type PickedImage } from './images';
 
 const COMMENT_PHOTO_BUCKET = 'comment-photos';
@@ -22,6 +22,8 @@ interface CommentFeedRow {
   created_at: string;
   like_count: number;
   liked_by_me: boolean;
+  /** Ajouté en fin de la vue `comments_feed` par la migration modération. */
+  mod_status?: ModStatus;
 }
 
 function rowToComment(
@@ -41,6 +43,7 @@ function rowToComment(
     createdAt: row.created_at,
     likeCount: row.like_count,
     likedByMe: row.liked_by_me,
+    modStatus: row.mod_status ?? 'visible',
     imageUrl,
     gifUrl,
     mediaWidth,

@@ -51,6 +51,10 @@ function iconFor(type: AppNotification['type']): string {
     case 'group_accept':
     case 'group_posted':
       return '👥';
+    case 'report_resolved':
+    case 'content_removed':
+    case 'account_sanctioned':
+      return '🛡';
   }
 }
 
@@ -78,6 +82,13 @@ function textFor(n: AppNotification): string {
       return `${n.actorName} a rejoint le groupe privé ${n.groupName ?? '?'}`;
     case 'group_posted':
       return `${n.actorName} a posté une main dans le groupe privé ${n.groupName ?? '?'}`;
+    // Notifications de modération : on ne nomme jamais l'admin, on parle de « la modération ».
+    case 'report_resolved':
+      return 'Ton signalement a été traité par la modération.';
+    case 'content_removed':
+      return 'Un de tes contenus a été retiré par la modération.';
+    case 'account_sanctioned':
+      return 'Ton compte a fait l\'objet d\'une mesure de modération.';
   }
 }
 
@@ -190,12 +201,21 @@ export function NotificationsScreen({
   // bien d'une personne.
   const handlePress = (n: AppNotification) => {
     if (!n.read) markNotificationRead(n.id).catch(() => {});
+    // Les notifications de modération sans cible (signalement traité, compte sanctionné) ne mènent
+    // nulle part — surtout pas au profil de l'« acteur », qui est un admin. Un contenu retiré, lui,
+    // porte un post_id : on ouvre la main pour que l'auteur y voie le bandeau.
+    if (n.type === 'report_resolved' || n.type === 'account_sanctioned') return;
     if (n.postId) {
       const isCommentNotification =
-        n.type === 'post_comment' || n.type === 'comment_reply' || n.type === 'comment_like';
+        n.type === 'post_comment' ||
+        n.type === 'comment_reply' ||
+        n.type === 'comment_like' ||
+        (n.type === 'content_removed' && n.commentId != null);
       onOpenPost(n.postId, isCommentNotification);
       return;
     }
+    // Contenu retiré sans post_id (ne devrait pas arriver) : ne navigue nulle part.
+    if (n.type === 'content_removed') return;
     // `group_invite` est la seule exception : tant que l'invitation n'est pas acceptée, la page du
     // groupe est inaccessible (`is_group_member` exige le statut accepté), donc on montre plutôt
     // qui invite. Les boutons Accepter/Refuser de la ligne restent le vrai chemin.

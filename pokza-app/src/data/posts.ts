@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Hand, Post, Visibility } from '../types/poker';
+import type { Hand, ModStatus, Post, Visibility } from '../types/poker';
 
 // Forme exacte renvoyée par la vue `posts_feed` (cf. script SQL) : author_name/avatar déjà résolus
 // côté base via `get_display_name`, pas besoin de refaire cette logique ici.
@@ -23,6 +23,9 @@ interface PostFeedRow {
   comment_count: number;
   visibility: Visibility;
   liked_by_me: boolean;
+  /** Ajouté en fin des 4 vues de lecture par la migration modération. Non `visible` = l'auteur
+   * regarde son propre contenu modéré (la RLS ne le laisse pas passer aux autres). */
+  mod_status?: ModStatus;
   /** Présents uniquement via la vue `posts_ranked` (feed principal), pas sur `posts_feed`. */
   author_is_friend?: boolean;
   mutual_friend_count?: number;
@@ -53,6 +56,7 @@ function rowToPost(row: PostFeedRow): Post {
     commentCount: row.comment_count,
     likedByMe: row.liked_by_me,
     visibility: row.visibility,
+    modStatus: row.mod_status ?? 'visible',
     groupId: row.group_id ?? undefined,
     groupName: row.group_name ?? undefined,
     authorIsFriend: row.author_is_friend,

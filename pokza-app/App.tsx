@@ -37,7 +37,14 @@ import { AddFriendsScreen } from './src/friends/AddFriendsScreen';
 import { FriendsListScreen } from './src/friends/FriendsListScreen';
 import { InvitationsScreen } from './src/invitations/InvitationsScreen';
 import { StatsScreen } from './src/stats/StatsScreen';
+import { BlockedListScreen } from './src/profile/BlockedListScreen';
+import { LegalScreen } from './src/legal/LegalScreen';
+import { AdminReportsScreen } from './src/admin/AdminReportsScreen';
+import { AdminReportDetailScreen } from './src/admin/AdminReportDetailScreen';
+import { AdminUserScreen } from './src/admin/AdminUserScreen';
+import { AdminAuditScreen } from './src/admin/AdminAuditScreen';
 import { clearDeepLinkFromUrl, readInitialDeepLink } from './src/navigation/deepLink';
+import { initAnalytics, identifyUser, resetAnalytics, trackEvent } from './src/analytics';
 
 export default function App() {
   return (
@@ -75,6 +82,12 @@ function AppContent() {
     | 'myFriends'
     | 'invitations'
     | 'stats'
+    | 'blocked'
+    | 'legal'
+    | 'adminReports'
+    | 'adminReportDetail'
+    | 'adminUser'
+    | 'adminAudit'
   >('feed');
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   // Où revenir une fois l'édition terminée : le feed, le profil, la page du groupe ou la page de la
@@ -89,6 +102,10 @@ function AppContent() {
   const [editingPostFallback, setEditingPostFallback] = useState<Post | null>(null);
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
   const [invitingGroupId, setInvitingGroupId] = useState<string | null>(null);
+  // Back-office admin : signalement/compte en cours d'examen, + clé pour rafraîchir la file au retour.
+  const [adminReportId, setAdminReportId] = useState<string | null>(null);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
+  const [adminReportsReloadKey, setAdminReportsReloadKey] = useState(0);
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,6 +130,16 @@ function AppContent() {
     headerIsCompact.current = compact;
     Animated.timing(headerCompact, { toValue: compact ? 1 : 0, duration: 150, useNativeDriver: false }).start();
   };
+
+  // Analytics : init une fois (dormant tant qu'aucune clé PostHog), puis on lie/délie l'identité au
+  // fil de la session (identify à la connexion, reset à la déconnexion — volet client du §9.5).
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+  useEffect(() => {
+    if (session?.user?.id) identifyUser(session.user.id);
+    else resetAnalytics();
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!hasProfile) return;
@@ -301,6 +328,13 @@ function AppContent() {
     }
   };
 
+  // Bloquer un auteur depuis le menu ⋯ d'une main : le blocage est déjà fait en base par `PostCard`,
+  // il ne reste qu'à retirer localement ses mains du feed (la RLS les masque déjà côté serveur, mais
+  // l'état chargé les contient encore).
+  const handleBlockAuthorInFeed = (authorId: string) => {
+    setPosts((p) => p.filter((post) => post.authorId !== authorId));
+  };
+
   // Le feed reste la source normale du post à éditer, mais il n'est chargé qu'une fois : une main à
   // soi publiée depuis un autre appareil après ce chargement n'y figure pas. La page d'une main,
   // elle, a toujours sa version fraîche — elle la fournit en repli plutôt que de laisser l'écran
@@ -370,6 +404,7 @@ function AppContent() {
                 myAvatarUrl
               );
               setPosts((p) => [saved, ...p]);
+              trackEvent('hand_created', { variant: saved.hand.variant, game_type: saved.hand.gameType });
               setMode('feed');
             } catch (err) {
               setPostsError(errorMessage(err));
@@ -531,6 +566,7 @@ function AppContent() {
             setMode('group');
           }}
           onOpenFriends={() => setMode('myFriends')}
+          onOpenBlocked={() => setMode('blocked')}
         />
         <StatusBar style="dark" />
       </View>
@@ -641,12 +677,100 @@ function AppContent() {
     );
   }
 
+  if (mode === 'blocked') {
+    return (
+      <View style={styles.container}>
+        <BlockedListScreen
+          currentUserId={session.user.id}
+          // On y arrive depuis « Modifier mon profil » (réglages) → on revient sur son profil.
+          onBack={() => {
+            setViewingProfileId(session.user.id);
+            setMode('profile');
+          }}
+          onSelectProfile={(profileId) => {
+            setViewingProfileId(profileId);
+            setMode('profile');
+          }}
+        />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  if (mode === 'legal') {
+    return (
+      <View style={styles.container}>
+        <LegalScreen onBack={() => setMode('feed')} />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
   // Réservé aux admins. Double garde : l'entrée de menu n'apparaît que pour un admin, et même en
   // forçant ce mode la fonction SQL `get_admin_stats` refuse un non-admin.
   if (mode === 'stats' && isAdmin) {
     return (
       <View style={styles.container}>
         <StatsScreen onBack={() => setMode('feed')} />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  // Back-office modération. Même double garde que Stats : entrée de menu réservée aux admins et
+  // chaque RPC re-vérifie `is_admin()` côté base — forcer le mode ne donne accès à rien.
+  if (mode === 'adminReports' && isAdmin) {
+    return (
+      <View style={styles.container}>
+        <AdminReportsScreen
+          reloadKey={adminReportsReloadKey}
+          onBack={() => setMode('feed')}
+          onOpenReport={(reportId) => {
+            setAdminReportId(reportId);
+            setMode('adminReportDetail');
+          }}
+        />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  if (mode === 'adminReportDetail' && isAdmin && adminReportId) {
+    return (
+      <View style={styles.container}>
+        <AdminReportDetailScreen
+          reportId={adminReportId}
+          onBack={() => {
+            // Une action a pu changer le statut du signalement → forcer un rechargement de la file.
+            setAdminReportsReloadKey((k) => k + 1);
+            setMode('adminReports');
+          }}
+          onOpenUser={(userId) => {
+            setAdminUserId(userId);
+            setMode('adminUser');
+          }}
+        />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  if (mode === 'adminUser' && isAdmin && adminUserId) {
+    return (
+      <View style={styles.container}>
+        <AdminUserScreen
+          userId={adminUserId}
+          onBack={() => setMode(adminReportId ? 'adminReportDetail' : 'adminReports')}
+        />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  if (mode === 'adminAudit' && isAdmin) {
+    return (
+      <View style={styles.container}>
+        <AdminAuditScreen onBack={() => setMode('feed')} />
         <StatusBar style="dark" />
       </View>
     );
@@ -698,6 +822,7 @@ function AppContent() {
                 setViewingGroupId(groupId);
                 setMode('group');
               }}
+              onBlockAuthor={handleBlockAuthorInFeed}
             />
           ))
         )}
@@ -741,6 +866,16 @@ function AppContent() {
               setMode('groups');
             },
           },
+          // « Comptes bloqués » n'est PAS ici : c'est un réglage rare, rangé dans « Modifier mon
+          // profil » (à côté de « Supprimer mon compte »), pas un onglet de premier niveau.
+          {
+            label: 'Informations légales',
+            icon: '📄',
+            onPress: () => {
+              setMenuOpen(false);
+              setMode('legal');
+            },
+          },
           // Uniquement pour le compte admin (fondateur).
           ...(isAdmin
             ? [
@@ -750,6 +885,23 @@ function AppContent() {
                   onPress: () => {
                     setMenuOpen(false);
                     setMode('stats');
+                  },
+                },
+                {
+                  label: 'Modération',
+                  icon: '🛡️',
+                  onPress: () => {
+                    setMenuOpen(false);
+                    setAdminReportId(null);
+                    setMode('adminReports');
+                  },
+                },
+                {
+                  label: "Journal d'audit",
+                  icon: '📜',
+                  onPress: () => {
+                    setMenuOpen(false);
+                    setMode('adminAudit');
                   },
                 },
               ]

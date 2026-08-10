@@ -10,7 +10,12 @@ export type NotificationType =
   | 'friend_posted'
   | 'group_invite'
   | 'group_accept'
-  | 'group_posted';
+  | 'group_posted'
+  // Notifications de modération (accusé de traitement 2.6, retrait de contenu, sanction 4.4).
+  // L'« acteur » est un admin — volontairement présenté comme « la modération », jamais nommé.
+  | 'report_resolved'
+  | 'content_removed'
+  | 'account_sanctioned';
 
 // Forme exacte renvoyée par la vue `notifications_feed` : nom/avatar de l'auteur de l'action et
 // titre/lieu de la main déjà résolus côté base, comme pour `posts_feed`.

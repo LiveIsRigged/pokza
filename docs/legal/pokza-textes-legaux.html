@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Pokza — Textes légaux (brouillon)</title>
+<style>
+  :root {
+    --ink: #16233d; --muted: #5b6b86; --line: #dfe4ec; --accent: #1f6f54;
+    --warnbg: #fff8e6; --warnborder: #e6c34d; --phbg: #ffe9a8; --maxw: 820px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink); background: #f4f6f9;
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .page { max-width: var(--maxw); margin: 0 auto; padding: 48px 28px 80px; }
+  .cover { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 40px 36px; margin-bottom: 28px; }
+  .brand { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+  h1 { font-size: 30px; margin: 8px 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .meta { font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+  .meta b { color: var(--ink); }
+  .draft { display: inline-block; background: #fdecea; color: #a12a1e; border: 1px solid #e7b3ac;
+    padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: .3px; }
+  .callout { background: var(--warnbg); border: 1px solid var(--warnborder); border-radius: 12px;
+    padding: 20px 24px; margin: 24px 0 4px; }
+  .callout h4 { margin: 0 0 10px; font-size: 15px; }
+  .callout ol { margin: 0; padding-left: 20px; }
+  .callout li { margin: 7px 0; font-size: 14.5px; }
+  .toc { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 18px 24px; margin: 24px 0; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .toc ul { margin: 0; padding-left: 18px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .doc { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 32px 36px; margin: 22px 0; }
+  .doc-head { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid var(--accent);
+    padding-bottom: 12px; margin-bottom: 18px; }
+  .doc-num { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: grid; place-items: center; font-weight: 800; }
+  .doc h2 { margin: 0; font-size: 23px; }
+  .doc h3 { font-size: 16px; margin: 22px 0 6px; color: var(--ink); }
+  .doc p { margin: 8px 0; }
+  .doc ul { margin: 8px 0; padding-left: 22px; }
+  .doc li { margin: 5px 0; }
+  .doc-sep { border: none; }
+  mark.ph { background: var(--phbg); padding: 0 3px; border-radius: 3px; }
+  footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 30px; }
+  a { color: var(--accent); }
+  @media print {
+    body { background: #fff; }
+    .page { max-width: none; padding: 0; }
+    .cover, .doc, .toc, .callout { border-color: #ccc; box-shadow: none; }
+    .doc { break-inside: avoid; page-break-inside: avoid; }
+    .doc-head { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="cover">
+    <div class="brand">Pokza</div>
+    <h1>Textes légaux</h1>
+    <p class="sub">Conditions d'utilisation · Confidentialité · Mentions légales · Jeu responsable</p>
+    <span class="draft">BROUILLON — en cours de relecture juridique</span>
+    <div class="meta" style="margin-top:18px">
+      <p><b>Éditeur :</b> Victor Hoogstoël — personne physique, à titre non professionnel (service gratuit, pas de société ni de SIRET à ce stade).</p>
+      <p><b>Date d'entrée en vigueur :</b> <mark class="ph">〔date de mise en ligne à définir〕</mark> <span style="color:var(--muted)">(à figer à la publication)</span></p>
+      <p style="margin-bottom:0"><b>Contact :</b> contact@pokza.app · <b>Données personnelles :</b> privacy@pokza.app · <b>Signalement :</b> abuse@pokza.app</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>⚖️ Points à valider par le juriste</h4>
+    <ol>
+      <li><strong>Date d'entrée en vigueur</strong> — à fixer le jour de la publication (avant le 25 août). Ce n'est pas la date de mise en ligne du service, mais celle de cette version des textes.</li>
+      <li><strong>Entité Supabase</strong> — Supabase contracte selon des entités régionales (Inc. US vs Pte. Ltd Singapour). L'adresse indiquée provient du DPA officiel ; entité exacte à confirmer.</li>
+      <li><strong>Téléphone de l'hébergeur</strong> — la LCEN le demande dans les mentions légales, mais Supabase ne le publie pas. Point à trancher.</li>
+      <li><strong>Cookies / mesure d'audience</strong> — la politique décrit PostHog comme « exempté de consentement » ; cela n'est exact que si l'outil est configuré ainsi (mesure d'audience seule, IP anonymisée, pas de suivi inter-sites, pas de recoupement, durée ≤ 13 mois). À défaut, un bandeau de consentement sera nécessaire. PostHog n'est pas encore intégré au produit.</li>
+      <li><strong>Médiation de la consommation</strong> — volontairement non mentionnée : service gratuit et non professionnel. À réintroduire si le service devient payant/professionnel.</li>
+    </ol>
+    <p style="margin:12px 0 0;font-size:13px;color:var(--muted)">Les passages surlignés <mark class="ph">ainsi</mark> sont des champs encore à compléter.</p>
+  </div>
+
+  <div class="toc">
+    <h4>Sommaire</h4>
+    <ul><li><a href="#doc-cgu">1. Conditions générales d'utilisation</a></li>
+<li><a href="#doc-confidentialite">2. Politique de confidentialité</a></li>
+<li><a href="#doc-mentions">3. Mentions légales</a></li>
+<li><a href="#doc-jeu-responsable">4. Jeu responsable</a></li></ul>
+  </div>
+
+  <article class="doc" id="doc-cgu">
+    <div class="doc-head"><span class="doc-num">1</span><h2>Conditions générales d'utilisation</h2></div>
+    <section class="sec"><h3>1. Objet</h3>
+<p>Les présentes conditions régissent l'accès et l'utilisation de Pokza (« le Service »), édité par Victor Hoogstoël. En créant un compte ou en utilisant le Service, tu acceptes ces conditions.</p></section>
+<section class="sec"><h3>2. Ce qu'est (et n'est pas) Pokza</h3>
+<p>Pokza est un réseau social permettant de partager, rejouer, commenter et voter des mains de poker, et de se constituer un réseau (amis, groupes privés).</p>
+<p>Pokza n'est PAS un opérateur de jeux d'argent et de hasard. Aucune mise, aucun gain et aucune somme d'argent réelle ne sont joués, misés ou gagnés sur le Service. Les montants affichés dans les mains sont purement illustratifs et servent à décrire une situation de jeu.</p></section>
+<section class="sec"><h3>3. Accès et inscription</h3>
+<p>Le Service est strictement réservé aux personnes âgées d'au moins 18 ans. En créant un compte, tu déclares avoir 18 ans révolus.</p>
+<ul><li>Un seul compte par personne.</li><li>Tu fournis des informations exactes et les tiens à jour.</li><li>Tu es responsable de la confidentialité de ton mot de passe et des activités réalisées depuis ton compte.</li></ul></section>
+<section class="sec"><h3>4. Contenu et règles de conduite</h3>
+<p>Tu es seul responsable des contenus que tu publies (mains, textes, images, GIF, commentaires, sondages).</p>
+<p>Sont notamment interdits :</p>
+<ul><li>les insultes et le harcèlement ;</li><li>les propos haineux ou discriminatoires ;</li><li>les contenus sexuels ou choquants ;</li><li>l'usurpation d'identité ;</li><li>le spam et la sollicitation commerciale non autorisée ;</li><li>la promotion d'opérateurs de jeux d'argent illégaux ;</li><li>les arnaques et escroqueries ;</li><li>tout contenu impliquant des mineurs ou destiné à des mineurs ;</li><li>plus généralement tout contenu illicite ou contraire aux présentes conditions.</li></ul></section>
+<section class="sec"><h3>5. Modération</h3>
+<p>La modération est réactive : nous ne surveillons pas les contenus a priori, mais nous agissons promptement lorsqu'un contenu manifestement illicite nous est signalé, conformément à notre statut d'hébergeur (LCEN).</p>
+<p>Tu peux signaler un contenu ou un compte via le bouton « Signaler ». Selon la situation, nous pouvons masquer ou retirer un contenu, et avertir, suspendre ou bannir un compte. Ces mesures sont réversibles et l'auteur d'un contenu retiré en est informé.</p>
+<p>Tu peux aussi bloquer un autre utilisateur : vous ne verrez plus vos contenus et interactions respectifs.</p></section>
+<section class="sec"><h3>6. Propriété intellectuelle</h3>
+<p>Tu restes titulaire des droits sur les contenus que tu publies. Tu accordes à Pokza une licence non exclusive et gratuite pour héberger, afficher et adapter techniquement ces contenus, aux seules fins de faire fonctionner le Service.</p>
+<p>Tu garantis disposer des droits nécessaires sur ce que tu publies. Les GIF proposés le sont via le service GIPHY et restent soumis aux conditions de GIPHY.</p></section>
+<section class="sec"><h3>7. Données personnelles</h3>
+<p>Le traitement de tes données personnelles est décrit dans la Politique de confidentialité, qui fait partie intégrante des présentes conditions.</p></section>
+<section class="sec"><h3>8. Disponibilité et responsabilité</h3>
+<p>Le Service est fourni « en l'état », sans garantie de disponibilité continue ni d'absence d'erreur. Pokza peut faire évoluer, suspendre ou interrompre tout ou partie du Service.</p>
+<p>Pokza n'est pas responsable des contenus publiés par les utilisateurs. Dans les limites permises par la loi, la responsabilité de l'éditeur ne saurait être engagée pour les dommages indirects liés à l'utilisation du Service.</p></section>
+<section class="sec"><h3>9. Durée, suspension et résiliation</h3>
+<p>Tu peux supprimer ton compte à tout moment depuis « Modifier mon profil » — cela entraîne la suppression de tes contenus, dans les conditions décrites par la Politique de confidentialité.</p>
+<p>En cas de violation des présentes conditions, Pokza peut suspendre ou résilier l'accès au compte concerné.</p></section>
+<section class="sec"><h3>10. Modification des conditions</h3>
+<p>Ces conditions peuvent être modifiées. En cas de changement important, tu en seras informé. L'utilisation du Service après une modification vaut acceptation de la version à jour.</p></section>
+<section class="sec"><h3>11. Droit applicable et litiges</h3>
+<p>Les présentes conditions sont soumises au droit français.</p>
+<p>En cas de différend, nous t'invitons à nous contacter d'abord à contact@pokza.app pour rechercher une solution amiable.</p>
+<p>À défaut d'accord amiable, les tribunaux français sont compétents dans les conditions prévues par la loi.</p></section>
+  </article>
+<hr class="doc-sep"/>
+<article class="doc" id="doc-confidentialite">
+    <div class="doc-head"><span class="doc-num">2</span><h2>Politique de confidentialité</h2></div>
+    <section class="sec"><h3>Responsable du traitement</h3>
+<p>Le responsable du traitement de tes données est Victor Hoogstoël, éditeur de Pokza. Pour toute question relative à tes données : privacy@pokza.app.</p></section>
+<section class="sec"><h3>Données que nous traitons</h3>
+<ul><li>Identification : adresse e-mail et mot de passe (celui-ci est stocké chiffré par notre prestataire d'authentification, jamais en clair).</li><li>Profil : pseudo, photo de profil, description, préférences de jeu.</li><li>État civil : prénom, nom et date de naissance — utilisés pour vérifier ta majorité (18 ans) et, selon ton choix, afficher ton nom.</li><li>Contenus : mains publiées, commentaires, images et GIF, mentions « j'aime », votes et sondages.</li><li>Relations : amis, demandes d'amis, groupes privés.</li><li>Notifications liées à ton activité.</li><li>Données d'usage et techniques : interactions dans l'app, journaux, adresse IP, identifiants techniques — via notre outil de mesure d'audience.</li></ul></section>
+<section class="sec"><h3>Pourquoi et sur quelle base</h3>
+<ul><li>Fournir le Service et gérer ton compte — exécution du contrat.</li><li>Vérifier ta majorité (18 ans) — obligation légale et intérêt légitime.</li><li>Assurer la sécurité, prévenir les abus et modérer les contenus — obligation légale (hébergeur) et intérêt légitime.</li><li>Mesurer l'audience et améliorer le Service — intérêt légitime, ou ton consentement lorsque la loi l'exige.</li><li>T'envoyer les e-mails nécessaires au compte (confirmation, réinitialisation, notifications importantes) — exécution du contrat.</li></ul></section>
+<section class="sec"><h3>Qui a accès à tes données</h3>
+<p>Nous ne vendons pas tes données. Elles sont traitées par des prestataires (sous-traitants) agissant pour notre compte :</p>
+<ul><li>Supabase (hébergement, base de données, authentification, stockage) — infrastructure AWS, Union européenne (Francfort).</li><li>PostHog (mesure d'audience), hébergé dans l'Union européenne (eu.posthog.com).</li><li>Resend (envoi des e-mails du service), établi aux États-Unis — transfert encadré par les clauses contractuelles types.</li><li>GIPHY (fourniture des GIF) : lorsque tu affiches un GIF, une requête est faite vers GIPHY, ce qui peut transmettre ton adresse IP à ce service.</li></ul></section>
+<section class="sec"><h3>Transferts hors Union européenne</h3>
+<p>Nos données principales (base de données, authentification, stockage) et la mesure d'audience sont hébergées dans l'Union européenne. En revanche, l'envoi des e-mails du service (Resend) et l'affichage des GIF (GIPHY) reposent sur des prestataires établis aux États-Unis : ces transferts hors Union européenne sont encadrés par les garanties prévues par le RGPD, notamment les clauses contractuelles types de la Commission européenne.</p></section>
+<section class="sec"><h3>Durées de conservation</h3>
+<ul><li>Compte et contenus : conservés tant que ton compte existe ; supprimés lorsque tu supprimes ton compte.</li><li>Signalements : supprimés 12 mois après leur traitement.</li><li>Contenus retirés par la modération : supprimés définitivement 30 jours après leur retrait.</li><li>Journaux techniques (connexion, sécurité) : conservés au maximum 12 mois.</li></ul></section>
+<section class="sec"><h3>Tes droits</h3>
+<p>Tu disposes des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité sur tes données.</p>
+<p>Tu peux supprimer toi-même ton compte et tes contenus depuis « Modifier mon profil ». Pour exercer tes autres droits, écris à privacy@pokza.app.</p>
+<p>Tu peux aussi introduire une réclamation auprès de la CNIL (www.cnil.fr).</p></section>
+<section class="sec"><h3>Mineurs</h3>
+<p>Le Service est interdit aux moins de 18 ans. Nous ne collectons pas sciemment de données de mineurs. Si un compte de mineur est identifié, il est bloqué puis supprimé.</p></section>
+<section class="sec"><h3>Cookies et traceurs</h3>
+<p>Sur le web, un stockage local strictement nécessaire est utilisé pour te maintenir connecté ; il ne requiert pas ton consentement.</p>
+<p>Notre outil de mesure d'audience (PostHog, hébergé dans l'Union européenne) est configuré pour être exempté de consentement conformément aux recommandations de la CNIL : finalité limitée à la mesure d'audience, données anonymisées, absence de suivi de ta navigation sur d'autres sites et absence de recoupement avec d'autres traitements. Aucun cookie publicitaire ni traceur tiers à des fins de ciblage n'est déposé.</p></section>
+<section class="sec"><h3>Sécurité</h3>
+<p>Nous mettons en œuvre des mesures techniques adaptées : chiffrement des échanges, cloisonnement des accès aux données au niveau de la base, accès d'administration restreints et journalisés.</p></section>
+  </article>
+<hr class="doc-sep"/>
+<article class="doc" id="doc-mentions">
+    <div class="doc-head"><span class="doc-num">3</span><h2>Mentions légales</h2></div>
+    <section class="sec"><h3>Éditeur</h3>
+<p>Le service Pokza est édité par Victor Hoogstoël, personne physique agissant à titre non professionnel (aucune société n'est constituée à ce stade, le service est gratuit et sans but lucratif).</p>
+<p>Contact : contact@pokza.app.</p>
+<p>Conformément à l'article 6, III, 2° de la loi n° 2004-575 du 21 juin 2004 (LCEN), en tant qu'éditeur non professionnel, l'adresse postale de l'éditeur n'est pas rendue publique ; elle est communiquée à l'hébergeur et peut être obtenue auprès de lui dans les conditions prévues par la loi.</p></section>
+<section class="sec"><h3>Directeur de la publication</h3>
+<p>Victor Hoogstoël.</p></section>
+<section class="sec"><h3>Hébergement</h3>
+<p>L'application et les données sont hébergées par Supabase (Supabase Pte. Ltd, 65 Chulia Street #38-02/03, OCBC Centre, Singapour 049513), sur l'infrastructure Amazon Web Services (AWS), au sein de l'Union européenne, région Europe (Francfort, Allemagne).</p>
+<p>Les e-mails du service (confirmation, réinitialisation de mot de passe, notifications) sont acheminés par Resend (Plus Five Five, Inc., 2261 Market Street #5039, San Francisco, CA 94114, États-Unis).</p></section>
+<section class="sec"><h3>Signalement de contenu</h3>
+<p>Pour signaler un contenu que tu estimes illicite : utilise le bouton « Signaler » dans l'application, ou écris à abuse@pokza.app. Nous traitons les signalements de manière réactive (voir les Conditions d'utilisation).</p></section>
+  </article>
+<hr class="doc-sep"/>
+<article class="doc" id="doc-jeu-responsable">
+    <div class="doc-head"><span class="doc-num">4</span><h2>Jeu responsable</h2></div>
+    <section class="sec">
+<p>Pokza n'est pas un site de jeux d'argent : on n'y mise pas, on n'y gagne pas d'argent. C'est un espace pour partager et analyser des mains de poker entre passionnés. Le Service est réservé aux personnes majeures (18 ans et plus).</p></section>
+<section class="sec"><h3>Le jeu d'argent comporte des risques</h3>
+<p>Pratiqué en argent réel (ailleurs que sur Pokza), le poker peut entraîner une dépendance, un endettement et un isolement. Ne considère jamais le jeu comme une source de revenus, et fixe-toi des limites.</p></section>
+<section class="sec"><h3>Besoin d'aide ou d'écoute</h3>
+<p>Joueurs Info Service : 09 74 75 13 13 (appel non surtaxé, 7j/7 de 8h à 2h).</p>
+<p>En ligne : www.joueurs-info-service.fr</p></section>
+<section class="sec"><h3>Opérateurs légaux</h3>
+<p>En France, seuls les opérateurs agréés par l'Autorité Nationale des Jeux (ANJ) sont autorisés à proposer du poker en argent réel en ligne. La promotion d'opérateurs illégaux est interdite sur Pokza et peut être signalée.</p></section>
+  </article>
+
+  <footer>Document généré depuis la source unique <code>pokza-app/src/legal/legalContent.ts</code> — Pokza.</footer>
+</div>
+</body>
+</html>

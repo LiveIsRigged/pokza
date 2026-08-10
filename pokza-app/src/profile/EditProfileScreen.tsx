@@ -15,6 +15,8 @@ interface EditProfileScreenProps {
   userId: string;
   onCancel: () => void;
   onSaved: (updated: ProfileDetails) => void;
+  /** Ouvre l'écran « Comptes bloqués » — réglage rare rangé ici plutôt que dans le menu principal. */
+  onOpenBlocked?: () => void;
 }
 
 /**
@@ -22,7 +24,7 @@ interface EditProfileScreenProps {
  * favori, fréquence de jeu. Prénom/nom/date de naissance restent verrouillés — ils vivent dans
  * `profiles_private`, une table à part avec ses propres règles, et changent rarement en pratique.
  */
-export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditProfileScreenProps) {
+export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBlocked }: EditProfileScreenProps) {
   const [pseudo, setPseudo] = useState(profile.pseudo);
   const [displayPreference, setDisplayPreference] = useState<'pseudo' | 'nom'>(profile.displayPreference);
   const [bio, setBio] = useState(profile.bio ?? '');
@@ -140,6 +142,13 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
         <Pressable style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]} onPress={handleSave} disabled={!canSubmit}>
           {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Enregistrer</Text>}
         </Pressable>
+
+        {onOpenBlocked && (
+          <Pressable style={styles.settingsRow} onPress={onOpenBlocked}>
+            <Text style={styles.settingsRowLabel}>Comptes bloqués</Text>
+            <Text style={styles.settingsRowChevron}>›</Text>
+          </Pressable>
+        )}
 
         {deleteError && <Text style={styles.error}>{deleteError}</Text>}
 
@@ -268,6 +277,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 28,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(22,35,61,0.15)',
+  },
+  settingsRowLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  settingsRowChevron: {
+    fontSize: 20,
+    color: colors.textSecondary,
   },
   dangerZone: {
     marginTop: 32,

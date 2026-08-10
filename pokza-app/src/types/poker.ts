@@ -59,6 +59,10 @@ export interface Action {
 export type GameType = 'cash' | 'tournament';
 export type Variant = 'nlhe' | 'plo' | 'plo5';
 export type Visibility = 'public' | 'private' | 'group';
+/** État de modération d'un contenu, DISTINCT de `Visibility` (qui est la portée sociale voulue par
+ * l'auteur). `visible` = normal ; `hidden`/`removed` = décision de modération. La RLS ne renvoie un
+ * contenu non `visible` qu'à son propre auteur (pour lui afficher le bandeau), jamais aux autres. */
+export type ModStatus = 'visible' | 'hidden' | 'removed';
 
 /** Nombre de cartes fermées par joueur selon la variante : 2 en Hold'em, 4 en PLO, 5 en PLO5.
  * Tolérant à `undefined` (anciennes mains sans champ `variant`) → 2, le défaut Hold'em. */
@@ -127,6 +131,9 @@ export interface Post {
   authorIsFriend?: boolean;
   mutualFriendCount?: number;
   visibility: Visibility;
+  /** État de modération (cf. `ModStatus`). Absent/`visible` = normal ; sinon la RLS ne l'a laissé
+   * passer que parce que l'utilisateur courant EST l'auteur → on lui montre un bandeau. */
+  modStatus?: ModStatus;
   /** Requis si `visibility === 'group'`. */
   groupId?: string;
   /** Nom du groupe, pour la pastille 👥. Renseigné dans le feed principal (vue `posts_ranked`) et
@@ -147,6 +154,9 @@ export interface Comment {
   createdAt: string;
   likeCount: number;
   likedByMe: boolean;
+  /** État de modération (cf. `ModStatus`). Comme pour `Post` : non `visible` n'arrive au client que
+   * pour l'auteur du commentaire, à qui on affiche un bandeau à la place du contenu. */
+  modStatus?: ModStatus;
   /** Lien signé temporaire (bucket privé) vers la photo jointe — absent si le commentaire n'en a
    * pas. Régénéré à chaque chargement, ne jamais le mettre en cache au-delà de la session. */
   imageUrl?: string;
