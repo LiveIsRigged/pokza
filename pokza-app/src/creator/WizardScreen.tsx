@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, typography } from '../theme/theme';
+import { useLeftEdgeSwipe } from '../navigation/edgeSwipe';
 
 interface WizardScreenProps {
   title: string;
@@ -25,8 +26,11 @@ export function WizardScreen({
   step,
   totalSteps,
 }: WizardScreenProps) {
+  // Retour au glissement bord-gauche → droite, double du bouton ‹ Retour (étape précédente, ou
+  // sortie du créateur à la première étape). Inerte quand l'étape n'a pas de retour.
+  const backSwipe = useLeftEdgeSwipe(onBack ?? (() => {}), !!onBack);
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...backSwipe.panHandlers}>
       <View style={styles.topRow}>
         {onBack ? (
           <Pressable onPress={onBack} style={styles.backButton}>

@@ -1,8 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../../utils/errorMessage';
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { colors, radius, spacing } from '../../theme/theme';
 import { fetchTrendingGifs, searchGifs, type GifResult } from '../../data/gifs';
+import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
 
 interface GifPickerProps {
   visible: boolean;
@@ -21,6 +33,8 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Glisser le bandeau vers le bas pour fermer, comme les autres bottom-sheets (cf. `useSheetDismiss`).
+  const { dragY, grabHandlers } = useSheetDismiss(visible, onClose);
 
   const runSearch = (text: string) => {
     setLoading(true);
@@ -53,18 +67,23 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropFill} onPress={onClose} />
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Chercher un GIF…"
-              value={query}
-              onChangeText={handleQueryChange}
-              autoFocus
-            />
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Text style={styles.closeButton}>✕</Text>
-            </Pressable>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: dragY }] }]}>
+          <View style={sheetGrabStyle} {...grabHandlers}>
+            <View style={styles.handleRow}>
+              <View style={styles.handle} />
+            </View>
+            <View style={styles.header}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Chercher un GIF…"
+                value={query}
+                onChangeText={handleQueryChange}
+                autoFocus
+              />
+              <Pressable onPress={onClose} hitSlop={8}>
+                <Text style={styles.closeButton}>✕</Text>
+              </Pressable>
+            </View>
           </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -81,7 +100,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
               ))}
             </ScrollView>
           )}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -100,6 +119,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.feedBackground,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
+  },
+  handleRow: {
+    alignItems: 'center',
+    paddingTop: spacing.xs,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(22,35,61,0.15)',
   },
   header: {
     flexDirection: 'row',

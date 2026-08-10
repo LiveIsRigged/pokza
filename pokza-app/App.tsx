@@ -27,6 +27,7 @@ import { PostScreen } from './src/post/PostScreen';
 import { supabase } from './src/lib/supabase';
 import { fetchUnreadNotificationCount } from './src/data/notifications';
 import { SideMenu, useMenuEdgeSwipe } from './src/components/ui/SideMenu';
+import { Screen } from './src/components/ui/Screen';
 import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { FeedHeader } from './src/components/ui/FeedHeader';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
@@ -417,15 +418,16 @@ function AppContent() {
   }
 
   if (mode === 'edit' && editingPost) {
+    const onBack = () => {
+      setEditingPostId(null);
+      setMode(editReturnMode);
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <EditPostScreen
           post={editingPost}
           groups={myGroups}
-          onCancel={() => {
-            setEditingPostId(null);
-            setMode(editReturnMode);
-          }}
+          onCancel={onBack}
           onSave={async (edits) => {
             const postId = editingPost.id;
             try {
@@ -439,34 +441,36 @@ function AppContent() {
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'search') {
+    const onBack = () => setMode('feed');
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <SearchScreen
-          onBack={() => setMode('feed')}
+          onBack={onBack}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'notifications') {
+    const onBack = () => {
+      setMode('feed');
+      refreshUnreadNotificationCount();
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <NotificationsScreen
           currentUserId={session.user.id}
-          onBack={() => {
-            setMode('feed');
-            refreshUnreadNotificationCount();
-          }}
+          onBack={onBack}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -483,19 +487,20 @@ function AppContent() {
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'invitations') {
+    const onBack = () => {
+      setMode('feed');
+      refreshPendingInvitationsCount();
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <InvitationsScreen
           currentUserId={session.user.id}
-          onBack={() => {
-            setMode('feed');
-            refreshPendingInvitationsCount();
-          }}
+          onBack={onBack}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -503,25 +508,26 @@ function AppContent() {
           onInvitationHandled={refreshPendingInvitationsCount}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'post' && viewingPostId) {
+    const onBack = () => {
+      setViewingPostId(null);
+      // On revient d'où l'on vient : les notifications si la main a été ouverte depuis là,
+      // le feed si on y est arrivé par un lien de partage externe.
+      setMode(postReturnMode);
+      refreshFeed();
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <PostScreen
           postId={viewingPostId}
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
           openComments={viewingPostComments}
-          onBack={() => {
-            setViewingPostId(null);
-            // On revient d'où l'on vient : les notifications si la main a été ouverte depuis là,
-            // le feed si on y est arrivé par un lien de partage externe.
-            setMode(postReturnMode);
-            refreshFeed();
-          }}
+          onBack={onBack}
           onEditPost={(postId) => {
             setEditingPostId(postId);
             setEditReturnMode('post');
@@ -534,24 +540,25 @@ function AppContent() {
           onLoaded={setEditingPostFallback}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'profile' && viewingProfileId) {
+    const onBack = () => {
+      setViewingProfileId(null);
+      setMode('feed');
+      refreshFeed();
+      refreshUnreadNotificationCount();
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <ProfileScreen
           profileId={viewingProfileId}
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
           onProfileChanged={refetchProfile}
-          onBack={() => {
-            setViewingProfileId(null);
-            setMode('feed');
-            refreshFeed();
-            refreshUnreadNotificationCount();
-          }}
+          onBack={onBack}
           onEditPost={(postId) => {
             setEditingPostId(postId);
             setEditReturnMode('profile');
@@ -569,35 +576,37 @@ function AppContent() {
           onOpenBlocked={() => setMode('blocked')}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'myFriends') {
+    const onBack = () => setMode('profile');
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <FriendsListScreen
           userId={session.user.id}
-          onBack={() => setMode('profile')}
+          onBack={onBack}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'groups') {
+    const onBack = () => {
+      setMode('feed');
+      refreshMyGroups();
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <GroupsListScreen
           currentUserId={session.user.id}
-          onBack={() => {
-            setMode('feed');
-            refreshMyGroups();
-          }}
+          onBack={onBack}
           onSelectGroup={(groupId) => {
             setViewingGroupId(groupId);
             setMode('group');
@@ -605,23 +614,24 @@ function AppContent() {
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'group' && viewingGroupId) {
+    const onBack = () => {
+      setViewingGroupId(null);
+      setMode('groups');
+      refreshFeed();
+      refreshMyGroups();
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <GroupScreen
           groupId={viewingGroupId}
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
-          onBack={() => {
-            setViewingGroupId(null);
-            setMode('groups');
-            refreshFeed();
-            refreshMyGroups();
-          }}
+          onBack={onBack}
           onEditPost={(postId) => {
             setEditingPostId(postId);
             setEditReturnMode('group');
@@ -633,15 +643,16 @@ function AppContent() {
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'inviteToGroup' && invitingGroupId) {
+    const onBack = () => setMode('group');
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <SearchScreen
-          onBack={() => setMode('group')}
+          onBack={onBack}
           onSelectProfile={() => {}}
           inviteMode
           currentUserId={session.user.id}
@@ -657,122 +668,127 @@ function AppContent() {
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'addFriends') {
+    const onBack = () => setMode('feed');
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <AddFriendsScreen
           currentUserId={session.user.id}
-          onBack={() => setMode('feed')}
+          onBack={onBack}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'blocked') {
+    // On y arrive depuis « Modifier mon profil » (réglages) → on revient sur son profil.
+    const onBack = () => {
+      setViewingProfileId(session.user.id);
+      setMode('profile');
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <BlockedListScreen
           currentUserId={session.user.id}
-          // On y arrive depuis « Modifier mon profil » (réglages) → on revient sur son profil.
-          onBack={() => {
-            setViewingProfileId(session.user.id);
-            setMode('profile');
-          }}
+          onBack={onBack}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'legal') {
+    const onBack = () => setMode('feed');
     return (
-      <View style={styles.container}>
-        <LegalScreen onBack={() => setMode('feed')} />
+      <Screen onBack={onBack}>
+        <LegalScreen onBack={onBack} />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   // Réservé aux admins. Double garde : l'entrée de menu n'apparaît que pour un admin, et même en
   // forçant ce mode la fonction SQL `get_admin_stats` refuse un non-admin.
   if (mode === 'stats' && isAdmin) {
+    const onBack = () => setMode('feed');
     return (
-      <View style={styles.container}>
-        <StatsScreen onBack={() => setMode('feed')} />
+      <Screen onBack={onBack}>
+        <StatsScreen onBack={onBack} />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   // Back-office modération. Même double garde que Stats : entrée de menu réservée aux admins et
   // chaque RPC re-vérifie `is_admin()` côté base — forcer le mode ne donne accès à rien.
   if (mode === 'adminReports' && isAdmin) {
+    const onBack = () => setMode('feed');
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <AdminReportsScreen
           reloadKey={adminReportsReloadKey}
-          onBack={() => setMode('feed')}
+          onBack={onBack}
           onOpenReport={(reportId) => {
             setAdminReportId(reportId);
             setMode('adminReportDetail');
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'adminReportDetail' && isAdmin && adminReportId) {
+    const onBack = () => {
+      // Une action a pu changer le statut du signalement → forcer un rechargement de la file.
+      setAdminReportsReloadKey((k) => k + 1);
+      setMode('adminReports');
+    };
     return (
-      <View style={styles.container}>
+      <Screen onBack={onBack}>
         <AdminReportDetailScreen
           reportId={adminReportId}
-          onBack={() => {
-            // Une action a pu changer le statut du signalement → forcer un rechargement de la file.
-            setAdminReportsReloadKey((k) => k + 1);
-            setMode('adminReports');
-          }}
+          onBack={onBack}
           onOpenUser={(userId) => {
             setAdminUserId(userId);
             setMode('adminUser');
           }}
         />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'adminUser' && isAdmin && adminUserId) {
+    const onBack = () => setMode(adminReportId ? 'adminReportDetail' : 'adminReports');
     return (
-      <View style={styles.container}>
-        <AdminUserScreen
-          userId={adminUserId}
-          onBack={() => setMode(adminReportId ? 'adminReportDetail' : 'adminReports')}
-        />
+      <Screen onBack={onBack}>
+        <AdminUserScreen userId={adminUserId} onBack={onBack} />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 
   if (mode === 'adminAudit' && isAdmin) {
+    const onBack = () => setMode('feed');
     return (
-      <View style={styles.container}>
-        <AdminAuditScreen onBack={() => setMode('feed')} />
+      <Screen onBack={onBack}>
+        <AdminAuditScreen onBack={onBack} />
         <StatusBar style="dark" />
-      </View>
+      </Screen>
     );
   }
 

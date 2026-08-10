@@ -1,91 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type GestureResponderEvent,
-  type PanResponderGestureState,
-} from 'react-native';
+import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../../theme/theme';
+import {
+  CLAIM_DISTANCE,
+  FLICK_VELOCITY,
+  TRIGGER_DISTANCE,
+  isHorizontal,
+  useLeftEdgeSwipe,
+} from '../../navigation/edgeSwipe';
 import { Avatar } from './Avatar';
 
 const PANEL_WIDTH = 288;
-/** Largeur de la bande, collée au bord gauche de l'écran, où le glissement d'ouverture doit
- * commencer : assez large pour un pouce, assez étroite pour ne pas confisquer les gestes du feed. */
-const EDGE_ZONE = 36;
-/** Distance horizontale à parcourir pour ouvrir/fermer — ou moins si le geste est vif (vélocité). */
-const TRIGGER_DISTANCE = 56;
-const FLICK_VELOCITY = 0.3;
-
-/** Course horizontale minimale avant de confisquer le geste : en dessous, un simple tremblement de
- * pouce au début d'un défilement suffirait à voler le mouvement au feed (qui ne le récupère plus). */
-const CLAIM_DISTANCE = 12;
-/** Un geste est « horizontal » s'il avance deux fois plus en X qu'en Y — sinon c'est un défilement. */
-function isHorizontal(g: PanResponderGestureState) {
-  return Math.abs(g.dx) > Math.abs(g.dy) * 2;
-}
-
-/** Abscisse du doigt, robuste multi-plateformes (même problème que `touchPageY` dans PullToRefresh) :
- * sur react-native-web `nativeEvent` est l'événement DOM brut, où `pageX` n'existe qu'au niveau de
- * chaque Touch, alors que RN natif le pose directement sur `nativeEvent`. En dernier recours on
- * renvoie l'infini : une position inconnue ne doit jamais passer pour un départ au bord de l'écran. */
-function touchPageX(e: GestureResponderEvent): number {
-  const ne = e.nativeEvent as any;
-  if (typeof ne.pageX === 'number') return ne.pageX;
-  const t = ne.changedTouches?.[0] ?? ne.touches?.[0];
-  return t ? t.pageX : Number.POSITIVE_INFINITY;
-}
 
 /**
- * Ouverture du menu en glissant du bord gauche vers le centre. À poser sur le conteneur de l'écran :
- * `<View {...useMenuEdgeSwipe(open, !menuOpen).panHandlers}>`.
- *
- * Le test se fait en phase de CAPTURE (donc avant que le feed, qui occupe tout l'écran, ne s'empare
- * du mouvement), mais on ne confisque le geste que si le doigt part vraiment du bord ET file vers la
- * droite : un défilement vertical, même démarré au bord, continue d'aller au feed.
+ * Ouverture du menu en glissant du bord gauche vers le centre. À poser sur le conteneur du feed :
+ * `<View {...useMenuEdgeSwipe(open, !menuOpen).panHandlers}>`. Alias du détecteur de bord partagé
+ * (cf. `useLeftEdgeSwipe`), que le retour arrière des écrans empilés réutilise à l'identique.
  */
-export function useMenuEdgeSwipe(onOpen: () => void, enabled = true) {
-  const onOpenRef = useRef(onOpen);
-  onOpenRef.current = onOpen;
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
-  const opened = useRef(false);
-  const startX = useRef(Number.POSITIVE_INFINITY);
-
-  return useMemo(
-    () =>
-      PanResponder.create({
-        // `gestureState.x0` n'est renseigné qu'au moment où l'on s'empare du geste (il vaut 0 avant),
-        // il ne dit donc PAS d'où part le doigt : on note l'abscisse de départ nous-mêmes ici. Ce
-        // test ne confisque rien — il renvoie toujours false, les taps restent intacts.
-        onStartShouldSetPanResponderCapture: (e) => {
-          startX.current = touchPageX(e);
-          return false;
-        },
-        onMoveShouldSetPanResponderCapture: (_e, g) =>
-          enabledRef.current && startX.current <= EDGE_ZONE && g.dx > CLAIM_DISTANCE && isHorizontal(g),
-        onPanResponderGrant: () => {
-          opened.current = false;
-        },
-        // On ouvre dès le seuil franchi, sans attendre le relâchement : le panneau se met à glisser
-        // pendant que le doigt continue, ce qui donne la sensation de le tirer.
-        onPanResponderMove: (_e, g) => {
-          if (opened.current) return;
-          if (g.dx >= TRIGGER_DISTANCE || (g.dx > 24 && g.vx >= FLICK_VELOCITY)) {
-            opened.current = true;
-            onOpenRef.current();
-          }
-        },
-        // Le geste nous appartient : le feed ne doit pas pouvoir le reprendre en cours de route.
-        onPanResponderTerminationRequest: () => false,
-      }),
-    [],
-  );
-}
+export const useMenuEdgeSwipe = useLeftEdgeSwipe;
 
 export interface SideMenuItem {
   label: string;
@@ -161,7 +93,10 @@ export function SideMenu({
 
   return (
     <View style={StyleSheet.absoluteFill as any} pointerEvents="box-none">
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: anim }]}>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: anim }]}
+        {...closeSwipe.panHandlers}
+      >
         <Pressable style={StyleSheet.absoluteFill as any} onPress={onClose} />
       </Animated.View>
 

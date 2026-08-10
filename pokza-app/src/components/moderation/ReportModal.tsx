@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radius, spacing } from '../../theme/theme';
 import { errorMessage } from '../../utils/errorMessage';
 import { REPORT_REASONS, submitReport, type ReportReason, type ReportTargetType } from '../../data/reports';
+import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
 
 interface ReportModalProps {
   visible: boolean;
@@ -38,6 +39,8 @@ export function ReportModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // Glisser le bandeau vers le bas pour fermer, comme les autres bottom-sheets (cf. `useSheetDismiss`).
+  const { dragY, grabHandlers } = useSheetDismiss(visible, onClose);
 
   // Repartir d'un état vierge à chaque ouverture — sinon un précédent motif/erreur/confirmation
   // resterait affiché en rouvrant la feuille sur une autre cible.
@@ -70,9 +73,11 @@ export function ReportModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropFill} onPress={onClose} />
-        <View style={styles.sheet}>
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: dragY }] }]}>
+          <View style={sheetGrabStyle} {...grabHandlers}>
+            <View style={styles.handleRow}>
+              <View style={styles.handle} />
+            </View>
           </View>
 
           {done ? (
@@ -137,7 +142,7 @@ export function ReportModal({
               </View>
             </>
           )}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

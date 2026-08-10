@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../../utils/errorMessage';
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
 import type { Comment } from '../../types/poker';
 import { createComment, deleteComment, fetchComments, setCommentLiked } from '../../data/comments';
 import { pickImage, type PickedImage } from '../../data/images';
@@ -182,6 +194,10 @@ export function CommentsSection({
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [reportingComment, setReportingComment] = useState<Comment | null>(null);
 
+  // Fermeture en attrapant le bandeau du haut (poignée + titre + croix) et en tirant vers le bas,
+  // façon bottom-sheet (logique partagée avec les autres feuilles, cf. `useSheetDismiss`).
+  const { dragY, grabHandlers } = useSheetDismiss(visible, onClose);
+
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
@@ -291,15 +307,17 @@ export function CommentsSection({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropFill} onPress={onClose} />
-        <View style={styles.sheet}>
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
-          </View>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Commentaires</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Text style={styles.closeButton}>✕</Text>
-            </Pressable>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: dragY }] }]}>
+          <View style={sheetGrabStyle} {...grabHandlers}>
+            <View style={styles.handleRow}>
+              <View style={styles.handle} />
+            </View>
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Commentaires</Text>
+              <Pressable onPress={onClose} hitSlop={8}>
+                <Text style={styles.closeButton}>✕</Text>
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
@@ -385,7 +403,7 @@ export function CommentsSection({
               <Text style={styles.sendButtonText}>Envoyer</Text>
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
       </View>
 
       <GifPicker visible={gifPickerOpen} onClose={() => setGifPickerOpen(false)} onSelect={handleSelectGif} />
