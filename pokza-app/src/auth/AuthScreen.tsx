@@ -4,7 +4,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../analytics';
 import { colors, radius } from '../theme/theme';
-import { webOrigin } from '../navigation/deepLink';
+import { webOrigin, readInitialDeepLink } from '../navigation/deepLink';
+import { openPublicReport, type PublicReportTarget } from '../utils/publicReport';
 import { passwordError } from './passwordRules';
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
@@ -51,6 +52,17 @@ export function AuthScreen() {
   // Consentement obligatoire à l'inscription (18 ans + CGU + confidentialité) et lecture des textes.
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [legalDoc, setLegalDoc] = useState<LegalDocId | null>(null);
+
+  // Un visiteur qui ouvre un lien partagé (`/post/:id` ou `/invite/:id`) sans compte atterrit ici :
+  // on lui offre un accès discret au signalement public (§5.2) pour la cible du lien, sans l'obliger
+  // à s'inscrire. Lu une seule fois : l'URL est encore intacte tant qu'on n'est pas connecté.
+  const pendingLink = useRef(readInitialDeepLink()).current;
+  const reportTarget: PublicReportTarget | null =
+    pendingLink?.type === 'post'
+      ? { type: 'post', id: pendingLink.postId }
+      : pendingLink?.type === 'invite'
+        ? { type: 'user', id: pendingLink.userId }
+        : null;
 
   const confirmEmailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -293,6 +305,14 @@ export function AuthScreen() {
         </Text>
       </Pressable>
 
+      {reportTarget && (
+        <Pressable onPress={() => openPublicReport(reportTarget)} hitSlop={8}>
+          <Text style={styles.reportLink}>
+            {reportTarget.type === 'post' ? 'Signaler ce contenu sans compte' : 'Signaler ce profil sans compte'}
+          </Text>
+        </Pressable>
+      )}
+
       {legalDoc && (
         <View style={styles.legalOverlay}>
           <LegalScreen initialDocId={legalDoc} onBack={() => setLegalDoc(null)} />
@@ -422,5 +442,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     textAlign: 'center',
+  },
+  reportLink: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 20,
+    textDecorationLine: 'underline',
   },
 });
