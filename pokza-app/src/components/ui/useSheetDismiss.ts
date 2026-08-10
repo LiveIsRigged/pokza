@@ -41,12 +41,12 @@ export function useSheetDismiss(visible: boolean, onClose: () => void) {
         },
         onPanResponderRelease: (_e, g) => {
           if (g.dy > DISMISS_DISTANCE || g.vy > DISMISS_VELOCITY) {
-            // Glisse la feuille hors de l'écran puis démonte la modale (dont la sortie animée prend
-            // le relais), et remet `dragY` à zéro pour une réouverture propre.
-            Animated.timing(dragY, { toValue: 900, duration: 160, useNativeDriver: true }).start(() => {
-              onCloseRef.current();
-              dragY.setValue(0);
-            });
+            // On ferme sans animer nous-mêmes : la sortie du Modal (`animationType="slide"`) glisse la
+            // feuille depuis sa position actuelle. Surtout PAS de `setValue(0)` ici — ça la ferait
+            // remonter d'un coup pendant la sortie (le bug « baisse / remonte / rebaisse »). On remet
+            // la position à zéro seulement après la sortie, feuille déjà cachée, pour la réouverture.
+            onCloseRef.current();
+            setTimeout(() => dragY.setValue(0), 350);
           } else {
             Animated.spring(dragY, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
           }
