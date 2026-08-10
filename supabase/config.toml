@@ -1,0 +1,15 @@
+# Config Supabase CLI. project_id = ref par défaut (DEV) ; pour la PROD, déployer avec
+# `--project-ref blfoycuvvyxaxftzuidf` (ou `supabase link --project-ref <ref>`).
+project_id = "ahdikgckctvduuestzrh"
+
+# §5.2 — formulaire public de signalement : appelé sans compte -> pas de vérif JWT.
+[functions.report-public]
+verify_jwt = false
+
+# §4.10 — notif e-mail déclenchée par le webhook DB : pas de JWT (auth par x-webhook-secret).
+[functions.report-notify]
+verify_jwt = false
+
+# §9.5 — purge PostHog : réservée à l'utilisateur connecté -> vérif JWT active.
+[functions.posthog-purge]
+verify_jwt = true

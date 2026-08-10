@@ -101,9 +101,15 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
   } catch {
     // Sans conséquence : un avatar orphelin dans le bucket ne doit jamais bloquer la suppression.
   }
+  // §9.5 (volet serveur) : purge les données PostHog TANT QUE le JWT est encore valide, AVANT le
+  // delete. Best-effort — une purge analytics qui échoue ne doit jamais bloquer la suppression.
+  try {
+    await supabase.functions.invoke('posthog-purge');
+  } catch {
+    // ignoré volontairement
+  }
   const { error } = await supabase.rpc('delete_own_account');
   if (error) throw error;
-  // §9.5 (volet client) : oublie l'identité analytics locale. La purge des données déjà envoyées
-  // à PostHog se fera côté serveur (edge function + Personal API Key), à faire séparément.
+  // §9.5 (volet client) : oublie l'identité analytics locale.
   resetAnalytics();
 }
