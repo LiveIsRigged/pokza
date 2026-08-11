@@ -18,6 +18,9 @@ export interface ProfileDetails extends ProfileSummary {
   frequenceJeu: string;
   /** Description libre façon Instagram, 150 caractères max (contrainte vérifiée côté base). */
   bio?: string;
+  /** Pays du joueur, code ISO 3166-1 alpha-2 (ex. « FR »). Facultatif ; le drapeau/nom en sont
+   * dérivés à l'affichage (cf. `data/countries.ts`). */
+  country?: string;
   createdAt: string;
 }
 
@@ -40,7 +43,7 @@ export async function fetchProfile(id: string): Promise<ProfileDetails> {
   const [{ data: row, error: rowError }, { data: displayName, error: nameError }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, pseudo, avatar_url, display_preference, format_favori, variante_favorite, frequence_jeu, bio, created_at')
+      .select('id, pseudo, avatar_url, display_preference, format_favori, variante_favorite, frequence_jeu, bio, country, created_at')
       .eq('id', id)
       .single(),
     supabase.rpc('get_display_name', { profile_id: id }),
@@ -57,6 +60,7 @@ export async function fetchProfile(id: string): Promise<ProfileDetails> {
     varianteFavorite: row.variante_favorite ?? 'nlhe',
     frequenceJeu: row.frequence_jeu,
     bio: row.bio ?? undefined,
+    country: row.country ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -68,6 +72,8 @@ export interface ProfileEditInput {
   varianteFavorite: string;
   frequenceJeu: string;
   bio?: string;
+  /** Code ISO 3166-1 alpha-2, ou null pour effacer le pays. */
+  country?: string | null;
 }
 
 /** Modifie le profil et renvoie sa version à jour (pseudo/préférence peuvent changer le
@@ -82,6 +88,7 @@ export async function updateProfile(userId: string, edits: ProfileEditInput): Pr
       variante_favorite: edits.varianteFavorite,
       frequence_jeu: edits.frequenceJeu,
       bio: edits.bio?.trim() || null,
+      country: edits.country ?? null,
     })
     .eq('id', userId);
   if (error) throw error;

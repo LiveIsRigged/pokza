@@ -176,7 +176,7 @@ const confidentialite: LegalDoc = {
       heading: 'Données que nous traitons',
       body: [
         "• Identification : adresse e-mail et mot de passe (celui-ci est stocké chiffré par notre prestataire d'authentification, jamais en clair).",
-        "• Profil : pseudo, photo de profil, description, préférences de jeu.",
+        "• Profil : pseudo, photo de profil, description, pays, préférences de jeu.",
         "• État civil : prénom, nom et date de naissance — utilisés pour vérifier ta majorité (18 ans) et, selon ton choix, afficher ton nom.",
         "• Contenus : mains publiées, commentaires, images et GIF, mentions « j'aime », votes et sondages.",
         "• Relations : amis, demandes d'amis, groupes privés.",

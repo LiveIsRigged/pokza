@@ -5,6 +5,8 @@ import { colors, radius, spacing } from '../theme/theme';
 import { deleteOwnAccount, updateProfile, type ProfileDetails } from '../data/profiles';
 import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
+import { CountryPicker } from '../components/ui/CountryPicker';
+import { countryByCode, flagEmoji } from '../data/countries';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
 const BIO_MAX_LENGTH = 150;
@@ -31,13 +33,15 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBl
   const [formatFavori, setFormatFavori] = useState(profile.formatFavori);
   const [varianteFavorite, setVarianteFavorite] = useState(profile.varianteFavorite);
   const [frequenceJeu, setFrequenceJeu] = useState(profile.frequenceJeu);
+  const [country, setCountry] = useState<string | null>(profile.country ?? null);
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const canSubmit = pseudo.trim().length > 0 && !submitting;
+  const canSubmit = pseudo.trim().length > 0 && !!country && !submitting;
 
   const handleDeleteAccount = async () => {
     setDeleteError(null);
@@ -63,6 +67,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBl
         varianteFavorite,
         frequenceJeu,
         bio,
+        country,
       });
       onSaved(updated);
     } catch (err) {
@@ -99,6 +104,19 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBl
           <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
           <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
         </View>
+
+        <Text style={styles.label}>Pays</Text>
+        <Pressable style={styles.selector} onPress={() => setCountryPickerOpen(true)}>
+          {country ? (
+            <Text style={styles.selectorValue}>
+              {flagEmoji(country)} {countryByCode(country)?.name ?? country}
+            </Text>
+          ) : (
+            <Text style={styles.selectorPlaceholder}>Choisir un pays</Text>
+          )}
+          <Text style={styles.selectorChevron}>›</Text>
+        </Pressable>
+        {!country && <Text style={styles.hint}>Le pays est obligatoire.</Text>}
 
         <View style={styles.bioLabelRow}>
           <Text style={styles.label}>Description</Text>
@@ -178,6 +196,17 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBl
           )}
         </View>
       </ScrollView>
+
+      <CountryPicker
+        visible={countryPickerOpen}
+        selectedCode={country}
+        allowClear={false}
+        onSelect={(code) => {
+          setCountry(code);
+          setCountryPickerOpen(false);
+        }}
+        onClose={() => setCountryPickerOpen(false)}
+      />
     </View>
   );
 }
@@ -229,6 +258,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#fff',
     color: colors.textPrimary,
+  },
+  selector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.25)',
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  selectorValue: {
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  selectorPlaceholder: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  selectorChevron: {
+    fontSize: 20,
+    color: colors.textSecondary,
   },
   bioLabelRow: {
     flexDirection: 'row',

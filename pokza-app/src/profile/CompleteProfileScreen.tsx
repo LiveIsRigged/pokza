@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
+import { CountryPicker } from '../components/ui/CountryPicker';
+import { countryByCode, flagEmoji } from '../data/countries';
 import { colors, radius } from '../theme/theme';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
@@ -55,6 +57,8 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
   // le champ n'est donc jamais vide et n'entre pas dans `canSubmit`.
   const [varianteFavorite, setVarianteFavorite] = useState<string>('nlhe');
   const [frequenceJeu, setFrequenceJeu] = useState<string | null>(null);
+  const [country, setCountry] = useState<string | null>(null);
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +66,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
     pseudo.trim().length > 0 &&
     prenom.trim().length > 0 &&
     nom.trim().length > 0 &&
+    Boolean(country) &&
     Boolean(formatFavori) &&
     Boolean(frequenceJeu) &&
     !submitting;
@@ -106,9 +111,10 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
     // un update de suivi que si l'utilisateur s'est écarté de ces défauts. Le self-update est
     // autorisé par RLS (même chemin que l'écran d'édition). Un échec ici ne bloque pas l'entrée —
     // les deux champs restent modifiables depuis le profil.
-    const followUp: { variante_favorite?: string; bio?: string } = {};
+    const followUp: { variante_favorite?: string; bio?: string; country?: string } = {};
     if (varianteFavorite !== 'nlhe') followUp.variante_favorite = varianteFavorite;
     if (bio.trim()) followUp.bio = bio.trim();
+    if (country) followUp.country = country;
     if (Object.keys(followUp).length > 0) {
       const { data: userData } = await supabase.auth.getUser();
       if (userData.user) {
@@ -154,6 +160,18 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
         <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
         <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
       </View>
+
+      <Text style={styles.label}>Pays</Text>
+      <Pressable style={styles.selector} onPress={() => setCountryPickerOpen(true)}>
+        {country ? (
+          <Text style={styles.selectorValue}>
+            {flagEmoji(country)} {countryByCode(country)?.name ?? country}
+          </Text>
+        ) : (
+          <Text style={styles.selectorPlaceholder}>Choisir un pays</Text>
+        )}
+        <Text style={styles.selectorChevron}>›</Text>
+      </Pressable>
 
       <Text style={styles.label}>Date de naissance</Text>
       <View style={styles.dobRow}>
@@ -227,6 +245,17 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
       <Pressable style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={!canSubmit}>
         {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Valider mon profil</Text>}
       </Pressable>
+
+      <CountryPicker
+        visible={countryPickerOpen}
+        selectedCode={country}
+        allowClear={false}
+        onSelect={(code) => {
+          setCountry(code);
+          setCountryPickerOpen(false);
+        }}
+        onClose={() => setCountryPickerOpen(false)}
+      />
     </ScrollView>
   );
 }
@@ -284,6 +313,29 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 6,
     lineHeight: 17,
+  },
+  selector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.25)',
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  selectorValue: {
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  selectorPlaceholder: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  selectorChevron: {
+    fontSize: 20,
+    color: colors.textSecondary,
   },
   bioLabelRow: {
     flexDirection: 'row',
