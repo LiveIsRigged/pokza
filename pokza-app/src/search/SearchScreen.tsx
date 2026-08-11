@@ -6,10 +6,17 @@ import { Avatar } from '../components/ui/Avatar';
 import { searchProfiles, type ProfileSummary } from '../data/profiles';
 import { fetchFriends } from '../data/friends';
 import { fetchGroupMembers } from '../data/groups';
+import { Popover } from '../components/ui/Popover';
 
 interface SearchScreenProps {
   onBack: () => void;
   onSelectProfile: (profileId: string) => void;
+  /** `'screen'` (défaut) = plein écran avec flèche ← (utilisé aussi par l'invitation en groupe) ;
+   * `'sheet'` = bottom-sheet par-dessus le feed, champ de recherche dans le bandeau. */
+  variant?: 'screen' | 'sheet';
+  /** Variante `'sheet'` uniquement : contrôle l'ouverture/fermeture de la feuille. */
+  visible?: boolean;
+  onClose?: () => void;
   /** Mode "inviter dans un groupe" : la ligne affiche un bouton Inviter au lieu de naviguer vers
    * le profil au clic. */
   inviteMode?: boolean;
@@ -23,6 +30,9 @@ interface SearchScreenProps {
 export function SearchScreen({
   onBack,
   onSelectProfile,
+  variant = 'screen',
+  visible,
+  onClose,
   inviteMode,
   onInvite,
   currentUserId,
@@ -90,25 +100,25 @@ export function SearchScreen({
   const showFriendsList = inviteMode && query.trim().length === 0;
   const displayed = (showFriendsList ? invitableFriends ?? [] : results).filter((p) => !invitedIds.has(p.id));
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.topRow}>
-        <Pressable onPress={onBack} hitSlop={8}>
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
-        <TextInput
-          style={styles.input}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Rechercher un pseudo…"
-          autoCapitalize="none"
-          autoFocus
-        />
-      </View>
+  const renderInput = (style: any) => (
+    <TextInput
+      style={style}
+      value={query}
+      onChangeText={setQuery}
+      placeholder="Rechercher un pseudo…"
+      autoCapitalize="none"
+      autoFocus
+    />
+  );
 
+  const body = (
+    <>
       {error && <Text style={styles.statusText}>{error}</Text>}
 
-      <ScrollView contentContainerStyle={styles.resultsContent}>
+      <ScrollView
+        style={variant === 'sheet' ? styles.listSheet : styles.listScreen}
+        contentContainerStyle={styles.resultsContent}
+      >
         {showFriendsList && <Text style={styles.friendsHint}>Tes amis</Text>}
         {loading ? (
           <ActivityIndicator style={styles.loader} color={colors.action} />
@@ -142,6 +152,27 @@ export function SearchScreen({
           ))
         )}
       </ScrollView>
+    </>
+  );
+
+  if (variant === 'sheet') {
+    return (
+      <Popover visible={!!visible} onClose={onClose ?? onBack} width={340}>
+        <View style={styles.searchHeader}>{renderInput(styles.searchInputSheet)}</View>
+        {body}
+      </Popover>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.topRow}>
+        <Pressable onPress={onBack} hitSlop={8}>
+          <Text style={styles.backArrow}>←</Text>
+        </Pressable>
+        {renderInput(styles.input)}
+      </View>
+      {body}
     </View>
   );
 }
@@ -174,6 +205,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     backgroundColor: '#fff',
     color: colors.textPrimary,
+  },
+  // Bandeau du champ dans le panneau déroulant (variante `sheet`) : pas de `flex: 1` — dans une
+  // colonne il étirerait le champ en hauteur ; la largeur se remplit d'elle-même (align stretch).
+  searchHeader: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(22,35,61,0.15)',
+  },
+  searchInputSheet: {
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.25)',
+    borderRadius: radius.full,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
+    backgroundColor: '#fff',
+    color: colors.textPrimary,
+  },
+  // Plein écran (variante `screen`) : remplit la hauteur. Panneau (`sheet`) : `flexShrink` pour
+  // que la carte épouse le contenu et ne défile qu'à hauteur max (cf. `Popover`).
+  listScreen: {
+    flex: 1,
+  },
+  listSheet: {
+    flexShrink: 1,
   },
   resultsContent: {
     paddingHorizontal: 14,

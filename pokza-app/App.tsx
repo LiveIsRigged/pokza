@@ -72,9 +72,7 @@ function AppContent() {
     | 'feed'
     | 'create'
     | 'edit'
-    | 'search'
     | 'profile'
-    | 'notifications'
     | 'groups'
     | 'group'
     | 'inviteToGroup'
@@ -97,9 +95,6 @@ function AppContent() {
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [viewingPostId, setViewingPostId] = useState<string | null>(null);
   const [viewingPostComments, setViewingPostComments] = useState(false);
-  // Où revenir en fermant la page d'une main : les notifications (d'où on l'ouvre normalement) ou
-  // le feed (quand on y arrive par un lien de partage externe).
-  const [postReturnMode, setPostReturnMode] = useState<'feed' | 'notifications'>('notifications');
   const [editingPostFallback, setEditingPostFallback] = useState<Post | null>(null);
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
   const [invitingGroupId, setInvitingGroupId] = useState<string | null>(null);
@@ -116,6 +111,10 @@ function AppContent() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Notifications et Recherche s'ouvrent en bottom-sheet PAR-DESSUS le feed (le feed reste monté
+  // derrière), pas en page plein écran : d'où de simples booléens plutôt qu'un `mode`.
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   // Le menu s'ouvre en glissant du bord gauche vers le centre (plus de bouton dans la barre du
   // haut) ; désactivé pendant qu'il est ouvert, où c'est le geste inverse qui a la main.
   const menuEdgeSwipe = useMenuEdgeSwipe(() => setMenuOpen(true), !menuOpen);
@@ -281,7 +280,6 @@ function AppContent() {
       } else if (route.type === 'post') {
         setViewingPostId(route.postId);
         setViewingPostComments(false);
-        setPostReturnMode('feed');
         setMode('post');
       }
       clearDeepLinkFromUrl();
@@ -445,52 +443,6 @@ function AppContent() {
     );
   }
 
-  if (mode === 'search') {
-    const onBack = () => setMode('feed');
-    return (
-      <Screen onBack={onBack}>
-        <SearchScreen
-          onBack={onBack}
-          onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
-          }}
-        />
-        <StatusBar style="dark" />
-      </Screen>
-    );
-  }
-
-  if (mode === 'notifications') {
-    const onBack = () => {
-      setMode('feed');
-      refreshUnreadNotificationCount();
-    };
-    return (
-      <Screen onBack={onBack}>
-        <NotificationsScreen
-          currentUserId={session.user.id}
-          onBack={onBack}
-          onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
-          }}
-          onOpenGroup={(groupId) => {
-            setViewingGroupId(groupId);
-            setMode('group');
-          }}
-          onOpenPost={(postId, openComments) => {
-            setViewingPostId(postId);
-            setViewingPostComments(openComments);
-            setPostReturnMode('notifications');
-            setMode('post');
-          }}
-        />
-        <StatusBar style="dark" />
-      </Screen>
-    );
-  }
-
   if (mode === 'invitations') {
     const onBack = () => {
       setMode('feed');
@@ -515,9 +467,9 @@ function AppContent() {
   if (mode === 'post' && viewingPostId) {
     const onBack = () => {
       setViewingPostId(null);
-      // On revient d'où l'on vient : les notifications si la main a été ouverte depuis là,
-      // le feed si on y est arrivé par un lien de partage externe.
-      setMode(postReturnMode);
+      // Retour au feed : la main s'ouvre soit depuis un lien de partage, soit depuis la feuille de
+      // notifications (elle-même au-dessus du feed) — dans les deux cas on retombe sur le feed.
+      setMode('feed');
       refreshFeed();
     };
     return (
@@ -798,8 +750,8 @@ function AppContent() {
         compact={headerCompact}
         onOpenMenu={() => setMenuOpen(true)}
         onCreate={() => setMode('create')}
-        onSearch={() => setMode('search')}
-        onNotifications={() => setMode('notifications')}
+        onSearch={() => setSearchOpen(true)}
+        onNotifications={() => setNotificationsOpen(true)}
         unreadCount={unreadNotificationCount}
       />
       <PullToRefresh
@@ -932,6 +884,41 @@ function AppContent() {
         onSignOut={() => {
           setMenuOpen(false);
           supabase.auth.signOut();
+        }}
+      />
+      <NotificationsScreen
+        visible={notificationsOpen}
+        currentUserId={session.user.id}
+        onClose={() => {
+          setNotificationsOpen(false);
+          refreshUnreadNotificationCount();
+        }}
+        onSelectProfile={(profileId) => {
+          setNotificationsOpen(false);
+          setViewingProfileId(profileId);
+          setMode('profile');
+        }}
+        onOpenGroup={(groupId) => {
+          setNotificationsOpen(false);
+          setViewingGroupId(groupId);
+          setMode('group');
+        }}
+        onOpenPost={(postId, openComments) => {
+          setNotificationsOpen(false);
+          setViewingPostId(postId);
+          setViewingPostComments(openComments);
+          setMode('post');
+        }}
+      />
+      <SearchScreen
+        variant="sheet"
+        visible={searchOpen}
+        onBack={() => setSearchOpen(false)}
+        onClose={() => setSearchOpen(false)}
+        onSelectProfile={(profileId) => {
+          setSearchOpen(false);
+          setViewingProfileId(profileId);
+          setMode('profile');
         }}
       />
       <StatusBar style="dark" />

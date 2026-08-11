@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
+import { Popover } from '../components/ui/Popover';
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -12,8 +13,10 @@ import { acceptFriendRequest, deleteFriendRelation, fetchPendingRequests } from 
 import { acceptGroupInvite, fetchPendingGroupInvites, removeGroupMember } from '../data/groups';
 
 interface NotificationsScreenProps {
+  /** Panneau ouvert par-dessus le feed (bottom-sheet) : contrôle l'affichage + les (re)chargements. */
+  visible: boolean;
   currentUserId: string;
-  onBack: () => void;
+  onClose: () => void;
   onSelectProfile: (profileId: string) => void;
   onOpenGroup: (groupId: string) => void;
   /** `openComments` : les notifications de commentaire doivent atterrir sur le fil ouvert, pas
@@ -93,8 +96,9 @@ function textFor(n: AppNotification): string {
 }
 
 export function NotificationsScreen({
+  visible,
   currentUserId,
-  onBack,
+  onClose,
   onSelectProfile,
   onOpenGroup,
   onOpenPost,
@@ -111,8 +115,12 @@ export function NotificationsScreen({
   // Masque les boutons immédiatement après une action, avant même le rechargement des demandes.
   const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
 
+  // (Re)chargement à chaque ouverture du panneau — les notifications doivent être fraîches quand on
+  // le rouvre, et il reste monté en fond (feuille) entre deux ouvertures.
   useEffect(() => {
+    if (!visible) return;
     let cancelled = false;
+    setLoading(true);
     Promise.all([
       fetchNotifications(),
       fetchPendingRequests(currentUserId),
@@ -135,7 +143,7 @@ export function NotificationsScreen({
     return () => {
       cancelled = true;
     };
-  }, [currentUserId]);
+  }, [visible, currentUserId]);
 
   const handleAccept = async (n: AppNotification) => {
     setResolvedIds((s) => new Set(s).add(n.id));
@@ -233,17 +241,11 @@ export function NotificationsScreen({
     n.type === 'group_invite' && !!n.groupId && pendingGroupIds.has(n.groupId) && !resolvedIds.has(n.id);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topRow}>
-        <Pressable onPress={onBack} hitSlop={8}>
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
-        <Text style={styles.title}>Notifications</Text>
-      </View>
-
+    <Popover visible={visible} onClose={onClose} width={320}>
+      <Text style={styles.title}>Notifications</Text>
       {error && <Text style={styles.statusText}>{error}</Text>}
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView style={styles.list} contentContainerStyle={styles.content}>
         {loading ? (
           <Text style={styles.statusText}>Chargement…</Text>
         ) : notifications.length === 0 ? (
@@ -284,36 +286,29 @@ export function NotificationsScreen({
           ))
         )}
       </ScrollView>
-    </View>
+    </Popover>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.feedBackground,
-    paddingTop: 50,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginHorizontal: 14,
-    marginBottom: 10,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
-  },
   title: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(22,35,61,0.15)',
+  },
+  // `flexShrink` (et non `flex: 1`) : le panneau épouse la hauteur du contenu, et ne défile que
+  // lorsqu'il atteint la hauteur max de la carte (cf. `Popover`).
+  list: {
+    flexShrink: 1,
   },
   content: {
-    paddingHorizontal: 14,
-    paddingBottom: 40,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   statusText: {
     marginTop: 20,
