@@ -26,6 +26,8 @@ interface GroupScreenProps {
   onBack: () => void;
   onEditPost: (postId: string) => void;
   onInviteMembers: (groupId: string) => void;
+  /** Ouvre le profil d'un membre ou de l'auteur d'une main — comme le clic sur un auteur dans le feed. */
+  onSelectProfile: (profileId: string) => void;
 }
 
 export function GroupScreen({
@@ -35,6 +37,7 @@ export function GroupScreen({
   onBack,
   onEditPost,
   onInviteMembers,
+  onSelectProfile,
 }: GroupScreenProps) {
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
@@ -254,14 +257,14 @@ export function GroupScreen({
               <Text style={styles.sectionTitle}>Membres</Text>
               {members.map((m) => (
                 <View key={m.userId} style={styles.memberRow}>
-                  <View style={styles.memberInfo}>
+                  <Pressable style={styles.memberInfo} onPress={() => onSelectProfile(m.userId)}>
                     <Avatar url={m.avatarUrl} name={m.pseudo} size={32} />
                     <Text style={styles.memberPseudo}>
                       {m.pseudo}
                       {m.userId === group.ownerId && ' 👑'}
                     </Text>
                     {m.status === 'pending' && <Text style={styles.memberPending}>en attente</Text>}
-                  </View>
+                  </Pressable>
                   {isOwner && m.userId !== currentUserId && (
                     <Pressable onPress={() => handleRemoveMember(m.userId)} hitSlop={8}>
                       <Text style={styles.memberRemoveLink}>{m.status === 'pending' ? 'Annuler' : 'Retirer'}</Text>
@@ -286,6 +289,7 @@ export function GroupScreen({
                   onDelete={() => handleDelete(post.id)}
                   onEdit={() => onEditPost(post.id)}
                   onToggleLike={() => handleToggleLike(post.id)}
+                  onPressAuthor={() => onSelectProfile(post.authorId)}
                 />
               ))
             )}

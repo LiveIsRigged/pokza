@@ -593,6 +593,10 @@ function AppContent() {
             setInvitingGroupId(groupId);
             setMode('inviteToGroup');
           }}
+          onSelectProfile={(profileId) => {
+            setViewingProfileId(profileId);
+            setMode('profile');
+          }}
         />
         <StatusBar style="dark" />
       </Screen>
