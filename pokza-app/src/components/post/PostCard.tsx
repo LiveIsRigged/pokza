@@ -6,7 +6,7 @@ import { Avatar } from '../ui/Avatar';
 import { HandReplayer } from '../replayer/HandReplayer';
 import { VotePoll } from './VotePoll';
 import { CommentsSection } from './CommentsSection';
-import { OverflowMenu, type OverflowMenuItem } from '../ui/OverflowMenu';
+import { OverflowMenu, type OverflowMenuItem, type OverflowAnchor } from '../ui/OverflowMenu';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { ReportModal } from '../moderation/ReportModal';
 import { blockUser } from '../../data/blocks';
@@ -40,6 +40,10 @@ interface PostCardProps {
    * mains de cet auteur (la RLS les masque déjà côté serveur). Absent (page de profil) → pas d'option
    * de blocage ici, elle vit dans l'en-tête du profil. */
   onBlockAuthor?: (authorId: string) => void;
+  /** Ouvre le profil d'un utilisateur par son id — utilisé pour les commentateurs (avatar/pseudo
+   * cliquables dans la section commentaires). Le clic sur l'auteur DE LA MAIN passe, lui, par
+   * `onPressAuthor` (sans argument). */
+  onSelectProfile?: (profileId: string) => void;
 }
 
 // Tronque la description à 3 lignes avec "… voir plus" collé à la fin de la 3e ligne. Le nombre
@@ -160,9 +164,21 @@ function PostCardInner({
   initialCommentsOpen,
   onOpenGroup,
   onBlockAuthor,
+  onSelectProfile,
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<View>(null);
+  const [menuAnchor, setMenuAnchor] = useState<OverflowAnchor | null>(null);
+
+  // On mesure la position du « ⋯ » à l'écran juste avant d'ouvrir, pour caler le petit panneau
+  // pile en dessous (le composant n'est pas au même endroit selon le défilement).
+  const openMenu = () => {
+    menuButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setMenuAnchor({ x, y, width, height });
+      setMenuOpen(true);
+    });
+  };
   const [reportOpen, setReportOpen] = useState(false);
   const [showComments, setShowComments] = useState(Boolean(initialCommentsOpen));
   // `post` vient du parent et ne se remet à jour que si le feed est rechargé — le compteur affiché
@@ -190,14 +206,23 @@ function PostCardInner({
     }
   };
 
-  // Menu ⋯ (uniquement sur les mains des autres) : signaler, et bloquer l'auteur quand le parent le
-  // permet (feed principal). Sur sa propre main, ce sont les boutons éditer/supprimer qui s'affichent.
-  const menuItems: OverflowMenuItem[] = [
-    { label: 'Signaler cette main', icon: '🚩', onPress: () => setReportOpen(true) },
-    ...(onBlockAuthor
-      ? [{ label: `Bloquer ${post.authorName}`, icon: '🚫', destructive: true, onPress: handleBlockAuthor }]
-      : []),
-  ];
+  // Un seul bouton ⋯ pour toutes les mains ; son menu change selon qu'on en est l'auteur ou non.
+  // Sur sa propre main : modifier / supprimer. Sur celle d'un autre : signaler (+ bloquer l'auteur
+  // quand le parent le permet, càd le feed principal). « Supprimer » ouvre la confirmation en ligne
+  // plutôt que d'agir directement, comme avant.
+  const menuItems: OverflowMenuItem[] = isOwnPost
+    ? [
+        ...(onEdit ? [{ label: 'Modifier la main', icon: '✏️', onPress: onEdit }] : []),
+        ...(onDelete
+          ? [{ label: 'Supprimer la main', icon: '🗑', destructive: true, onPress: () => setConfirmingDelete(true) }]
+          : []),
+      ]
+    : [
+        { label: 'Signaler cette main', icon: '🚩', onPress: () => setReportOpen(true) },
+        ...(onBlockAuthor
+          ? [{ label: `Bloquer ${post.authorName}`, icon: '🚫', destructive: true, onPress: handleBlockAuthor }]
+          : []),
+      ];
 
   // Contenu modéré : la RLS ne le laisse passer qu'à son propre auteur → on lui montre un bandeau à
   // la place de la main (jamais de disparition silencieuse), et on masque tout le reste (replay,
@@ -262,18 +287,8 @@ function PostCardInner({
             </Text>
           </Pressable>
         )}
-        {isOwnPost && !confirmingDelete && (
-          <View style={styles.ownPostActions}>
-            <Pressable style={styles.deleteButton} onPress={onEdit} hitSlop={8}>
-              <Text style={styles.deleteButtonText}>✏️</Text>
-            </Pressable>
-            <Pressable style={styles.deleteButton} onPress={() => setConfirmingDelete(true)} hitSlop={8}>
-              <Text style={styles.deleteButtonText}>🗑</Text>
-            </Pressable>
-          </View>
-        )}
-        {!isOwnPost && (
-          <Pressable style={styles.deleteButton} onPress={() => setMenuOpen(true)} hitSlop={8}>
+        {!confirmingDelete && menuItems.length > 0 && (
+          <Pressable ref={menuButtonRef} style={styles.deleteButton} onPress={openMenu} hitSlop={8}>
             <Text style={styles.overflowIcon}>⋯</Text>
           </Pressable>
         )}
@@ -339,9 +354,18 @@ function PostCardInner({
         currentUserId={currentUserId}
         currentUserName={currentUserName}
         onCountChange={(delta) => setCommentCountDelta((d) => d + delta)}
+        onSelectProfile={
+          onSelectProfile &&
+          ((profileId) => {
+            // On ferme les commentaires avant d'ouvrir le profil (sinon la feuille resterait
+            // au-dessus de la page profil).
+            setShowComments(false);
+            onSelectProfile(profileId);
+          })
+        }
       />
 
-      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} />
+      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} anchor={menuAnchor} />
       <ReportModal
         visible={reportOpen}
         onClose={() => setReportOpen(false)}
@@ -379,18 +403,11 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: spacing.xs,
   },
-  deleteButtonText: {
-    fontSize: 16,
-  },
   overflowIcon: {
     fontSize: 20,
     lineHeight: 20,
     fontWeight: '700',
     color: colors.textSecondary,
-  },
-  ownPostActions: {
-    flexDirection: 'row',
-    gap: spacing.xs,
   },
   visibilityBadge: {
     flexShrink: 0,

@@ -1,87 +1,150 @@
-import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../../theme/theme';
 
 export interface OverflowMenuItem {
   label: string;
   icon?: string;
-  /** Style « attention » (rouge) pour les actions sensibles : bloquer, signaler… */
+  /** Style « attention » (rouge) pour les actions sensibles : bloquer, signaler, supprimer… */
   destructive?: boolean;
   onPress: () => void;
 }
 
+/** Position à l'écran du bouton « ⋯ » qui a ouvert le menu (via `measureInWindow`). Le panneau se
+ * cale juste dessous, aligné à droite sur ce bouton. */
+export interface OverflowAnchor {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const SCREEN = Dimensions.get('window');
+const SIDE_MARGIN = 12;
+const MENU_WIDTH = 210;
+
 /**
- * Petit menu contextuel en feuille basse (façon action sheet iOS), ouvert depuis un « ⋯ ». Réutilisé
- * partout où on propose Signaler / Bloquer (carte de main, commentaire, profil). Choisir une action
- * ferme d'abord le menu PUIS déclenche l'action, pour éviter qu'une modale ouverte par l'action se
- * retrouve masquée par le menu resté au-dessus.
+ * Petit panneau déroulant ancré juste sous le « ⋯ » qui l'a ouvert (façon menu contextuel discret),
+ * plutôt qu'une grande feuille montant du bas. Il grandit depuis son coin haut-droite (fondu + léger
+ * agrandissement), le contenu derrière reste bien lisible (voile très léger) et un tap en dehors
+ * referme. Réutilisé partout où on propose Modifier/Supprimer ou Signaler/Bloquer (carte de main,
+ * profil). Choisir une action ferme d'abord le menu PUIS déclenche l'action, pour éviter qu'une
+ * modale ouverte par l'action se retrouve masquée par le menu resté au-dessus.
  */
 export function OverflowMenu({
   visible,
   onClose,
   items,
+  anchor,
 }: {
   visible: boolean;
   onClose: () => void;
   items: OverflowMenuItem[];
+  anchor?: OverflowAnchor | null;
 }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  // Rester monté le temps de l'animation de fermeture (sinon le panneau disparaît d'un coup).
+  const [rendered, setRendered] = useState(visible);
+
+  useEffect(() => {
+    if (visible) setRendered(true);
+    Animated.timing(anim, {
+      toValue: visible ? 1 : 0,
+      duration: 150,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished && !visible) setRendered(false);
+    });
+  }, [visible, anim]);
+
+  if (!rendered) return null;
+
+  // Aligné à droite sur le bouton, juste en dessous. Bornes de sécurité pour ne jamais déborder de
+  // l'écran (si le bouton est près d'un bord ou si l'ancre manque, on retombe en haut à droite).
+  const right = anchor
+    ? Math.max(SIDE_MARGIN, SCREEN.width - (anchor.x + anchor.width))
+    : SIDE_MARGIN;
+  const top = anchor ? anchor.y + anchor.height + 4 : 60;
+
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] });
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] });
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          {items.map((item, i) => (
-            <Pressable
-              key={i}
-              style={[styles.item, i > 0 && styles.itemBorder]}
-              onPress={() => {
-                onClose();
-                item.onPress();
-              }}
-            >
-              {item.icon != null && <Text style={styles.itemIcon}>{item.icon}</Text>}
-              <Text style={[styles.itemLabel, item.destructive && styles.itemDestructive]}>{item.label}</Text>
-            </Pressable>
-          ))}
-          <Pressable style={styles.cancel} onPress={onClose}>
-            <Text style={styles.cancelText}>Annuler</Text>
+    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, { opacity: anim }]}>
+        <Pressable style={StyleSheet.absoluteFill as any} onPress={onClose} />
+      </Animated.View>
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            width: MENU_WIDTH,
+            top,
+            right,
+            opacity: anim,
+            transform: [{ translateY }, { scale }],
+            transformOrigin: 'top right',
+          } as any,
+        ]}
+      >
+        {items.map((item, i) => (
+          <Pressable
+            key={i}
+            style={[styles.item, i > 0 && styles.itemBorder]}
+            onPress={() => {
+              onClose();
+              item.onPress();
+            }}
+          >
+            {item.icon != null && <Text style={styles.itemIcon}>{item.icon}</Text>}
+            <Text style={[styles.itemLabel, item.destructive && styles.itemDestructive]}>{item.label}</Text>
           </Pressable>
+        ))}
+        <Pressable style={[styles.item, styles.itemBorder]} onPress={onClose}>
+          <Text style={styles.itemIcon}> </Text>
+          <Text style={[styles.itemLabel, styles.cancelLabel]}>Annuler</Text>
         </Pressable>
-      </Pressable>
+      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
+  scrim: {
+    // Voile très léger : effet « popover », le contenu doit rester bien lisible derrière.
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
-  sheet: {
+  card: {
+    position: 'absolute',
     backgroundColor: colors.feedBackground,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    paddingBottom: spacing.lg,
-    paddingTop: spacing.xs,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xs,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+    overflow: 'hidden',
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
   },
   itemBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(22,35,61,0.12)',
   },
   itemIcon: {
-    fontSize: 18,
-    width: 24,
+    fontSize: 16,
+    width: 20,
     textAlign: 'center',
   },
   itemLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
     flex: 1,
@@ -89,18 +152,7 @@ const styles = StyleSheet.create({
   itemDestructive: {
     color: '#C0392B',
   },
-  cancel: {
-    marginTop: spacing.xs,
-    marginHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: '700',
+  cancelLabel: {
     color: colors.textSecondary,
   },
 });

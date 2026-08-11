@@ -20,6 +20,7 @@ import type { GifResult } from '../../data/gifs';
 import { colors, radius, spacing } from '../../theme/theme';
 import { GifPicker } from './GifPicker';
 import { ReportModal } from '../moderation/ReportModal';
+import { Avatar } from '../ui/Avatar';
 
 interface CommentsSectionProps {
   visible: boolean;
@@ -30,6 +31,8 @@ interface CommentsSectionProps {
   /** Le compteur affiché dans la barre d'engagement vit dans `Post` (au niveau du parent) — cet
    * appel le tient synchronisé à chaque ajout/suppression fait ici, réponses incluses. */
   onCountChange?: (delta: number) => void;
+  /** Ouvre le profil d'un commentateur (clic sur son avatar/pseudo), comme dans le feed. */
+  onSelectProfile?: (profileId: string) => void;
 }
 
 interface CommentRowProps {
@@ -42,6 +45,8 @@ interface CommentRowProps {
   canDelete: boolean;
   /** Fourni uniquement pour les commentaires des AUTRES → affiche le lien « Signaler ». */
   onReport?: () => void;
+  /** Ouvre le profil de l'auteur du commentaire (avatar/pseudo cliquables). */
+  onSelectProfile?: (profileId: string) => void;
 }
 
 /**
@@ -105,14 +110,16 @@ function MediaViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   );
 }
 
-function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpenMedia, canDelete, onReport }: CommentRowProps) {
+function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpenMedia, canDelete, onReport, onSelectProfile }: CommentRowProps) {
   const mediaUri = comment.imageUrl ?? comment.gifUrl;
+  const openProfile = onSelectProfile ? () => onSelectProfile(comment.authorId) : undefined;
 
   // Commentaire modéré : la RLS ne le laisse voir qu'à son auteur → bandeau à la place du contenu,
   // sans média, sans actions (like/répondre/supprimer). Invisible pour tous les autres.
   if (comment.modStatus && comment.modStatus !== 'visible') {
     return (
       <View style={[styles.commentRow, indented && styles.commentRowIndented]}>
+        <Avatar url={comment.authorAvatarUrl} name={comment.authorName} size={28} />
         <View style={[styles.commentBubble, styles.commentModerated]}>
           <Text style={styles.commentAuthor}>{comment.authorName}</Text>
           <Text style={styles.commentModeratedText}>
@@ -127,8 +134,13 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpen
 
   return (
     <View style={[styles.commentRow, indented && styles.commentRowIndented]}>
+      <Pressable onPress={openProfile} disabled={!openProfile}>
+        <Avatar url={comment.authorAvatarUrl} name={comment.authorName} size={28} />
+      </Pressable>
       <View style={styles.commentBubble}>
-        <Text style={styles.commentAuthor}>{comment.authorName}</Text>
+        <Pressable onPress={openProfile} disabled={!openProfile} hitSlop={4}>
+          <Text style={styles.commentAuthor}>{comment.authorName}</Text>
+        </Pressable>
         {mediaUri && (
           <CommentMedia
             uri={mediaUri}
@@ -177,6 +189,7 @@ export function CommentsSection({
   currentUserId,
   currentUserName,
   onCountChange,
+  onSelectProfile,
 }: CommentsSectionProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -336,6 +349,7 @@ export function CommentsSection({
                   onOpenMedia={setViewerUri}
                   canDelete={comment.authorId === currentUserId}
                   onReport={comment.authorId !== currentUserId ? () => setReportingComment(comment) : undefined}
+                  onSelectProfile={onSelectProfile}
                 />
                 {repliesFor(comment.id).map((reply) => (
                   <CommentRow
@@ -347,6 +361,7 @@ export function CommentsSection({
                     onOpenMedia={setViewerUri}
                     canDelete={reply.authorId === currentUserId}
                     onReport={reply.authorId !== currentUserId ? () => setReportingComment(reply) : undefined}
+                    onSelectProfile={onSelectProfile}
                   />
                 ))}
               </View>

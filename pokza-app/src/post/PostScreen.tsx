@@ -115,6 +115,7 @@ export function PostScreen({
             onEdit={() => onEditPost(post.id)}
             onToggleLike={handleToggleLike}
             onPressAuthor={() => onSelectProfile(post.authorId)}
+            onSelectProfile={onSelectProfile}
           />
         )}
       </ScrollView>

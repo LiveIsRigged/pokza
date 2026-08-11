@@ -150,6 +150,7 @@ export interface Comment {
   parentCommentId?: string;
   authorId: string;
   authorName: string;
+  authorAvatarUrl?: string;
   body: string;
   createdAt: string;
   likeCount: number;

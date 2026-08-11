@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme/theme';
@@ -23,7 +23,7 @@ import type { Post } from '../types/poker';
 import { PostCard } from '../components/post/PostCard';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
-import { OverflowMenu, type OverflowMenuItem } from '../components/ui/OverflowMenu';
+import { OverflowMenu, type OverflowMenuItem, type OverflowAnchor } from '../components/ui/OverflowMenu';
 import { ReportModal } from '../components/moderation/ReportModal';
 import { blockUser, isBlockedByMe, unblockUser } from '../data/blocks';
 import { playerSummary } from './profileOptions';
@@ -89,7 +89,16 @@ export function ProfileScreen({
   const [cropTarget, setCropTarget] = useState<PickedImage | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<View>(null);
+  const [menuAnchor, setMenuAnchor] = useState<OverflowAnchor | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+
+  const openMenu = () => {
+    menuButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setMenuAnchor({ x, y, width, height });
+      setMenuOpen(true);
+    });
+  };
   // null tant qu'on ne sait pas encore ; pertinent uniquement pour le profil d'un autre.
   const [blocked, setBlocked] = useState<boolean | null>(null);
 
@@ -381,7 +390,7 @@ export function ProfileScreen({
             <Text style={styles.backArrow}>←</Text>
           </Pressable>
           {!isOwnProfile && (
-            <Pressable onPress={() => setMenuOpen(true)} hitSlop={8}>
+            <Pressable ref={menuButtonRef} onPress={openMenu} hitSlop={8}>
               <Text style={styles.overflowIcon}>⋯</Text>
             </Pressable>
           )}
@@ -557,6 +566,7 @@ export function ProfileScreen({
                   onEdit={() => onEditPost(post.id)}
                   onToggleLike={() => handleToggleLike(post.id)}
                   onOpenGroup={onOpenGroup}
+                  onSelectProfile={onSelectProfile}
                 />
               ))
             )}
@@ -564,7 +574,7 @@ export function ProfileScreen({
         )}
       </ScrollView>
 
-      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} />
+      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} anchor={menuAnchor} />
       <ReportModal
         visible={reportOpen}
         onClose={() => setReportOpen(false)}

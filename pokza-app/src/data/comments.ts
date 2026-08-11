@@ -31,7 +31,8 @@ function rowToComment(
   imageUrl?: string,
   gifUrl?: string,
   mediaWidth?: number,
-  mediaHeight?: number
+  mediaHeight?: number,
+  authorAvatarUrl?: string
 ): Comment {
   return {
     id: row.id,
@@ -39,6 +40,7 @@ function rowToComment(
     parentCommentId: row.parent_comment_id ?? undefined,
     authorId: row.author_id,
     authorName: row.author_name,
+    authorAvatarUrl,
     body: row.body ?? '',
     createdAt: row.created_at,
     likeCount: row.like_count,
@@ -82,6 +84,21 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
     }
   }
 
+  // La vue `comments_feed` ne remonte pas l'avatar de l'auteur : une requête légère sur `profiles`
+  // pour les auteurs présents complète l'info (avatar_url est une URL publique, pas de lien signé).
+  const authorIds = [...new Set((rows as CommentFeedRow[]).map((r) => r.author_id))];
+  const avatarById = new Map<string, string>();
+  if (authorIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, avatar_url')
+      .in('id', authorIds);
+    if (profilesError) throw profilesError;
+    for (const p of profiles ?? []) {
+      if (p.avatar_url) avatarById.set(p.id as string, p.avatar_url as string);
+    }
+  }
+
   return (rows as CommentFeedRow[]).map((row) => {
     const media = mediaById.get(row.id);
     const imagePath = (media?.image_path as string | null) ?? null;
@@ -90,7 +107,8 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
       imagePath ? signedUrlByPath.get(imagePath) : undefined,
       media?.gif_url ?? undefined,
       media?.image_width ?? undefined,
-      media?.image_height ?? undefined
+      media?.image_height ?? undefined,
+      avatarById.get(row.author_id)
     );
   });
 }

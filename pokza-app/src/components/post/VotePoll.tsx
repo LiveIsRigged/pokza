@@ -17,6 +17,10 @@ interface VotePollProps {
 
 export function VotePoll({ postId, currentUserId, question, options, initialCounts, myVote }: VotePollProps) {
   const [voted, setVoted] = useState<string | null>(myVote ?? null);
+  // L'utilisateur (souvent l'auteur, ou quelqu'un qui ne veut pas se prononcer) a demandé à voir les
+  // résultats sans voter. On garde ça distinct de `voted` : aucune option n'est cochée et il peut
+  // encore revenir en arrière pour voter.
+  const [peeked, setPeeked] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>(() => {
     const c: Record<string, number> = {};
     options.forEach((o) => {
@@ -62,8 +66,36 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myVote, initialCounts]);
 
+  const showResults = voted !== null || peeked;
+
+  const handlePeek = () => {
+    setPeeked(true);
+    Animated.spring(resultsAnim, {
+      toValue: 1,
+      friction: 7,
+      tension: 60,
+      useNativeDriver: true,
+    }).start();
+    options.forEach((opt) => {
+      const pct = totalVotes > 0 ? (counts[opt] ?? 0) / totalVotes : 0;
+      Animated.timing(barWidths[opt], {
+        toValue: pct,
+        duration: 500,
+        delay: 80,
+        useNativeDriver: false,
+      }).start();
+    });
+  };
+
+  const handleBackToVote = () => {
+    setPeeked(false);
+    resultsAnim.setValue(0);
+    options.forEach((opt) => barWidths[opt].setValue(0));
+  };
+
   const handleVote = async (option: string) => {
     if (voted) return;
+    setPeeked(false);
     setError(null);
     const previousCounts = counts;
     const nextCounts = { ...counts, [option]: (counts[option] ?? 0) + 1 };
@@ -134,13 +166,18 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      {voted === null ? (
-        <View style={styles.buttonsRow}>
-          {options.map((option) => (
-            <Pressable key={option} style={styles.bubble} onPress={() => handleVote(option)}>
-              <Text style={styles.bubbleText}>{option}</Text>
-            </Pressable>
-          ))}
+      {!showResults ? (
+        <View>
+          <View style={styles.buttonsRow}>
+            {options.map((option) => (
+              <Pressable key={option} style={styles.bubble} onPress={() => handleVote(option)}>
+                <Text style={styles.bubbleText}>{option}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable onPress={handlePeek} hitSlop={6}>
+            <Text style={styles.peekLink}>Voir les résultats</Text>
+          </Pressable>
         </View>
       ) : (
         <Animated.View
@@ -161,7 +198,7 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
               <Pressable
                 key={option}
                 style={styles.resultTrack}
-                onPress={isSelected ? handleRetract : undefined}
+                onPress={isSelected ? handleRetract : peeked && !voted ? () => handleVote(option) : undefined}
               >
                 <Animated.View style={[styles.resultFill, isSelected && styles.resultFillActive, { width }]} />
                 <View style={styles.resultLabelRow}>
@@ -176,9 +213,16 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
               </Pressable>
             );
           })}
-          <Text style={styles.totalText}>
-            {totalVotes} vote{totalVotes > 1 ? 's' : ''}
-          </Text>
+          <View style={styles.resultFooter}>
+            <Text style={styles.totalText}>
+              {totalVotes} vote{totalVotes > 1 ? 's' : ''}
+            </Text>
+            {peeked && !voted && (
+              <Pressable onPress={handleBackToVote} hitSlop={6}>
+                <Text style={styles.peekLink}>Voter</Text>
+              </Pressable>
+            )}
+          </View>
         </Animated.View>
       )}
     </View>
@@ -260,5 +304,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  peekLink: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.action,
+    marginTop: spacing.sm,
+  },
+  resultFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });

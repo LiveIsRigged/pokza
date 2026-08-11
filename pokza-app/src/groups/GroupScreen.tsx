@@ -19,6 +19,11 @@ import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
 import { EditGroupScreen } from './EditGroupScreen';
 
+/** Même format court que les dates de main / d'inscription ailleurs dans l'app (ex: "29 juil. 2026"). */
+function formatCreatedDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 interface GroupScreenProps {
   groupId: string;
   currentUserId: string;
@@ -214,10 +219,54 @@ export function GroupScreen({
                 </Pressable>
               )}
               <Text style={styles.groupName}>{group.name}</Text>
-              <Text style={styles.memberCount}>
-                {members.filter((m) => m.status === 'accepted').length} membre
-                {members.filter((m) => m.status === 'accepted').length > 1 ? 's' : ''}
-              </Text>
+
+              {(() => {
+                const acceptedCount = members.filter((m) => m.status === 'accepted').length;
+                return (
+                  <View style={styles.statsRow}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{posts.length}</Text>
+                      <Text style={styles.statLabel}>main{posts.length > 1 ? 's' : ''}</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{acceptedCount}</Text>
+                      <Text style={styles.statLabel}>membre{acceptedCount > 1 ? 's' : ''}</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{formatCreatedDate(group.createdAt)}</Text>
+                      <Text style={styles.statLabel}>créé le</Text>
+                    </View>
+                  </View>
+                );
+              })()}
+
+              {(() => {
+                const accepted = members.filter((m) => m.status === 'accepted');
+                const shown = accepted.slice(0, 6);
+                const extra = accepted.length - shown.length;
+                if (shown.length === 0) return null;
+                return (
+                  <View style={styles.avatarStack}>
+                    {shown.map((m, i) => (
+                      <Pressable
+                        key={m.userId}
+                        onPress={() => onSelectProfile(m.userId)}
+                        style={[styles.stackAvatar, i > 0 && styles.stackAvatarOverlap, { zIndex: shown.length - i }]}
+                      >
+                        <Avatar url={m.avatarUrl} name={m.pseudo} size={34} />
+                      </Pressable>
+                    ))}
+                    {extra > 0 && (
+                      <View style={[styles.stackAvatar, styles.stackAvatarOverlap, styles.stackMore]}>
+                        <Text style={styles.stackMoreText}>+{extra}</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })()}
+
               {group.description && <Text style={styles.description}>{group.description}</Text>}
               {isOwner && (
                 <Pressable style={styles.editGroupButton} onPress={() => setEditingGroup(true)}>
@@ -290,6 +339,7 @@ export function GroupScreen({
                   onEdit={() => onEditPost(post.id)}
                   onToggleLike={() => handleToggleLike(post.id)}
                   onPressAuthor={() => onSelectProfile(post.authorId)}
+                  onSelectProfile={onSelectProfile}
                 />
               ))
             )}
@@ -378,10 +428,56 @@ const styles = StyleSheet.create({
     ...typography.postTitle,
     color: colors.textPrimary,
   },
-  memberCount: {
-    fontSize: 13,
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+  },
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: 11,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(22,35,61,0.12)',
+  },
+  avatarStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  stackAvatar: {
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.feedBackground,
+  },
+  stackAvatarOverlap: {
+    marginLeft: -10,
+  },
+  stackMore: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(22,35,61,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stackMoreText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
   },
   description: {
     fontSize: 14,

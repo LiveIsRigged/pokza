@@ -790,6 +790,10 @@ function AppContent() {
                 setViewingProfileId(post.authorId);
                 setMode('profile');
               }}
+              onSelectProfile={(profileId) => {
+                setViewingProfileId(profileId);
+                setMode('profile');
+              }}
               onOpenGroup={(groupId) => {
                 setViewingGroupId(groupId);
                 setMode('group');
