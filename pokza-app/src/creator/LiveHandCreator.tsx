@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Action, Board, Card, Hand, Post, Seat } from '../types/poker';
 import { holeCardCount } from '../types/poker';
 import type { Group } from '../data/groups';
@@ -10,6 +10,7 @@ import { ReviewStep } from './steps/ReviewStep';
 import { buildSeats, getActingOrder } from './positions';
 import { committedBySeat } from '../engine/handEngine';
 import { DEFAULT_CONTEXT, type ContextData, type ReviewData } from './types';
+import { loadContextPrefs, saveContextPrefs } from './contextPrefs';
 
 type Phase =
   | 'context'
@@ -79,6 +80,19 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
   // Change à chaque changement de phase, pour forcer un remount propre des écrans de street
   // (sinon revenir en arrière puis ré-avancer réutilise un composant à l'état "terminé").
   const [phaseKey, setPhaseKey] = useState(0);
+
+  // Pré-remplissage du contexte avec les derniers réglages mémorisés (cf. contextPrefs), pour ne pas
+  // retaper à chaque fois sa partie habituelle. Chargé une fois au montage (AsyncStorage répond en
+  // quelques ms, bien avant toute interaction) ; garde-fou d'unmount pour ne pas setState après coup.
+  useEffect(() => {
+    let cancelled = false;
+    loadContextPrefs().then((prefs) => {
+      if (!cancelled) setContext(prefs);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Cartes prises par le hero et le board (sert de base d'exclusion aux sélecteurs).
   const baseUsedCards: Card[] = [
@@ -234,6 +248,9 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
           totalSteps={totalSteps}
           onBack={goBack}
           onNext={() => {
+            // Mémorise les réglages de table pour accélérer la prochaine création (fire-and-forget :
+            // un échec d'écriture ne doit pas bloquer la création en cours).
+            void saveContextPrefs(context);
             const builtSeats = buildSeats(
               context.numPlayers,
               context.heroPosition,
@@ -402,6 +419,7 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
           street="flop"
           boardCount={3}
           boardCount2={context.bombPot && context.doubleBoard ? 3 : 0}
+          bombPot={context.bombPot}
           usedCardsElsewhere={usedCards}
           seats={seats}
           activeSeatIds={activeSeatIds}
@@ -437,6 +455,7 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
           street="turn"
           boardCount={1}
           boardCount2={context.bombPot && context.doubleBoard ? 1 : 0}
+          bombPot={context.bombPot}
           usedCardsElsewhere={usedCards}
           seats={seats}
           activeSeatIds={activeSeatIds}
@@ -472,6 +491,7 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
           street="river"
           boardCount={1}
           boardCount2={context.bombPot && context.doubleBoard ? 1 : 0}
+          bombPot={context.bombPot}
           usedCardsElsewhere={usedCards}
           seats={seats}
           activeSeatIds={activeSeatIds}

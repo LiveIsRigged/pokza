@@ -66,6 +66,10 @@ interface StreetStepProps {
   /** BB de la main, utilisée pour les raccourcis de taille en multiples de BB au préflop */
   bb?: number;
   gameType?: GameType;
+  /** Main jouée en bomb pot : les raccourcis « check/fold rapide jusqu'à » restent proposés à chaque
+   * street (checker/folder en cascade est courant au flop d'un bomb pot). Hors bomb pot, ils ne sont
+   * gardés qu'au préflop (fold général jusqu'à une position) et retirés en postflop. */
+  bombPot?: boolean;
   onBack: () => void;
   onComplete: (boardCards: Card[], board2Cards: Card[], actions: Action[], remainingActiveSeatIds: string[]) => void;
   onHandEndsEarly: (
@@ -99,6 +103,7 @@ export function StreetStep({
   priorActions = [],
   bb = 0,
   gameType = 'cash',
+  bombPot = false,
   onBack,
   onComplete,
   onHandEndsEarly,
@@ -473,7 +478,7 @@ export function StreetStep({
                 </View>
               ) : (
                 <>
-                  {betAmount === 0 && queue.length > 1 && (
+                  {(street === 'preflop' || bombPot) && betAmount === 0 && queue.length > 1 && (
                     // Personne n'a misé : proposer aussi le batch "check" (cf. handleCheckUntil).
                     <View style={styles.foldUntilSection}>
                       <Text style={styles.foldUntilLabel}>Check rapide jusqu'à</Text>
@@ -493,7 +498,7 @@ export function StreetStep({
                       </View>
                     </View>
                   )}
-                  {queue.length > 1 && (
+                  {(street === 'preflop' || bombPot) && queue.length > 1 && (
                     <View style={styles.foldUntilSection}>
                       <Text style={styles.foldUntilLabel}>Fold rapide jusqu'à</Text>
                       <View style={styles.potShortcutsRow}>
