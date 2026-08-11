@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font';
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces/400Regular';
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
 import { ActivityIndicator, Animated, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { createPost, deletePost, fetchFeed, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
@@ -48,12 +49,17 @@ import { clearDeepLinkFromUrl, readInitialDeepLink } from './src/navigation/deep
 import { initAnalytics, identifyUser, resetAnalytics, trackEvent } from './src/analytics';
 
 export default function App() {
+  // `SafeAreaProvider` mesure les zones sûres (encoche / Dynamic Island / barre système) et les
+  // expose via `useSafeAreaInsets`. `initialMetrics` fournit ces valeurs dès le premier rendu natif,
+  // sans le petit saut de mise en page qu'on aurait sinon le temps de la première mesure.
   return (
-    <DisplayUnitProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </DisplayUnitProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <DisplayUnitProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </DisplayUnitProvider>
+    </SafeAreaProvider>
   );
 }
 

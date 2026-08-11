@@ -1,5 +1,6 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/theme';
 import { ChipStackIcon } from './ChipStackIcon';
 
@@ -25,8 +26,14 @@ interface FeedHeaderProps {
  * plus naturel sur mobile.
  */
 export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifications, unreadCount }: FeedHeaderProps) {
-  const paddingTop = compact.interpolate({ inputRange: [0, 1], outputRange: [48, 30] });
-  const paddingBottom = compact.interpolate({ inputRange: [0, 1], outputRange: [14, 8] });
+  // La barre est la première chose sous la zone système : on la décolle de l'encoche / Dynamic Island
+  // avec l'inset RÉEL du téléphone (`insets.top`), et non un nombre magique — correct sur tous les
+  // modèles comme en build autonome. On n'y ajoute qu'un petit confort visuel (22 pt déployé,
+  // 14 pt une fois défilé), volontairement serré. Sur le web ou un écran sans encoche, `insets.top`
+  // vaut 0 : il ne reste que ce confort.
+  const insets = useSafeAreaInsets();
+  const paddingTop = compact.interpolate({ inputRange: [0, 1], outputRange: [insets.top + 22, insets.top + 14] });
+  const paddingBottom = compact.interpolate({ inputRange: [0, 1], outputRange: [12, 8] });
   const dividerOpacity = compact.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
