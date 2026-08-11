@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
 import type { Position } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
 import { colors } from '../../theme/theme';
@@ -170,6 +170,26 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
     onChange(next);
   };
 
+  // « Options avancées » : replie les réglages rarement touchés (ante, straddle, noms/stacks par
+  // siège, lieu, buy-in, niveau) pour que l'essentiel tienne d'un coup d'œil. La section s'ouvre
+  // d'elle-même si l'un de ces réglages n'est pas au défaut, afin de ne jamais masquer un réglage
+  // que l'utilisateur emploie réellement (ex. straddle habituel restauré par la mémorisation).
+  const hasAdvancedValues =
+    (!value.bombPot && (value.anteType !== 'none' || value.straddleCount > 0)) ||
+    Object.values(value.opponentNames ?? {}).some((n) => (n ?? '').trim().length > 0) ||
+    Object.values(value.seatStacks ?? {}).some((s) => s != null) ||
+    !!value.location?.trim() ||
+    !!value.buyIn?.trim() ||
+    !!value.level?.trim();
+  const [advancedOpen, setAdvancedOpen] = useState(hasAdvancedValues);
+  const hadAdvancedValues = useRef(hasAdvancedValues);
+  useEffect(() => {
+    // Ouvre à la transition « défaut → non-défaut » (typiquement quand la mémorisation charge des
+    // réglages), sans jamais refermer de force : l'utilisateur garde la main sur l'ouverture.
+    if (hasAdvancedValues && !hadAdvancedValues.current) setAdvancedOpen(true);
+    hadAdvancedValues.current = hasAdvancedValues;
+  }, [hasAdvancedValues]);
+
   return (
     <WizardScreen
       title="La table"
@@ -280,75 +300,6 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
             onChangeValue={(bb) => update({ bb, effectiveStack: defaultStackFor(value.gameType, bb) })}
           />
         </View>
-
-        <Text style={styles.label}>Ante</Text>
-        <View style={styles.row}>
-          <Chip label="Aucun" selected={value.anteType === 'none'} onPress={() => update({ anteType: 'none' })} />
-          <Chip
-            label="BB ante"
-            selected={value.anteType === 'bb'}
-            onPress={() => update({ anteType: 'bb', ante: value.bb })}
-          />
-          <Chip
-            label="Ante par joueur"
-            selected={value.anteType === 'per-player'}
-            onPress={() =>
-              update({ anteType: 'per-player', ante: value.ante || Math.max(1, Math.round(value.bb / 4)) })
-            }
-          />
-        </View>
-        {value.anteType === 'bb' && (
-          <Text style={styles.helperText}>Montant de l'ante : {value.bb} (identique à la BB)</Text>
-        )}
-        {value.anteType === 'per-player' && (
-          <DecimalTextInput
-            style={styles.input}
-            placeholder="Ante par joueur"
-            value={value.ante}
-            onChangeValue={(ante) => update({ ante })}
-          />
-        )}
-
-        {value.gameType === 'cash' && (
-          <>
-            <Text style={styles.label}>Straddle</Text>
-            <View style={styles.row}>
-              <Chip label="Aucun" selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
-              <Chip
-                label="Simple"
-                selected={value.straddleCount === 1}
-                onPress={() => update({ straddleCount: 1, straddleAmount: value.straddleAmount || value.bb * 2 })}
-              />
-              <Chip
-                label="Double"
-                selected={value.straddleCount === 2}
-                onPress={() => update({ straddleCount: 2, straddleAmount: value.straddleAmount || value.bb * 2 })}
-              />
-              <Chip
-                label="Triple"
-                selected={value.straddleCount === 3}
-                onPress={() => update({ straddleCount: 3, straddleAmount: value.straddleAmount || value.bb * 2 })}
-              />
-            </View>
-            {value.straddleCount > 0 && (
-              <>
-                <DecimalTextInput
-                  style={styles.input}
-                  placeholder="Montant du 1er straddle"
-                  value={value.straddleAmount}
-                  onChangeValue={(straddleAmount) => update({ straddleAmount })}
-                />
-                <Text style={styles.helperText}>
-                  {value.straddleCount === 1 && `Straddle : ${formatBlind(value.straddleAmount)}`}
-                  {value.straddleCount === 2 &&
-                    `Straddle ${formatBlind(value.straddleAmount)}, double straddle ${formatBlind(value.straddleAmount * 2)}`}
-                  {value.straddleCount === 3 &&
-                    `Straddle ${formatBlind(value.straddleAmount)}, double ${formatBlind(value.straddleAmount * 2)}, triple ${formatBlind(value.straddleAmount * 4)}`}
-                </Text>
-              </>
-            )}
-          </>
-        )}
           </>
         )}
 
@@ -396,56 +347,143 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           ))}
         </View>
 
-        <Text style={styles.label}>Joueurs (nom et stack, optionnel)</Text>
-        {availablePositions.map((pos) => {
-          const isHero = pos === value.heroPosition;
-          const label = straddleLabelForPosition(pos);
-          return (
-            <View key={pos} style={styles.playerRow}>
-              <Text style={styles.playerRowLabel}>{isHero ? `${label} (toi)` : label}</Text>
-              {!isHero && (
+        <Pressable style={styles.advancedHeader} onPress={() => setAdvancedOpen((o) => !o)}>
+          <View style={styles.advancedHeaderText}>
+            <Text style={styles.advancedTitle}>Options avancées</Text>
+            <Text style={styles.advancedSubtitle}>
+              {value.bombPot ? 'noms & stacks · lieu' : 'ante · straddle · noms & stacks · lieu'}
+            </Text>
+          </View>
+          <Text style={styles.advancedChevron}>{advancedOpen ? '▾' : '▸'}</Text>
+        </Pressable>
+
+        {advancedOpen && (
+          <View>
+            {!value.bombPot && (
+              <>
+                <Text style={styles.label}>Ante</Text>
+                <View style={styles.row}>
+                  <Chip label="Aucun" selected={value.anteType === 'none'} onPress={() => update({ anteType: 'none' })} />
+                  <Chip
+                    label="BB ante"
+                    selected={value.anteType === 'bb'}
+                    onPress={() => update({ anteType: 'bb', ante: value.bb })}
+                  />
+                  <Chip
+                    label="Ante par joueur"
+                    selected={value.anteType === 'per-player'}
+                    onPress={() =>
+                      update({ anteType: 'per-player', ante: value.ante || Math.max(1, Math.round(value.bb / 4)) })
+                    }
+                  />
+                </View>
+                {value.anteType === 'bb' && (
+                  <Text style={styles.helperText}>Montant de l'ante : {value.bb} (identique à la BB)</Text>
+                )}
+                {value.anteType === 'per-player' && (
+                  <DecimalTextInput
+                    style={styles.input}
+                    placeholder="Ante par joueur"
+                    value={value.ante}
+                    onChangeValue={(ante) => update({ ante })}
+                  />
+                )}
+
+                {value.gameType === 'cash' && (
+                  <>
+                    <Text style={styles.label}>Straddle</Text>
+                    <View style={styles.row}>
+                      <Chip label="Aucun" selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
+                      <Chip
+                        label="Simple"
+                        selected={value.straddleCount === 1}
+                        onPress={() => update({ straddleCount: 1, straddleAmount: value.straddleAmount || value.bb * 2 })}
+                      />
+                      <Chip
+                        label="Double"
+                        selected={value.straddleCount === 2}
+                        onPress={() => update({ straddleCount: 2, straddleAmount: value.straddleAmount || value.bb * 2 })}
+                      />
+                      <Chip
+                        label="Triple"
+                        selected={value.straddleCount === 3}
+                        onPress={() => update({ straddleCount: 3, straddleAmount: value.straddleAmount || value.bb * 2 })}
+                      />
+                    </View>
+                    {value.straddleCount > 0 && (
+                      <>
+                        <DecimalTextInput
+                          style={styles.input}
+                          placeholder="Montant du 1er straddle"
+                          value={value.straddleAmount}
+                          onChangeValue={(straddleAmount) => update({ straddleAmount })}
+                        />
+                        <Text style={styles.helperText}>
+                          {value.straddleCount === 1 && `Straddle : ${formatBlind(value.straddleAmount)}`}
+                          {value.straddleCount === 2 &&
+                            `Straddle ${formatBlind(value.straddleAmount)}, double straddle ${formatBlind(value.straddleAmount * 2)}`}
+                          {value.straddleCount === 3 &&
+                            `Straddle ${formatBlind(value.straddleAmount)}, double ${formatBlind(value.straddleAmount * 2)}, triple ${formatBlind(value.straddleAmount * 4)}`}
+                        </Text>
+                      </>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
+            <Text style={styles.label}>Joueurs (nom et stack, optionnel)</Text>
+            {availablePositions.map((pos) => {
+              const isHero = pos === value.heroPosition;
+              const label = straddleLabelForPosition(pos);
+              return (
+                <View key={pos} style={styles.playerRow}>
+                  <Text style={styles.playerRowLabel}>{isHero ? `${label} (toi)` : label}</Text>
+                  {!isHero && (
+                    <TextInput
+                      style={[styles.input, styles.playerNameInput]}
+                      placeholder="Nom"
+                      value={value.opponentNames?.[pos] ?? ''}
+                      onChangeText={(t) => update({ opponentNames: { ...value.opponentNames, [pos]: t } })}
+                    />
+                  )}
+                  <OptionalDecimalTextInput
+                    style={[styles.input, styles.playerStackInput]}
+                    placeholder={String(value.effectiveStack)}
+                    value={value.seatStacks?.[pos]}
+                    onChangeValue={(stack) => update({ seatStacks: { ...value.seatStacks, [pos]: stack } })}
+                  />
+                </View>
+              );
+            })}
+
+            <Text style={styles.label}>Lieu (optionnel)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ex : Club Circus, Bruxelles"
+              value={value.location ?? ''}
+              onChangeText={(t) => update({ location: t })}
+            />
+
+            {value.gameType === 'tournament' && (
+              <>
+                <Text style={styles.label}>Buy-in (optionnel)</Text>
                 <TextInput
-                  style={[styles.input, styles.playerNameInput]}
-                  placeholder="Nom"
-                  value={value.opponentNames?.[pos] ?? ''}
-                  onChangeText={(t) => update({ opponentNames: { ...value.opponentNames, [pos]: t } })}
+                  style={styles.input}
+                  placeholder="Ex : 100€"
+                  value={value.buyIn ?? ''}
+                  onChangeText={(t) => update({ buyIn: t })}
                 />
-              )}
-              <OptionalDecimalTextInput
-                style={[styles.input, styles.playerStackInput]}
-                placeholder={String(value.effectiveStack)}
-                value={value.seatStacks?.[pos]}
-                onChangeValue={(stack) => update({ seatStacks: { ...value.seatStacks, [pos]: stack } })}
-              />
-            </View>
-          );
-        })}
-
-        <Text style={styles.label}>Lieu (optionnel)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ex : Club Circus, Bruxelles"
-          value={value.location ?? ''}
-          onChangeText={(t) => update({ location: t })}
-        />
-
-        {value.gameType === 'tournament' && (
-          <>
-            <Text style={styles.label}>Buy-in (optionnel)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex : 100€"
-              value={value.buyIn ?? ''}
-              onChangeText={(t) => update({ buyIn: t })}
-            />
-            <Text style={styles.label}>Niveau de blindes (optionnel)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex : Niveau 12"
-              value={value.level ?? ''}
-              onChangeText={(t) => update({ level: t })}
-            />
-          </>
+                <Text style={styles.label}>Niveau de blindes (optionnel)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex : Niveau 12"
+                  value={value.level ?? ''}
+                  onChangeText={(t) => update({ level: t })}
+                />
+              </>
+            )}
+          </View>
         )}
       </View>
     </WizardScreen>
@@ -518,5 +556,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  advancedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.15)',
+    backgroundColor: 'rgba(22,35,61,0.03)',
+  },
+  advancedHeaderText: {
+    flex: 1,
+  },
+  advancedTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  advancedSubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  advancedChevron: {
+    fontSize: 14,
+    color: colors.textSecondary,
   },
 });
