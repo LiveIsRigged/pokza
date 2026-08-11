@@ -1,10 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import { fetchProfile, type ProfileDetails } from '../data/profiles';
 import { EditProfileScreen } from './EditProfileScreen';
-import { pickAvatarImage, removeAvatar, uploadAvatar, type CropRegion, type PickedImage } from '../data/avatars';
+import {
+  pickAvatarFromCamera,
+  pickAvatarImage,
+  removeAvatar,
+  uploadAvatar,
+  type CropRegion,
+  type PickedImage,
+} from '../data/avatars';
 import { deletePost, fetchPosts, setLiked } from '../data/posts';
 import {
   acceptFriendRequest,
@@ -26,6 +33,7 @@ import { AvatarCropper } from '../components/ui/AvatarCropper';
 import { OverflowMenu, type OverflowMenuItem, type OverflowAnchor } from '../components/ui/OverflowMenu';
 import { ReportModal } from '../components/moderation/ReportModal';
 import { blockUser, isBlockedByMe, unblockUser } from '../data/blocks';
+import { countryLabel } from '../data/countries';
 import { playerSummary } from './profileOptions';
 
 /** Même format que les dates de main affichées sur `PostCard` (ex: "29 juil. 2026") — cohérence
@@ -92,11 +100,22 @@ export function ProfileScreen({
   const menuButtonRef = useRef<View>(null);
   const [menuAnchor, setMenuAnchor] = useState<OverflowAnchor | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  // Menu de la pastille 📷 : sources photo + retrait, regroupés au même endroit.
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const avatarBadgeRef = useRef<View>(null);
+  const [avatarMenuAnchor, setAvatarMenuAnchor] = useState<OverflowAnchor | null>(null);
 
   const openMenu = () => {
     menuButtonRef.current?.measureInWindow((x, y, width, height) => {
       setMenuAnchor({ x, y, width, height });
       setMenuOpen(true);
+    });
+  };
+
+  const openAvatarMenu = () => {
+    avatarBadgeRef.current?.measureInWindow((x, y, width, height) => {
+      setAvatarMenuAnchor({ x, y, width, height });
+      setAvatarMenuOpen(true);
     });
   };
   // null tant qu'on ne sait pas encore ; pertinent uniquement pour le profil d'un autre.
@@ -310,6 +329,16 @@ export function ProfileScreen({
     }
   };
 
+  const handleTakePhoto = async () => {
+    try {
+      const image = await pickAvatarFromCamera();
+      if (!image) return;
+      setCropTarget(image);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
   const handleCropCancel = () => setCropTarget(null);
 
   const handleCropConfirm = async (region: CropRegion) => {
@@ -339,6 +368,19 @@ export function ProfileScreen({
       setError(errorMessage(err));
     }
   };
+
+  // Items du menu de la pastille 📷 : prendre une photo (natif — la photothèque ne l'expose pas),
+  // choisir dans la photothèque, et retirer la photo si elle existe. Remplace l'ancien lien
+  // « Retirer la photo » isolé sous l'avatar.
+  const avatarMenuItems: OverflowMenuItem[] = [
+    ...(Platform.OS !== 'web'
+      ? [{ label: 'Prendre une photo', icon: '📷', onPress: handleTakePhoto }]
+      : []),
+    { label: 'Choisir une photo', icon: '🖼️', onPress: handleChangeAvatar },
+    ...(profile?.avatarUrl
+      ? [{ label: 'Retirer la photo', icon: '🗑️', destructive: true, onPress: handleRemoveAvatar }]
+      : []),
+  ];
 
   const handleProfileSaved = (updated: ProfileDetails) => {
     setProfile(updated);
@@ -407,8 +449,9 @@ export function ProfileScreen({
                 <Avatar url={profile.avatarUrl} name={profile.displayName} size={72} />
                 {isOwnProfile && (
                   <Pressable
+                    ref={avatarBadgeRef}
                     style={styles.avatarEditBadge}
-                    onPress={handleChangeAvatar}
+                    onPress={openAvatarMenu}
                     disabled={avatarUploading}
                     hitSlop={8}
                   >
@@ -420,12 +463,10 @@ export function ProfileScreen({
                   </Pressable>
                 )}
               </View>
-              {isOwnProfile && profile.avatarUrl && !avatarUploading && (
-                <Pressable onPress={handleRemoveAvatar} hitSlop={8}>
-                  <Text style={styles.removeAvatarLink}>Retirer la photo</Text>
-                </Pressable>
-              )}
               <Text style={styles.displayName}>{profile.displayName}</Text>
+              {profile.country && countryLabel(profile.country) ? (
+                <Text style={styles.countryLine}>{countryLabel(profile.country)}</Text>
+              ) : null}
               {profile.bio ? (
                 <Text style={styles.bio}>{profile.bio}</Text>
               ) : (
@@ -575,6 +616,12 @@ export function ProfileScreen({
       </ScrollView>
 
       <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} anchor={menuAnchor} />
+      <OverflowMenu
+        visible={avatarMenuOpen}
+        onClose={() => setAvatarMenuOpen(false)}
+        items={avatarMenuItems}
+        anchor={avatarMenuAnchor}
+      />
       <ReportModal
         visible={reportOpen}
         onClose={() => setReportOpen(false)}
@@ -693,15 +740,15 @@ const styles = StyleSheet.create({
   avatarEditIcon: {
     fontSize: 13,
   },
-  removeAvatarLink: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textDecorationLine: 'underline',
-    marginBottom: spacing.sm,
-  },
   displayName: {
     ...typography.postTitle,
     color: colors.textPrimary,
+  },
+  countryLine: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 3,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 13,

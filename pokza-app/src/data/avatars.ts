@@ -1,5 +1,12 @@
 import { supabase } from '../lib/supabase';
-import { cropAndResizeToBase64, pickImage, uploadImageToBucket, type CropRegion, type PickedImage } from './images';
+import {
+  cropAndResizeToBase64,
+  pickImage,
+  pickImageFromCamera,
+  uploadImageToBucket,
+  type CropRegion,
+  type PickedImage,
+} from './images';
 
 export type { CropRegion, PickedImage };
 
@@ -11,6 +18,7 @@ const BUCKET = 'avatars';
 const AVATAR_MAX_SIZE = 512;
 
 export const pickAvatarImage = pickImage;
+export const pickAvatarFromCamera = pickImageFromCamera;
 
 /**
  * Recadre selon la région choisie, envoie dans le bucket `avatars`, puis enregistre l'adresse sur

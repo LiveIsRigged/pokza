@@ -38,6 +38,22 @@ export async function pickImage(): Promise<PickedImage | null> {
   return { uri: asset.uri, width: asset.width, height: asset.height };
 }
 
+/**
+ * Prend une photo avec l'appareil et la renvoie telle quelle (non recadrée), ou `null` si annulé.
+ * Pendant native de `pickImage` : la galerie n'expose pas l'appareil photo, on offre donc une entrée
+ * distincte. Sur le web, `launchCameraAsync` s'appuie sur l'appareil du navigateur quand il existe.
+ */
+export async function pickImageFromCamera(): Promise<PickedImage | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error("Pokza a besoin d'accéder à ton appareil photo.");
+  }
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
+  if (result.canceled) return null;
+  const asset = result.assets[0];
+  return { uri: asset.uri, width: asset.width, height: asset.height };
+}
+
 /** Découpe la région choisie puis ramène au carré `maxSize`×`maxSize` en un seul passage. */
 export async function cropAndResizeToBase64(uri: string, region: CropRegion, maxSize: number): Promise<string> {
   const context = ImageManipulator.manipulate(uri);

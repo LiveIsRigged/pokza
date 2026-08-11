@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import {
   deleteGroup,
@@ -10,13 +10,14 @@ import {
   type Group,
   type GroupMember,
 } from '../data/groups';
-import { pickAvatarImage, type CropRegion, type PickedImage } from '../data/avatars';
+import { pickAvatarFromCamera, pickAvatarImage, type CropRegion, type PickedImage } from '../data/avatars';
 import { removeGroupAvatar, uploadGroupAvatar } from '../data/groupAvatars';
 import { deletePost, fetchGroupPosts, setLiked } from '../data/posts';
 import type { Post } from '../types/poker';
 import { PostCard } from '../components/post/PostCard';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
+import { OverflowMenu, type OverflowAnchor, type OverflowMenuItem } from '../components/ui/OverflowMenu';
 import { EditGroupScreen } from './EditGroupScreen';
 
 /** Même format court que les dates de main / d'inscription ailleurs dans l'app (ex: "29 juil. 2026"). */
@@ -53,6 +54,17 @@ export function GroupScreen({
   const [cropTarget, setCropTarget] = useState<PickedImage | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingGroup, setEditingGroup] = useState(false);
+  // Menu de la pastille 📷 : sources photo + retrait, regroupés au même endroit.
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const avatarBadgeRef = useRef<View>(null);
+  const [avatarMenuAnchor, setAvatarMenuAnchor] = useState<OverflowAnchor | null>(null);
+
+  const openAvatarMenu = () => {
+    avatarBadgeRef.current?.measureInWindow((x, y, width, height) => {
+      setAvatarMenuAnchor({ x, y, width, height });
+      setAvatarMenuOpen(true);
+    });
+  };
 
   const isOwner = group?.ownerId === currentUserId;
 
@@ -79,6 +91,16 @@ export function GroupScreen({
   const handleChangeAvatar = async () => {
     try {
       const image = await pickAvatarImage();
+      if (!image) return;
+      setCropTarget(image);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const image = await pickAvatarFromCamera();
       if (!image) return;
       setCropTarget(image);
     } catch (err) {
@@ -113,6 +135,19 @@ export function GroupScreen({
       setError(errorMessage(err));
     }
   };
+
+  // Items du menu de la pastille 📷 : prendre une photo (natif — la photothèque ne l'expose pas),
+  // choisir dans la photothèque, et retirer la photo si elle existe. Remplace l'ancien lien
+  // « Retirer la photo » isolé sous l'avatar du groupe.
+  const avatarMenuItems: OverflowMenuItem[] = [
+    ...(Platform.OS !== 'web'
+      ? [{ label: 'Prendre une photo', icon: '📷', onPress: handleTakePhoto }]
+      : []),
+    { label: 'Choisir une photo', icon: '🖼️', onPress: handleChangeAvatar },
+    ...(group?.avatarUrl
+      ? [{ label: 'Retirer la photo', icon: '🗑️', destructive: true, onPress: handleRemoveAvatar }]
+      : []),
+  ];
 
   const handleGroupSaved = (description: string) => {
     setGroup((g) => (g ? { ...g, description: description || undefined } : g));
@@ -200,8 +235,9 @@ export function GroupScreen({
                 <Avatar url={group.avatarUrl} name={group.name} size={64} shape="square" />
                 {isOwner && (
                   <Pressable
+                    ref={avatarBadgeRef}
                     style={styles.avatarEditBadge}
-                    onPress={handleChangeAvatar}
+                    onPress={openAvatarMenu}
                     disabled={avatarUploading}
                     hitSlop={8}
                   >
@@ -213,11 +249,6 @@ export function GroupScreen({
                   </Pressable>
                 )}
               </View>
-              {isOwner && group.avatarUrl && !avatarUploading && (
-                <Pressable onPress={handleRemoveAvatar} hitSlop={8}>
-                  <Text style={styles.removeAvatarLink}>Retirer la photo</Text>
-                </Pressable>
-              )}
               <Text style={styles.groupName}>{group.name}</Text>
 
               {(() => {
@@ -363,6 +394,12 @@ export function GroupScreen({
           onSaved={handleGroupSaved}
         />
       )}
+      <OverflowMenu
+        visible={avatarMenuOpen}
+        onClose={() => setAvatarMenuOpen(false)}
+        items={avatarMenuItems}
+        anchor={avatarMenuAnchor}
+      />
     </View>
   );
 }
@@ -417,12 +454,6 @@ const styles = StyleSheet.create({
   },
   avatarEditIcon: {
     fontSize: 12,
-  },
-  removeAvatarLink: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textDecorationLine: 'underline',
-    marginBottom: spacing.sm,
   },
   groupName: {
     ...typography.postTitle,
