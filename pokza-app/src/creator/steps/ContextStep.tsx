@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
+import { Pressable, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
 import type { Position } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
 import { colors } from '../../theme/theme';
@@ -190,6 +190,23 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
     hadAdvancedValues.current = hasAdvancedValues;
   }, [hasAdvancedValues]);
 
+  // La section « Options avancées » est en bas de l'écran : quand on la déplie, les réglages
+  // révélés apparaissent hors du champ de vision et rien ne semble bouger. On amène donc l'en-tête
+  // en haut du ScrollView à l'ouverture, pour que le contenu déplié soit tout de suite visible.
+  const scrollRef = useRef<ScrollView>(null);
+  const advancedHeaderYRef = useRef(0);
+  const toggleAdvanced = () => {
+    setAdvancedOpen((open) => {
+      const next = !open;
+      if (next) {
+        requestAnimationFrame(() => {
+          scrollRef.current?.scrollTo({ y: Math.max(0, advancedHeaderYRef.current - 8), animated: true });
+        });
+      }
+      return next;
+    });
+  };
+
   return (
     <WizardScreen
       title="La table"
@@ -199,6 +216,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
+      scrollRef={scrollRef}
     >
       <View>
         <Text style={styles.label}>Variante</Text>
@@ -347,14 +365,25 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           ))}
         </View>
 
-        <Pressable style={styles.advancedHeader} onPress={() => setAdvancedOpen((o) => !o)}>
+        <Pressable
+          style={[styles.advancedHeader, advancedOpen && styles.advancedHeaderOpen]}
+          onPress={toggleAdvanced}
+          onLayout={(e) => {
+            advancedHeaderYRef.current = e.nativeEvent.layout.y;
+          }}
+        >
           <View style={styles.advancedHeaderText}>
             <Text style={styles.advancedTitle}>Options avancées</Text>
             <Text style={styles.advancedSubtitle}>
               {value.bombPot ? 'noms & stacks · lieu' : 'ante · straddle · noms & stacks · lieu'}
             </Text>
           </View>
-          <Text style={styles.advancedChevron}>{advancedOpen ? '▾' : '▸'}</Text>
+          <Text style={styles.advancedToggleLabel}>{advancedOpen ? 'Masquer' : 'Afficher'}</Text>
+          <View style={[styles.advancedChevronBadge, advancedOpen && styles.advancedChevronBadgeOpen]}>
+            <Text style={[styles.advancedChevron, advancedOpen && styles.advancedChevronOpen]}>
+              {advancedOpen ? '▾' : '▸'}
+            </Text>
+          </View>
         </Pressable>
 
         {advancedOpen && (
@@ -560,14 +589,18 @@ const styles = StyleSheet.create({
   advancedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     marginTop: 18,
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.15)',
-    backgroundColor: 'rgba(22,35,61,0.03)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(22,35,61,0.18)',
+    backgroundColor: 'rgba(22,35,61,0.04)',
+  },
+  advancedHeaderOpen: {
+    borderColor: colors.action,
+    backgroundColor: 'rgba(232,87,31,0.08)',
   },
   advancedHeaderText: {
     flex: 1,
@@ -582,8 +615,30 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
+  advancedToggleLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.action,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  advancedChevronBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(22,35,61,0.10)',
+  },
+  advancedChevronBadgeOpen: {
+    backgroundColor: colors.action,
+  },
   advancedChevron: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  advancedChevronOpen: {
+    color: '#fff',
   },
 });

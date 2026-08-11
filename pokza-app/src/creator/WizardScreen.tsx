@@ -13,6 +13,8 @@ interface WizardScreenProps {
   onBack?: () => void;
   step?: number;
   totalSteps?: number;
+  /** Permet à l'étape d'accéder au ScrollView (ex. faire défiler jusqu'à une section dépliée). */
+  scrollRef?: React.RefObject<ScrollView | null>;
 }
 
 export function WizardScreen({
@@ -25,6 +27,7 @@ export function WizardScreen({
   onBack,
   step,
   totalSteps,
+  scrollRef,
 }: WizardScreenProps) {
   // Retour au glissement bord-gauche → droite, double du bouton ‹ Retour (étape précédente, ou
   // sortie du créateur à la première étape). Inerte quand l'étape n'a pas de retour.
@@ -47,7 +50,12 @@ export function WizardScreen({
       </View>
       <Text style={[typography.postTitle, styles.title]}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.content}
+        contentContainerStyle={styles.contentInner}
+        showsVerticalScrollIndicator={false}
+      >
         {children}
       </ScrollView>
       {onNext && (
