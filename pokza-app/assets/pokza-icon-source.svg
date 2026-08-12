@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" role="img" aria-label="Pokza app icon">
+  <rect width="1000" height="1000" fill="#E8571F"></rect>
+  <g transform="translate(36 17) translate(500 500) scale(1.08) translate(-500 -500)">
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M317 240 H433 L683 405 L433 570 V760 H317 Z M433 342 L563 405 L433 468 Z"></path>
+  </g>
+</svg>
