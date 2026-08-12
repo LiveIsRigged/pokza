@@ -15,7 +15,7 @@ import { Platform } from 'react-native';
  * écrans gèrent l'inset du haut. Ici on reste en `default` (bande d'état classique).
  */
 
-const THEME_COLOR = '#EDEAE2'; // parchemin, cohérent avec le fond de l'app
+const THEME_COLOR = '#16233D'; // marine — haut d'app / barre d'état (voir en-tête marine)
 
 function upsertMeta(name: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
@@ -44,6 +44,10 @@ export function installPwaMeta() {
 
   document.title = 'Pokza';
 
+  // Plein écran sous la barre d'état : viewport-fit=cover active env(safe-area-inset-*) (lus par
+  // react-native-safe-area-context) et fait remonter le contenu sous l'encoche / Dynamic Island.
+  upsertMeta('viewport', 'width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover');
+
   upsertLink('manifest', '/manifest.json');
   upsertLink('apple-touch-icon', '/icons/apple-touch-icon.png', { sizes: '180x180' });
   upsertLink('icon', '/icons/icon-192.png', { type: 'image/png', sizes: '192x192' });
@@ -52,7 +56,9 @@ export function installPwaMeta() {
   upsertMeta('apple-mobile-web-app-capable', 'yes');
   upsertMeta('mobile-web-app-capable', 'yes');
   upsertMeta('apple-mobile-web-app-title', 'Pokza');
-  upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
+  // black-translucent : le contenu passe SOUS la barre d'état (heure/icônes en blanc). On garde donc
+  // un haut foncé (liseré marine du RootChrome + en-tête de feed marine) pour que l'heure reste lisible.
+  upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
   upsertMeta('application-name', 'Pokza');
   upsertMeta('theme-color', THEME_COLOR);
 }

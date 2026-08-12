@@ -11,17 +11,27 @@ const CHIPS = [
   { fill: colors.tableFelt, rim: 'rgba(201,162,39,0.55)' },
 ];
 
+// Sur fond marine (en-tête du feed) : jetons clairs (parchemin / or vif) pour rester visibles.
+const CHIPS_DARK = [
+  { fill: colors.textOnFelt, rim: 'rgba(22,35,61,0.45)' },
+  { fill: colors.goldBright, rim: 'rgba(22,35,61,0.45)' },
+  { fill: colors.textOnFelt, rim: 'rgba(22,35,61,0.45)' },
+];
+
 interface ChipStackIconProps {
   /** Largeur d'un jeton ; l'épaisseur et l'espacement en découlent. */
   width?: number;
+  /** Variante claire, pour un fond sombre (en-tête marine). */
+  onDark?: boolean;
 }
 
-export function ChipStackIcon({ width = 26 }: ChipStackIconProps) {
+export function ChipStackIcon({ width = 26, onDark = false }: ChipStackIconProps) {
+  const chips = onDark ? CHIPS_DARK : CHIPS;
   const height = Math.max(5, Math.round(width / 3.6));
   const gap = Math.max(2, Math.round(width / 9));
   return (
     <View style={styles.container}>
-      {CHIPS.map((chip, index) => (
+      {chips.map((chip, index) => (
         <View
           key={index}
           style={[
