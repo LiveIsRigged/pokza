@@ -11,6 +11,7 @@ import {
 } from '../data/notifications';
 import { acceptFriendRequest, deleteFriendRelation, fetchPendingRequests } from '../data/friends';
 import { acceptGroupInvite, fetchPendingGroupInvites, removeGroupMember } from '../data/groups';
+import { enablePush, pushState, pushSupported, type PushState } from '../web/push';
 
 interface NotificationsScreenProps {
   /** Panneau ouvert par-dessus le feed (bottom-sheet) : contrôle l'affichage + les (re)chargements. */
@@ -114,6 +115,20 @@ export function NotificationsScreen({
   const [pendingGroupIds, setPendingGroupIds] = useState<Set<string>>(new Set());
   // Masque les boutons immédiatement après une action, avant même le rechargement des demandes.
   const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
+  // Web Push : état de la permission sur cet appareil (web/PWA uniquement).
+  const [perm, setPerm] = useState<PushState>(() => pushState());
+  const [enabling, setEnabling] = useState(false);
+
+  const handleEnablePush = async () => {
+    setEnabling(true);
+    try {
+      setPerm(await enablePush(currentUserId));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setEnabling(false);
+    }
+  };
 
   // (Re)chargement à chaque ouverture du panneau — les notifications doivent être fraîches quand on
   // le rouvre, et il reste monté en fond (feuille) entre deux ouvertures.
@@ -245,6 +260,22 @@ export function NotificationsScreen({
       <Text style={styles.title}>Notifications</Text>
       {error && <Text style={styles.statusText}>{error}</Text>}
 
+      {pushSupported() && perm !== 'granted' && (
+        <Pressable
+          style={styles.pushBanner}
+          onPress={handleEnablePush}
+          disabled={enabling || perm === 'denied'}
+        >
+          <Text style={styles.pushBannerText}>
+            {perm === 'denied'
+              ? '🔕 Notifications bloquées — réactive-les dans les réglages de ton navigateur.'
+              : enabling
+                ? 'Activation…'
+                : '🔔 Activer les notifications sur cet appareil'}
+          </Text>
+        </Pressable>
+      )}
+
       <ScrollView style={styles.list} contentContainerStyle={styles.content}>
         {loading ? (
           <Text style={styles.statusText}>Chargement…</Text>
@@ -300,6 +331,22 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(22,35,61,0.15)',
+  },
+  pushBanner: {
+    marginHorizontal: spacing.sm,
+    marginTop: spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(232,87,31,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,87,31,0.25)',
+  },
+  pushBannerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.action,
+    textAlign: 'center',
   },
   // `flexShrink` (et non `flex: 1`) : le panneau épouse la hauteur du contenu, et ne défile que
   // lorsqu'il atteint la hauteur max de la carte (cf. `Popover`).

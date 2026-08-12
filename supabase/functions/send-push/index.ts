@@ -1,0 +1,166 @@
+// Edge Function `send-push`
+// ==========================
+// Déclenchée par un Database Webhook sur INSERT dans `public.notifications` : construit un message
+// lisible à partir de la notification, puis l'envoie en Web Push à tous les appareils du destinataire.
+//
+// Secrets requis (Dashboard → Edge Functions → Secrets, ou `supabase secrets set`) :
+//   VAPID_KEYS    = le JSON { publicKey, privateKey } (fourni séparément, NE PAS committer)
+//   VAPID_SUBJECT = "mailto:ton-email@exemple.com" (contact VAPID ; optionnel, défaut ci-dessous)
+// SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournis automatiquement à la fonction.
+//
+// NB : à tester après déploiement (impossible à exécuter en local sans push service + appareil réel).
+
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+import * as webpush from 'jsr:@negrel/webpush';
+
+type NotificationType =
+  | 'post_like'
+  | 'post_comment'
+  | 'comment_reply'
+  | 'comment_like'
+  | 'friend_request'
+  | 'friend_accept'
+  | 'friend_posted'
+  | 'group_invite'
+  | 'group_accept'
+  | 'group_posted'
+  | 'report_resolved'
+  | 'content_removed'
+  | 'account_sanctioned';
+
+interface NotificationRecord {
+  id: string;
+  recipient_id: string;
+  actor_id: string;
+  type: NotificationType;
+  post_id: string | null;
+  comment_id: string | null;
+  group_id: string | null;
+}
+
+const admin = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+);
+
+const appServerPromise = (async () => {
+  const vapidKeys = await webpush.importVapidKeys(
+    JSON.parse(Deno.env.get('VAPID_KEYS')!),
+    { extractable: false },
+  );
+  return webpush.ApplicationServer.new({
+    contactInformation: Deno.env.get('VAPID_SUBJECT') ?? 'mailto:contact@pokza.app',
+    vapidKeys,
+  });
+})();
+
+/** Message affiché (miroir de `textFor` côté app). La modération ne nomme jamais l'admin. */
+function bodyFor(
+  type: NotificationType,
+  actorName: string,
+  postLocation: string | null,
+  groupName: string | null,
+): string {
+  switch (type) {
+    case 'post_like':
+      return `${actorName} a aimé ta main`;
+    case 'comment_like':
+      return `${actorName} a aimé ton commentaire`;
+    case 'post_comment':
+      return `${actorName} a commenté ta main`;
+    case 'comment_reply':
+      return `${actorName} a répondu à ton commentaire`;
+    case 'friend_request':
+      return `${actorName} veut devenir ami avec toi`;
+    case 'friend_accept':
+      return `${actorName} a accepté ta demande d'ami`;
+    case 'friend_posted':
+      return postLocation ? `${actorName} a posté une main à ${postLocation}` : `${actorName} a posté une main`;
+    case 'group_invite':
+      return `${actorName} t'invite dans le groupe privé ${groupName ?? ''}`.trim();
+    case 'group_accept':
+      return `${actorName} a rejoint le groupe privé ${groupName ?? ''}`.trim();
+    case 'group_posted':
+      return `${actorName} a posté une main dans le groupe privé ${groupName ?? ''}`.trim();
+    case 'report_resolved':
+      return 'Ton signalement a été traité par la modération.';
+    case 'content_removed':
+      return 'Un de tes contenus a été retiré par la modération.';
+    case 'account_sanctioned':
+      return 'Ton compte a fait l’objet d’une mesure de modération.';
+  }
+}
+
+/** Lien profond ouvert au clic (miroir des routes gérées : /post/:id et /invite/:userId). */
+function urlFor(n: NotificationRecord): string {
+  if (n.type === 'report_resolved' || n.type === 'account_sanctioned') return '/';
+  if (n.post_id) return `/post/${n.post_id}`;
+  if (n.type === 'friend_request' || n.type === 'friend_accept') return `/invite/${n.actor_id}`;
+  return '/';
+}
+
+Deno.serve(async (req) => {
+  try {
+    const payload = await req.json();
+    const n: NotificationRecord | undefined = payload?.record;
+    if (!n || payload.table !== 'notifications' || payload.type !== 'INSERT') {
+      return new Response('ignored', { status: 200 });
+    }
+
+    // Résolution des libellés en service_role (contourne la RLS).
+    const [{ data: actor }, post, group] = await Promise.all([
+      admin.from('profiles').select('pseudo').eq('id', n.actor_id).maybeSingle(),
+      n.post_id
+        ? admin.from('posts').select('location').eq('id', n.post_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      n.group_id
+        ? admin.from('groups').select('name').eq('id', n.group_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const actorName = actor?.pseudo ?? 'Quelqu’un';
+    const body = bodyFor(n.type, actorName, post?.data?.location ?? null, group?.data?.name ?? null);
+    const message = JSON.stringify({
+      title: 'Pokza',
+      body,
+      url: urlFor(n),
+      tag: `${n.type}:${n.post_id ?? n.group_id ?? n.actor_id}`,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+    });
+
+    const { data: subs, error } = await admin
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth')
+      .eq('user_id', n.recipient_id);
+    if (error) throw error;
+    if (!subs || subs.length === 0) return new Response('no subscriptions', { status: 200 });
+
+    const appServer = await appServerPromise;
+    await Promise.all(
+      subs.map(async (s) => {
+        try {
+          const subscriber = appServer.subscribe({
+            endpoint: s.endpoint,
+            keys: { p256dh: s.p256dh, auth: s.auth },
+          });
+          await subscriber.pushTextMessage(message, {});
+        } catch (err) {
+          // Abonnement expiré/supprimé côté navigateur (404/410) → on le retire.
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          const gone = status === 404 || status === 410 || /410|404|gone|expired/i.test(String(err));
+          if (gone) {
+            await admin.from('push_subscriptions').delete().eq('endpoint', s.endpoint);
+          } else {
+            console.error('push failed', s.endpoint, err);
+          }
+        }
+      }),
+    );
+
+    return new Response('ok', { status: 200 });
+  } catch (err) {
+    console.error('send-push error', err);
+    return new Response('error', { status: 500 });
+  }
+});

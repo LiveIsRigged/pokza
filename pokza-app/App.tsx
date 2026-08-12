@@ -11,6 +11,7 @@ import { ActivityIndicator, Animated, AppState, Pressable, StyleSheet, Text, Vie
 import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { installPwaMeta } from './src/web/installPwaMeta';
 import { InstallPrompt } from './src/web/InstallPrompt';
+import { registerPushServiceWorker } from './src/web/push';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { createPost, deletePost, fetchFeed, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
@@ -170,6 +171,9 @@ function AppContent() {
   // Balises PWA (manifest, icône d'accueil, nom, plein écran) — web uniquement, no-op sur mobile.
   useEffect(() => {
     installPwaMeta();
+    // Service worker Web Push : enregistré au démarrage pour pouvoir recevoir les notifs (l'abonnement
+    // lui-même reste déclenché par le bouton « Activer les notifications »).
+    registerPushServiceWorker();
   }, []);
   useEffect(() => {
     if (session?.user?.id) identifyUser(session.user.id);
