@@ -9,6 +9,7 @@ import { Fraunces_400Regular } from '@expo-google-fonts/fraunces/400Regular';
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
 import { ActivityIndicator, Animated, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import { installPwaMeta } from './src/web/installPwaMeta';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { createPost, deletePost, fetchFeed, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
@@ -141,6 +142,11 @@ function AppContent() {
   // fil de la session (identify à la connexion, reset à la déconnexion — volet client du §9.5).
   useEffect(() => {
     initAnalytics();
+  }, []);
+
+  // Balises PWA (manifest, icône d'accueil, nom, plein écran) — web uniquement, no-op sur mobile.
+  useEffect(() => {
+    installPwaMeta();
   }, []);
   useEffect(() => {
     if (session?.user?.id) identifyUser(session.user.id);
