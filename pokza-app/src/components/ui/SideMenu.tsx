@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     width: PANEL_WIDTH,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.feedBackground,
     paddingTop: 46,
     paddingHorizontal: spacing.md,
     shadowColor: '#000',
