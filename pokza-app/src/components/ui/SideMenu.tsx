@@ -101,6 +101,8 @@ export function SideMenu({
       </Animated.View>
 
       <Animated.View style={[styles.panel, { transform: [{ translateX }] }]} {...closeSwipe.panHandlers}>
+        <Text style={styles.brandTitle}>Pokza</Text>
+
         <Pressable style={styles.profileCard} onPress={onOpenProfile}>
           <Avatar url={avatarUrl} name={displayName} size={44} />
           <View style={styles.profileText}>
@@ -159,7 +161,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: PANEL_WIDTH,
     backgroundColor: '#FFFFFF',
-    paddingTop: 50,
+    paddingTop: 46,
     paddingHorizontal: spacing.md,
     shadowColor: '#000',
     shadowOpacity: 0.18,
@@ -167,11 +169,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 4, height: 0 },
     elevation: 12,
   },
+  brandTitle: {
+    fontSize: 25,
+    fontWeight: '700',
+    color: colors.action,
+    marginBottom: spacing.md,
+  },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(22,35,61,0.08)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(22,35,61,0.08)',
     marginBottom: spacing.sm,
