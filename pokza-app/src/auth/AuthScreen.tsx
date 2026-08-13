@@ -77,7 +77,7 @@ function BrandHeader({ compact }: { compact: boolean }) {
   return (
     <>
       <View style={styles.logoWrap}>
-        <PokzaLogo size={60} />
+        <PokzaLogo size={92} />
       </View>
       <Text style={styles.title}>Pokza</Text>
       <Text style={styles.tagline}>
@@ -86,17 +86,17 @@ function BrandHeader({ compact }: { compact: boolean }) {
       </Text>
       <View style={styles.featureRow}>
         <View style={styles.featureCol}>
-          <FeatureCardIcon />
+          <FeatureCardIcon size={38} />
           <Text style={styles.featureLabel}>Crée</Text>
         </View>
         <View style={styles.featureDivider} />
         <View style={styles.featureCol}>
-          <FeatureShareIcon />
+          <FeatureShareIcon size={32} />
           <Text style={styles.featureLabel}>Partage</Text>
         </View>
         <View style={styles.featureDivider} />
         <View style={styles.featureCol}>
-          <FeatureChatIcon />
+          <FeatureChatIcon size={32} />
           <Text style={styles.featureLabel}>Débat</Text>
         </View>
       </View>
@@ -414,21 +414,21 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 40,
+    fontSize: 44,
     fontWeight: '700',
     color: colors.tableFelt,
     textAlign: 'center',
     letterSpacing: -0.5,
   },
   tagline: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 14,
   },
   taglineAccent: {
     color: colors.action,
@@ -436,24 +436,24 @@ const styles = StyleSheet.create({
   },
   featureRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: 22,
-    marginTop: 22,
-    marginBottom: 28,
+    gap: 28,
+    marginTop: 32,
+    marginBottom: 36,
   },
   featureCol: {
     alignItems: 'center',
-    gap: 6,
-    minWidth: 56,
+    gap: 8,
+    minWidth: 60,
   },
   featureLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textSecondary,
   },
   featureDivider: {
     width: 1,
-    height: 34,
+    height: 40,
     backgroundColor: 'rgba(22,35,61,0.14)',
   },
   brandRow: {
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   },
   inputField: {
     flex: 1,
-    paddingVertical: 13,
+    paddingVertical: 15,
     fontSize: 16,
     color: colors.textPrimary,
     // Web (react-native-web) : neutralise le contour bleu par défaut du navigateur sur le champ focalisé.
