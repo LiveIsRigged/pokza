@@ -8,7 +8,7 @@ import { useFonts } from 'expo-font';
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces/400Regular';
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
 import { ActivityIndicator, Animated, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { installPwaMeta } from './src/web/installPwaMeta';
 import { InstallPrompt } from './src/web/InstallPrompt';
 import { registerPushServiceWorker } from './src/web/push';
@@ -69,20 +69,15 @@ export default function App() {
 }
 
 /**
- * Habillage racine, commun à TOUS les écrans (app en plein écran sous la barre d'état, cf.
- * viewport-fit=cover + status-bar-style black-translucent). En haut : un liseré marine de la hauteur
- * de la zone de barre d'état — l'heure/icônes système (forcées en blanc par iOS) y restent lisibles,
- * et il fusionne avec l'en-tête marine du feed. En bas : un rappel du fond parchemin sous le home
- * indicator. Sur le web / un écran sans encoche, `insets` valent 0 : ces bandes sont invisibles et
- * rien ne change.
+ * Habillage racine commun à tous les écrans : sert surtout à monter le bandeau d'installation
+ * (`InstallPrompt`) par-dessus n'importe quel écran (web only). La barre d'état reste la bande
+ * système classique (bande blanche, heure noire) pour la bêta — le dégagement du haut est géré par
+ * chaque écran (feed via `insets`, écrans empilés via leur propre padding).
  */
 function RootChrome({ children }: { children: React.ReactNode }) {
-  const insets = useSafeAreaInsets();
   return (
     <View style={styles.rootChrome}>
-      <View style={[styles.statusStrip, { height: insets.top }]} />
-      <View style={styles.rootContent}>{children}</View>
-      {insets.bottom > 0 && <View style={{ height: insets.bottom, backgroundColor: colors.feedBackground }} />}
+      {children}
       <InstallPrompt />
     </View>
   );
@@ -977,12 +972,6 @@ const styles = StyleSheet.create({
   rootChrome: {
     flex: 1,
     backgroundColor: colors.feedBackground,
-  },
-  statusStrip: {
-    backgroundColor: colors.tableFelt,
-  },
-  rootContent: {
-    flex: 1,
   },
   container: {
     flex: 1,

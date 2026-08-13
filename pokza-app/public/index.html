@@ -3,20 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <!-- viewport-fit=cover : contenu en plein écran sous la barre d'état / home indicator (env(safe-area-inset-*)). -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>%WEB_TITLE%</title>
 
-    <!-- PWA / raccourci écran d'accueil iOS. Ces balises sont lues au LANCEMENT dans le HTML servi :
-         elles DOIVENT être statiques ici (une injection JavaScript serait trop tardive pour le style
-         de barre d'état). black-translucent = le contenu passe sous la barre d'état (heure en blanc),
-         d'où le haut marine de l'app pour rester lisible. -->
+    <!-- PWA / raccourci écran d'accueil iOS. `default` = barre d'état système classique (bande
+         blanche, heure noire) : look neutre pour la bêta. Le natif (stores) permettra un haut
+         parchemin avec heure noire — impossible en PWA iOS, d'où ce choix temporaire. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Pokza" />
     <meta name="application-name" content="Pokza" />
-    <meta name="theme-color" content="#16233D" />
+    <meta name="theme-color" content="#EDEAE2" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />

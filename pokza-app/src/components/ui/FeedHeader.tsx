@@ -1,5 +1,6 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/theme';
 import { ChipStackIcon } from './ChipStackIcon';
 
@@ -25,10 +26,10 @@ interface FeedHeaderProps {
  * plus naturel sur mobile.
  */
 export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifications, unreadCount }: FeedHeaderProps) {
-  // La zone de barre d'état est déjà couverte par le liseré marine du RootChrome ; ici on ne met que
-  // le confort visuel (22 déployé, 14 une fois défilé). L'en-tête est marine pour fusionner avec ce
-  // liseré et former un seul bloc sombre en haut (heure système en blanc, lisible).
-  const paddingTop = compact.interpolate({ inputRange: [0, 1], outputRange: [22, 14] });
+  // On décolle la barre de la zone système avec l'inset réel (0 sur le web / la PWA en bande blanche,
+  // > 0 en natif), plus un petit confort visuel (22 déployé, 14 une fois défilé).
+  const insets = useSafeAreaInsets();
+  const paddingTop = compact.interpolate({ inputRange: [0, 1], outputRange: [insets.top + 22, insets.top + 14] });
   const paddingBottom = compact.interpolate({ inputRange: [0, 1], outputRange: [12, 8] });
   const dividerOpacity = compact.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
@@ -36,7 +37,7 @@ export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifica
     <Animated.View style={[styles.header, { paddingTop, paddingBottom }]}>
       <View style={styles.row}>
         <Pressable style={styles.menuButton} onPress={onOpenMenu} hitSlop={8}>
-          <ChipStackIcon onDark />
+          <ChipStackIcon />
         </Pressable>
         <Pressable style={styles.createButton} onPress={onCreate}>
           <Text style={styles.createButtonText}>+ Créer une main</Text>
@@ -61,7 +62,7 @@ export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifica
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 14,
-    backgroundColor: colors.tableFelt,
+    backgroundColor: colors.feedBackground,
   },
   row: {
     flexDirection: 'row',
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(237,234,226,0.35)',
+    borderColor: 'rgba(22,35,61,0.25)',
     position: 'relative',
   },
   iconButtonText: {
