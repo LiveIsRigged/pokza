@@ -16,12 +16,11 @@ import { deletePost, fetchPosts, setLiked } from '../data/posts';
 import {
   acceptFriendRequest,
   deleteFriendRelation,
+  fetchFriendCount,
   fetchFriendStatus,
-  fetchFriends,
   fetchMutualFriendsPreview,
   fetchPendingRequests,
   sendFriendRequest,
-  type Friend,
   type FriendStatus,
   type MutualFriendPreview,
   type PendingRequest,
@@ -92,7 +91,7 @@ export function ProfileScreen({
   const [mutualFriends, setMutualFriends] = useState<MutualFriendPreview[]>([]);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
-  const [friends, setFriends] = useState<Friend[]>([]);
+  const [friendCount, setFriendCount] = useState(0);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [cropTarget, setCropTarget] = useState<PickedImage | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -157,38 +156,30 @@ export function ProfileScreen({
   }, [currentUserId, isOwnProfile]);
 
   useEffect(() => {
-    if (!isOwnProfile) return;
     let cancelled = false;
-    fetchFriends(currentUserId)
-      .then((data) => {
-        if (!cancelled) setFriends(data);
+    fetchFriendCount(profileId)
+      .then((count) => {
+        if (!cancelled) setFriendCount(count);
       })
       .catch(() => {
-        // Non bloquant : l'absence de la liste d'amis ne doit pas empêcher l'affichage du profil.
+        // Non bloquant : l'absence du compte d'amis ne doit pas empêcher l'affichage du profil.
       });
     return () => {
       cancelled = true;
     };
-  }, [currentUserId, isOwnProfile]);
+  }, [profileId]);
 
   const handleAcceptPending = async (senderId: string) => {
     const previous = pendingRequests;
-    const accepted = pendingRequests.find((req) => req.senderId === senderId);
     setPendingRequests((r) => r.filter((req) => req.senderId !== senderId));
-    // L'ami passe immédiatement dans "Mes amis" : la demande vient d'être acceptée, inutile
-    // d'attendre un rechargement pour le voir apparaître.
-    if (accepted) {
-      setFriends((f) =>
-        f.some((fr) => fr.id === senderId)
-          ? f
-          : [...f, { id: senderId, pseudo: accepted.senderPseudo, avatarUrl: accepted.senderAvatarUrl }]
-      );
-    }
+    // Le compte d'amis augmente immédiatement : la demande vient d'être acceptée, inutile
+    // d'attendre un rechargement pour le voir reflété.
+    setFriendCount((c) => c + 1);
     try {
       await acceptFriendRequest(senderId, currentUserId);
     } catch (err) {
       setPendingRequests(previous);
-      setFriends((f) => f.filter((fr) => fr.id !== senderId));
+      setFriendCount((c) => c - 1);
       setError(errorMessage(err));
     }
   };
@@ -472,10 +463,18 @@ export function ProfileScreen({
               ) : (
                 <Text style={styles.subtitle}>{playerSummary(profile.formatFavori, profile.frequenceJeu)}</Text>
               )}
-              <Text style={styles.metaLine}>
-                {posts.length} main{posts.length !== 1 ? 's' : ''} partagée{posts.length !== 1 ? 's' : ''} · Membre
-                depuis {formatJoinDate(profile.createdAt)}
-              </Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{posts.length}</Text>
+                  <Text style={styles.statLabel}>main{posts.length !== 1 ? 's' : ''}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{friendCount}</Text>
+                  <Text style={styles.statLabel}>ami{friendCount !== 1 ? 's' : ''}</Text>
+                </View>
+              </View>
+              <Text style={styles.metaLine}>Membre depuis {formatJoinDate(profile.createdAt)}</Text>
 
               {isOwnProfile && (
                 <View style={styles.ownProfileActions}>
@@ -484,7 +483,7 @@ export function ProfileScreen({
                   </Pressable>
                   <Pressable style={styles.editProfileButton} onPress={onOpenFriends} disabled={!onOpenFriends}>
                     <Text style={styles.editProfileButtonText}>
-                      Mes amis{friends.length > 0 ? ` · ${friends.length}` : ''}
+                      Mes amis{friendCount > 0 ? ` · ${friendCount}` : ''}
                     </Text>
                   </Pressable>
                 </View>
@@ -765,10 +764,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     lineHeight: 20,
   },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: 'rgba(22,35,61,0.14)',
+  },
   metaLine: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginTop: 6,
+    marginTop: 8,
     textAlign: 'center',
   },
   editProfileButton: {

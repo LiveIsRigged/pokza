@@ -85,6 +85,15 @@ export async function fetchFriends(userId: string): Promise<Friend[]> {
   }));
 }
 
+/** Nombre d'amis d'un profil quelconque — contrairement à `fetchFriends`, valide pour n'importe
+ * quel profil visité (repose sur la fonction `friend_count`, SECURITY DEFINER côté base, qui
+ * n'expose qu'un compte, jamais la liste elle-même). */
+export async function fetchFriendCount(profileId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('friend_count', { p_profile: profileId });
+  if (error) throw error;
+  return data ?? 0;
+}
+
 export interface MutualFriendPreview {
   id: string;
   pseudo: string;
