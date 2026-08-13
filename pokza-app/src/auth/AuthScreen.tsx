@@ -9,6 +9,18 @@ import { openPublicReport, type PublicReportTarget } from '../utils/publicReport
 import { passwordError } from './passwordRules';
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
+import {
+  EyeIcon,
+  EyeOffIcon,
+  FeatureCardIcon,
+  FeatureChatIcon,
+  FeatureShareIcon,
+  LockIcon,
+  MailIcon,
+  PokzaLogo,
+} from '../components/ui/authIcons';
+
+const ICON_MUTED = 'rgba(22,35,61,0.5)';
 
 type Mode = 'signIn' | 'signUp' | 'forgotPassword';
 
@@ -39,6 +51,59 @@ function translateAuthError(message: string): string {
   return match ? match[1] : message;
 }
 
+/** Champ de saisie avec icône de tête (et éventuel bouton de fin, ex. l'œil du mot de passe). */
+function InputRow({ icon, trailing, children }: { icon: React.ReactNode; trailing?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <View style={styles.inputWrap}>
+      <View style={styles.inputIcon}>{icon}</View>
+      {children}
+      {trailing}
+    </View>
+  );
+}
+
+/** En-tête de marque : grand logo + « Pokza » + slogan + trio Crée/Partage/Débat en connexion ;
+ *  version compacte (logo + « Pokza » en ligne, sans slogan ni pictos) en inscription, pour laisser
+ *  respirer le formulaire plus long. */
+function BrandHeader({ compact }: { compact: boolean }) {
+  if (compact) {
+    return (
+      <View style={styles.brandRow}>
+        <PokzaLogo size={34} />
+        <Text style={styles.brandRowTitle}>Pokza</Text>
+      </View>
+    );
+  }
+  return (
+    <>
+      <View style={styles.logoWrap}>
+        <PokzaLogo size={60} />
+      </View>
+      <Text style={styles.title}>Pokza</Text>
+      <Text style={styles.tagline}>
+        Le moyen le plus <Text style={styles.taglineAccent}>simple</Text>
+        {'\n'}de <Text style={styles.taglineAccent}>partager</Text> ses mains de poker
+      </Text>
+      <View style={styles.featureRow}>
+        <View style={styles.featureCol}>
+          <FeatureCardIcon />
+          <Text style={styles.featureLabel}>Crée</Text>
+        </View>
+        <View style={styles.featureDivider} />
+        <View style={styles.featureCol}>
+          <FeatureShareIcon />
+          <Text style={styles.featureLabel}>Partage</Text>
+        </View>
+        <View style={styles.featureDivider} />
+        <View style={styles.featureCol}>
+          <FeatureChatIcon />
+          <Text style={styles.featureLabel}>Débat</Text>
+        </View>
+      </View>
+    </>
+  );
+}
+
 export function AuthScreen() {
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
@@ -46,6 +111,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signUpMessage, setSignUpMessage] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
@@ -140,7 +206,7 @@ export function AuthScreen() {
   if (mode === 'forgotPassword') {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Pokza</Text>
+        <BrandHeader compact />
         <Text style={styles.subtitle}>Mot de passe oublié</Text>
 
         {resetSent ? (
@@ -151,21 +217,23 @@ export function AuthScreen() {
         ) : (
           <>
             <Text style={styles.helper}>On t'envoie un lien par email pour choisir un nouveau mot de passe.</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="go"
-              onSubmitEditing={handleForgotPassword}
-              onKeyPress={onEnterKey(handleForgotPassword)}
-              value={email}
-              onChangeText={setEmail}
-            />
+            <InputRow icon={<MailIcon color={ICON_MUTED} />}>
+              <TextInput
+                style={styles.inputField}
+                placeholder="Email"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="go"
+                onSubmitEditing={handleForgotPassword}
+                onKeyPress={onEnterKey(handleForgotPassword)}
+                value={email}
+                onChangeText={setEmail}
+              />
+            </InputRow>
             {error && <Text style={styles.error}>{error}</Text>}
             <Pressable
               style={[styles.submitButton, (submitting || !email) && styles.submitButtonDisabled]}
@@ -186,30 +254,12 @@ export function AuthScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Pokza</Text>
-      <Text style={styles.subtitle}>{mode === 'signIn' ? 'Connecte-toi' : 'Crée un compte'}</Text>
+      <BrandHeader compact={mode === 'signUp'} />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor={colors.textSecondary}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        autoComplete="email"
-        textContentType="emailAddress"
-        returnKeyType="next"
-        onSubmitEditing={() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus())}
-        onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus()))}
-        blurOnSubmit={false}
-        value={email}
-        onChangeText={setEmail}
-      />
-      {mode === 'signUp' && (
+      <InputRow icon={<MailIcon color={ICON_MUTED} />}>
         <TextInput
-          ref={confirmEmailRef}
-          style={styles.input}
-          placeholder="Confirme ton email"
+          style={styles.inputField}
+          placeholder="Email"
           placeholderTextColor={colors.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -217,43 +267,75 @@ export function AuthScreen() {
           autoComplete="email"
           textContentType="emailAddress"
           returnKeyType="next"
-          onSubmitEditing={() => passwordRef.current?.focus()}
-          onKeyPress={onEnterKey(() => passwordRef.current?.focus())}
+          onSubmitEditing={() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus())}
+          onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus()))}
           blurOnSubmit={false}
-          value={confirmEmail}
-          onChangeText={setConfirmEmail}
+          value={email}
+          onChangeText={setEmail}
         />
-      )}
-      <TextInput
-        ref={passwordRef}
-        style={styles.input}
-        placeholder="Mot de passe"
-        placeholderTextColor={colors.textSecondary}
-        secureTextEntry
-        autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
-        textContentType={mode === 'signUp' ? 'newPassword' : 'password'}
-        returnKeyType={mode === 'signUp' ? 'next' : 'go'}
-        onSubmitEditing={() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit())}
-        onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit()))}
-        blurOnSubmit={mode !== 'signUp'}
-        value={password}
-        onChangeText={setPassword}
-      />
+      </InputRow>
       {mode === 'signUp' && (
+        <InputRow icon={<MailIcon color={ICON_MUTED} />}>
+          <TextInput
+            ref={confirmEmailRef}
+            style={styles.inputField}
+            placeholder="Confirme ton email"
+            placeholderTextColor={colors.textSecondary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            onKeyPress={onEnterKey(() => passwordRef.current?.focus())}
+            blurOnSubmit={false}
+            value={confirmEmail}
+            onChangeText={setConfirmEmail}
+          />
+        </InputRow>
+      )}
+      <InputRow
+        icon={<LockIcon color={ICON_MUTED} />}
+        trailing={
+          <Pressable style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+            {showPassword ? <EyeOffIcon color="rgba(22,35,61,0.45)" /> : <EyeIcon color="rgba(22,35,61,0.45)" />}
+          </Pressable>
+        }
+      >
         <TextInput
-          ref={confirmPasswordRef}
-          style={styles.input}
-          placeholder="Confirme le mot de passe"
+          ref={passwordRef}
+          style={styles.inputField}
+          placeholder="Mot de passe"
           placeholderTextColor={colors.textSecondary}
-          secureTextEntry
-          autoComplete="new-password"
-          textContentType="newPassword"
-          returnKeyType="go"
-          onSubmitEditing={handleSubmit}
-          onKeyPress={onEnterKey(handleSubmit)}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          secureTextEntry={!showPassword}
+          autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
+          textContentType={mode === 'signUp' ? 'newPassword' : 'password'}
+          returnKeyType={mode === 'signUp' ? 'next' : 'go'}
+          onSubmitEditing={() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit())}
+          onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit()))}
+          blurOnSubmit={mode !== 'signUp'}
+          value={password}
+          onChangeText={setPassword}
         />
+      </InputRow>
+      {mode === 'signUp' && (
+        <InputRow icon={<LockIcon color={ICON_MUTED} />}>
+          <TextInput
+            ref={confirmPasswordRef}
+            style={styles.inputField}
+            placeholder="Confirme le mot de passe"
+            placeholderTextColor={colors.textSecondary}
+            secureTextEntry={!showPassword}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit}
+            onKeyPress={onEnterKey(handleSubmit)}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+        </InputRow>
       )}
 
       {mode === 'signUp' && (
@@ -301,7 +383,8 @@ export function AuthScreen() {
 
       <Pressable onPress={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')} hitSlop={8}>
         <Text style={styles.toggleText}>
-          {mode === 'signIn' ? "Pas de compte ? Crée-en un" : 'Déjà un compte ? Connecte-toi'}
+          {mode === 'signIn' ? 'Pas de compte ? ' : 'Déjà un compte ? '}
+          <Text style={styles.toggleAccent}>{mode === 'signIn' ? 'Crée-en un' : 'Connecte-toi'}</Text>
         </Text>
       </Pressable>
 
@@ -329,12 +412,62 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     backgroundColor: colors.feedBackground,
   },
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   title: {
-    fontSize: 34,
+    fontSize: 40,
     fontWeight: '700',
     color: colors.tableFelt,
     textAlign: 'center',
-    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  taglineAccent: {
+    color: colors.action,
+    fontWeight: '700',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 22,
+    marginTop: 22,
+    marginBottom: 28,
+  },
+  featureCol: {
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 56,
+  },
+  featureLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  featureDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: 'rgba(22,35,61,0.14)',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
+  brandRowTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: colors.tableFelt,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 14,
@@ -348,16 +481,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  input: {
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
-    borderRadius: radius.md,
+    borderColor: 'rgba(22,35,61,0.2)',
+    borderRadius: radius.lg,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
     marginBottom: 12,
     backgroundColor: '#fff',
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  inputField: {
+    flex: 1,
+    paddingVertical: 13,
+    fontSize: 16,
     color: colors.textPrimary,
+    // Web (react-native-web) : neutralise le contour bleu par défaut du navigateur sur le champ focalisé.
+    outlineStyle: 'none',
+  } as any,
+  eyeButton: {
+    paddingLeft: 10,
+    paddingVertical: 4,
   },
   forgotPasswordText: {
     color: colors.textSecondary,
@@ -442,6 +589,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     textAlign: 'center',
+  },
+  toggleAccent: {
+    color: colors.action,
+    fontWeight: '700',
   },
   reportLink: {
     color: colors.textSecondary,
