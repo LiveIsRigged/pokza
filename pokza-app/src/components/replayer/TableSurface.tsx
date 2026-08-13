@@ -27,17 +27,30 @@ export function TableSurface({ width, height }: TableSurfaceProps) {
           fill={colors.tableFelt}
         />
       </Svg>
-      <Text style={[styles.watermark, { top: cy - 8 }]}>♠</Text>
+      <View style={[styles.watermarkWrap, { top: cy - 40 }]}>
+        <Text style={styles.watermarkSpade}>♠</Text>
+        <Text style={styles.watermarkLabel}>pokza</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  watermark: {
+  watermarkWrap: {
     position: 'absolute',
     alignSelf: 'center',
+    alignItems: 'center',
+    opacity: 0.05,
+  },
+  watermarkSpade: {
     fontSize: 64,
+    lineHeight: 64,
     color: '#FFFFFF',
-    opacity: 0.04,
+  },
+  watermarkLabel: {
+    fontSize: 14,
+    letterSpacing: 2,
+    color: '#FFFFFF',
+    marginTop: -4,
   },
 });
