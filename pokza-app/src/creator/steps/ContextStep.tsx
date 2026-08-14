@@ -242,33 +242,39 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
                 sb: 100,
                 bb: 200,
                 effectiveStack: defaultStackFor('tournament', 200),
+                // Le bomb pot n'existe qu'en cash game — on l'éteint pour ne pas laisser un état
+                // caché actif si l'utilisateur l'avait coché avant de basculer sur Tournoi.
+                bombPot: false,
               })
             }
           />
         </View>
 
         {/* Format spécial et rare : un interrupteur discret plutôt qu'un choix de premier plan.
-            Éteint (défaut, main classique), il n'y a rien à cocher — juste une ligne sobre. */}
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Bomb pot</Text>
-          <Switch
-            value={!!value.bombPot}
-            onValueChange={(on) =>
-              on
-                ? // À l'activation, l'ante de la bombe démarre sur la valeur de la BB (repère
-                  // naturel), et le straddle n'a plus de sens (pas de preflop) : on le remet à zéro.
-                  update({ bombPot: true, bombAnte: value.bombAnte || value.bb, straddleCount: 0 })
-                : update({ bombPot: false })
-            }
-            trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
-            thumbColor="#fff"
-            ios_backgroundColor="rgba(22,35,61,0.18)"
-            // `thumbColor` ne pilote QUE le pouce éteint sur react-native-web ; en position allumée il
-            // retombe sur son teal Material par défaut. On repasse donc le pouce en blanc via son prop
-            // hérité `activeThumbColor` (ignoré côté natif, où `thumbColor` couvre déjà les deux états).
-            {...({ activeThumbColor: '#fff' } as object)}
-          />
-        </View>
+            Éteint (défaut, main classique), il n'y a rien à cocher — juste une ligne sobre.
+            N'existe qu'en cash game (une bombe n'a pas de sens en structure de tournoi). */}
+        {value.gameType === 'cash' && (
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Bomb pot</Text>
+            <Switch
+              value={!!value.bombPot}
+              onValueChange={(on) =>
+                on
+                  ? // À l'activation, l'ante de la bombe démarre sur la valeur de la BB (repère
+                    // naturel), et le straddle n'a plus de sens (pas de preflop) : on le remet à zéro.
+                    update({ bombPot: true, bombAnte: value.bombAnte || value.bb, straddleCount: 0 })
+                  : update({ bombPot: false })
+              }
+              trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
+              thumbColor="#fff"
+              ios_backgroundColor="rgba(22,35,61,0.18)"
+              // `thumbColor` ne pilote QUE le pouce éteint sur react-native-web ; en position allumée il
+              // retombe sur son teal Material par défaut. On repasse donc le pouce en blanc via son prop
+              // hérité `activeThumbColor` (ignoré côté natif, où `thumbColor` couvre déjà les deux états).
+              {...({ activeThumbColor: '#fff' } as object)}
+            />
+          </View>
+        )}
 
         {value.bombPot ? (
           <>
