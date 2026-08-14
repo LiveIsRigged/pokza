@@ -207,6 +207,40 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
     });
   };
 
+  // Partagé entre deux emplacements : juste sous les blindes en tournoi (toujours visible), et dans
+  // « Options avancées » en cash game (repli, réglage plus rare).
+  const anteFields = (
+    <>
+      <Text style={styles.label}>Ante</Text>
+      <View style={styles.row}>
+        <Chip label="Aucun" selected={value.anteType === 'none'} onPress={() => update({ anteType: 'none' })} />
+        <Chip
+          label="BB ante"
+          selected={value.anteType === 'bb'}
+          onPress={() => update({ anteType: 'bb', ante: value.bb })}
+        />
+        <Chip
+          label="Ante par joueur"
+          selected={value.anteType === 'per-player'}
+          onPress={() =>
+            update({ anteType: 'per-player', ante: value.ante || Math.max(1, Math.round(value.bb / 4)) })
+          }
+        />
+      </View>
+      {value.anteType === 'bb' && (
+        <Text style={styles.helperText}>Montant de l'ante : {value.bb} (identique à la BB)</Text>
+      )}
+      {value.anteType === 'per-player' && (
+        <DecimalTextInput
+          style={styles.input}
+          placeholder="Ante par joueur"
+          value={value.ante}
+          onChangeValue={(ante) => update({ ante })}
+        />
+      )}
+    </>
+  );
+
   return (
     <WizardScreen
       title="La table"
@@ -327,6 +361,21 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           </>
         )}
 
+        {value.gameType === 'tournament' && !value.bombPot && (
+          <>
+            {anteFields}
+            <View style={styles.inlineFieldRow}>
+              <Text style={styles.inlineFieldLabel}>Niveau de blindes</Text>
+              <TextInput
+                style={[styles.input, styles.inlineFieldInput]}
+                placeholder="Ex : Niveau 12"
+                value={value.level ?? ''}
+                onChangeText={(t) => update({ level: t })}
+              />
+            </View>
+          </>
+        )}
+
         <Text style={styles.label}>Stack effectif</Text>
         <DecimalTextInput
           style={styles.input}
@@ -399,74 +448,44 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
 
         {(value.gameType === 'tournament' || advancedOpen) && (
           <View>
-            {!value.bombPot && (
+            {!value.bombPot && value.gameType === 'cash' && (
               <>
-                <Text style={styles.label}>Ante</Text>
+                {anteFields}
+
+                <Text style={styles.label}>Straddle</Text>
                 <View style={styles.row}>
-                  <Chip label="Aucun" selected={value.anteType === 'none'} onPress={() => update({ anteType: 'none' })} />
+                  <Chip label="Aucun" selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
                   <Chip
-                    label="BB ante"
-                    selected={value.anteType === 'bb'}
-                    onPress={() => update({ anteType: 'bb', ante: value.bb })}
+                    label="Simple"
+                    selected={value.straddleCount === 1}
+                    onPress={() => update({ straddleCount: 1, straddleAmount: value.straddleAmount || value.bb * 2 })}
                   />
                   <Chip
-                    label="Ante par joueur"
-                    selected={value.anteType === 'per-player'}
-                    onPress={() =>
-                      update({ anteType: 'per-player', ante: value.ante || Math.max(1, Math.round(value.bb / 4)) })
-                    }
+                    label="Double"
+                    selected={value.straddleCount === 2}
+                    onPress={() => update({ straddleCount: 2, straddleAmount: value.straddleAmount || value.bb * 2 })}
+                  />
+                  <Chip
+                    label="Triple"
+                    selected={value.straddleCount === 3}
+                    onPress={() => update({ straddleCount: 3, straddleAmount: value.straddleAmount || value.bb * 2 })}
                   />
                 </View>
-                {value.anteType === 'bb' && (
-                  <Text style={styles.helperText}>Montant de l'ante : {value.bb} (identique à la BB)</Text>
-                )}
-                {value.anteType === 'per-player' && (
-                  <DecimalTextInput
-                    style={styles.input}
-                    placeholder="Ante par joueur"
-                    value={value.ante}
-                    onChangeValue={(ante) => update({ ante })}
-                  />
-                )}
-
-                {value.gameType === 'cash' && (
+                {value.straddleCount > 0 && (
                   <>
-                    <Text style={styles.label}>Straddle</Text>
-                    <View style={styles.row}>
-                      <Chip label="Aucun" selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
-                      <Chip
-                        label="Simple"
-                        selected={value.straddleCount === 1}
-                        onPress={() => update({ straddleCount: 1, straddleAmount: value.straddleAmount || value.bb * 2 })}
-                      />
-                      <Chip
-                        label="Double"
-                        selected={value.straddleCount === 2}
-                        onPress={() => update({ straddleCount: 2, straddleAmount: value.straddleAmount || value.bb * 2 })}
-                      />
-                      <Chip
-                        label="Triple"
-                        selected={value.straddleCount === 3}
-                        onPress={() => update({ straddleCount: 3, straddleAmount: value.straddleAmount || value.bb * 2 })}
-                      />
-                    </View>
-                    {value.straddleCount > 0 && (
-                      <>
-                        <DecimalTextInput
-                          style={styles.input}
-                          placeholder="Montant du 1er straddle"
-                          value={value.straddleAmount}
-                          onChangeValue={(straddleAmount) => update({ straddleAmount })}
-                        />
-                        <Text style={styles.helperText}>
-                          {value.straddleCount === 1 && `Straddle : ${formatBlind(value.straddleAmount)}`}
-                          {value.straddleCount === 2 &&
-                            `Straddle ${formatBlind(value.straddleAmount)}, double straddle ${formatBlind(value.straddleAmount * 2)}`}
-                          {value.straddleCount === 3 &&
-                            `Straddle ${formatBlind(value.straddleAmount)}, double ${formatBlind(value.straddleAmount * 2)}, triple ${formatBlind(value.straddleAmount * 4)}`}
-                        </Text>
-                      </>
-                    )}
+                    <DecimalTextInput
+                      style={styles.input}
+                      placeholder="Montant du 1er straddle"
+                      value={value.straddleAmount}
+                      onChangeValue={(straddleAmount) => update({ straddleAmount })}
+                    />
+                    <Text style={styles.helperText}>
+                      {value.straddleCount === 1 && `Straddle : ${formatBlind(value.straddleAmount)}`}
+                      {value.straddleCount === 2 &&
+                        `Straddle ${formatBlind(value.straddleAmount)}, double straddle ${formatBlind(value.straddleAmount * 2)}`}
+                      {value.straddleCount === 3 &&
+                        `Straddle ${formatBlind(value.straddleAmount)}, double ${formatBlind(value.straddleAmount * 2)}, triple ${formatBlind(value.straddleAmount * 4)}`}
+                    </Text>
                   </>
                 )}
               </>
@@ -513,13 +532,6 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
                   placeholder="Ex : 100€"
                   value={value.buyIn ?? ''}
                   onChangeText={(t) => update({ buyIn: t })}
-                />
-                <Text style={styles.label}>Niveau de blindes (optionnel)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex : Niveau 12"
-                  value={value.level ?? ''}
-                  onChangeText={(t) => update({ level: t })}
                 />
               </>
             )}
@@ -583,6 +595,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginBottom: 6,
+  },
+  inlineFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  inlineFieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  inlineFieldInput: {
+    flex: 1,
+    marginBottom: 0,
+    paddingVertical: 8,
   },
   toggleRow: {
     flexDirection: 'row',
