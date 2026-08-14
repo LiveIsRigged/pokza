@@ -13,6 +13,7 @@ import { blockUser } from '../../data/blocks';
 import { errorMessage } from '../../utils/errorMessage';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 import { formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
+import { formatRelativeDate } from '../../utils/relativeDate';
 
 const DESCRIPTION_LINES = 3;
 
@@ -129,11 +130,6 @@ function formatContextLine(post: Post): string {
   return parts.join(' · ');
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
 function buildShareContent(post: Post): { title: string; message: string; url: string } {
   const url = `${POKZA_WEB_ORIGIN}/post/${post.id}`;
   return { title: post.title, message: `${post.title} — ${formatContextLine(post)}`, url };
@@ -236,7 +232,7 @@ function PostCardInner({
             <Avatar url={post.authorAvatarUrl} name={post.authorName} size={36} />
             <View style={styles.headerText}>
               <Text style={typography.authorName}>{post.authorName}</Text>
-              <Text style={[typography.dateLocation, styles.muted]}>{formatDate(post.createdAt)}</Text>
+              <Text style={[typography.dateLocation, styles.muted]}>{formatRelativeDate(post.createdAt)}</Text>
             </View>
           </Pressable>
         </View>
@@ -265,7 +261,7 @@ function PostCardInner({
               {isGroupFounder && ' 👑'}
             </Text>
             <Text style={[typography.dateLocation, styles.muted]}>
-              {formatDate(post.createdAt)}
+              {formatRelativeDate(post.createdAt)}
               {post.location ? ` · ${post.location}` : ''}
             </Text>
           </View>
