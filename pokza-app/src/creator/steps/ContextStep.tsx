@@ -371,28 +371,33 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           ))}
         </View>
 
-        <Pressable
-          style={[styles.advancedHeader, advancedOpen && styles.advancedHeaderOpen]}
-          onPress={toggleAdvanced}
-          onLayout={(e) => {
-            advancedHeaderYRef.current = e.nativeEvent.layout.y;
-          }}
-        >
-          <View style={styles.advancedHeaderText}>
-            <Text style={styles.advancedTitle}>Options avancées</Text>
-            <Text style={styles.advancedSubtitle}>
-              {value.bombPot ? 'noms & stacks · lieu' : 'ante · straddle · noms & stacks · lieu'}
-            </Text>
-          </View>
-          <Text style={styles.advancedToggleLabel}>{advancedOpen ? 'Masquer' : 'Afficher'}</Text>
-          <View style={[styles.advancedChevronBadge, advancedOpen && styles.advancedChevronBadgeOpen]}>
-            <Text style={[styles.advancedChevron, advancedOpen && styles.advancedChevronOpen]}>
-              {advancedOpen ? '▾' : '▸'}
-            </Text>
-          </View>
-        </Pressable>
+        {/* En tournoi, tous ces champs sont directement utiles (buy-in, niveau, antes...) — pas de
+            repli "Options avancées" à déplier, ils restent visibles d'entrée dans cette étape. Le
+            repli reste réservé au cash game, où ces réglages sont plus rarement modifiés. */}
+        {value.gameType === 'cash' && (
+          <Pressable
+            style={[styles.advancedHeader, advancedOpen && styles.advancedHeaderOpen]}
+            onPress={toggleAdvanced}
+            onLayout={(e) => {
+              advancedHeaderYRef.current = e.nativeEvent.layout.y;
+            }}
+          >
+            <View style={styles.advancedHeaderText}>
+              <Text style={styles.advancedTitle}>Options avancées</Text>
+              <Text style={styles.advancedSubtitle}>
+                {value.bombPot ? 'noms & stacks · lieu' : 'ante · straddle · noms & stacks · lieu'}
+              </Text>
+            </View>
+            <Text style={styles.advancedToggleLabel}>{advancedOpen ? 'Masquer' : 'Afficher'}</Text>
+            <View style={[styles.advancedChevronBadge, advancedOpen && styles.advancedChevronBadgeOpen]}>
+              <Text style={[styles.advancedChevron, advancedOpen && styles.advancedChevronOpen]}>
+                {advancedOpen ? '▾' : '▸'}
+              </Text>
+            </View>
+          </Pressable>
+        )}
 
-        {advancedOpen && (
+        {(value.gameType === 'tournament' || advancedOpen) && (
           <View>
             {!value.bombPot && (
               <>
