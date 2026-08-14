@@ -90,6 +90,42 @@ function OptionalDecimalTextInput({
   );
 }
 
+// Le joueur ne tape que le numéro (ex: "12") ; le préfixe "Niveau" est fixe et non éditable, et la
+// valeur stockée reste "Niveau 12" (même format qu'avant, affiché tel quel dans le contexte du post).
+function LevelNumberInput({
+  value,
+  onChangeValue,
+}: {
+  value: string | undefined;
+  onChangeValue: (level: string | undefined) => void;
+}) {
+  const extractDigits = (v: string | undefined) => (v ?? '').replace(/\D/g, '');
+  const [digits, setDigits] = useState(extractDigits(value));
+
+  useEffect(() => {
+    const parsed = extractDigits(value);
+    if (parsed !== digits) setDigits(parsed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <View style={styles.levelInputRow}>
+      <Text style={styles.levelInputPrefix}>Niveau</Text>
+      <TextInput
+        style={[styles.input, styles.levelInputField]}
+        keyboardType="number-pad"
+        placeholder="12"
+        value={digits}
+        onChangeText={(t) => {
+          const d = t.replace(/\D/g, '');
+          setDigits(d);
+          onChangeValue(d ? `Niveau ${d}` : undefined);
+        }}
+      />
+    </View>
+  );
+}
+
 const CASH_BLIND_PRESETS: [number, number][] = [
   [1, 2],
   [1, 3],
@@ -365,13 +401,8 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           <>
             {anteFields}
             <View style={styles.inlineFieldRow}>
-              <Text style={styles.inlineFieldLabel}>Niveau de blindes</Text>
-              <TextInput
-                style={[styles.input, styles.inlineFieldInput]}
-                placeholder="Ex : Niveau 12"
-                value={value.level ?? ''}
-                onChangeText={(t) => update({ level: t })}
-              />
+              <Text style={styles.inlineFieldLabel}>Niveau de blindes (optionnel)</Text>
+              <LevelNumberInput value={value.level} onChangeValue={(level) => update({ level })} />
             </View>
           </>
         )}
@@ -608,10 +639,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  inlineFieldInput: {
-    flex: 1,
+  levelInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  levelInputPrefix: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  levelInputField: {
+    width: 56,
     marginBottom: 0,
     paddingVertical: 8,
+    textAlign: 'center',
   },
   toggleRow: {
     flexDirection: 'row',
