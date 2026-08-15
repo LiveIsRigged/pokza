@@ -18,3 +18,9 @@ verify_jwt = false
 # §9.5 — purge PostHog : réservée à l'utilisateur connecté -> vérif JWT active.
 [functions.posthog-purge]
 verify_jwt = true
+
+# F-16 — proxy de recherche GIF : la clé GIPHY ne doit plus être dans le bundle.
+# `verify_jwt` filtre le gros du bruit, mais NE suffit pas : la clé publiable est un JWT valide
+# et elle est publique (c'était le mécanisme de F-01). La fonction revérifie donc l'utilisateur.
+[functions.giphy]
+verify_jwt = true

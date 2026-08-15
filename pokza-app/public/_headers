@@ -54,7 +54,11 @@
   #
   # Origines autorisées, et pourquoi :
   #   *.supabase.co            base de données, authentification, stockage des images
-  #   api.giphy.com            recherche de GIF ; *.giphy.com pour les images elles-mêmes
+  #   *.giphy.com              les IMAGES des GIF, servies directement au navigateur. `api.giphy.com`
+  #                            a été RETIRÉ de `connect-src` avec F-16 : la recherche passe
+  #                            désormais par la fonction serveur `giphy`, donc par *.supabase.co.
+  #                            Si la recherche de GIF cesse de fonctionner, le coupable est la
+  #                            fonction ou son secret — surtout pas cette ligne, ne la rouvre pas.
   #   eu.i.posthog.com         analytics : envoi des évènements
   #   eu-assets.i.posthog.com  analytics : le SCRIPT lui-même, servi depuis un domaine DIFFÉRENT
   #                            du précédent. Constaté en observation sur le site en ligne le
@@ -69,4 +73,4 @@
   # et les injecte dans la page ; sans ça, l'app perd toute sa mise en forme. `script-src`, lui,
   # n'en a pas besoin : le build ne produit aucun script inline (vérifié dans dist/index.html),
   # ce qui rend cette politique réellement protectrice contre l'injection de code.
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://eu-assets.i.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.giphy.com; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.giphy.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://eu-assets.i.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.giphy.com; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.i.posthog.com https://eu-assets.i.posthog.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
