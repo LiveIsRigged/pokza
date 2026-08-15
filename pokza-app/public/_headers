@@ -33,21 +33,24 @@
   # car un navigateur qui a vu cet en-tête refusera le HTTP pendant toute cette durée.
   Strict-Transport-Security: max-age=31536000; includeSubDomains
 
-  # ── Politique de sécurité du contenu, EN MODE OBSERVATION ──────────────────────────────
-  # `Report-Only` : le navigateur SIGNALE les violations dans la console mais NE BLOQUE RIEN.
+  # ── Politique de sécurité du contenu — ACTIVE (bloque réellement) ──────────────────────
+  # Elle a d'abord été déployée en `Report-Only` (signale sans bloquer), puis un parcours
+  # complet de l'app a été fait console ouverte le 2026-08-15 : connexion, feed, commentaire
+  # avec GIF, commentaire avec photo, changement d'avatar, ouverture d'un groupe, scanner de
+  # code. **Zéro violation.** C'est ce constat, et lui seul, qui autorise le blocage.
   #
-  # C'est délibéré, et c'est le point important de ce fichier. Une politique trop stricte ne
-  # dégrade pas l'affichage : elle produit une page blanche, sans message pour l'utilisateur.
-  # À quelques jours de la bêta, découvrir ça en production serait le pire moment. On observe
-  # d'abord, on bloque ensuite.
+  # Deux violations avaient été trouvées et corrigées pendant l'observation :
+  #   • le script PostHog, servi par `eu-assets.i.posthog.com` et non `eu.i.posthog.com` ;
+  #   • le flux de la caméra, en `blob:` (ajout de `media-src`).
   #
-  # MODE D'EMPLOI POUR PASSER EN BLOCAGE :
-  #   1. Déployer en l'état.
-  #   2. Ouvrir https://pokza.app, se connecter, créer une main, commenter, envoyer un GIF,
-  #      changer d'avatar — puis regarder la console du navigateur.
-  #   3. S'il n'y a AUCUN message « Content Security Policy », renommer la ligne ci-dessous en
-  #      `Content-Security-Policy` (sans `-Report-Only`) et redéployer.
-  #   4. S'il y a des messages, ils nomment exactement le domaine manquant : me l'indiquer.
+  # ⚠️ SI QUELQUE CHOSE CASSE (page blanche, image absente, bouton sans effet) : rajouter
+  # `-Report-Only` à la fin du nom de l'en-tête ci-dessous et redéployer. La protection est
+  # alors désactivée, mais tout refonctionne immédiatement — et la console nommera le domaine
+  # à ajouter. Ne jamais supprimer la ligne entière : on perdrait la trace de ce qui marche.
+  #
+  # Ce qui n'a PAS été parcouru pendant l'observation, et où une surprise reste possible :
+  # la réinitialisation de mot de passe, les écrans d'administration, le formulaire public de
+  # signalement (celui-ci est servi par Supabase, donc sur une autre origine — non concerné).
   #
   # Origines autorisées, et pourquoi :
   #   *.supabase.co            base de données, authentification, stockage des images
@@ -66,4 +69,4 @@
   # et les injecte dans la page ; sans ça, l'app perd toute sa mise en forme. `script-src`, lui,
   # n'en a pas besoin : le build ne produit aucun script inline (vérifié dans dist/index.html),
   # ce qui rend cette politique réellement protectrice contre l'injection de code.
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://eu-assets.i.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.giphy.com; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.giphy.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://eu-assets.i.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.giphy.com; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.giphy.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
