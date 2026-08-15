@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { assertWritten, refusedMessage } from './writeGuard';
 
 export interface Group {
   id: string;
@@ -73,16 +74,19 @@ export async function createGroup(name: string): Promise<string> {
 /** Seule la description est modifiable ici — le nom pourrait l'être (la policy le permet déjà)
  * mais n'est pas demandé pour l'instant. */
 export async function updateGroupDescription(groupId: string, description: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('groups')
     .update({ description: description.trim() || null })
-    .eq('id', groupId);
+    .eq('id', groupId)
+    .select('id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("La description n'a pas été enregistrée"));
 }
 
 export async function deleteGroup(groupId: string): Promise<void> {
-  const { error } = await supabase.from('groups').delete().eq('id', groupId);
+  const { data, error } = await supabase.from('groups').delete().eq('id', groupId).select('id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("Le groupe n'a pas été supprimé"));
 }
 
 export async function fetchGroupMembers(groupId: string): Promise<GroupMember[]> {
@@ -119,19 +123,27 @@ export async function inviteToGroup(groupId: string, userId: string, invitedBy: 
 }
 
 export async function acceptGroupInvite(groupId: string, userId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('group_members')
     .update({ status: 'accepted', responded_at: new Date().toISOString() })
     .eq('group_id', groupId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select('group_id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("L'invitation n'a pas été acceptée"));
 }
 
 /** Refuser une invitation, quitter un groupe, ou (côté créateur) retirer un membre / annuler une
  * invitation envoyée : dans les quatre cas il s'agit de supprimer la ligne d'appartenance. */
 export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
-  const { error } = await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', userId);
+  const { data, error } = await supabase
+    .from('group_members')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .select('group_id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("L'appartenance au groupe n'a pas été modifiée"));
 }
 
 export interface PendingGroupInvite {

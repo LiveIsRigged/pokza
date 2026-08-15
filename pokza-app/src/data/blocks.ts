@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { assertWritten, refusedMessage } from './writeGuard';
 
 /**
  * Bloquer quelqu'un. Relation orientée en base (`blocker_id`/`blocked_id`) mais le masquage est
@@ -14,12 +15,14 @@ export async function blockUser(blockerId: string, blockedId: string): Promise<v
 /** Débloquer : supprime la ligne de blocage. Ne restaure pas l'amitié rompue au moment du blocage —
  * il faut refaire une demande d'ami, comme après un simple retrait d'ami. */
 export async function unblockUser(blockerId: string, blockedId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('blocks')
     .delete()
     .eq('blocker_id', blockerId)
-    .eq('blocked_id', blockedId);
+    .eq('blocked_id', blockedId)
+    .select('blocker_id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("Le compte n'a pas été débloqué"));
 }
 
 /** Vrai si `blockerId` a bloqué `blockedId`. La RLS de `blocks` ne laisse lire QUE ses propres

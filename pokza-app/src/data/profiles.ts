@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { removeAvatar } from './avatars';
+import { assertWritten, refusedMessage } from './writeGuard';
 import { resetAnalytics } from '../analytics';
 
 export interface ProfileSummary {
@@ -79,7 +80,7 @@ export interface ProfileEditInput {
 /** Modifie le profil et renvoie sa version à jour (pseudo/préférence peuvent changer le
  * `displayName` calculé, donc on relit plutôt que de le reconstruire ici). */
 export async function updateProfile(userId: string, edits: ProfileEditInput): Promise<ProfileDetails> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .update({
       pseudo: edits.pseudo,
@@ -90,8 +91,10 @@ export async function updateProfile(userId: string, edits: ProfileEditInput): Pr
       bio: edits.bio?.trim() || null,
       country: edits.country ?? null,
     })
-    .eq('id', userId);
+    .eq('id', userId)
+    .select('id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("Le profil n'a pas été enregistré"));
   return fetchProfile(userId);
 }
 

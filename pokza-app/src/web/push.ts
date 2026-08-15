@@ -88,6 +88,12 @@ export async function disablePush(): Promise<void> {
   const registration = await navigator.serviceWorker.getRegistration();
   const subscription = await registration?.pushManager.getSubscription();
   if (!subscription) return;
-  await supabase.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint);
+  // Pas de garde-fou `assertWritten` ici, contrairement aux autres écritures (cf. writeGuard.ts) :
+  // zéro ligne supprimée est un cas légitime (abonnement déjà nettoyé côté base), et surtout le
+  // `unsubscribe()` ci-dessous coupe la réception au niveau du navigateur — l'utilisateur cesse
+  // bien de recevoir les notifications même si la ligne survit. En revanche l'erreur, elle, ne doit
+  // plus être avalée : une ligne orpheline fait tenter des envois vers un abonnement mort.
+  const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint);
+  if (error) throw error;
   await subscription.unsubscribe();
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { assertWritten, refusedMessage } from './writeGuard';
 import type { Hand, ModStatus, Post, Visibility } from '../types/poker';
 
 // Forme exacte renvoyée par la vue `posts_feed` (cf. script SQL) : author_name/avatar déjà résolus
@@ -204,8 +205,9 @@ export async function createPost(
 }
 
 export async function deletePost(postId: string): Promise<void> {
-  const { error } = await supabase.from('posts').delete().eq('id', postId);
+  const { data, error } = await supabase.from('posts').delete().eq('id', postId).select('id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("La main n'a pas été supprimée"));
 }
 
 export interface PostEditInput {
@@ -222,7 +224,7 @@ export interface PostEditInput {
 
 /** Ne touche jamais à `hand` — seul le texte/contexte du post est modifiable après publication. */
 export async function updatePost(postId: string, edits: PostEditInput): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('posts')
     .update({
       title: edits.title,
@@ -235,8 +237,10 @@ export async function updatePost(postId: string, edits: PostEditInput): Promise<
       visibility: edits.visibility,
       group_id: edits.visibility === 'group' ? edits.groupId : null,
     })
-    .eq('id', postId);
+    .eq('id', postId)
+    .select('id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("Les modifications n'ont pas été enregistrées"));
 }
 
 /** `posts.like_count` est maintenu par un trigger côté base — rien à recalculer ici. */
@@ -245,8 +249,14 @@ export async function setLiked(postId: string, userId: string, liked: boolean): 
     const { error } = await supabase.from('likes').insert({ post_id: postId, user_id: userId });
     if (error) throw error;
   } else {
-    const { error } = await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', userId);
+    const { data, error } = await supabase
+      .from('likes')
+      .delete()
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .select('post_id');
     if (error) throw error;
+    assertWritten(data, refusedMessage("Le like n'a pas été retiré"));
   }
 }
 
@@ -258,6 +268,12 @@ export async function castVote(postId: string, userId: string, option: string): 
 
 /** Retire le vote de l'utilisateur courant sur ce post, pour lui permettre de revoter ensuite. */
 export async function retractVote(postId: string, userId: string): Promise<void> {
-  const { error } = await supabase.from('votes').delete().eq('post_id', postId).eq('user_id', userId);
+  const { data, error } = await supabase
+    .from('votes')
+    .delete()
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .select('post_id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("Le vote n'a pas été retiré"));
 }

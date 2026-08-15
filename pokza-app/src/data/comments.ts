@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { Comment, ModStatus } from '../types/poker';
 import { resizeToBase64, uploadPrivateImage, type PickedImage } from './images';
+import { assertWritten, refusedMessage } from './writeGuard';
 
 const COMMENT_PHOTO_BUCKET = 'comment-photos';
 /** Une photo de commentaire s'affiche en petit dans le fil ; 1024px de long côté couvre large les
@@ -190,8 +191,9 @@ export async function createComment(input: NewCommentInput): Promise<Comment> {
 }
 
 export async function deleteComment(commentId: string): Promise<void> {
-  const { error } = await supabase.from('comments').delete().eq('id', commentId);
+  const { data, error } = await supabase.from('comments').delete().eq('id', commentId).select('id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("Le commentaire n'a pas été supprimé"));
 }
 
 /** `comments.like_count` est maintenu par un trigger côté base. */
@@ -200,7 +202,13 @@ export async function setCommentLiked(commentId: string, userId: string, liked: 
     const { error } = await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: userId });
     if (error) throw error;
   } else {
-    const { error } = await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', userId);
+    const { data, error } = await supabase
+      .from('comment_likes')
+      .delete()
+      .eq('comment_id', commentId)
+      .eq('user_id', userId)
+      .select('comment_id');
     if (error) throw error;
+    assertWritten(data, refusedMessage("Le like n'a pas été retiré"));
   }
 }

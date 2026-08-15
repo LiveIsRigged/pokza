@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { assertWritten, refusedMessage } from './writeGuard';
 
 export type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends';
 
@@ -32,24 +33,28 @@ export async function sendFriendRequest(senderId: string, receiverId: string): P
 }
 
 export async function acceptFriendRequest(senderId: string, receiverId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('friend_requests')
     .update({ status: 'accepted', responded_at: new Date().toISOString() })
     .eq('sender_id', senderId)
-    .eq('receiver_id', receiverId);
+    .eq('receiver_id', receiverId)
+    .select('sender_id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("La demande d'ami n'a pas été acceptée"));
 }
 
 /** Sert à la fois à refuser une demande reçue, annuler une demande envoyée, et retirer un ami —
  * dans les trois cas il s'agit de supprimer la ligne de relation entre les deux comptes. */
 export async function deleteFriendRelation(userId: string, otherUserId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('friend_requests')
     .delete()
     .or(
       `and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`
-    );
+    )
+    .select('sender_id');
   if (error) throw error;
+  assertWritten(data, refusedMessage("La relation n'a pas été modifiée"));
 }
 
 export interface Friend {
