@@ -202,12 +202,13 @@ const confidentialite: LegalDoc = {
         "• PostHog (mesure d'audience), hébergé dans l'Union européenne (eu.posthog.com).",
         "• Resend (envoi des e-mails du service), établi aux États-Unis — transfert encadré par les clauses contractuelles types.",
         "• GIPHY (fourniture des GIF) : lorsque tu affiches un GIF, une requête est faite vers GIPHY, ce qui peut transmettre ton adresse IP à ce service.",
+        "• Cloudflare (protection du formulaire de connexion et d'inscription contre les créations de comptes automatisées, service Turnstile), établi aux États-Unis — transfert encadré par les clauses contractuelles types. Lors de cette vérification, ton adresse IP et des signaux techniques de ton navigateur sont transmis à ce service.",
       ],
     },
     {
       heading: 'Transferts hors Union européenne',
       body: [
-        "Nos données principales (base de données, authentification, stockage) et la mesure d'audience sont hébergées dans l'Union européenne. En revanche, l'envoi des e-mails du service (Resend) et l'affichage des GIF (GIPHY) reposent sur des prestataires établis aux États-Unis : ces transferts hors Union européenne sont encadrés par les garanties prévues par le RGPD, notamment les clauses contractuelles types de la Commission européenne.",
+        "Nos données principales (base de données, authentification, stockage) et la mesure d'audience sont hébergées dans l'Union européenne. En revanche, l'envoi des e-mails du service (Resend), l'affichage des GIF (GIPHY) et la vérification anti-robots à la connexion et à l'inscription (Cloudflare) reposent sur des prestataires établis aux États-Unis : ces transferts hors Union européenne sont encadrés par les garanties prévues par le RGPD, notamment les clauses contractuelles types de la Commission européenne.",
       ],
     },
     {
@@ -244,6 +245,7 @@ const confidentialite: LegalDoc = {
       heading: 'Sécurité',
       body: [
         "Nous mettons en œuvre des mesures techniques adaptées : chiffrement des échanges, cloisonnement des accès aux données au niveau de la base, accès d'administration restreints et journalisés.",
+        "S'y ajoutent une protection du formulaire de connexion et d'inscription contre les créations de comptes automatisées, et des en-têtes de sécurité qui limitent les scripts et les serveurs que l'application peut solliciter depuis ton navigateur.",
       ],
     },
   ],
