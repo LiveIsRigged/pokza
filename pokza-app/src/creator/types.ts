@@ -38,7 +38,8 @@ export interface ContextData {
   straddleAmount: number;
 }
 
-export const DESCRIPTION_MAX_LENGTH = 600;
+// Réexporté depuis la source unique des limites, pour ne pas casser les imports existants.
+export { DESCRIPTION_MAX_LENGTH } from '../constants/limits';
 
 export interface ReviewData {
   title: string;

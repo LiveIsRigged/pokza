@@ -21,6 +21,7 @@ import { colors, radius, spacing } from '../../theme/theme';
 import { GifPicker } from './GifPicker';
 import { ReportModal } from '../moderation/ReportModal';
 import { Avatar } from '../ui/Avatar';
+import { COMMENT_MAX_LENGTH } from '../../constants/limits';
 
 interface CommentsSectionProps {
   visible: boolean;
@@ -406,6 +407,7 @@ export function CommentsSection({
             <TextInput
               style={styles.input}
               placeholder={replyingTo ? 'Écrire une réponse…' : 'Ajouter un commentaire…'}
+              maxLength={COMMENT_MAX_LENGTH}
               value={draft}
               onChangeText={setDraft}
               onSubmitEditing={handleSubmit}

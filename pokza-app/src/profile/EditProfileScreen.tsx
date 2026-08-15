@@ -9,8 +9,7 @@ import { CountryPicker } from '../components/ui/CountryPicker';
 import { countryByCode, flagEmoji } from '../data/countries';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
-const BIO_MAX_LENGTH = 150;
-const PSEUDO_MAX_LENGTH = 24;
+import { BIO_MAX_LENGTH, PSEUDO_MAX_LENGTH } from '../constants/limits';
 
 interface EditProfileScreenProps {
   profile: ProfileDetails;

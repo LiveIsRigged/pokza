@@ -1,0 +1,62 @@
+# En-têtes de sécurité HTTP — servis par Cloudflare avec les fichiers statiques
+# =============================================================================
+# Ce fichier est copié tel quel dans `dist/` par `expo export`, et Cloudflare l'applique aux
+# réponses. Il n'y a pas de script Worker dans ce projet (cf. wrangler.jsonc) : c'est donc le
+# seul endroit où poser des en-têtes.
+#
+# ⚠️ À VÉRIFIER APRÈS LE PREMIER DÉPLOIEMENT : que Cloudflare prend bien ce fichier en compte.
+#   curl -sI https://pokza.app | grep -i "content-security-policy\|x-content-type"
+# S'il ne renvoie rien, c'est que la prise en charge de `_headers` n'est pas active sur ce type
+# de déploiement, et il faudra passer par un petit script Worker à la place.
+
+/*
+  # ── Protections sans risque de casse ──────────────────────────────────────────────────
+  # Empêche le navigateur de « deviner » un type de fichier autre que celui annoncé. Sans ça,
+  # un fichier déposé dans le stockage et annoncé comme image peut être interprété comme du
+  # script s'il en contient.
+  X-Content-Type-Options: nosniff
+
+  # Interdit d'afficher Pokza dans un cadre sur un autre site. C'est la protection contre le
+  # détournement de clic : un site tiers superpose une page invisible de Pokza sous ses propres
+  # boutons, et l'utilisateur exécute des actions sur son compte en croyant cliquer ailleurs.
+  X-Frame-Options: DENY
+
+  # Ne transmet jamais l'adresse complète de la page consultée aux sites tiers — un lien vers
+  # une main partagée ne doit pas divulguer son identifiant à qui que ce soit.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Coupe les capteurs et interfaces que Pokza n'utilise pas. La caméra reste autorisée sur
+  # l'origine elle-même : elle sert à scanner le code d'invitation d'un ami.
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+
+  # Force le HTTPS pendant un an. À n'activer qu'une fois certain que tout fonctionne en HTTPS,
+  # car un navigateur qui a vu cet en-tête refusera le HTTP pendant toute cette durée.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+  # ── Politique de sécurité du contenu, EN MODE OBSERVATION ──────────────────────────────
+  # `Report-Only` : le navigateur SIGNALE les violations dans la console mais NE BLOQUE RIEN.
+  #
+  # C'est délibéré, et c'est le point important de ce fichier. Une politique trop stricte ne
+  # dégrade pas l'affichage : elle produit une page blanche, sans message pour l'utilisateur.
+  # À quelques jours de la bêta, découvrir ça en production serait le pire moment. On observe
+  # d'abord, on bloque ensuite.
+  #
+  # MODE D'EMPLOI POUR PASSER EN BLOCAGE :
+  #   1. Déployer en l'état.
+  #   2. Ouvrir https://pokza.app, se connecter, créer une main, commenter, envoyer un GIF,
+  #      changer d'avatar — puis regarder la console du navigateur.
+  #   3. S'il n'y a AUCUN message « Content Security Policy », renommer la ligne ci-dessous en
+  #      `Content-Security-Policy` (sans `-Report-Only`) et redéployer.
+  #   4. S'il y a des messages, ils nomment exactement le domaine manquant : me l'indiquer.
+  #
+  # Origines autorisées, et pourquoi :
+  #   *.supabase.co            base de données, authentification, stockage des images
+  #   api.giphy.com            recherche de GIF ; *.giphy.com pour les images elles-mêmes
+  #   eu.i.posthog.com         analytics (dormant aujourd'hui, mais prévu)
+  #   challenges.cloudflare.com  le CAPTCHA Turnstile — script ET cadre, les deux sont requis
+  #
+  # `style-src` autorise l'inline parce que react-native-web fabrique ses styles à l'exécution
+  # et les injecte dans la page ; sans ça, l'app perd toute sa mise en forme. `script-src`, lui,
+  # n'en a pas besoin : le build ne produit aucun script inline (vérifié dans dist/index.html),
+  # ce qui rend cette politique réellement protectrice contre l'injection de code.
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.giphy.com; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.giphy.com https://eu.i.posthog.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'

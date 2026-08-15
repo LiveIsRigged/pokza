@@ -7,6 +7,7 @@ import { colors, radius } from '../theme/theme';
 import { webOrigin, readInitialDeepLink } from '../navigation/deepLink';
 import { openPublicReport, type PublicReportTarget } from '../utils/publicReport';
 import { passwordError } from './passwordRules';
+import { Turnstile, captchaEnabled, type TurnstileHandle } from './Turnstile';
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
 import {
@@ -134,6 +135,17 @@ export function AuthScreen() {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
+  // Jeton anti-robot. `null` tant que le challenge n'est pas résolu — et de nouveau `null` après
+  // chaque tentative, puisqu'un jeton Turnstile ne sert qu'une fois.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
+
+  /** Brûle le jeton courant et relance un challenge : à appeler après CHAQUE appel Supabase. */
+  const consumeCaptcha = () => {
+    setCaptchaToken(null);
+    turnstileRef.current?.reset();
+  };
+
   const resetFormState = () => {
     setError(null);
     setSignUpMessage(null);
@@ -170,12 +182,21 @@ export function AuthScreen() {
       }
     }
 
+    if (captchaEnabled && !captchaToken) {
+      setError("Patiente une seconde : la vérification anti-robot n'est pas encore terminée.");
+      return;
+    }
+
     setSubmitting(true);
+    // `options.captchaToken` est ignoré par Supabase tant que le CAPTCHA n'est pas activé côté
+    // projet : on peut donc déployer ce code avant d'activer le réglage, sans rien casser.
+    const options = captchaToken ? { captchaToken } : undefined;
     const { error: authError } =
       mode === 'signIn'
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+        ? await supabase.auth.signInWithPassword({ email, password, options })
+        : await supabase.auth.signUp({ email, password, options });
     setSubmitting(false);
+    consumeCaptcha();
 
     if (authError) {
       setError(translateAuthError(authError.message));
@@ -191,11 +212,17 @@ export function AuthScreen() {
 
   const handleForgotPassword = async () => {
     setError(null);
+    if (captchaEnabled && !captchaToken) {
+      setError("Patiente une seconde : la vérification anti-robot n'est pas encore terminée.");
+      return;
+    }
     setSubmitting(true);
     const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${webOrigin()}/reset-password`,
+      captchaToken: captchaToken ?? undefined,
     });
     setSubmitting(false);
+    consumeCaptcha();
     if (authError) {
       setError(translateAuthError(authError.message));
       return;
@@ -234,11 +261,15 @@ export function AuthScreen() {
                 onChangeText={setEmail}
               />
             </InputRow>
+            <Turnstile ref={turnstileRef} onToken={setCaptchaToken} onError={setError} />
             {error && <Text style={styles.error}>{error}</Text>}
             <Pressable
-              style={[styles.submitButton, (submitting || !email) && styles.submitButtonDisabled]}
+              style={[
+                styles.submitButton,
+                (submitting || !email || (captchaEnabled && !captchaToken)) && styles.submitButtonDisabled,
+              ]}
               onPress={handleForgotPassword}
-              disabled={submitting || !email}
+              disabled={submitting || !email || (captchaEnabled && !captchaToken)}
             >
               {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Envoyer le lien</Text>}
             </Pressable>
@@ -363,16 +394,29 @@ export function AuthScreen() {
         </Pressable>
       )}
 
+      <Turnstile ref={turnstileRef} onToken={setCaptchaToken} onError={setError} />
+
       {error && <Text style={styles.error}>{error}</Text>}
       {signUpMessage && <Text style={styles.info}>{signUpMessage}</Text>}
 
       <Pressable
         style={[
           styles.submitButton,
-          (submitting || !email || !password || (mode === 'signUp' && !acceptedTerms)) && styles.submitButtonDisabled,
+          (submitting ||
+            !email ||
+            !password ||
+            (mode === 'signUp' && !acceptedTerms) ||
+            (captchaEnabled && !captchaToken)) &&
+            styles.submitButtonDisabled,
         ]}
         onPress={handleSubmit}
-        disabled={submitting || !email || !password || (mode === 'signUp' && !acceptedTerms)}
+        disabled={
+          submitting ||
+          !email ||
+          !password ||
+          (mode === 'signUp' && !acceptedTerms) ||
+          (captchaEnabled && !captchaToken)
+        }
       >
         {submitting ? (
           <ActivityIndicator color="#fff" />

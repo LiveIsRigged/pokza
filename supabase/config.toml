@@ -10,6 +10,11 @@ verify_jwt = false
 [functions.report-notify]
 verify_jwt = false
 
+# Notification push déclenchée par le webhook DB sur INSERT dans `notifications` :
+# pas de JWT (auth par x-webhook-secret, cf. docs/dev/push-webhook.sql).
+[functions.send-push]
+verify_jwt = false
+
 # §9.5 — purge PostHog : réservée à l'utilisateur connecté -> vérif JWT active.
 [functions.posthog-purge]
 verify_jwt = true

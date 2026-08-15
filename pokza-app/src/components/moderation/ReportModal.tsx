@@ -17,7 +17,7 @@ interface ReportModalProps {
   onSubmitted?: () => void;
 }
 
-const DETAILS_MAX = 500;
+import { REPORT_DETAILS_MAX_LENGTH as DETAILS_MAX } from '../../constants/limits';
 
 /**
  * Feuille de signalement : choix d'un motif (obligatoire) + précision libre facultative. Le contenu

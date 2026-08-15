@@ -4,9 +4,14 @@
 // lisible à partir de la notification, puis l'envoie en Web Push à tous les appareils du destinataire.
 //
 // Secrets requis (Dashboard → Edge Functions → Secrets, ou `supabase secrets set`) :
-//   VAPID_KEYS    = le JSON { publicKey, privateKey } (fourni séparément, NE PAS committer)
-//   VAPID_SUBJECT = "mailto:ton-email@exemple.com" (contact VAPID ; optionnel, défaut ci-dessous)
+//   VAPID_KEYS     = le JSON { publicKey, privateKey } (fourni séparément, NE PAS committer)
+//   VAPID_SUBJECT  = "mailto:ton-email@exemple.com" (contact VAPID ; optionnel, défaut ci-dessous)
+//   WEBHOOK_SECRET = secret partagé avec le trigger DB (le même que celui de `report-notify`)
 // SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournis automatiquement à la fonction.
+//
+// Déployer SANS vérification de JWT (l'appel vient du trigger, qui s'authentifie par le secret) :
+//   supabase functions deploy send-push --no-verify-jwt --project-ref <REF>
+// Le trigger est défini dans docs/dev/push-webhook.sql.
 //
 // NB : à tester après déploiement (impossible à exécuter en local sans push service + appareil réel).
 
@@ -37,6 +42,8 @@ interface NotificationRecord {
   comment_id: string | null;
   group_id: string | null;
 }
+
+const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -100,6 +107,18 @@ function urlFor(n: NotificationRecord): string {
 }
 
 Deno.serve(async (req) => {
+  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+
+  // Authentifie l'APPELANT : seul le trigger DB, qui connaît le secret, peut déclencher un envoi.
+  // Sans ce contrôle, la fonction acceptait n'importe quelle requête porteuse d'une clé Supabase —
+  // or la clé publiable est dans le bundle JS, donc lisible par n'importe qui. Un tiers pouvait
+  // ainsi pousser une notification arbitraire sur l'appareil de n'importe quel compte : faux
+  // message de modération (« Ton compte a fait l'objet d'une mesure »), usurpation d'un autre
+  // joueur via `actor_id`, et URL de destination forgée au clic.
+  if (!WEBHOOK_SECRET || req.headers.get('x-webhook-secret') !== WEBHOOK_SECRET) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   try {
     const payload = await req.json();
     const n: NotificationRecord | undefined = payload?.record;

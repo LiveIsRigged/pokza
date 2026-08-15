@@ -5,6 +5,11 @@ import type { Group } from '../../data/groups';
 import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
 import { DESCRIPTION_MAX_LENGTH, type ReviewData } from '../types';
+import {
+  TITLE_MAX_LENGTH,
+  VOTE_OPTION_MAX_LENGTH,
+  VOTE_QUESTION_MAX_LENGTH,
+} from '../../constants/limits';
 
 const MAX_VOTE_OPTIONS = 4;
 
@@ -49,6 +54,7 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
         <TextInput
           style={styles.input}
           placeholder="Ex : Hero call contre un reg"
+          maxLength={TITLE_MAX_LENGTH}
           value={value.title}
           onChangeText={(t) => update({ title: t })}
         />
@@ -73,6 +79,7 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
         <TextInput
           style={styles.input}
           placeholder="Ex : Tu payes cette river ?"
+          maxLength={VOTE_QUESTION_MAX_LENGTH}
           value={value.voteQuestion ?? ''}
           onChangeText={(t) => update({ voteQuestion: t })}
         />
@@ -87,7 +94,7 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
                 placeholder={i < 2 ? `Réponse ${i + 1}` : `Réponse ${i + 1} (optionnel)`}
                 value={voteOptions[i] ?? ''}
                 onChangeText={(t) => updateOption(i, t)}
-                maxLength={20}
+                maxLength={VOTE_OPTION_MAX_LENGTH}
               />
             ))}
 

@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { colors, radius, spacing } from '../theme/theme';
 import { updateGroupDescription } from '../data/groups';
 
-const DESCRIPTION_MAX_LENGTH = 300;
+import { GROUP_DESCRIPTION_MAX_LENGTH as DESCRIPTION_MAX_LENGTH } from '../constants/limits';
 
 interface EditGroupScreenProps {
   groupId: string;

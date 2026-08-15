@@ -8,6 +8,7 @@ import { WizardScreen } from '../WizardScreen';
 import { POSITION_SETS } from '../positions';
 import { straddleAwarePositionLabel } from '../../engine/handEngine';
 import type { ContextData } from '../types';
+import { BUY_IN_MAX_LENGTH, LEVEL_DIGITS_MAX, LOCATION_MAX_LENGTH } from '../../constants/limits';
 
 // Un TextInput contrôlé qui reflète `String(nombre)` se mord la queue dès qu'on tape une virgule
 // ou un point : "0." → parseFloat → 0 → réaffiché "0", le "." tapé disparaît aussitôt, rendant
@@ -115,9 +116,10 @@ function LevelNumberInput({
         style={[styles.input, styles.levelInputField]}
         keyboardType="number-pad"
         placeholder="12"
+        maxLength={LEVEL_DIGITS_MAX}
         value={digits}
         onChangeText={(t) => {
-          const d = t.replace(/\D/g, '');
+          const d = t.replace(/\D/g, '').slice(0, LEVEL_DIGITS_MAX);
           setDigits(d);
           onChangeValue(d ? `Niveau ${d}` : undefined);
         }}
@@ -551,6 +553,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
             <TextInput
               style={styles.input}
               placeholder="Ex : Club Circus, Bruxelles"
+              maxLength={LOCATION_MAX_LENGTH}
               value={value.location ?? ''}
               onChangeText={(t) => update({ location: t })}
             />
@@ -561,6 +564,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
                 <TextInput
                   style={styles.input}
                   placeholder="Ex : 100€"
+                  maxLength={BUY_IN_MAX_LENGTH}
                   value={value.buyIn ?? ''}
                   onChangeText={(t) => update({ buyIn: t })}
                 />

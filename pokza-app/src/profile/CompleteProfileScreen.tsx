@@ -28,8 +28,7 @@ function parseBirthDate(day: string, month: string, year: string): string | null
 }
 
 const MINIMUM_AGE = 18;
-const PSEUDO_MAX_LENGTH = 24;
-const BIO_MAX_LENGTH = 150;
+import { BIO_MAX_LENGTH, PSEUDO_MAX_LENGTH } from '../constants/limits';
 
 /** Compare année/mois/jour un à un plutôt que de soustraire des millisecondes — insensible aux
  * fuseaux horaires et aux années bissextiles, qui rendraient un calcul par différence peu fiable

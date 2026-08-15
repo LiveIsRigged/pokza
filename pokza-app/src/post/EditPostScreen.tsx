@@ -5,6 +5,14 @@ import type { Group } from '../data/groups';
 import { Chip } from '../creator/Chip';
 import { WizardScreen } from '../creator/WizardScreen';
 import { DESCRIPTION_MAX_LENGTH } from '../creator/types';
+import {
+  BUY_IN_MAX_LENGTH,
+  LEVEL_MAX_LENGTH,
+  LOCATION_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  VOTE_OPTION_MAX_LENGTH,
+  VOTE_QUESTION_MAX_LENGTH,
+} from '../constants/limits';
 import { colors } from '../theme/theme';
 
 export interface PostEdits {
@@ -77,7 +85,7 @@ export function EditPostScreen({ post, onSave, onCancel, groups }: EditPostScree
     >
       <View>
         <Text style={styles.label}>Titre</Text>
-        <TextInput style={styles.input} value={title} onChangeText={setTitle} />
+        <TextInput style={styles.input} maxLength={TITLE_MAX_LENGTH} value={title} onChangeText={setTitle} />
 
         <View style={styles.labelRow}>
           <Text style={[styles.label, styles.labelNoMargin]}>Description (optionnel)</Text>
@@ -98,6 +106,7 @@ export function EditPostScreen({ post, onSave, onCancel, groups }: EditPostScree
         <TextInput
           style={styles.input}
           placeholder="Ex : Club Circus, Bruxelles"
+          maxLength={LOCATION_MAX_LENGTH}
           value={location}
           onChangeText={setLocation}
         />
@@ -105,9 +114,23 @@ export function EditPostScreen({ post, onSave, onCancel, groups }: EditPostScree
         {isTournament && (
           <>
             <Text style={styles.label}>Buy-in (optionnel)</Text>
-            <TextInput style={styles.input} placeholder="Ex : 100€" value={buyIn} onChangeText={setBuyIn} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ex : 100€"
+              maxLength={BUY_IN_MAX_LENGTH}
+              value={buyIn}
+              onChangeText={setBuyIn}
+            />
             <Text style={styles.label}>Niveau de blindes (optionnel)</Text>
-            <TextInput style={styles.input} placeholder="Ex : Niveau 12" value={level} onChangeText={setLevel} />
+            {/* Champ libre ici, alors que la création impose un numéro seul (LevelNumberInput).
+                La limite couvre le format réellement stocké — « Niveau » + 3 chiffres. */}
+            <TextInput
+              style={styles.input}
+              placeholder="Ex : Niveau 12"
+              maxLength={LEVEL_MAX_LENGTH}
+              value={level}
+              onChangeText={setLevel}
+            />
           </>
         )}
 
@@ -115,6 +138,7 @@ export function EditPostScreen({ post, onSave, onCancel, groups }: EditPostScree
         <TextInput
           style={styles.input}
           placeholder="Ex : Tu payes cette river ?"
+          maxLength={VOTE_QUESTION_MAX_LENGTH}
           value={voteQuestion}
           onChangeText={setVoteQuestion}
         />
@@ -129,7 +153,7 @@ export function EditPostScreen({ post, onSave, onCancel, groups }: EditPostScree
                 placeholder={i < 2 ? `Réponse ${i + 1}` : `Réponse ${i + 1} (optionnel)`}
                 value={voteOptions[i] ?? ''}
                 onChangeText={(t) => updateOption(i, t)}
-                maxLength={20}
+                maxLength={VOTE_OPTION_MAX_LENGTH}
               />
             ))}
           </>

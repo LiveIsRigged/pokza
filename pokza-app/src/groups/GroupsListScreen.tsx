@@ -5,7 +5,7 @@ import { colors, radius, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';
 
-const GROUP_NAME_MAX_LENGTH = 30;
+import { GROUP_NAME_MAX_LENGTH } from '../constants/limits';
 
 interface GroupsListScreenProps {
   currentUserId: string;
