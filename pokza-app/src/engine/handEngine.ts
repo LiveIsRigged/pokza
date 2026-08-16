@@ -436,21 +436,74 @@ export function determinePotAwards(hand: Hand): PotAward[] {
   if (boards.length === 0) return [];
   const sharePerBoard = 1 / boards.length;
 
-  const fractions = new Map<string, number>();
-  for (const board of boards) {
-    const winners =
-      contenders.length === 1
-        ? [contenders[0].id]
-        : bestHandWinners(
-            contenders.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
-            board,
-            hand.variant
-          );
-    const perWinner = sharePerBoard / winners.length;
-    for (const id of winners) fractions.set(id, (fractions.get(id) ?? 0) + perWinner);
+  // ─── POTS SECONDAIRES ────────────────────────────────────────────────────────────────────────
+  // Ce bloc répartissait auparavant des fractions du pot TOTAL, sans jamais regarder qui avait mis
+  // quoi. Un tapis court qui gagnait l'abattage raflait donc la totalité : mesuré, un joueur à
+  // tapis pour 100 remportait un pot de 900 construit par des relances qu'il n'avait pas suivies.
+  //
+  // La règle : on ne peut gagner que ce qu'on a soi-même couvert. On découpe donc le pot en
+  // tranches, une par niveau d'engagement. Chaque tranche est alimentée par TOUS ceux qui ont
+  // atteint ce niveau (les couchés y compris — leur argent reste au pot), mais n'est disputée que
+  // par ceux qui sont encore en lice.
+  const committed = committedBySeat(hand.actions);
+  const total = Object.values(committed).reduce((sum, v) => sum + v, 0);
+  if (total <= 0) return [];
+
+  const niveaux = [...new Set(Object.values(committed).filter((v) => v > 0))].sort((a, b) => a - b);
+
+  const gains = new Map<string, number>();
+  let plancher = 0;
+  let orphelin = 0;
+  let derniersGagnants: string[] = [];
+
+  for (const niveau of niveaux) {
+    const epaisseur = niveau - plancher;
+    plancher = niveau;
+    if (epaisseur <= 0) continue;
+
+    const alimentent = Object.values(committed).filter((v) => v >= niveau).length;
+    const montant = epaisseur * alimentent;
+
+    // Un joueur ne peut prétendre à une tranche que s'il l'a couverte.
+    const eligibles = contenders.filter((s) => (committed[s.id] ?? 0) >= niveau);
+    if (eligibles.length === 0) {
+      orphelin += montant;
+      continue;
+    }
+
+    const aRepartir = montant + orphelin;
+    orphelin = 0;
+    const gagnantsDeLaTranche = new Set<string>();
+    for (const board of boards) {
+      const winners =
+        eligibles.length === 1
+          ? [eligibles[0].id]
+          : bestHandWinners(
+              eligibles.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
+              board,
+              hand.variant
+            );
+      const part = (aRepartir * sharePerBoard) / winners.length;
+      for (const id of winners) {
+        gains.set(id, (gains.get(id) ?? 0) + part);
+        gagnantsDeLaTranche.add(id);
+      }
+    }
+    derniersGagnants = [...gagnantsDeLaTranche];
   }
 
-  return [...fractions.entries()].map(([seatId, fraction]) => ({ seatId, fraction }));
+  // La tranche du dessus n'a souvent qu'un seul alimentateur : c'est la mise que personne n'a
+  // suivie, et la boucle la lui rend d'elle-même (il est seul éligible). Le cas « personne
+  // d'éligible » ne survient que sur une main incomplète — cartes non saisies pour tout le monde à
+  // ce niveau. Plutôt que de faire disparaître ces jetons de l'affichage, on les verse aux derniers
+  // gagnants connus : les fractions continuent ainsi de totaliser 1.
+  if (orphelin > 0 && derniersGagnants.length > 0) {
+    const part = orphelin / derniersGagnants.length;
+    for (const id of derniersGagnants) gains.set(id, (gains.get(id) ?? 0) + part);
+  }
+
+  if (gains.size === 0) return [];
+  return [...gains.entries()].map(([seatId, montant]) => ({ seatId, fraction: montant / total }));
 }
 
 /** ID des sièges gagnants (au moins une part du pot). Enveloppe `determinePotAwards` pour les
