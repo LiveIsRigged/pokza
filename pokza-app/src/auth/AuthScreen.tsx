@@ -165,6 +165,11 @@ export function AuthScreen() {
   };
 
   const handleSubmit = async () => {
+    // Même raison que la garde `acceptedTerms` plus bas : la touche Entrée appelle cette fonction
+    // DIRECTEMENT, sans passer par l'état « disabled » du bouton. Deux Entrée rapides lançaient donc
+    // deux authentifications ; la seconde échouait sur le jeton anti-robot déjà brûlé et affichait
+    // « Patiente une seconde… » — un message trompeur alors que la première tentative avait réussi.
+    if (submitting) return;
     setError(null);
     setSignUpMessage(null);
 
@@ -208,15 +213,20 @@ export function AuthScreen() {
       setError(translateAuthError(authError.message));
       return;
     }
-    // En signUp, si la confirmation par email est activée côté projet, il n'y a pas encore de
-    // session à ce stade (AuthProvider ne bascule donc pas tout seul vers le feed) : on l'explique.
+    // En signUp, la session est normalement créée immédiatement (la confirmation par e-mail est
+    // désactivée sur le projet) et `AuthProvider` bascule tout seul vers le feed — ce message ne
+    // s'affiche alors qu'une fraction de seconde. Il sert de filet si la confirmation était
+    // réactivée un jour : dans ce cas il n'y a pas encore de session, et sans un mot d'explication
+    // l'écran resterait figé sur le formulaire sans que rien ne dise pourquoi.
+    // Rédigé côté utilisateur : « activée sur le projet » était du vocabulaire d'implémentation.
     if (mode === 'signUp') {
       trackEvent('signed_up');
-      setSignUpMessage('Compte créé. Si la confirmation par email est activée sur le projet, vérifie ta boîte mail avant de te connecter.');
+      setSignUpMessage('Compte créé. Si tu reçois un email de confirmation, ouvre-le avant de te connecter.');
     }
   };
 
   const handleForgotPassword = async () => {
+    if (submitting) return; // même contournement par la touche Entrée que dans `handleSubmit`
     setError(null);
     if (captchaEnabled && !captchaToken) {
       setError("Patiente une seconde : la vérification anti-robot n'est pas encore terminée.");
