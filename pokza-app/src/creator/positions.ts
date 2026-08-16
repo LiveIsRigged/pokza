@@ -37,11 +37,22 @@ export function buildSeats(
   });
 }
 
+/**
+ * Qui parle en premier après le flop : le premier joueur à gauche du bouton.
+ *
+ * ⚠️ LE CAS HEADS-UP, QUI A LONGTEMPS ÉTÉ FAUX ICI. À deux, le bouton EST la petite blinde —
+ * d'où `POSITION_SETS[2] = ['BTN', 'BB']`, sans siège `SB`. L'ancien code, ne trouvant pas de
+ * `SB`, retombait sur `BTN` : le bouton parlait avant la grosse blinde sur toutes les streets.
+ * C'est l'inverse de la règle. Le bouton parle en premier PRÉFLOP (il est la petite blinde) et
+ * en DERNIER ensuite ; postflop, c'est donc la grosse blinde qui ouvre.
+ */
 function postflopStartPosition(present: Position[]): Position {
-  return present.includes('SB') ? 'SB' : 'BTN';
+  if (present.includes('SB')) return 'SB';
+  if (present.includes('BB')) return 'BB';
+  return 'BTN';
 }
 
-/** Ordre d'action pour une street donnée (préflop: ordre naturel ; postflop: à partir de SB/BTN). */
+/** Ordre d'action pour une street donnée (préflop: ordre naturel ; postflop: à partir de SB/BB). */
 export function getActingOrder(seats: Seat[], street: Street): Seat[] {
   const present = CANON_ORDER.filter((p) => seats.some((s) => s.position === p));
   const orderedPositions =

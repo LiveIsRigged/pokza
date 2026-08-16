@@ -174,9 +174,18 @@ export function StreetStep({
   const callTo = Math.min(betAmount, currentRemaining); // suivre est plafonné au tapis
   const isCallAllIn = callTo >= currentRemaining && callTo < betAmount;
 
+  // ⚠️ Le filtre sur les jetons restants est INDISPENSABLE ici, et il manquait. `order` (en début de
+  // street) écarte bien les joueurs sans jetons, mais cette file-ci est reconstruite après chaque
+  // mise ou relance : sans le filtre, un joueur parti à tapis PLUS TÔT dans la même street était
+  // rappelé à jouer. L'écran lui affichait « reste 0 » à côté d'un bouton « Tapis » proposant un
+  // montant qu'il n'avait plus, et un clic sur Fold l'enregistrait couché alors qu'il avait déjà
+  // tout mis au pot — il perdait un pot qu'il avait le droit de disputer.
+  //
+  // Le filtre porte sur `remainingFor` et non `availableAtStart` : ce dernier est le stack du DÉBUT
+  // de street, encore positif pour quelqu'un qui vient justement d'y engager tous ses jetons.
   const reorderAfter = (ids: string[], afterSeatId: string) =>
     getActingOrderAfter(seats, street, afterSeatId)
-      .filter((s) => ids.includes(s.id))
+      .filter((s) => ids.includes(s.id) && remainingFor(s.id) > 0)
       .map((s) => s.id);
 
   const finalBoard = () => boardCards.filter(Boolean) as Card[];
