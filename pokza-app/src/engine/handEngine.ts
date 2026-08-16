@@ -1,7 +1,7 @@
-import type { Action, Board, Card, Hand, Position, Seat, Street } from '../types/poker';
+import type { Action, Board, Card, Hand, Position, Seat, Street, Variant } from '../types/poker';
 import { formatChipAmount, roundMoney } from '../utils/chipFormat';
 import { bestHandWinners } from './handEvaluator';
-import { computeEquity } from './equity';
+import { equityIfImmediate, type EquityContender } from './equity';
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river'];
 
@@ -134,6 +134,13 @@ export function committedBySeat(actions: Action[]): Record<string, number> {
   return totals;
 }
 
+/** Tout ce dont un calcul d'équité a besoin — de quoi le lancer ailleurs que pendant le rendu. */
+export interface EquitySituation {
+  contenders: EquityContender[];
+  board: Card[];
+  variant: Variant;
+}
+
 export interface HandState {
   step: number;
   totalSteps: number;
@@ -170,9 +177,14 @@ export interface HandState {
    * pas égales. Vide tant que la main n'est pas résolue. Cohérent avec `winningSeatIds` (mêmes sièges). */
   potAwards: PotAward[];
   /** % d'équité par siège (tapis avant la river) : plus aucune action possible, board incomplet,
-   * 2+ joueurs encore en lice avec cartes connues. `null` sinon (pas de situation figée, ou cartes
-   * d'un contendant inconnues). */
+   * 2+ joueurs encore en lice avec cartes connues. `null` sinon (pas de situation figée, cartes
+   * d'un contendant inconnues, ou calcul encore à faire — cf. `equityPending`). */
   equities: Record<string, number> | null;
+  /** Situation d'équité qu'il reste à CALCULER, quand `equities` est `null` faute d'un résultat
+   * déjà disponible. Non nul uniquement pour le préflop hors cache, le seul cas assez coûteux pour
+   * devoir sortir du rendu. Sert à deux choses dans `HandReplayer` : lancer le calcul par tranches,
+   * et distinguer "équité en cours" de "pas d'équité du tout" à l'affichage. */
+  equityPending: EquitySituation | null;
   /** Vrai à partir de l'event `revealCards` (s'il existe, cf. `buildReplayEvents`) ou, à défaut,
    * de l'event `showdown` — les mains adverses cachées jusqu'au showdown (`hand.revealShowdown`)
    * se retournent face visible à ce step précis, un cran AVANT que le gagnant ne soit désigné. */
@@ -298,15 +310,24 @@ export function computeHandState(hand: Hand, step: number): HandState {
   // calculer (une seule main = déjà gagnante ; cartes inconnues = pas d'équité calculable).
   // Double board : l'équité par board n'est pas encore calculée — on la masque plutôt que d'afficher
   // un chiffre faux (cf. phase 2, à compléter).
+  //
+  // Ce qui est disponible SANS BLOQUER (déjà en cache, ou énumération exacte à partir du turn) est
+  // rempli ici même. Le préflop hors cache, lui, coûte 168 ms de fil JS gelé sur un Mac et jusqu'à
+  // 0,8 s sur un iPhone : le calculer ici — pendant le rendu — rendait l'app inerte le temps qu'il
+  // dure. On ne rend donc que la SITUATION à calculer, que `HandReplayer` fait avancer par tranches
+  // hors du chemin de rendu (cf. `runEquityInSlices`).
   let equities: Record<string, number> | null = null;
+  let equityPending: EquitySituation | null = null;
   if (!hand.board2 && winningSeatIds.length === 0 && board.length < 5 && step >= hand.actions.length) {
     const contenders = hand.seats.filter((s) => !foldedSeatIds.has(s.id));
     if (contenders.length >= 2 && contenders.every((s) => s.holeCards)) {
-      equities = computeEquity(
-        contenders.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
+      const situation: EquitySituation = {
+        contenders: contenders.map((s) => ({ seatId: s.id, holeCards: s.holeCards! })),
         board,
-        hand.variant
-      );
+        variant: hand.variant,
+      };
+      equities = equityIfImmediate(situation.contenders, situation.board, situation.variant);
+      if (!equities) equityPending = situation;
     }
   }
 
@@ -326,6 +347,7 @@ export function computeHandState(hand: Hand, step: number): HandState {
     winningSeatIds,
     potAwards,
     equities,
+    equityPending,
     cardsRevealed,
   };
 }

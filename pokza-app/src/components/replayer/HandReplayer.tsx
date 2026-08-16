@@ -8,7 +8,9 @@ import {
   initialReplayStep,
   straddleSeatLabel,
   totalReplaySteps,
+  type EquitySituation,
 } from '../../engine/handEngine';
+import { runEquityInSlices, situationKey } from '../../engine/equity';
 import { boardVerticalOffset, layoutSeats } from '../../engine/layout';
 import { colors } from '../../theme/theme';
 import { useDisplayUnit } from '../../state/displayUnit';
@@ -31,6 +33,42 @@ interface HandReplayerProps {
   hand: Hand;
 }
 
+/**
+ * Équité calculée HORS du chemin de rendu.
+ * ────────────────────────────────────────
+ * `computeHandState` remplit déjà `state.equities` chaque fois que la valeur est disponible sans
+ * bloquer — déjà en cache, ou énumérable exactement à partir du turn. Ce hook ne s'occupe que du
+ * cas coûteux, le Monte-Carlo préflop, qu'il fait avancer par tranches en rendant la main au
+ * navigateur entre chaque : pendant ce temps l'app reste défilable et les commandes répondent,
+ * alors qu'avant le calcul gelait tout pendant 0,4 à 0,8 s sur iPhone.
+ *
+ * Le calcul est ABANDONNÉ dès que la situation change (l'utilisateur avance ou recule) : le
+ * nettoyage du `useEffect` annule les tranches restantes plutôt que de laisser tourner un calcul
+ * dont plus personne n'attend le résultat.
+ *
+ * Une fois un calcul terminé, sa valeur est en cache : tous les rendus suivants la retrouvent
+ * SYNCHRONEMENT par `state.equities`, y compris après un aller-retour dans la main. L'état local
+ * ci-dessous ne sert donc qu'à afficher le tout premier résultat, celui du calcul qui vient juste
+ * de s'achever — sans lui, rien ne redéclencherait de rendu à cet instant précis.
+ */
+function useEquityHorsRendu(pending: EquitySituation | null): Record<string, number> | null {
+  const [fini, setFini] = useState<{ cle: string; valeurs: Record<string, number> } | null>(null);
+  // La clé décrit la situation ENTIÈRE (sièges, cartes, board, variante) : deux situations
+  // différentes ont forcément deux clés différentes, donc la dépendance du `useEffect` est
+  // complète même si `pending` n'y figure pas.
+  const cle = pending ? situationKey(pending.contenders, pending.board, pending.variant) : null;
+
+  useEffect(() => {
+    if (!pending || cle === null) return;
+    return runEquityInSlices(pending.contenders, pending.board, pending.variant, (valeurs) =>
+      setFini({ cle, valeurs })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cle]);
+
+  return cle !== null && fini?.cle === cle ? fini.valeurs : null;
+}
+
 export function HandReplayer({ hand }: HandReplayerProps) {
   const { useBB, toggleUseBB } = useDisplayUnit();
   const initialStep = useMemo(() => initialReplayStep(hand), [hand]);
@@ -41,6 +79,14 @@ export function HandReplayer({ hand }: HandReplayerProps) {
 
   const totalSteps = totalReplaySteps(hand);
   const state = useMemo(() => computeHandState(hand, step), [hand, step]);
+  // `revealShowdown` supprime l'équité pour toute la main (cf. le commentaire sur `equityPct`
+  // plus bas) : inutile de lancer le moindre calcul dans ce cas.
+  const equityAsync = useEquityHorsRendu(hand.revealShowdown ? null : state.equityPending);
+  const equities = state.equities ?? equityAsync;
+  // "Calcul en cours" est un état À PART de "pas d'équité" : il doit rendre un vide, là où
+  // l'absence d'équité retombe sur "ALL-IN". Sans cette distinction, le siège afficherait
+  // "ALL-IN" pendant le calcul puis basculerait sur un pourcentage — un clignotement.
+  const equityEnCours = !hand.revealShowdown && state.equityPending !== null && equities === null;
   const seatCoords = useMemo(
     () => (size.width > 0 ? layoutSeats(hand.seats, size.width, size.height) : []),
     [hand.seats, size.width, size.height]
@@ -207,7 +253,8 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               // actif, au moins un adversaire du calcul est forcément caché tant que la main n'est
               // pas résolue : supprimé pour tout le monde, pas seulement le siège caché. Retombe
               // sur "ALL-IN" (un fait neutre sur le stack, pas sur la main).
-              equityPct={hand.revealShowdown ? undefined : state.equities?.[seat.id]}
+              equityPct={hand.revealShowdown ? undefined : equities?.[seat.id]}
+              equityPending={equityEnCours}
               winnerSeatPos={nearestWinnerPos(x, y)}
               gameType={hand.gameType}
               bb={hand.blinds.bb}

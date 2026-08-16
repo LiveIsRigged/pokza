@@ -35,6 +35,11 @@ interface SeatViewProps {
   /** % d'équité (tapis avant la river) — remplace temporairement stack/ALL-IN tant que la main
    * n'est pas résolue (cf. `computeEquity`). */
   equityPct?: number;
+  /** L'équité de ce moment de la main est en train de se calculer, hors du rendu (cf.
+   * `useEquityHorsRendu`). Décision produit : on n'affiche RIEN en attendant — ni indicateur, ni
+   * "…", et surtout pas "ALL-IN", sur lequel on retomberait sinon le temps du calcul avant de
+   * basculer sur un pourcentage. */
+  equityPending?: boolean;
   /** Coordonnées ABSOLUES (repère table) du siège gagnant, une fois la main terminée — sert à faire
    * glisser les jetons déjà posés au pot jusqu'au vainqueur, en plus de la pastille "Pot X". */
   winnerSeatPos?: { x: number; y: number } | null;
@@ -204,6 +209,7 @@ export function SeatView({
   isWinner = false,
   isAllIn = false,
   equityPct,
+  equityPending,
   winnerSeatPos = null,
   gameType = 'cash',
   bb,
@@ -495,6 +501,11 @@ export function SeatView({
           <Text style={styles.foldLabel}>fold</Text>
         ) : equityPct != null ? (
           <Text style={styles.equityLabel}>{Math.round(equityPct)}%</Text>
+        ) : equityPending ? (
+          // Espace insécable, PAS un bloc démonté : le pourcentage arrive dans quelques dizaines de
+          // millisecondes, et une ligne qui disparaît puis revient ferait sauter tout le badge de
+          // quelques pixels. Même remède que la bulle d'action (cf. `ActionCallout`).
+          <Text style={styles.equityLabel}>{'\u00A0'}</Text>
         ) : isAllIn ? (
           <Text style={styles.allInLabel}>ALL-IN</Text>
         ) : (
