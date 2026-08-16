@@ -34,12 +34,18 @@ begin
 end $$;
 
 drop table if exists resultat;
-create temporary table resultat (n serial, titre text, attendu text, obtenu text, verdict text);
+-- Pas de `serial` : la séquence associée demanderait son PROPRE droit d'usage. Le numéro de test
+-- vit déjà dans le titre, l'ordre alphabétique suffit.
+create temporary table resultat (titre text, attendu text, obtenu text, verdict text);
+-- ⚠️ Indispensable : la table appartient à `postgres`, et le script y écrit depuis le rôle
+-- `authenticated` qu'il endosse pour les tests. Sans ce droit, tout s'arrête au premier résultat.
+grant all on resultat to authenticated;
 
 do $$
 declare
   carol uuid; dave uuid;
   main_carol uuid; main_dave uuid;
+  titre_dave text;  -- l'original, pour le remettre à l'identique si un test venait à RÉUSSIR
   n int;
 begin
   select id into carol from public.profiles where pseudo = 'carol_dev';
@@ -53,6 +59,7 @@ begin
   if main_carol is null or main_dave is null then
     raise exception 'ARRET : carol ou dave n a pas de main visible. Rejouer seed-fix-hands.sql.';
   end if;
+  select title into titre_dave from public.posts where id = main_dave;
 
   -- ══════════════════════════════════════════════════════════════════════════════════
   -- 1. ÉCRITURES CROISÉES — carol s'en prend au contenu de dave.
@@ -191,13 +198,22 @@ begin
       ('3.2 CONTROLE carol modifie bien le titre de sa main', '1 ligne', 'refus ' || sqlstate, 'KO');
   end;
 
+  -- ══════════════════════════════════════════════════════════════════════════════════
+  -- FILET — n'a d'effet que si un test a ÉCHOUÉ, c'est-à-dire si une écriture est passée.
+  -- Le titre de dave est remis à sa valeur exacte, relevée avant le premier test : un
+  -- `replace()` approximatif laisserait une donnée fausse derrière lui.
+  -- ══════════════════════════════════════════════════════════════════════════════════
   set local role postgres;
+  update public.posts set title = titre_dave where id = main_dave and title <> titre_dave;
+  update public.posts set visibility = 'public' where id = main_dave and visibility <> 'public';
+  update public.posts set like_count = (select count(*) from public.likes l where l.post_id = main_carol)
+    where id = main_carol and like_count = 9999;
+  -- Le relevé donnait 0 commentaire, 0 like et 0 vote en base : tout ce qui porte ces marques
+  -- vient donc forcément des tests 1.3 à 1.5, et n'existe que s'ils ont échoué.
+  delete from public.comments where body like 'ZZ %';
+  delete from public.likes where post_id = main_dave and user_id = dave;
+  delete from public.votes where post_id = main_dave and user_id = dave;
 end $$;
 
 reset role;
-
--- Filet : si un test avait laissé passer une écriture, on l'annule ici.
-delete from public.comments where body like 'ZZ %';
-update public.posts set title = replace(title, 'ZZ pirate', 'main de dave') where title like 'ZZ pirate%';
-
-select n, titre, attendu, obtenu, verdict from resultat order by n;
+select titre, attendu, obtenu, verdict from resultat order by titre;
