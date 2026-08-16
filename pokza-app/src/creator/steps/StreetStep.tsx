@@ -136,6 +136,7 @@ export function StreetStep({
   const [recorded, setRecorded] = useState<Action[]>([]);
   const [orderCounter, setOrderCounter] = useState(startOrder);
   const [amountInput, setAmountInput] = useState('');
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [enteringAmount, setEnteringAmount] = useState<'bet' | 'raise' | null>(null);
   const [history, setHistory] = useState<Snapshot[]>([]);
 
@@ -339,11 +340,23 @@ export function StreetStep({
   };
 
   const confirmAmount = () => {
-    let amount = Number(amountInput);
-    if (!amount) return;
+    // ⚠️ La VIRGULE est le séparateur décimal en français, et le clavier d'iOS en propose une.
+    // `Number("2,5")` vaut `NaN` : l'ancien code sortait alors sur un `if (!amount) return` muet —
+    // bouton « Valider » sans effet, aucun message, rien à corriger pour la personne. `ContextStep`
+    // normalisait déjà la virgule, seul cet écran-ci avait été oublié.
+    const amountSaisi = parseFloat(amountInput.replace(',', '.'));
+    if (!Number.isFinite(amountSaisi) || amountSaisi <= 0) {
+      setAmountError('Entre un montant valide, par exemple 2,5.');
+      return;
+    }
     // On ne peut jamais miser plus que son stack.
-    amount = Math.min(amount, currentRemaining);
-    if (amount <= betAmount && amount < currentRemaining) return; // relance insuffisante (sauf tapis)
+    const amount = Math.min(amountSaisi, currentRemaining);
+    if (amount <= betAmount && amount < currentRemaining) {
+      // Deuxième sortie autrefois silencieuse : relance insuffisante, sauf si c'est un tapis.
+      setAmountError(`Il faut dépasser ${fmt(betAmount)} pour relancer, ou faire tapis.`);
+      return;
+    }
+    setAmountError(null);
     commitBetTo(amount, enteringAmount === 'raise' ? 'raise' : 'bet');
   };
 
@@ -474,10 +487,20 @@ export function StreetStep({
                     autoFocus
                     placeholder={`Montant (max ${fmt(currentRemaining)})`}
                     value={amountInput}
-                    onChangeText={setAmountInput}
+                    onChangeText={(t) => {
+                      setAmountInput(t);
+                      setAmountError(null);
+                    }}
                   />
+                  {amountError && <Text style={styles.amountError}>{amountError}</Text>}
                   <View style={styles.row}>
-                    <Pressable style={styles.secondaryButton} onPress={() => setEnteringAmount(null)}>
+                    <Pressable
+                      style={styles.secondaryButton}
+                      onPress={() => {
+                        setAmountError(null);
+                        setEnteringAmount(null);
+                      }}
+                    >
                       <Text style={styles.secondaryText}>Annuler</Text>
                     </Pressable>
                     <Pressable style={styles.primaryButton} onPress={confirmAmount}>
@@ -544,7 +567,13 @@ export function StreetStep({
                     </>
                   )}
                   {currentRemaining > betAmount && (
-                    <Pressable style={styles.actionButtonPrimary} onPress={() => setEnteringAmount(betAmount > 0 ? 'raise' : 'bet')}>
+                    <Pressable
+                      style={styles.actionButtonPrimary}
+                      onPress={() => {
+                        setAmountError(null);
+                        setEnteringAmount(betAmount > 0 ? 'raise' : 'bet');
+                      }}
+                    >
                       <Text style={styles.actionTextPrimary}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
                     </Pressable>
                   )}
@@ -775,6 +804,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
+    marginBottom: 10,
+  },
+  amountError: {
+    color: colors.cardTextRed,
+    fontSize: 13,
+    marginTop: -4,
     marginBottom: 10,
   },
   secondaryButton: {
