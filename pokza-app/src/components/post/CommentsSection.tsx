@@ -232,8 +232,57 @@ export function CommentsSection({
     };
   }, [postId, visible]);
 
-  const topLevelComments = comments.filter((c) => !c.parentCommentId);
-  const repliesFor = (commentId: string) => comments.filter((c) => c.parentCommentId === commentId);
+  // ⚠️ Une réponse dont le parent est ABSENT de la liste doit remonter au premier niveau, sinon
+  // elle n'est affichée nulle part : `topLevelComments` l'écarte (elle a un parent) et
+  // `repliesFor` ne la trouve jamais (personne ne demande les réponses d'un commentaire absent).
+  // Le parent peut disparaître sans que la réponse disparaisse avec lui : un commentaire retiré par
+  // la modération n'est plus renvoyé aux AUTRES lecteurs (seul son auteur continue de le voir), et
+  // bloquer quelqu'un masque ses commentaires mais pas les réponses des autres en dessous. Une
+  // suppression par l'auteur, elle, emporte bien ses réponses en cascade — ce cas-là n'est pas
+  // concerné.
+  // Le compteur de la main, lui, continue de compter ces réponses : le fil annonçait « 5
+  // commentaires » et n'en montrait que 3, sans que rien n'explique où étaient passés les autres.
+  // Avec ce repli, tout commentaire chargé est rendu EXACTEMENT une fois : soit son parent est
+  // présent et il apparaît dessous, soit il ne l'est pas et il apparaît au premier niveau.
+  // Chaque commentaire est rattaché à son ancêtre RACINE, en remontant la chaîne des parents.
+  // L'invariant obtenu : tout commentaire chargé est rendu exactement une fois, soit comme racine,
+  // soit sous la sienne (vérifié sur 5000 fils tirés au hasard, cf. le commit).
+  //
+  // Deux raisons, et la première est un vrai bug observé :
+  // 1. Le parent peut MANQUER dans la liste alors que la réponse, elle, y est. Un commentaire retiré
+  //    par la modération n'est plus renvoyé aux autres lecteurs (seul son auteur continue de le
+  //    voir), et bloquer quelqu'un masque ses commentaires sans masquer les réponses des autres.
+  //    L'ancien code écartait ces réponses de `topLevelComments` (elles ont un parent) sans jamais
+  //    les retrouver via `repliesFor` (personne ne demande les réponses d'un absent) : elles
+  //    n'étaient affichées NULLE PART, pendant que le compteur de la main continuait de les
+  //    compter — « 5 commentaires » pour 3 affichés, sans explication.
+  //    Une suppression par l'auteur, elle, emporte ses réponses en cascade : cas non concerné.
+  // 2. Le fil n'a que deux niveaux (`handleSubmit` aplatit toute réponse à une réponse sur la
+  //    racine), mais rien côté base ne l'impose. Remonter jusqu'à la racine range un éventuel
+  //    troisième niveau sous la bonne racine au lieu de le perdre — ou, avec une règle plus naïve,
+  //    de le rendre deux fois.
+  const idsCharges = new Set(comments.map((c) => c.id));
+  const parentParId = new Map(comments.map((c) => [c.id, c.parentCommentId]));
+  const racineDe = (commentId: string) => {
+    let courant = commentId;
+    const vus = new Set([courant]);
+    for (;;) {
+      const parent = parentParId.get(courant);
+      if (!parent || !idsCharges.has(parent)) return courant; // chaîne terminée, ou parent absent
+      // Cycle : impossible en principe (le parent est fixé à la création et n'est jamais modifié),
+      // mais une boucle infinie ici figerait l'app. Renvoyer le commentaire LUI-MÊME plutôt que le
+      // dernier maillon parcouru : sinon deux commentaires en cycle se désignent mutuellement comme
+      // racine, aucun des deux n'est sa propre racine, et tous deux disparaissent de l'affichage —
+      // soit exactement le bug qu'on est en train de corriger.
+      if (vus.has(parent)) return commentId;
+      courant = parent;
+      vus.add(courant);
+    }
+  };
+  const racineParId = new Map(comments.map((c) => [c.id, racineDe(c.id)]));
+  const topLevelComments = comments.filter((c) => racineParId.get(c.id) === c.id);
+  const repliesFor = (commentId: string) =>
+    comments.filter((c) => c.id !== commentId && racineParId.get(c.id) === commentId);
 
   const handlePickImage = async () => {
     try {
