@@ -13,6 +13,7 @@ import {
   type ReportContext,
 } from '../data/admin';
 import { reportReasonLabel } from '../data/reports';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 
 interface AdminReportDetailScreenProps {
   reportId: string;
@@ -39,6 +40,15 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  // Action de modération en attente de confirmation (contenu retiré, avertissement, suspension,
+  // bannissement) — un seul `ConfirmSheet` partagé, paramétré par ce que le bouton pressé y dépose.
+  const [pendingAction, setPendingAction] = useState<{
+    icon: string;
+    title: string;
+    message?: string;
+    confirmLabel: string;
+    execute: () => Promise<void>;
+  } | null>(null);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -158,7 +168,16 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   style={[styles.actionBtn, styles.actionDanger, busy && styles.actionBtnDisabled]}
                   disabled={busy}
                   onPress={() =>
-                    run('Contenu retiré', () => setContentStatus(targetType, ctx.report.targetId, 'removed', note || undefined))
+                    setPendingAction({
+                      icon: '🗑',
+                      title: `Retirer ${targetType === 'post' ? 'cette main' : 'ce commentaire'} ?`,
+                      message: "Il ne sera plus visible par personne, seul l'auteur continuera de le voir.",
+                      confirmLabel: 'Retirer',
+                      execute: () =>
+                        run('Contenu retiré', () =>
+                          setContentStatus(targetType, ctx.report.targetId, 'removed', note || undefined)
+                        ),
+                    })
                   }
                 >
                   <Text style={[styles.actionBtnText, styles.actionDangerText]}>Retirer</Text>
@@ -204,7 +223,15 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                 <Pressable
                   style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
                   disabled={busy}
-                  onPress={() => run('Avertissement envoyé', () => sanctionUser(authorId, 'warning', note || undefined))}
+                  onPress={() =>
+                    setPendingAction({
+                      icon: '⚠️',
+                      title: "Avertir l'auteur ?",
+                      confirmLabel: 'Avertir',
+                      execute: () =>
+                        run('Avertissement envoyé', () => sanctionUser(authorId, 'warning', note || undefined)),
+                    })
+                  }
                 >
                   <Text style={styles.actionBtnText}>Avertir</Text>
                 </Pressable>
@@ -212,9 +239,20 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
                   disabled={busy}
                   onPress={() =>
-                    run('Suspension 7 jours', () =>
-                      sanctionUser(authorId, 'suspended', note || undefined, new Date(Date.now() + SEVEN_DAYS_MS).toISOString())
-                    )
+                    setPendingAction({
+                      icon: '⏱️',
+                      title: 'Suspendre ce compte 7 jours ?',
+                      confirmLabel: 'Suspendre',
+                      execute: () =>
+                        run('Suspension 7 jours', () =>
+                          sanctionUser(
+                            authorId,
+                            'suspended',
+                            note || undefined,
+                            new Date(Date.now() + SEVEN_DAYS_MS).toISOString()
+                          )
+                        ),
+                    })
                   }
                 >
                   <Text style={styles.actionBtnText}>Suspendre 7 j</Text>
@@ -222,7 +260,15 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                 <Pressable
                   style={[styles.actionBtn, styles.actionDanger, busy && styles.actionBtnDisabled]}
                   disabled={busy}
-                  onPress={() => run('Compte banni', () => sanctionUser(authorId, 'banned', note || undefined))}
+                  onPress={() =>
+                    setPendingAction({
+                      icon: '🚫',
+                      title: 'Bannir ce compte ?',
+                      message: 'Le bannissement est définitif.',
+                      confirmLabel: 'Bannir',
+                      execute: () => run('Compte banni', () => sanctionUser(authorId, 'banned', note || undefined)),
+                    })
+                  }
                 >
                   <Text style={[styles.actionBtnText, styles.actionDangerText]}>Bannir</Text>
                 </Pressable>
@@ -269,6 +315,21 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
           {busy && <ActivityIndicator style={styles.spinner} color={colors.textSecondary} />}
         </ScrollView>
       )}
+
+      <ConfirmSheet
+        visible={pendingAction != null}
+        icon={pendingAction?.icon ?? '⚠️'}
+        title={pendingAction?.title ?? ''}
+        message={pendingAction?.message}
+        confirmLabel={pendingAction?.confirmLabel ?? 'Confirmer'}
+        loading={busy}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={async () => {
+          if (!pendingAction) return;
+          await pendingAction.execute();
+          setPendingAction(null);
+        }}
+      />
     </View>
   );
 }

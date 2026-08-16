@@ -18,6 +18,7 @@ import { PostCard } from '../components/post/PostCard';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
 import { OverflowMenu, type OverflowAnchor, type OverflowMenuItem } from '../components/ui/OverflowMenu';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { EditGroupScreen } from './EditGroupScreen';
 import { GroupMembersScreen } from './GroupMembersScreen';
 
@@ -60,6 +61,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
+  const [leavingGroup, setLeavingGroup] = useState(false);
   const [cropTarget, setCropTarget] = useState<PickedImage | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingGroup, setEditingGroup] = useState(false);
@@ -94,10 +96,16 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
           setViewingMembers(false);
           return true;
         }
+        // Sans ça, le glissement de bord navigue vers « Mes groupes privés » sous la feuille de
+        // confirmation encore affichée, au lieu de la refermer d'abord.
+        if (confirmingLeave && !leavingGroup) {
+          setConfirmingLeave(false);
+          return true;
+        }
         return false;
       },
     }),
-    [editingGroup, managingMembers, viewingMembers]
+    [editingGroup, managingMembers, viewingMembers, confirmingLeave, leavingGroup]
   );
 
   const openAvatarMenu = () => {
@@ -214,6 +222,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
   };
 
   const handleLeaveOrDelete = async () => {
+    setLeavingGroup(true);
     try {
       if (isOwner) {
         await deleteGroup(groupId);
@@ -223,13 +232,15 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
       onBack();
     } catch (err) {
       setError(errorMessage(err));
+      setLeavingGroup(false);
       setConfirmingLeave(false);
     }
   };
 
   // Menu ⋯ de l'en-tête : modifier/supprimer le groupe et exclure un membre pour le fondateur,
   // quitter le groupe pour les autres. « Supprimer »/« Quitter » déclenchent la même confirmation
-  // en ligne (`confirmingLeave`) qu'auparavant, juste depuis le menu plutôt qu'un lien sur la page.
+  // (`confirmingLeave`) qu'auparavant, juste depuis le menu plutôt qu'un lien sur la page, et
+  // affichée maintenant dans le `ConfirmSheet` partagé plutôt qu'en ligne.
   const groupMenuItems: OverflowMenuItem[] = [
     ...(isOwner ? [{ label: 'Modifier le groupe', icon: '✏️', onPress: () => setEditingGroup(true) }] : []),
     isOwner
@@ -377,21 +388,6 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
                     <Text style={styles.inviteButtonText}>Inviter</Text>
                   </Pressable>
                 )}
-                {/* Déclenché depuis « Supprimer le groupe »/« Quitter le groupe » dans le menu ⋯ —
-                    plus de lien direct sur la page, seule la confirmation qui suit reste ici. */}
-                {confirmingLeave && (
-                  <View style={styles.confirmRow}>
-                    <Text style={styles.confirmText}>
-                      {isOwner ? 'Supprimer ce groupe privé ?' : 'Quitter ce groupe privé ?'}
-                    </Text>
-                    <Pressable onPress={() => setConfirmingLeave(false)} hitSlop={8}>
-                      <Text style={styles.confirmCancel}>Non</Text>
-                    </Pressable>
-                    <Pressable onPress={handleLeaveOrDelete} hitSlop={8}>
-                      <Text style={styles.confirmConfirm}>Oui</Text>
-                    </Pressable>
-                  </View>
-                )}
               </View>
             </View>
 
@@ -462,6 +458,16 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
         anchor={avatarMenuAnchor}
       />
       <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={groupMenuItems} anchor={menuAnchor} />
+      <ConfirmSheet
+        visible={confirmingLeave}
+        icon={isOwner ? '🗑️' : '🚪'}
+        title={isOwner ? 'Supprimer ce groupe privé ?' : 'Quitter ce groupe privé ?'}
+        message={isOwner ? 'Le groupe et ses mains partagées disparaîtront pour tout le monde.' : undefined}
+        confirmLabel={isOwner ? 'Supprimer' : 'Quitter'}
+        loading={leavingGroup}
+        onCancel={() => setConfirmingLeave(false)}
+        onConfirm={handleLeaveOrDelete}
+      />
     </View>
   );
 });
@@ -616,27 +622,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 13,
-  },
-  confirmRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  confirmText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  confirmCancel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  confirmConfirm: {
-    fontSize: 13,
-    color: '#C0392B',
-    fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 12,

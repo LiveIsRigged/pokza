@@ -10,6 +10,7 @@ import {
   SANCTION_TYPE_LABEL,
   type UserModerationContext,
 } from '../data/admin';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 
 interface AdminUserScreenProps {
   userId: string;
@@ -38,6 +39,10 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  // « Rétablir la confirmation d'âge » et « Lever la sanction » sont restaurateurs (annulent une
+  // restriction) : pas de confirmation. Seul le fait de marquer un compte « mineur soupçonné » —
+  // qui bloque sa monétisation — est destructeur.
+  const [confirmingMinorFlag, setConfirmingMinorFlag] = useState(false);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -121,7 +126,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
               <Pressable
                 style={[styles.actionBtn, styles.actionDanger, busy && styles.actionBtnDisabled]}
                 disabled={busy}
-                onPress={() => run('Marqué comme mineur soupçonné', () => setAgeConfirmed(userId, false))}
+                onPress={() => setConfirmingMinorFlag(true)}
               >
                 <Text style={[styles.actionBtnText, styles.actionDangerText]}>Marquer « mineur soupçonné »</Text>
               </Pressable>
@@ -173,6 +178,20 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
           {busy && <ActivityIndicator style={styles.spinner} color={colors.textSecondary} />}
         </ScrollView>
       )}
+
+      <ConfirmSheet
+        visible={confirmingMinorFlag}
+        icon="⚠️"
+        title="Marquer ce compte « mineur soupçonné » ?"
+        message="Sa monétisation sera bloquée jusqu'à ce que la confirmation d'âge soit rétablie."
+        confirmLabel="Marquer"
+        loading={busy}
+        onCancel={() => setConfirmingMinorFlag(false)}
+        onConfirm={async () => {
+          await run('Marqué comme mineur soupçonné', () => setAgeConfirmed(userId, false));
+          setConfirmingMinorFlag(false);
+        }}
+      />
     </View>
   );
 }

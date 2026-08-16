@@ -31,6 +31,7 @@ import { PostCard } from '../components/post/PostCard';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
 import { OverflowMenu, type OverflowMenuItem, type OverflowAnchor } from '../components/ui/OverflowMenu';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { ReportModal } from '../components/moderation/ReportModal';
 import { blockUser, isBlockedByMe, unblockUser } from '../data/blocks';
 import { countryLabel } from '../data/countries';
@@ -96,6 +97,7 @@ export function ProfileScreen({
   const [mutualFriends, setMutualFriends] = useState<MutualFriendPreview[]>([]);
   const [mutualFriendCount, setMutualFriendCount] = useState(0);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [confirmingBlock, setConfirmingBlock] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [friendCount, setFriendCount] = useState(0);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -298,7 +300,7 @@ export function ProfileScreen({
       : []),
     blocked
       ? { label: 'Débloquer', icon: '↩️', onPress: handleUnblock }
-      : { label: 'Bloquer ce joueur', icon: '🚫', destructive: true, onPress: handleBlock },
+      : { label: 'Bloquer ce joueur', icon: '🚫', destructive: true, onPress: () => setConfirmingBlock(true) },
   ];
 
   const handleSendFriendRequest = async () => {
@@ -540,20 +542,7 @@ export function ProfileScreen({
                   {/* Le retrait d'ami n'est plus déclenché ici : il vit désormais dans le menu ⋯
                       en haut de l'écran, pour ne pas laisser une option destructive en accès direct
                       sur la page. */}
-                  {friendStatus === 'friends' && !confirmingRemove && (
-                    <Text style={styles.friendsLabel}>✓ Amis</Text>
-                  )}
-                  {friendStatus === 'friends' && confirmingRemove && (
-                    <View style={styles.friendsRow}>
-                      <Text style={styles.confirmRemoveText}>Retirer cet ami ?</Text>
-                      <Pressable onPress={() => setConfirmingRemove(false)} hitSlop={8}>
-                        <Text style={styles.confirmRemoveCancel}>Non</Text>
-                      </Pressable>
-                      <Pressable onPress={handleCancelOrRemove} hitSlop={8}>
-                        <Text style={styles.confirmRemoveConfirm}>Oui, retirer</Text>
-                      </Pressable>
-                    </View>
-                  )}
+                  {friendStatus === 'friends' && <Text style={styles.friendsLabel}>✓ Amis</Text>}
                 </View>
               )}
 
@@ -649,6 +638,26 @@ export function ProfileScreen({
         onClose={() => setAvatarMenuOpen(false)}
         items={avatarMenuItems}
         anchor={avatarMenuAnchor}
+      />
+      <ConfirmSheet
+        visible={confirmingRemove}
+        icon="👤"
+        title="Retirer cet ami ?"
+        confirmLabel="Retirer"
+        onCancel={() => setConfirmingRemove(false)}
+        onConfirm={handleCancelOrRemove}
+      />
+      <ConfirmSheet
+        visible={confirmingBlock}
+        icon="🚫"
+        title={`Bloquer ${profile?.displayName ?? 'ce joueur'} ?`}
+        message="Tu ne verras plus ses mains, et il ne pourra plus t'envoyer de demande d'ami."
+        confirmLabel="Bloquer"
+        onCancel={() => setConfirmingBlock(false)}
+        onConfirm={() => {
+          setConfirmingBlock(false);
+          handleBlock();
+        }}
       />
       <ReportModal
         visible={reportOpen}
@@ -960,29 +969,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 13,
   },
-  friendsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
   friendsLabel: {
     fontSize: 13,
     fontWeight: '700',
     color: colors.action,
-  },
-  confirmRemoveText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  confirmRemoveCancel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  confirmRemoveConfirm: {
-    fontSize: 13,
-    color: '#C0392B',
-    fontWeight: '700',
   },
 });

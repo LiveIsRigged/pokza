@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import type { GroupMember } from '../data/groups';
 
 interface GroupMembersScreenProps {
@@ -27,6 +28,11 @@ export function GroupMembersScreen({
   onSelectProfile,
   onBack,
 }: GroupMembersScreenProps) {
+  // Un membre déjà accepté ne se retire pas sans confirmation (perte de son accès et de son
+  // historique dans le groupe). Annuler une invitation encore en attente, elle, reste immédiate :
+  // rien n'a encore d'effet, l'inviter à nouveau coûte un tap.
+  const [excludingMember, setExcludingMember] = useState<GroupMember | null>(null);
+
   return (
     <View style={styles.overlay}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -49,13 +55,30 @@ export function GroupMembersScreen({
               {m.status === 'pending' && <Text style={styles.memberPending}>en attente</Text>}
             </Pressable>
             {canManage && m.userId !== currentUserId && (
-              <Pressable onPress={() => onRemoveMember?.(m.userId)} hitSlop={8}>
+              <Pressable
+                onPress={() => (m.status === 'pending' ? onRemoveMember?.(m.userId) : setExcludingMember(m))}
+                hitSlop={8}
+              >
                 <Text style={styles.memberRemoveLink}>{m.status === 'pending' ? 'Annuler' : 'Retirer'}</Text>
               </Pressable>
             )}
           </View>
         ))}
       </ScrollView>
+
+      <ConfirmSheet
+        visible={excludingMember != null}
+        icon="👤"
+        title={`Retirer ${excludingMember?.pseudo ?? 'ce membre'} du groupe ?`}
+        message="Il ne verra plus les mains partagées ici, et pourra être réinvité plus tard."
+        confirmLabel="Retirer"
+        onCancel={() => setExcludingMember(null)}
+        onConfirm={() => {
+          const userId = excludingMember?.userId;
+          setExcludingMember(null);
+          if (userId) onRemoveMember?.(userId);
+        }}
+      />
     </View>
   );
 }

@@ -20,6 +20,7 @@ import type { GifResult } from '../../data/gifs';
 import { colors, radius, spacing } from '../../theme/theme';
 import { GifPicker } from './GifPicker';
 import { ReportModal } from '../moderation/ReportModal';
+import { ConfirmSheet } from '../ui/ConfirmSheet';
 import { Avatar } from '../ui/Avatar';
 import { COMMENT_MAX_LENGTH } from '../../constants/limits';
 
@@ -207,6 +208,9 @@ export function CommentsSection({
   const [gifPickerOpen, setGifPickerOpen] = useState(false);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [reportingComment, setReportingComment] = useState<Comment | null>(null);
+  // Un seul commentaire (ou une réponse) à la fois peut être en attente de confirmation de
+  // suppression — son id, ou `null` si aucune ligne n'est en train de demander confirmation.
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
 
   // Fermeture en attrapant le bandeau du haut (poignée + titre + croix) et en tirant vers le bas,
   // façon bottom-sheet (logique partagée avec les autres feuilles, cf. `useSheetDismiss`).
@@ -394,7 +398,7 @@ export function CommentsSection({
                 <CommentRow
                   comment={comment}
                   onReply={() => setReplyingTo(comment)}
-                  onDelete={() => handleDelete(comment.id)}
+                  onDelete={() => setDeletingCommentId(comment.id)}
                   onToggleLike={() => handleToggleLike(comment)}
                   onOpenMedia={setViewerUri}
                   canDelete={comment.authorId === currentUserId}
@@ -406,7 +410,7 @@ export function CommentsSection({
                     key={reply.id}
                     comment={reply}
                     indented
-                    onDelete={() => handleDelete(reply.id)}
+                    onDelete={() => setDeletingCommentId(reply.id)}
                     onToggleLike={() => handleToggleLike(reply)}
                     onOpenMedia={setViewerUri}
                     canDelete={reply.authorId === currentUserId}
@@ -474,6 +478,19 @@ export function CommentsSection({
 
       <GifPicker visible={gifPickerOpen} onClose={() => setGifPickerOpen(false)} onSelect={handleSelectGif} />
       {viewerUri && <MediaViewer uri={viewerUri} onClose={() => setViewerUri(null)} />}
+      <ConfirmSheet
+        visible={deletingCommentId != null}
+        icon="🗑"
+        title="Supprimer ce commentaire ?"
+        message="Cette action est définitive."
+        confirmLabel="Supprimer"
+        onCancel={() => setDeletingCommentId(null)}
+        onConfirm={() => {
+          const id = deletingCommentId;
+          setDeletingCommentId(null);
+          if (id) handleDelete(id);
+        }}
+      />
       <ReportModal
         visible={reportingComment != null}
         onClose={() => setReportingComment(null)}

@@ -9,6 +9,7 @@ import {
   useLeftEdgeSwipe,
 } from '../../navigation/edgeSwipe';
 import { Avatar } from './Avatar';
+import { ConfirmSheet } from './ConfirmSheet';
 
 const PANEL_WIDTH = 288;
 
@@ -127,25 +128,24 @@ export function SideMenu({
 
         <View style={styles.spacer} />
 
-        {!confirmingSignOut ? (
-          <Pressable style={styles.row} onPress={() => setConfirmingSignOut(true)}>
-            <Text style={styles.rowIcon}>⏻</Text>
-            <Text style={styles.rowLabelMuted}>Déconnexion</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.confirmRow}>
-            <Text style={styles.confirmText}>Se déconnecter ?</Text>
-            <View style={styles.confirmButtonsRow}>
-              <Pressable onPress={() => setConfirmingSignOut(false)} hitSlop={8}>
-                <Text style={styles.confirmCancel}>Non</Text>
-              </Pressable>
-              <Pressable onPress={onSignOut} hitSlop={8}>
-                <Text style={styles.confirmConfirm}>Oui, déconnecter</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
+        <Pressable style={styles.row} onPress={() => setConfirmingSignOut(true)}>
+          <Text style={styles.rowIcon}>⏻</Text>
+          <Text style={styles.rowLabelMuted}>Déconnexion</Text>
+        </Pressable>
       </Animated.View>
+
+      <ConfirmSheet
+        visible={confirmingSignOut}
+        icon="⏻"
+        title="Se déconnecter ?"
+        confirmLabel="Déconnexion"
+        destructive={false}
+        onCancel={() => setConfirmingSignOut(false)}
+        onConfirm={() => {
+          setConfirmingSignOut(false);
+          onSignOut();
+        }}
+      />
     </View>
   );
 }
@@ -239,29 +239,5 @@ const styles = StyleSheet.create({
   },
   spacer: {
     flex: 1,
-  },
-  confirmRow: {
-    paddingVertical: 14,
-    paddingHorizontal: spacing.xs,
-    gap: spacing.sm,
-  },
-  confirmText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  confirmButtonsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  confirmCancel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  confirmConfirm: {
-    fontSize: 13,
-    color: '#C0392B',
-    fontWeight: '700',
   },
 });

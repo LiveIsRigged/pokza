@@ -7,6 +7,7 @@ import { HandReplayer } from '../replayer/HandReplayer';
 import { VotePoll } from './VotePoll';
 import { CommentsSection } from './CommentsSection';
 import { OverflowMenu, type OverflowMenuItem, type OverflowAnchor } from '../ui/OverflowMenu';
+import { ConfirmSheet } from '../ui/ConfirmSheet';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { ReportModal } from '../moderation/ReportModal';
 import { blockUser } from '../../data/blocks';
@@ -163,6 +164,7 @@ function PostCardInner({
   onSelectProfile,
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingBlock, setConfirmingBlock] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
   const [menuAnchor, setMenuAnchor] = useState<OverflowAnchor | null>(null);
@@ -216,7 +218,14 @@ function PostCardInner({
     : [
         { label: 'Signaler cette main', icon: '🚩', onPress: () => setReportOpen(true) },
         ...(onBlockAuthor
-          ? [{ label: `Bloquer ${post.authorName}`, icon: '🚫', destructive: true, onPress: handleBlockAuthor }]
+          ? [
+              {
+                label: `Bloquer ${post.authorName}`,
+                icon: '🚫',
+                destructive: true,
+                onPress: () => setConfirmingBlock(true),
+              },
+            ]
           : []),
       ];
 
@@ -283,24 +292,12 @@ function PostCardInner({
             </Text>
           </Pressable>
         )}
-        {!confirmingDelete && menuItems.length > 0 && (
+        {menuItems.length > 0 && (
           <Pressable ref={menuButtonRef} style={styles.deleteButton} onPress={openMenu} hitSlop={8}>
             <Text style={styles.overflowIcon}>⋯</Text>
           </Pressable>
         )}
       </View>
-
-      {isOwnPost && confirmingDelete && (
-        <View style={styles.confirmDeleteRow}>
-          <Text style={styles.confirmDeleteText}>Supprimer ce post ?</Text>
-          <Pressable onPress={() => setConfirmingDelete(false)} hitSlop={8}>
-            <Text style={styles.confirmDeleteCancel}>Non</Text>
-          </Pressable>
-          <Pressable onPress={onDelete} hitSlop={8}>
-            <Text style={styles.confirmDeleteConfirm}>Oui, supprimer</Text>
-          </Pressable>
-        </View>
-      )}
 
       <Text style={[typography.contextLine, styles.muted, styles.contextLine]}>{formatContextLine(post)}</Text>
 
@@ -362,6 +359,34 @@ function PostCardInner({
       />
 
       <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} anchor={menuAnchor} />
+      {isOwnPost && (
+        <ConfirmSheet
+          visible={confirmingDelete}
+          icon="🗑"
+          title="Supprimer cette main ?"
+          message="Cette action est définitive."
+          confirmLabel="Supprimer"
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={() => {
+            setConfirmingDelete(false);
+            onDelete?.();
+          }}
+        />
+      )}
+      {onBlockAuthor && (
+        <ConfirmSheet
+          visible={confirmingBlock}
+          icon="🚫"
+          title={`Bloquer ${post.authorName} ?`}
+          message="Tu ne verras plus ses mains, et il ne pourra plus t'envoyer de demande d'ami."
+          confirmLabel="Bloquer"
+          onCancel={() => setConfirmingBlock(false)}
+          onConfirm={() => {
+            setConfirmingBlock(false);
+            handleBlockAuthor();
+          }}
+        />
+      )}
       <ReportModal
         visible={reportOpen}
         onClose={() => setReportOpen(false)}
@@ -417,32 +442,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: colors.textPrimary,
-  },
-  confirmDeleteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: 'rgba(192,57,43,0.08)',
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  confirmDeleteText: {
-    flex: 1,
-    fontSize: 13,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  confirmDeleteCancel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  confirmDeleteConfirm: {
-    fontSize: 13,
-    color: '#C0392B',
-    fontWeight: '700',
   },
   muted: {
     color: colors.textSecondary,

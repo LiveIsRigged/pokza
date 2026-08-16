@@ -6,6 +6,7 @@ import { deleteOwnAccount, updateProfile, type ProfileDetails } from '../data/pr
 import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { countryByCode, flagEmoji } from '../data/countries';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
@@ -170,31 +171,22 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBl
         {deleteError && <Text style={styles.error}>{deleteError}</Text>}
 
         <View style={styles.dangerZone}>
-          {!confirmingDelete ? (
-            <Pressable onPress={() => setConfirmingDelete(true)} hitSlop={8}>
-              <Text style={styles.deleteLink}>Supprimer mon compte</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.confirmRow}>
-              <Text style={styles.confirmText}>
-                Supprimer définitivement ton compte, tes mains et tes commentaires ?
-              </Text>
-              <View style={styles.confirmButtonsRow}>
-                <Pressable onPress={() => setConfirmingDelete(false)} hitSlop={8} disabled={deletingAccount}>
-                  <Text style={styles.confirmCancel}>Non</Text>
-                </Pressable>
-                <Pressable onPress={handleDeleteAccount} hitSlop={8} disabled={deletingAccount}>
-                  {deletingAccount ? (
-                    <ActivityIndicator size="small" color="#C0392B" />
-                  ) : (
-                    <Text style={styles.confirmConfirm}>Oui, supprimer</Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          )}
+          <Pressable onPress={() => setConfirmingDelete(true)} hitSlop={8}>
+            <Text style={styles.deleteLink}>Supprimer mon compte</Text>
+          </Pressable>
         </View>
       </ScrollView>
+
+      <ConfirmSheet
+        visible={confirmingDelete}
+        icon="🗑"
+        title="Supprimer ton compte ?"
+        message="Ton compte, tes mains et tes commentaires seront définitivement supprimés."
+        confirmLabel="Supprimer définitivement"
+        loading={deletingAccount}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={handleDeleteAccount}
+      />
 
       <CountryPicker
         visible={countryPickerOpen}
@@ -356,29 +348,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
-  },
-  confirmRow: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  confirmText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  confirmButtonsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  confirmCancel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  confirmConfirm: {
-    fontSize: 13,
-    color: '#C0392B',
-    fontWeight: '700',
   },
 });
