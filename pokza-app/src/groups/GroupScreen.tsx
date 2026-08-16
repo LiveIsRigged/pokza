@@ -19,6 +19,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
 import { OverflowMenu, type OverflowAnchor, type OverflowMenuItem } from '../components/ui/OverflowMenu';
 import { EditGroupScreen } from './EditGroupScreen';
+import { GroupMembersScreen } from './GroupMembersScreen';
 
 /** Même format court que les dates de main / d'inscription ailleurs dans l'app (ex: "29 juil. 2026"). */
 function formatCreatedDate(iso: string): string {
@@ -54,15 +55,32 @@ export function GroupScreen({
   const [cropTarget, setCropTarget] = useState<PickedImage | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingGroup, setEditingGroup] = useState(false);
+  // Écran « Liste de membres » (bulle, tout le monde) — toujours en lecture seule, même pour le
+  // fondateur : cf. `GroupMembersScreen`, l'exclusion vit uniquement dans `managingMembers`.
+  const [viewingMembers, setViewingMembers] = useState(false);
+  // Écran « Exclure un membre » (menu ⋯, fondateur uniquement) — même liste, avec les liens
+  // Retirer/Annuler en plus.
+  const [managingMembers, setManagingMembers] = useState(false);
   // Menu de la pastille 📷 : sources photo + retrait, regroupés au même endroit.
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarBadgeRef = useRef<View>(null);
   const [avatarMenuAnchor, setAvatarMenuAnchor] = useState<OverflowAnchor | null>(null);
+  // Menu ⋯ de l'en-tête (modifier/supprimer/quitter le groupe, exclure un membre).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<View>(null);
+  const [menuAnchor, setMenuAnchor] = useState<OverflowAnchor | null>(null);
 
   const openAvatarMenu = () => {
     avatarBadgeRef.current?.measureInWindow((x, y, width, height) => {
       setAvatarMenuAnchor({ x, y, width, height });
       setAvatarMenuOpen(true);
+    });
+  };
+
+  const openMenu = () => {
+    menuButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setMenuAnchor({ x, y, width, height });
+      setMenuOpen(true);
     });
   };
 
@@ -179,6 +197,19 @@ export function GroupScreen({
     }
   };
 
+  // Menu ⋯ de l'en-tête : modifier/supprimer le groupe et exclure un membre pour le fondateur,
+  // quitter le groupe pour les autres. « Supprimer »/« Quitter » déclenchent la même confirmation
+  // en ligne (`confirmingLeave`) qu'auparavant, juste depuis le menu plutôt qu'un lien sur la page.
+  const groupMenuItems: OverflowMenuItem[] = [
+    ...(isOwner ? [{ label: 'Modifier le groupe', icon: '✏️', onPress: () => setEditingGroup(true) }] : []),
+    isOwner
+      ? { label: 'Supprimer le groupe', icon: '🗑️', destructive: true, onPress: () => setConfirmingLeave(true) }
+      : { label: 'Quitter le groupe', icon: '🚪', destructive: true, onPress: () => setConfirmingLeave(true) },
+    ...(isOwner
+      ? [{ label: 'Exclure un membre', icon: '👥', onPress: () => setManagingMembers(true) }]
+      : []),
+  ];
+
   const handleDelete = async (postId: string) => {
     const previous = posts;
     setPosts((p) => p.filter((post) => post.id !== postId));
@@ -222,6 +253,11 @@ export function GroupScreen({
           <Pressable onPress={onBack} hitSlop={8}>
             <Text style={styles.backArrow}>←</Text>
           </Pressable>
+          {group && (
+            <Pressable ref={menuButtonRef} onPress={openMenu} hitSlop={8}>
+              <Text style={styles.overflowIcon}>⋯</Text>
+            </Pressable>
+          )}
         </View>
 
         {error && <Text style={styles.statusText}>{error}</Text>}
@@ -299,25 +335,21 @@ export function GroupScreen({
               })()}
 
               {group.description && <Text style={styles.description}>{group.description}</Text>}
-              {isOwner && (
-                <Pressable style={styles.editGroupButton} onPress={() => setEditingGroup(true)}>
-                  <Text style={styles.editGroupButtonText}>Modifier le groupe</Text>
-                </Pressable>
-              )}
 
               <View style={styles.headerActions}>
+                {/* Visible de tous les membres, contrairement à « Inviter » — remplace l'ancienne
+                    section « Membres » systématiquement dépliée sur la page. */}
+                <Pressable style={styles.membersButton} onPress={() => setViewingMembers(true)}>
+                  <Text style={styles.membersButtonText}>Liste de membres</Text>
+                </Pressable>
                 {isOwner && (
                   <Pressable style={styles.inviteButton} onPress={() => onInviteMembers(groupId)}>
                     <Text style={styles.inviteButtonText}>Inviter</Text>
                   </Pressable>
                 )}
-                {!confirmingLeave ? (
-                  <Pressable onPress={() => setConfirmingLeave(true)} hitSlop={8}>
-                    <Text style={styles.leaveLink}>
-                      {isOwner ? 'Supprimer le groupe privé' : 'Quitter le groupe privé'}
-                    </Text>
-                  </Pressable>
-                ) : (
+                {/* Déclenché depuis « Supprimer le groupe »/« Quitter le groupe » dans le menu ⋯ —
+                    plus de lien direct sur la page, seule la confirmation qui suit reste ici. */}
+                {confirmingLeave && (
                   <View style={styles.confirmRow}>
                     <Text style={styles.confirmText}>
                       {isOwner ? 'Supprimer ce groupe privé ?' : 'Quitter ce groupe privé ?'}
@@ -331,27 +363,6 @@ export function GroupScreen({
                   </View>
                 )}
               </View>
-            </View>
-
-            <View style={styles.membersSection}>
-              <Text style={styles.sectionTitle}>Membres</Text>
-              {members.map((m) => (
-                <View key={m.userId} style={styles.memberRow}>
-                  <Pressable style={styles.memberInfo} onPress={() => onSelectProfile(m.userId)}>
-                    <Avatar url={m.avatarUrl} name={m.pseudo} size={32} />
-                    <Text style={styles.memberPseudo}>
-                      {m.pseudo}
-                      {m.userId === group.ownerId && ' 👑'}
-                    </Text>
-                    {m.status === 'pending' && <Text style={styles.memberPending}>en attente</Text>}
-                  </Pressable>
-                  {isOwner && m.userId !== currentUserId && (
-                    <Pressable onPress={() => handleRemoveMember(m.userId)} hitSlop={8}>
-                      <Text style={styles.memberRemoveLink}>{m.status === 'pending' ? 'Annuler' : 'Retirer'}</Text>
-                    </Pressable>
-                  )}
-                </View>
-              ))}
             </View>
 
             <Text style={styles.sectionTitle}>Mains du groupe privé</Text>
@@ -394,12 +405,33 @@ export function GroupScreen({
           onSaved={handleGroupSaved}
         />
       )}
+      {viewingMembers && group && (
+        <GroupMembersScreen
+          members={members}
+          ownerId={group.ownerId}
+          currentUserId={currentUserId}
+          onSelectProfile={onSelectProfile}
+          onBack={() => setViewingMembers(false)}
+        />
+      )}
+      {managingMembers && group && (
+        <GroupMembersScreen
+          members={members}
+          ownerId={group.ownerId}
+          currentUserId={currentUserId}
+          canManage
+          onRemoveMember={handleRemoveMember}
+          onSelectProfile={onSelectProfile}
+          onBack={() => setManagingMembers(false)}
+        />
+      )}
       <OverflowMenu
         visible={avatarMenuOpen}
         onClose={() => setAvatarMenuOpen(false)}
         items={avatarMenuItems}
         anchor={avatarMenuAnchor}
       />
+      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={groupMenuItems} anchor={menuAnchor} />
     </View>
   );
 }
@@ -415,12 +447,22 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginHorizontal: 14,
     marginBottom: 10,
   },
   backArrow: {
     fontSize: 22,
     color: colors.textPrimary,
+    paddingHorizontal: 4,
+  },
+  overflowIcon: {
+    fontSize: 22,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: colors.textSecondary,
     paddingHorizontal: 4,
   },
   statusText: {
@@ -517,23 +559,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  editGroupButton: {
-    borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 8,
-    marginTop: spacing.sm,
-  },
-  editGroupButtonText: {
-    color: colors.textSecondary,
-    fontWeight: '600',
-    fontSize: 13,
-  },
   headerActions: {
     marginTop: spacing.sm,
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  membersButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(22,35,61,0.25)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+  },
+  membersButtonText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 13,
   },
   inviteButton: {
     backgroundColor: colors.action,
@@ -545,12 +586,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 13,
-  },
-  leaveLink: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
   confirmRow: {
     flexDirection: 'row',
@@ -573,13 +608,6 @@ const styles = StyleSheet.create({
     color: '#C0392B',
     fontWeight: '700',
   },
-  membersSection: {
-    marginHorizontal: 14,
-    marginBottom: spacing.lg,
-    padding: spacing.sm,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(22,35,61,0.04)',
-  },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '700',
@@ -588,33 +616,5 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     marginLeft: spacing.xs,
     marginHorizontal: 14,
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    paddingHorizontal: spacing.xs,
-  },
-  memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  memberPseudo: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  memberPending: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  memberRemoveLink: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
   },
 });
