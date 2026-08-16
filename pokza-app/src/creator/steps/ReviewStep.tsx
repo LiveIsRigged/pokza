@@ -22,9 +22,13 @@ interface ReviewStepProps {
   totalSteps?: number;
   /** Groupes dont l'utilisateur est membre — le chip "Groupe privé" n'apparaît que s'il y en a au moins un. */
   groups: Group[];
+  /** Publication en cours : verrouille le bouton et le dit. Sans ça, un second appui pendant
+   * l'aller-retour réseau publie la main une deuxième fois — et rien côté base ne l'en empêche
+   * (vérifié : deux insertions identiques simultanées sont toutes deux acceptées). */
+  submitting?: boolean;
 }
 
-export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps, groups }: ReviewStepProps) {
+export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps, groups, submitting }: ReviewStepProps) {
   const update = (patch: Partial<ReviewData>) => onChange({ ...value, ...patch });
 
   const voteOptions = value.voteOptions ?? ['', ''];
@@ -43,8 +47,10 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
       title="Publier"
       subtitle="Derniers détails"
       onNext={onSubmit}
-      nextLabel="Publier la main"
-      nextDisabled={!value.title.trim() || (value.visibility === 'group' && !value.groupId)}
+      nextLabel={submitting ? 'Publication…' : 'Publier la main'}
+      nextDisabled={
+        submitting || !value.title.trim() || (value.visibility === 'group' && !value.groupId)
+      }
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}

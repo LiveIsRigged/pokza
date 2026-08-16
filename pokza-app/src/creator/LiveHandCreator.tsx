@@ -46,7 +46,8 @@ interface Snapshot {
 interface LiveHandCreatorProps {
   authorId: string;
   authorName: string;
-  onCreated: (post: Post) => void;
+  /** Peut être asynchrone : le créateur attend sa résolution pour relâcher le verrou anti-doublon. */
+  onCreated: (post: Post) => void | Promise<void>;
   onCancel: () => void;
   groups: Group[];
 }
@@ -161,7 +162,15 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
     setPhaseKey((k) => k + 1);
   };
 
-  const finalize = (finalActions: Action[], finalBoard: Board) => {
+  // Publication en cours. Le verrou est ici plutôt que dans `ReviewStep` parce que c'est ici qu'on
+  // attend `onCreated` : entre l'appui et le retour au feed il y a un aller-retour réseau, et un
+  // second appui pendant cette fenêtre publiait la main une deuxième fois. Rien côté base ne s'y
+  // oppose — mesuré en production : deux insertions identiques simultanées sont toutes deux
+  // acceptées. Le garde-fou ne peut donc être que côté client.
+  const [submitting, setSubmitting] = useState(false);
+
+  const finalize = async (finalActions: Action[], finalBoard: Board) => {
+    if (submitting) return;
     // Un adversaire n'est "connu" (et donc départageable/inclus dans l'équité) que si TOUTES ses
     // cartes ont été saisies — une main Omaha partielle (< count cartes) n'est pas évaluable, on la
     // traite alors comme mucked, exactement comme au Hold'em où il fallait les 2 cartes.
@@ -215,7 +224,14 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
       groupId: review.groupId,
       hand,
     };
-    onCreated(post);
+    // `onCreated` remonte l'erreur à l'écran appelant et laisse le créateur ouvert : on relâche le
+    // verrou dans tous les cas, sinon un échec réseau condamnerait le bouton pour de bon.
+    setSubmitting(true);
+    try {
+      await onCreated(post);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const totalSteps = totalStepsFor(context.bombPot);
@@ -528,7 +544,8 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
           step={step}
           totalSteps={totalSteps}
           onBack={goBack}
-          onSubmit={() => finalize(actions, board)}
+          onSubmit={() => void finalize(actions, board)}
+          submitting={submitting}
           groups={groups}
         />
       );
