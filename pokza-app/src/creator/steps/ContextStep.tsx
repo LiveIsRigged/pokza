@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
 import type { Position } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
 import { colors } from '../../theme/theme';
@@ -208,77 +208,6 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
     onChange(next);
   };
 
-  // « Options avancées » : replie les réglages rarement touchés (ante, straddle, noms/stacks par
-  // siège, lieu, buy-in, niveau) pour que l'essentiel tienne d'un coup d'œil. La section s'ouvre
-  // d'elle-même si l'un de ces réglages n'est pas au défaut, afin de ne jamais masquer un réglage
-  // que l'utilisateur emploie réellement (ex. straddle habituel restauré par la mémorisation).
-  const hasAdvancedValues =
-    (!value.bombPot && (value.anteType !== 'none' || value.straddleCount > 0)) ||
-    Object.values(value.opponentNames ?? {}).some((n) => (n ?? '').trim().length > 0) ||
-    Object.values(value.seatStacks ?? {}).some((s) => s != null) ||
-    !!value.location?.trim() ||
-    !!value.buyIn?.trim() ||
-    !!value.level?.trim();
-  const [advancedOpen, setAdvancedOpen] = useState(hasAdvancedValues);
-  const hadAdvancedValues = useRef(hasAdvancedValues);
-  useEffect(() => {
-    // Ouvre à la transition « défaut → non-défaut » (typiquement quand la mémorisation charge des
-    // réglages), sans jamais refermer de force : l'utilisateur garde la main sur l'ouverture.
-    if (hasAdvancedValues && !hadAdvancedValues.current) setAdvancedOpen(true);
-    hadAdvancedValues.current = hasAdvancedValues;
-  }, [hasAdvancedValues]);
-
-  // La section « Options avancées » est en bas de l'écran : quand on la déplie, les réglages
-  // révélés apparaissent hors du champ de vision et rien ne semble bouger. On amène donc l'en-tête
-  // en haut du ScrollView à l'ouverture, pour que le contenu déplié soit tout de suite visible.
-  const scrollRef = useRef<ScrollView>(null);
-  const advancedHeaderYRef = useRef(0);
-  const toggleAdvanced = () => {
-    setAdvancedOpen((open) => {
-      const next = !open;
-      if (next) {
-        requestAnimationFrame(() => {
-          scrollRef.current?.scrollTo({ y: Math.max(0, advancedHeaderYRef.current - 8), animated: true });
-        });
-      }
-      return next;
-    });
-  };
-
-  // Partagé entre deux emplacements : juste sous les blindes en tournoi (toujours visible), et dans
-  // « Options avancées » en cash game (repli, réglage plus rare).
-  const anteFields = (
-    <>
-      <Text style={styles.label}>Ante</Text>
-      <View style={styles.row}>
-        <Chip label="Aucun" selected={value.anteType === 'none'} onPress={() => update({ anteType: 'none' })} />
-        <Chip
-          label="BB ante"
-          selected={value.anteType === 'bb'}
-          onPress={() => update({ anteType: 'bb', ante: value.bb })}
-        />
-        <Chip
-          label="Ante par joueur"
-          selected={value.anteType === 'per-player'}
-          onPress={() =>
-            update({ anteType: 'per-player', ante: value.ante || Math.max(1, Math.round(value.bb / 4)) })
-          }
-        />
-      </View>
-      {value.anteType === 'bb' && (
-        <Text style={styles.helperText}>Montant de l'ante : {value.bb} (identique à la BB)</Text>
-      )}
-      {value.anteType === 'per-player' && (
-        <DecimalTextInput
-          style={styles.input}
-          placeholder="Ante par joueur"
-          value={value.ante}
-          onChangeValue={(ante) => update({ ante })}
-        />
-      )}
-    </>
-  );
-
   return (
     <WizardScreen
       title="La table"
@@ -288,7 +217,6 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
-      scrollRef={scrollRef}
     >
       <View>
         <Text style={styles.label}>Variante</Text>
@@ -399,13 +327,86 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           </>
         )}
 
-        {value.gameType === 'tournament' && !value.bombPot && (
+        {/* Une bombe se joue sans preflop : ni ante classique (elle a le sien), ni straddle. */}
+        {!value.bombPot && (
           <>
-            {anteFields}
-            <View style={styles.inlineFieldRow}>
-              <Text style={styles.inlineFieldLabel}>Niveau de blindes (optionnel)</Text>
-              <LevelNumberInput value={value.level} onChangeValue={(level) => update({ level })} />
+            {/* Le straddle prolonge les blindes (c'est une 3e blinde volontaire) : il vient donc
+                juste après elles, avant l'ante. N'existe qu'en cash game. */}
+            {value.gameType === 'cash' && (
+              <>
+                <Text style={styles.label}>Straddle</Text>
+                <View style={styles.row}>
+                  <Chip label="Aucun" selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
+                  <Chip
+                    label="Simple"
+                    selected={value.straddleCount === 1}
+                    onPress={() => update({ straddleCount: 1, straddleAmount: value.straddleAmount || value.bb * 2 })}
+                  />
+                  <Chip
+                    label="Double"
+                    selected={value.straddleCount === 2}
+                    onPress={() => update({ straddleCount: 2, straddleAmount: value.straddleAmount || value.bb * 2 })}
+                  />
+                  <Chip
+                    label="Triple"
+                    selected={value.straddleCount === 3}
+                    onPress={() => update({ straddleCount: 3, straddleAmount: value.straddleAmount || value.bb * 2 })}
+                  />
+                </View>
+                {value.straddleCount > 0 && (
+                  <>
+                    <DecimalTextInput
+                      style={styles.input}
+                      placeholder="Montant du 1er straddle"
+                      value={value.straddleAmount}
+                      onChangeValue={(straddleAmount) => update({ straddleAmount })}
+                    />
+                    <Text style={styles.helperText}>
+                      {value.straddleCount === 1 && `Straddle : ${formatBlind(value.straddleAmount)}`}
+                      {value.straddleCount === 2 &&
+                        `Straddle ${formatBlind(value.straddleAmount)}, double straddle ${formatBlind(value.straddleAmount * 2)}`}
+                      {value.straddleCount === 3 &&
+                        `Straddle ${formatBlind(value.straddleAmount)}, double ${formatBlind(value.straddleAmount * 2)}, triple ${formatBlind(value.straddleAmount * 4)}`}
+                    </Text>
+                  </>
+                )}
+              </>
+            )}
+
+            <Text style={styles.label}>Ante</Text>
+            <View style={styles.row}>
+              <Chip label="Aucun" selected={value.anteType === 'none'} onPress={() => update({ anteType: 'none' })} />
+              <Chip
+                label="BB ante"
+                selected={value.anteType === 'bb'}
+                onPress={() => update({ anteType: 'bb', ante: value.bb })}
+              />
+              <Chip
+                label="Ante par joueur"
+                selected={value.anteType === 'per-player'}
+                onPress={() =>
+                  update({ anteType: 'per-player', ante: value.ante || Math.max(1, Math.round(value.bb / 4)) })
+                }
+              />
             </View>
+            {value.anteType === 'bb' && (
+              <Text style={styles.helperText}>Montant de l'ante : {value.bb} (identique à la BB)</Text>
+            )}
+            {value.anteType === 'per-player' && (
+              <DecimalTextInput
+                style={styles.input}
+                placeholder="Ante par joueur"
+                value={value.ante}
+                onChangeValue={(ante) => update({ ante })}
+              />
+            )}
+
+            {value.gameType === 'tournament' && (
+              <View style={styles.inlineFieldRow}>
+                <Text style={styles.inlineFieldLabel}>Niveau de blindes (optionnel)</Text>
+                <LevelNumberInput value={value.level} onChangeValue={(level) => update({ level })} />
+              </View>
+            )}
           </>
         )}
 
@@ -453,124 +454,51 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           ))}
         </View>
 
-        {/* En tournoi, tous ces champs sont directement utiles (buy-in, niveau, antes...) — pas de
-            repli "Options avancées" à déplier, ils restent visibles d'entrée dans cette étape. Le
-            repli reste réservé au cash game, où ces réglages sont plus rarement modifiés. */}
-        {value.gameType === 'cash' && (
-          <Pressable
-            style={[styles.advancedHeader, advancedOpen && styles.advancedHeaderOpen]}
-            onPress={toggleAdvanced}
-            onLayout={(e) => {
-              advancedHeaderYRef.current = e.nativeEvent.layout.y;
-            }}
-          >
-            <View style={styles.advancedHeaderText}>
-              <Text style={styles.advancedTitle}>Options avancées</Text>
-              <Text style={styles.advancedSubtitle}>
-                {value.bombPot ? 'noms & stacks · lieu' : 'ante · straddle · noms & stacks · lieu'}
-              </Text>
+        <Text style={styles.label}>Joueurs (nom et stack, optionnel)</Text>
+        {availablePositions.map((pos) => {
+          const isHero = pos === value.heroPosition;
+          const label = straddleLabelForPosition(pos);
+          return (
+            <View key={pos} style={styles.playerRow}>
+              <Text style={styles.playerRowLabel}>{isHero ? `${label} (toi)` : label}</Text>
+              {!isHero && (
+                <TextInput
+                  style={[styles.input, styles.playerNameInput]}
+                  placeholder="Nom"
+                  value={value.opponentNames?.[pos] ?? ''}
+                  onChangeText={(t) => update({ opponentNames: { ...value.opponentNames, [pos]: t } })}
+                />
+              )}
+              <OptionalDecimalTextInput
+                style={[styles.input, styles.playerStackInput]}
+                placeholder={String(value.effectiveStack)}
+                value={value.seatStacks?.[pos]}
+                onChangeValue={(stack) => update({ seatStacks: { ...value.seatStacks, [pos]: stack } })}
+              />
             </View>
-            <Text style={styles.advancedToggleLabel}>{advancedOpen ? 'Masquer' : 'Afficher'}</Text>
-            <View style={[styles.advancedChevronBadge, advancedOpen && styles.advancedChevronBadgeOpen]}>
-              <Text style={[styles.advancedChevron, advancedOpen && styles.advancedChevronOpen]}>
-                {advancedOpen ? '▾' : '▸'}
-              </Text>
-            </View>
-          </Pressable>
-        )}
+          );
+        })}
 
-        {(value.gameType === 'tournament' || advancedOpen) && (
-          <View>
-            {!value.bombPot && value.gameType === 'cash' && (
-              <>
-                {anteFields}
+        <Text style={styles.label}>Lieu (optionnel)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Ex : Club Circus, Bruxelles"
+          maxLength={LOCATION_MAX_LENGTH}
+          value={value.location ?? ''}
+          onChangeText={(t) => update({ location: t })}
+        />
 
-                <Text style={styles.label}>Straddle</Text>
-                <View style={styles.row}>
-                  <Chip label="Aucun" selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
-                  <Chip
-                    label="Simple"
-                    selected={value.straddleCount === 1}
-                    onPress={() => update({ straddleCount: 1, straddleAmount: value.straddleAmount || value.bb * 2 })}
-                  />
-                  <Chip
-                    label="Double"
-                    selected={value.straddleCount === 2}
-                    onPress={() => update({ straddleCount: 2, straddleAmount: value.straddleAmount || value.bb * 2 })}
-                  />
-                  <Chip
-                    label="Triple"
-                    selected={value.straddleCount === 3}
-                    onPress={() => update({ straddleCount: 3, straddleAmount: value.straddleAmount || value.bb * 2 })}
-                  />
-                </View>
-                {value.straddleCount > 0 && (
-                  <>
-                    <DecimalTextInput
-                      style={styles.input}
-                      placeholder="Montant du 1er straddle"
-                      value={value.straddleAmount}
-                      onChangeValue={(straddleAmount) => update({ straddleAmount })}
-                    />
-                    <Text style={styles.helperText}>
-                      {value.straddleCount === 1 && `Straddle : ${formatBlind(value.straddleAmount)}`}
-                      {value.straddleCount === 2 &&
-                        `Straddle ${formatBlind(value.straddleAmount)}, double straddle ${formatBlind(value.straddleAmount * 2)}`}
-                      {value.straddleCount === 3 &&
-                        `Straddle ${formatBlind(value.straddleAmount)}, double ${formatBlind(value.straddleAmount * 2)}, triple ${formatBlind(value.straddleAmount * 4)}`}
-                    </Text>
-                  </>
-                )}
-              </>
-            )}
-
-            <Text style={styles.label}>Joueurs (nom et stack, optionnel)</Text>
-            {availablePositions.map((pos) => {
-              const isHero = pos === value.heroPosition;
-              const label = straddleLabelForPosition(pos);
-              return (
-                <View key={pos} style={styles.playerRow}>
-                  <Text style={styles.playerRowLabel}>{isHero ? `${label} (toi)` : label}</Text>
-                  {!isHero && (
-                    <TextInput
-                      style={[styles.input, styles.playerNameInput]}
-                      placeholder="Nom"
-                      value={value.opponentNames?.[pos] ?? ''}
-                      onChangeText={(t) => update({ opponentNames: { ...value.opponentNames, [pos]: t } })}
-                    />
-                  )}
-                  <OptionalDecimalTextInput
-                    style={[styles.input, styles.playerStackInput]}
-                    placeholder={String(value.effectiveStack)}
-                    value={value.seatStacks?.[pos]}
-                    onChangeValue={(stack) => update({ seatStacks: { ...value.seatStacks, [pos]: stack } })}
-                  />
-                </View>
-              );
-            })}
-
-            <Text style={styles.label}>Lieu (optionnel)</Text>
+        {value.gameType === 'tournament' && (
+          <>
+            <Text style={styles.label}>Buy-in (optionnel)</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ex : Club Circus, Bruxelles"
-              maxLength={LOCATION_MAX_LENGTH}
-              value={value.location ?? ''}
-              onChangeText={(t) => update({ location: t })}
+              placeholder="Ex : 100€"
+              maxLength={BUY_IN_MAX_LENGTH}
+              value={value.buyIn ?? ''}
+              onChangeText={(t) => update({ buyIn: t })}
             />
-
-            {value.gameType === 'tournament' && (
-              <>
-                <Text style={styles.label}>Buy-in (optionnel)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex : 100€"
-                  maxLength={BUY_IN_MAX_LENGTH}
-                  value={value.buyIn ?? ''}
-                  onChangeText={(t) => update({ buyIn: t })}
-                />
-              </>
-            )}
-          </View>
+          </>
         )}
       </View>
     </WizardScreen>
@@ -671,60 +599,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-  },
-  advancedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: 'rgba(22,35,61,0.18)',
-    backgroundColor: 'rgba(22,35,61,0.04)',
-  },
-  advancedHeaderOpen: {
-    borderColor: colors.action,
-    backgroundColor: 'rgba(232,87,31,0.08)',
-  },
-  advancedHeaderText: {
-    flex: 1,
-  },
-  advancedTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  advancedSubtitle: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  advancedToggleLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.action,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  advancedChevronBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(22,35,61,0.10)',
-  },
-  advancedChevronBadgeOpen: {
-    backgroundColor: colors.action,
-  },
-  advancedChevron: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  advancedChevronOpen: {
-    color: '#fff',
   },
 });
