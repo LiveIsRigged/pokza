@@ -122,7 +122,17 @@ export const Turnstile = forwardRef<TurnstileHandle, Props>(function Turnstile(
           // Un jeton Turnstile expire au bout de 5 minutes. Sans ce rappel, un formulaire laissé
           // ouvert enverrait un jeton périmé et l'utilisateur verrait un refus inexplicable.
           'expired-callback': () => callbacks.current.onToken(null),
-          'error-callback': () => callbacks.current.onToken(null),
+          // ⚠️ Ce chemin-ci est celui du challenge qui échoue APRÈS un chargement réussi — distinct
+          // du `.catch()` plus bas, qui ne couvre que le script injoignable. Il se contentait de
+          // remettre le jeton à `null` : le bouton d'envoi redevenait gris et PLUS RIEN n'était
+          // dit. La personne voyait un formulaire rempli, un bouton mort, aucune explication, et
+          // n'avait aucun moyen de deviner qu'il fallait recharger la page.
+          'error-callback': () => {
+            callbacks.current.onToken(null);
+            callbacks.current.onError?.(
+              "La vérification anti-robot a échoué. Recharge la page pour réessayer.",
+            );
+          },
         });
       })
       .catch(() => {

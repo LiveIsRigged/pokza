@@ -7,6 +7,7 @@ import { colors, radius } from '../theme/theme';
 import { webOrigin, readInitialDeepLink } from '../navigation/deepLink';
 import { openPublicReport, type PublicReportTarget } from '../utils/publicReport';
 import { passwordError } from './passwordRules';
+import { errorMessage } from '../utils/errorMessage';
 import { Turnstile, captchaEnabled, type TurnstileHandle } from './Turnstile';
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
@@ -49,7 +50,12 @@ const AUTH_ERROR_TRANSLATIONS: [string, string][] = [
 function translateAuthError(message: string): string {
   const lower = message.toLowerCase();
   const match = AUTH_ERROR_TRANSLATIONS.find(([needle]) => lower.includes(needle));
-  return match ? match[1] : message;
+  if (match) return match[1];
+  // Aucune des tournures Supabase connues. Le repli renvoyait alors le message BRUT — donc en
+  // anglais : « Failed to fetch » s'affichait tel quel en rouge sous le formulaire, observé en
+  // direct pendant l'audit. `errorMessage` reconnaît en plus les pannes réseau et les formule en
+  // français ; pour tout le reste il rend le message d'origine, comme avant.
+  return errorMessage(message);
 }
 
 /** Champ de saisie avec icône de tête (et éventuel bouton de fin, ex. l'œil du mot de passe). */
