@@ -96,8 +96,12 @@ export function bestHandRank(cards: Card[]): HandRank {
  */
 function bestOmahaHandRank(holeCards: Card[], board: Card[]): HandRank {
   let best: HandRank | null = null;
+  // Les triplets du board sont sortis de la boucle : ils ne dépendent pas de la paire fermée, et
+  // les reconstruire à chaque itération multipliait le travail par le nombre de paires possibles
+  // (10 en PLO5).
+  const board3s = chooseK(board, 3);
   for (const hole2 of chooseK(holeCards, 2)) {
-    for (const board3 of chooseK(board, 3)) {
+    for (const board3 of board3s) {
       const rank = evaluate5([...hole2, ...board3]);
       if (!best || compareHandRanks(rank, best) > 0) best = rank;
     }

@@ -6,3 +6,6 @@ supabase/.temp/
 
 # Identifiants seed de DEV — ne pas publier sur le repo public
 docs/dev/seed-passwords.sql
+
+# Sortie de compilation des scripts de test (regénérée par le tsc local, cf. l'en-tête des scripts)
+scripts/b3/
