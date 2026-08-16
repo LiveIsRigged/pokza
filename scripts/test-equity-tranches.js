@@ -23,8 +23,23 @@
 const fs = require('fs');
 const path = require('path');
 
-const avant = require('./avant/engine/equity.js');
-const apres = require('./b3/engine/equity.js');
+// Le nombre de tirages est une valeur produit, il bouge. Ce test ne porte PAS dessus : il porte sur
+// le découpage. On aligne donc la référence sur le réglage courant, sinon toute évolution du
+// nombre de tirages ferait échouer un test qui n'a rien à voir.
+const N_COURANT = (() => {
+  const m = fs.readFileSync(path.join(__dirname, 'b3/engine/equity.js'), 'utf8').match(/const MONTE_CARLO_SAMPLES = (\d+);/);
+  if (!m) {
+    console.error('KO : `MONTE_CARLO_SAMPLES` introuvable dans le build.');
+    process.exit(1);
+  }
+  return m[1];
+})();
+const REF = path.join(__dirname, 'avant/engine/equityAligne.js');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'avant/engine/equity.js'), 'utf8');
+  fs.writeFileSync(REF, src.replace(/const MONTE_CARLO_SAMPLES = \d+;/, `const MONTE_CARLO_SAMPLES = ${N_COURANT};`));
+}
+const avant = require(REF);
 
 // Sonde à granularité MAXIMALE : même code, mais une tranche par mélange (budget 0 ms). Si le
 // découpage tombait ailleurs que sur les frontières de mélange, c'est ici que ça se verrait — la

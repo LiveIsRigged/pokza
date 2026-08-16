@@ -77,8 +77,10 @@ const AAvsKK = [
   );
 }
 
-// ── 4. Justesse. Valeur de référence de As Ah contre Kd Kc préflop : **81,36 %**, obtenue ici même
-// par un tirage de 200 000 (erreur type 0,09 point). Ce n'est PAS le 82,4 % que tout le monde cite :
+// ── 4. Justesse. Valeur de référence de As Ah contre Kd Kc préflop : **81,2555 %**. Ce n'est plus
+// une estimation : c'est l'énumération EXACTE des 1 712 304 boards de 5 cartes possibles dans les
+// 48 restantes (le repère précédent, 81,36 %, venait lui-même d'un tirage de 200 000 — comparer une
+// estimation à une autre estimation ne prouvait pas grand-chose). Ce n'est PAS le 82,4 % que tout le monde cite :
 // ce chiffre-là vaut pour un AA qui partage une couleur avec le KK et lui bloque ses tirages. Ici
 // les quatre cartes sont de couleurs différentes, ce qui est le cas le moins favorable à AA.
 // La tolérance de 1,5 point est celle d'un affichage arrondi à l'entier : au-delà, le pourcentage
@@ -87,9 +89,9 @@ const AAvsKK = [
 {
   const e = computeEquity(AAvsKK, [], 'nlhe');
   cas(
-    'AA contre KK préflop : à moins de 1,5 point de la référence 81,36 %',
-    Math.abs(e.a - 81.36) < 1.5,
-    `obtenu ${e.a.toFixed(2)} % / ${e.b.toFixed(2)} % · écart ${(e.a - 81.36).toFixed(2)} pt · somme ${(e.a + e.b).toFixed(2)}`,
+    'AA contre KK préflop : à moins de 1,5 point de la valeur exacte 81,2555 %',
+    Math.abs(e.a - 81.2555) < 1.5,
+    `obtenu ${e.a.toFixed(2)} % / ${e.b.toFixed(2)} % · écart ${(e.a - 81.2555).toFixed(2)} pt · somme ${(e.a + e.b).toFixed(2)}`,
   );
 }
 

@@ -3,10 +3,7 @@ import { Platform } from 'react-native';
 /** Une intention de navigation extraite d'un lien ouvert de l'extérieur (partage, QR, invitation). */
 export type DeepLinkRoute =
   | { type: 'invite'; userId: string }
-  | { type: 'post'; postId: string }
-  // TEMPORAIRE — écran de mesure du coût de l'équité (cf. `MesurePerfScreen`), à retirer une fois
-  // le nombre de tirages arbitré. Ne porte aucune donnée, donc rien à valider.
-  | { type: 'mesure' };
+  | { type: 'post'; postId: string };
 
 /**
  * Origine web réelle sur laquelle bâtir les liens partagés : en dev c'est `http://localhost:8081`,
@@ -45,7 +42,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function readInitialDeepLink(): DeepLinkRoute | null {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
   const path = window.location?.pathname ?? '';
-  if (/^\/mesure\/?$/.test(path)) return { type: 'mesure' };
   const inviteMatch = path.match(/^\/invite\/([^/]+)\/?$/);
   if (inviteMatch) {
     const userId = decodeURIComponent(inviteMatch[1]);

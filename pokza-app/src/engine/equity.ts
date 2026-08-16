@@ -18,12 +18,33 @@ export interface EquityContender {
 // coûteux côté client (jusqu'à ~1,7M combinaisons à 5 cartes) — simulation Monte Carlo à la place.
 // Turn/river connus (0-2 cartes à venir) restent énumérés exactement, largement assez rapides
 // (au pire ~1000 combinaisons).
-// Erreur MESURÉE à 2000 tirages, sur 420 équités comparées à l'énumération exacte : 0,55 point en
-// moyenne, 1,2 au 90e centile, 2,1 au pire. Ce nombre était plafonné par le gel qu'il provoquait ;
-// depuis que le calcul se fait par tranches (`runEquityInSlices`), le monter ne coûte plus qu'un
-// délai d'affichage, plus une app inerte. C'est donc devenu une VALEUR PRODUIT à arbitrer
-// (précision contre délai), pas une contrainte technique.
-const MONTE_CARLO_SAMPLES = 2000;
+// Arbitré le 16/08/2026, sur mesure et non sur estimation.
+// ────────────────────────────────────────────────────────
+// Ce nombre était plafonné par le GEL qu'il provoquait. Depuis que le calcul avance par tranches
+// (`runEquityInSlices`), il ne coûte plus qu'un DÉLAI d'affichage — mais un délai réel, puisque
+// rien ne s'affiche tant que le chiffre n'est pas prêt (décision produit).
+//
+// Le vrai plafond n'est pas le confort, c'est la lecture automatique : elle avance toutes les
+// 1400 ms (`AUTOPLAY_INTERVAL_MS`) et un changement de pas ANNULE le calcul en cours. Or l'équité
+// préflop n'existe qu'à un seul pas. Un calcul plus long que ça n'aboutirait jamais en lecture
+// auto, et le pourcentage ne s'afficherait pas du tout.
+//
+// Mesuré sur l'iPhone de l'utilisateur (écran temporaire `/mesure`, depuis retiré) : le téléphone
+// n'est que 1,3 fois plus lent que le Mac, pas 3 à 6 fois comme je l'avais estimé. À 5000 tirages,
+// le pire cas — PLO5 à 4 joueurs — prend 448 ms : il resterait dans la fenêtre même sur un
+// téléphone deux fois plus lent que celui-ci.
+//
+// Erreur MESURÉE contre une référence à 200 000 tirages :
+//                     2000 (avant)   5000 (ici)
+//   NLHE 4 joueurs      0,68 pt       0,39 pt
+//   PLO5 4 joueurs      0,74 pt       0,47 pt
+//   pire cas            2,35 pt       1,29 pt
+//
+// ⚠️ Ne pas viser « l'arrondi affiché toujours juste » : ce taux vaut environ le double de
+// l'erreur moyenne (un vrai 46,49 bascule pour 0,02 point d'erreur), il faudrait ~1,6 million de
+// tirages pour le descendre sous 5 %. La grandeur qui compte est l'erreur en points, parce que
+// c'est elle qui peut inverser l'ordre de deux mains proches.
+const MONTE_CARLO_SAMPLES = 5000;
 
 function combinations<T>(arr: T[], k: number): T[][] {
   const results: T[][] = [];
