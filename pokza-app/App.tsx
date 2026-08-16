@@ -34,6 +34,7 @@ import { SideMenu, useMenuEdgeSwipe } from './src/components/ui/SideMenu';
 import { Screen } from './src/components/ui/Screen';
 import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { FeedHeader } from './src/components/ui/FeedHeader';
+import { ConnectionErrorScreen } from './src/components/ui/ConnectionErrorScreen';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
 import { GroupScreen } from './src/groups/GroupScreen';
 import { fetchMyGroups, fetchPendingGroupInvites, inviteToGroup, type Group } from './src/data/groups';
@@ -92,8 +93,26 @@ function AppContent() {
     avatarUrl: myAvatarUrl,
     isAdmin,
     loading: profileLoading,
+    error: profileError,
     refetch: refetchProfile,
   } = useProfileStatus(session?.user.id);
+
+  // Délai de grâce avant d'avouer l'échec. `useProfileStatus` réessaie déjà tout seul et un
+  // incident passager (jeton en cours de rafraîchissement) se règle en quelques centaines de
+  // millisecondes : afficher l'erreur tout de suite ferait clignoter l'écran à chaque hoquet.
+  // Au-delà, c'est une vraie coupure et un écran blanc muet serait pire que le message.
+  const [profileErrorVisible, setProfileErrorVisible] = useState(false);
+  // Dépendance sur la PRÉSENCE d'une erreur, pas sur son texte : sinon un message qui changerait
+  // d'une tentative à l'autre relancerait le délai sans fin, et l'écran ne s'afficherait jamais.
+  const profileHasError = Boolean(profileError);
+  useEffect(() => {
+    if (!profileHasError) {
+      setProfileErrorVisible(false);
+      return;
+    }
+    const timer = setTimeout(() => setProfileErrorVisible(true), 3000);
+    return () => clearTimeout(timer);
+  }, [profileHasError]);
   const [mode, setMode] = useState<
     | 'feed'
     | 'create'
@@ -397,6 +416,17 @@ function AppContent() {
   }
 
   if (profileLoading || hasProfile === null) {
+    // L'état du profil n'est pas encore connu. Si c'est parce qu'on n'ARRIVE pas à le savoir et que
+    // ça dure, on le dit — plutôt qu'un écran blanc muet. `hasProfile` n'est jamais passé à `false`
+    // sur une erreur : c'est ce qui produisait le faux « Complète ton profil ».
+    if (profileErrorVisible && profileError) {
+      return (
+        <View style={styles.container}>
+          <ConnectionErrorScreen message={profileError} onRetry={refetchProfile} />
+          <StatusBar style="dark" />
+        </View>
+      );
+    }
     return <View style={styles.container} />;
   }
 
