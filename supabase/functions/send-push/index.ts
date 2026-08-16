@@ -106,6 +106,33 @@ function urlFor(n: NotificationRecord): string {
   return '/';
 }
 
+type PrefFamily = 'likes' | 'comments' | 'friends' | 'groups';
+
+/** Famille des Réglages > Notifications à laquelle appartient chaque type — miroir de
+ * `notificationPrefs.ts` côté app. `null` = modération, jamais désactivable. */
+function familyFor(type: NotificationType): PrefFamily | null {
+  switch (type) {
+    case 'post_like':
+    case 'comment_like':
+      return 'likes';
+    case 'post_comment':
+    case 'comment_reply':
+      return 'comments';
+    case 'friend_request':
+    case 'friend_accept':
+    case 'friend_posted':
+      return 'friends';
+    case 'group_invite':
+    case 'group_accept':
+    case 'group_posted':
+      return 'groups';
+    case 'report_resolved':
+    case 'content_removed':
+    case 'account_sanctioned':
+      return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
@@ -124,6 +151,21 @@ Deno.serve(async (req) => {
     const n: NotificationRecord | undefined = payload?.record;
     if (!n || payload.table !== 'notifications' || payload.type !== 'INSERT') {
       return new Response('ignored', { status: 200 });
+    }
+
+    // Coupure par famille (Réglages > Notifications, push uniquement — l'historique in-app reste
+    // toujours complet). L'ABSENCE de ligne veut dire « tout activé » : on ne filtre que si une
+    // ligne existe et que la famille y est explicitement à `false`.
+    const family = familyFor(n.type);
+    if (family) {
+      const { data: prefs } = await admin
+        .from('notification_prefs')
+        .select(family)
+        .eq('user_id', n.recipient_id)
+        .maybeSingle();
+      if (prefs && (prefs as Record<PrefFamily, boolean>)[family] === false) {
+        return new Response('family disabled', { status: 200 });
+      }
     }
 
     // Résolution des libellés en service_role (contourne la RLS).

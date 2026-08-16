@@ -45,7 +45,7 @@ import { FriendsListScreen } from './src/friends/FriendsListScreen';
 import { InvitationsScreen } from './src/invitations/InvitationsScreen';
 import { StatsScreen } from './src/stats/StatsScreen';
 import { BlockedListScreen } from './src/profile/BlockedListScreen';
-import { LegalScreen } from './src/legal/LegalScreen';
+import { SettingsScreen } from './src/settings/SettingsScreen';
 import { AdminReportsScreen } from './src/admin/AdminReportsScreen';
 import { AdminReportDetailScreen } from './src/admin/AdminReportDetailScreen';
 import { AdminUserScreen } from './src/admin/AdminUserScreen';
@@ -127,7 +127,7 @@ function AppContent() {
     | 'invitations'
     | 'stats'
     | 'blocked'
-    | 'legal'
+    | 'settings'
     | 'adminReports'
     | 'adminReportDetail'
     | 'adminUser'
@@ -618,7 +618,6 @@ function AppContent() {
             setMode('group');
           }}
           onOpenFriends={() => setMode('myFriends')}
-          onOpenBlocked={() => setMode('blocked')}
         />
         <StatusBar style="dark" />
       </Screen>
@@ -749,11 +748,8 @@ function AppContent() {
   }
 
   if (mode === 'blocked') {
-    // On y arrive depuis « Modifier mon profil » (réglages) → on revient sur son profil.
-    const onBack = () => {
-      setViewingProfileId(session.user.id);
-      setMode('profile');
-    };
+    // On y arrive depuis Réglages (menu latéral) → on y revient.
+    const onBack = () => setMode('settings');
     return (
       <Screen onBack={onBack}>
         <BlockedListScreen
@@ -769,11 +765,11 @@ function AppContent() {
     );
   }
 
-  if (mode === 'legal') {
+  if (mode === 'settings') {
     const onBack = () => setMode('feed');
     return (
       <Screen onBack={onBack}>
-        <LegalScreen onBack={onBack} />
+        <SettingsScreen userId={session.user.id} onBack={onBack} onOpenBlocked={() => setMode('blocked')} />
         <StatusBar style="dark" />
       </Screen>
     );
@@ -945,14 +941,14 @@ function AppContent() {
               setMode('groups');
             },
           },
-          // « Comptes bloqués » n'est PAS ici : c'est un réglage rare, rangé dans « Modifier mon
-          // profil » (à côté de « Supprimer mon compte »), pas un onglet de premier niveau.
+          // « Comptes bloqués », « Supprimer mon compte » et « Informations légales » ne sont PAS
+          // ici : ce sont des réglages, rangés dans « Réglages » plutôt qu'au premier niveau du menu.
           {
-            label: 'Informations légales',
-            icon: '📄',
+            label: 'Réglages',
+            icon: '⚙️',
             onPress: () => {
               setMenuOpen(false);
-              setMode('legal');
+              setMode('settings');
             },
           },
           // Uniquement pour le compte admin (fondateur).

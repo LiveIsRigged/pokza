@@ -69,8 +69,6 @@ interface ProfileScreenProps {
   onOpenGroup?: (groupId: string) => void;
   /** Ouvre l'écran séparé « Mes amis » (uniquement sur son propre profil). */
   onOpenFriends?: () => void;
-  /** Ouvre l'écran « Comptes bloqués » depuis les réglages (« Modifier mon profil »). */
-  onOpenBlocked?: () => void;
   /** Prévient l'écran parent qu'il faut rafraîchir sa propre copie du profil (menu latéral) —
    * après un changement d'avatar, de pseudo ou de préférence d'affichage. */
   onProfileChanged?: () => void;
@@ -85,7 +83,6 @@ export function ProfileScreen({
   onSelectProfile,
   onOpenGroup,
   onOpenFriends,
-  onOpenBlocked,
   onProfileChanged,
 }: ProfileScreenProps) {
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
@@ -682,7 +679,6 @@ export function ProfileScreen({
           userId={currentUserId}
           onCancel={() => setEditingProfile(false)}
           onSaved={handleProfileSaved}
-          onOpenBlocked={onOpenBlocked}
         />
       )}
     </View>

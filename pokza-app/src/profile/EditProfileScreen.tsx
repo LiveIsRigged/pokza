@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
-import { deleteOwnAccount, updateProfile, type ProfileDetails } from '../data/profiles';
-import { supabase } from '../lib/supabase';
+import { updateProfile, type ProfileDetails } from '../data/profiles';
 import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
-import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { countryByCode, flagEmoji } from '../data/countries';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
@@ -17,16 +15,15 @@ interface EditProfileScreenProps {
   userId: string;
   onCancel: () => void;
   onSaved: (updated: ProfileDetails) => void;
-  /** Ouvre l'écran « Comptes bloqués » — réglage rare rangé ici plutôt que dans le menu principal. */
-  onOpenBlocked?: () => void;
 }
 
 /**
  * Champs modifiables après l'inscription : pseudo, préférence d'affichage, description, format
  * favori, fréquence de jeu. Prénom/nom/date de naissance restent verrouillés — ils vivent dans
  * `profiles_private`, une table à part avec ses propres règles, et changent rarement en pratique.
+ * Comptes bloqués et suppression de compte vivent désormais dans Réglages (menu latéral), pas ici.
  */
-export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBlocked }: EditProfileScreenProps) {
+export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditProfileScreenProps) {
   const [pseudo, setPseudo] = useState(profile.pseudo);
   const [displayPreference, setDisplayPreference] = useState<'pseudo' | 'nom'>(profile.displayPreference);
   const [bio, setBio] = useState(profile.bio ?? '');
@@ -37,24 +34,8 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBl
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [deletingAccount, setDeletingAccount] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const canSubmit = pseudo.trim().length > 0 && !!country && !submitting;
-
-  const handleDeleteAccount = async () => {
-    setDeleteError(null);
-    setDeletingAccount(true);
-    try {
-      await deleteOwnAccount(userId);
-      await supabase.auth.signOut();
-    } catch (err) {
-      setDeletingAccount(false);
-      setConfirmingDelete(false);
-      setDeleteError(errorMessage(err));
-    }
-  };
 
   const handleSave = async () => {
     setError(null);
@@ -161,32 +142,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved, onOpenBl
           {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Enregistrer</Text>}
         </Pressable>
 
-        {onOpenBlocked && (
-          <Pressable style={styles.settingsRow} onPress={onOpenBlocked}>
-            <Text style={styles.settingsRowLabel}>Comptes bloqués</Text>
-            <Text style={styles.settingsRowChevron}>›</Text>
-          </Pressable>
-        )}
-
-        {deleteError && <Text style={styles.error}>{deleteError}</Text>}
-
-        <View style={styles.dangerZone}>
-          <Pressable onPress={() => setConfirmingDelete(true)} hitSlop={8}>
-            <Text style={styles.deleteLink}>Supprimer mon compte</Text>
-          </Pressable>
-        </View>
       </ScrollView>
-
-      <ConfirmSheet
-        visible={confirmingDelete}
-        icon="🗑"
-        title="Supprimer ton compte ?"
-        message="Ton compte, tes mains et tes commentaires seront définitivement supprimés."
-        confirmLabel="Supprimer définitivement"
-        loading={deletingAccount}
-        onCancel={() => setConfirmingDelete(false)}
-        onConfirm={handleDeleteAccount}
-      />
 
       <CountryPicker
         visible={countryPickerOpen}
@@ -320,33 +276,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 28,
-    paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(22,35,61,0.15)',
-  },
-  settingsRowLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  settingsRowChevron: {
-    fontSize: 20,
-    color: colors.textSecondary,
-  },
-  dangerZone: {
-    marginTop: 32,
-    alignItems: 'center',
-  },
-  deleteLink: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
   },
 });
