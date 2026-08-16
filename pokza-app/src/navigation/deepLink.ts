@@ -24,13 +24,34 @@ export function webOrigin(): string {
  * `/invite/:userId` (ouvrir le profil de la personne pour l'ajouter) et `/post/:postId` (ouvrir la
  * main partagée). Renvoie `null` sur tout autre chemin, ou sur mobile natif.
  */
+/**
+ * Un lien ouvert de l'extérieur est la SEULE donnée de l'app qui vienne d'un inconnu : n'importe
+ * qui peut en fabriquer un et l'envoyer à quelqu'un. L'identifiant qu'il porte est donc vérifié
+ * ici, à la frontière, plutôt que dans chacun des écrans qui s'en servent ensuite.
+ *
+ * ⚠️ Ce n'est pas une simple politesse d'affichage. Cet identifiant finit interpolé dans des
+ * filtres PostgREST construits par concaténation de chaînes (`fetchFriendStatus`,
+ * `deleteFriendRelation` : `.or('and(sender_id.eq.<id>,…)')`). Une valeur contenant une parenthèse
+ * ou une virgule n'y est pas une valeur : c'est de la SYNTAXE de filtre. La RLS reste le vrai
+ * rempart — elle ne laisse toucher que ses propres lignes — mais un filtre élargi pourrait porter
+ * une action volontaire sur plus de lignes que celle visée. Refuser tout ce qui n'est pas un UUID
+ * ferme la question à la source, pour tous les usages présents et futurs de cette valeur.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function readInitialDeepLink(): DeepLinkRoute | null {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
   const path = window.location?.pathname ?? '';
   const inviteMatch = path.match(/^\/invite\/([^/]+)\/?$/);
-  if (inviteMatch) return { type: 'invite', userId: decodeURIComponent(inviteMatch[1]) };
+  if (inviteMatch) {
+    const userId = decodeURIComponent(inviteMatch[1]);
+    return UUID.test(userId) ? { type: 'invite', userId } : null;
+  }
   const postMatch = path.match(/^\/post\/([^/]+)\/?$/);
-  if (postMatch) return { type: 'post', postId: decodeURIComponent(postMatch[1]) };
+  if (postMatch) {
+    const postId = decodeURIComponent(postMatch[1]);
+    return UUID.test(postId) ? { type: 'post', postId } : null;
+  }
   return null;
 }
 
