@@ -22,6 +22,7 @@ import { AuthProvider, useAuth } from './src/state/auth';
 import { useProfileStatus } from './src/state/profile';
 import { AuthScreen } from './src/auth/AuthScreen';
 import { PublicPostScreen } from './src/post/PublicPostScreen';
+import { MesurePerfScreen } from './src/dev/MesurePerfScreen';
 import { NewPasswordScreen } from './src/auth/NewPasswordScreen';
 import { CompleteProfileScreen } from './src/profile/CompleteProfileScreen';
 import { ProfileScreen } from './src/profile/ProfileScreen';
@@ -328,6 +329,8 @@ function AppContent() {
     const route = readInitialDeepLink();
     return route?.type === 'post' ? route.postId : null;
   });
+  // TEMPORAIRE — `/mesure`, cf. `MesurePerfScreen`. À retirer avec l'écran.
+  const [ecranMesure] = useState(() => readInitialDeepLink()?.type === 'mesure');
   // Passe outre l'aperçu public quand le visiteur clique « Créer un compte » — sans quoi il
   // resterait bloqué sur la main, l'URL n'ayant pas changé.
   const [veutSeConnecter, setVeutSeConnecter] = useState(false);
@@ -408,6 +411,17 @@ function AppContent() {
 
   if (!fontsLoaded || loading) {
     return <View style={styles.container} />;
+  }
+
+  // TEMPORAIRE — `/mesure` passe AVANT la garde de session : l'écran doit s'ouvrir aussi bien
+  // connecté que non, puisque le téléphone à mesurer est justement celui qui a une session.
+  if (ecranMesure) {
+    return (
+      <View style={styles.container}>
+        <MesurePerfScreen />
+        <StatusBar style="dark" />
+      </View>
+    );
   }
 
   if (!session) {
