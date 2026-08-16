@@ -10,7 +10,7 @@ import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
 import { ActivityIndicator, Animated, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { installPwaMeta } from './src/web/installPwaMeta';
-import { InstallPrompt } from './src/web/InstallPrompt';
+import { InstallPromptProvider } from './src/web/InstallPrompt';
 import { registerPushServiceWorker } from './src/web/push';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
@@ -78,8 +78,7 @@ export default function App() {
 function RootChrome({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.rootChrome}>
-      {children}
-      <InstallPrompt />
+      <InstallPromptProvider>{children}</InstallPromptProvider>
     </View>
   );
 }

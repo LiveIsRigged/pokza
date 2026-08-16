@@ -10,6 +10,7 @@ import { passwordError } from './passwordRules';
 import { errorMessage } from '../utils/errorMessage';
 import { Turnstile, captchaEnabled, type TurnstileHandle } from './Turnstile';
 import { LegalScreen } from '../legal/LegalScreen';
+import { useInstallPromptInset } from '../web/InstallPrompt';
 import type { LegalDocId } from '../legal/legalContent';
 import {
   EyeIcon,
@@ -125,6 +126,12 @@ export function AuthScreen() {
   // Consentement obligatoire à l'inscription (18 ans + CGU + confidentialité) et lecture des textes.
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [legalDoc, setLegalDoc] = useState<LegalDocId | null>(null);
+
+  // Hauteur du bandeau « Installe Pokza », qui flotte par-dessus le bas de l'écran. Sans cette
+  // réserve, il recouvrait le lien « Crée-en un » et absorbait le tap — le tout premier geste d'un
+  // nouveau venu, et le bandeau ne s'affiche justement qu'aux nouveaux venus. Vaut 0 dès qu'il est
+  // fermé ou absent (natif, app déjà installée), l'écran reprend alors sa position normale.
+  const installInset = useInstallPromptInset();
 
   // Un visiteur qui ouvre un lien partagé (`/post/:id` ou `/invite/:id`) sans compte atterrit ici :
   // on lui offre un accès discret au signalement public (§5.2) pour la cible du lien, sans l'obliger
@@ -248,7 +255,7 @@ export function AuthScreen() {
 
   if (mode === 'forgotPassword') {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingBottom: installInset }]}>
         <BrandHeader compact />
         <Text style={styles.subtitle}>Mot de passe oublié</Text>
 
@@ -300,7 +307,7 @@ export function AuthScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: installInset }]}>
       <BrandHeader compact={mode === 'signUp'} />
 
       <InputRow icon={<MailIcon color={ICON_MUTED} />}>
