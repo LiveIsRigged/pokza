@@ -19,12 +19,27 @@ export async function fetchFriendStatus(currentUserId: string, otherUserId: stri
     .or(
       `and(sender_id.eq.${currentUserId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUserId})`
     )
-    .maybeSingle();
+    .limit(2);
   if (error) throw error;
-  const row = data as FriendRequestRow | null;
-  if (!row) return 'none';
-  if (row.status === 'accepted') return 'friends';
-  return row.sender_id === currentUserId ? 'pending_sent' : 'pending_received';
+
+  // ⚠️ DEUX lignes peuvent exister pour un même couple, et c'est le cœur du correctif.
+  // La clé primaire est `(sender_id, receiver_id)` : elle interdit deux demandes dans le MÊME sens,
+  // pas une demande dans chaque sens. Il suffit que deux personnes s'ajoutent en même temps — le
+  // scénario exact d'un soir de lancement où cinq joueurs s'ajoutent tous mutuellement.
+  // Cette requête utilisait `maybeSingle()`, qui ÉCHOUE au-delà d'une ligne : l'écran de profil
+  // affichait alors une erreur PostgREST brute, et le bouton d'ami restait inutilisable. De façon
+  // définitive, puisque la seule action capable de nettoyer la situation était sur cet écran-là.
+  const rows = (data ?? []) as FriendRequestRow[];
+  if (rows.length === 0) return 'none';
+  // Une seule ligne acceptée suffit : la relation est symétrique, l'autre ligne éventuelle est un
+  // doublon inoffensif (`fetchFriends` ne compte que les lignes acceptées, donc l'ami n'apparaît
+  // qu'une fois).
+  if (rows.some((r) => r.status === 'accepted')) return 'friends';
+  // Demandes croisées : les deux se sont ajoutés, personne n'a encore accepté. Montrer « Accepter »
+  // plutôt que « Demande envoyée » — un tap suffit alors à résoudre la situation, et le prochain
+  // appel renverra `friends` grâce à la règle du dessus.
+  if (rows.some((r) => r.receiver_id === currentUserId)) return 'pending_received';
+  return 'pending_sent';
 }
 
 export async function sendFriendRequest(senderId: string, receiverId: string): Promise<void> {
