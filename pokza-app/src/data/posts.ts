@@ -155,6 +155,60 @@ export async function fetchPost(postId: string): Promise<Post | null> {
   return data ? rowToPost(data as PostFeedRow) : null;
 }
 
+/**
+ * Une main publique vue par quelqu'un qui n'a PAS de compte. Volontairement pauvre : ni auteur, ni
+ * commentaires, ni likes, ni votes — décision produit du 16/08/2026. Le visiteur voit la main et
+ * son déroulé, rien d'autre.
+ */
+export interface PublicPost {
+  id: string;
+  title: string;
+  description?: string;
+  location?: string;
+  buyIn?: string;
+  level?: string;
+  createdAt: string;
+  hand: Hand;
+}
+
+/**
+ * Lit une main partagée SANS être connecté.
+ *
+ * ⚠️ Tape la table `posts` brute et non les vues du feed : `posts_feed`, `posts_ranked` et
+ * consorts joignent `profiles`, dont la lecture a été retirée aux visiteurs anonymes le 15/08
+ * (`profils-lecture-connectes.sql`). Elles répondent donc 401 à un anonyme, alors que la table
+ * elle-même reste lisible — la RLS y expose exactement les mains publiques, ce qui est très
+ * précisément ce qu'il faut ici. Aucun changement côté base n'a été nécessaire.
+ *
+ * La liste des colonnes est la garantie principale : ce qui n'est pas demandé ne peut pas fuiter.
+ * `author_id` n'arrive jamais jusqu'au client. Ne pas y ajouter de colonne sans se demander si un
+ * inconnu a le droit de la voir.
+ *
+ * Le filtre sur `visibility` est redondant avec la RLS pour un anonyme, mais pas pour quelqu'un de
+ * connecté qui emprunterait ce chemin : sans lui, il pourrait afficher sa propre main privée dans
+ * un écran conçu pour du public.
+ */
+export async function fetchPublicPost(postId: string): Promise<PublicPost | null> {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, title, description, location, buy_in, level, created_at, hand')
+    .eq('id', postId)
+    .eq('visibility', 'public')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id,
+    title: data.title,
+    description: data.description ?? undefined,
+    location: data.location ?? undefined,
+    buyIn: data.buy_in ?? undefined,
+    level: data.level ?? undefined,
+    createdAt: data.created_at,
+    hand: data.hand as Hand,
+  };
+}
+
 interface NewPostInput {
   authorId: string;
   location?: string;

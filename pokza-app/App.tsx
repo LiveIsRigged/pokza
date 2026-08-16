@@ -21,6 +21,7 @@ import { DisplayUnitProvider } from './src/state/displayUnit';
 import { AuthProvider, useAuth } from './src/state/auth';
 import { useProfileStatus } from './src/state/profile';
 import { AuthScreen } from './src/auth/AuthScreen';
+import { PublicPostScreen } from './src/post/PublicPostScreen';
 import { NewPasswordScreen } from './src/auth/NewPasswordScreen';
 import { CompleteProfileScreen } from './src/profile/CompleteProfileScreen';
 import { ProfileScreen } from './src/profile/ProfileScreen';
@@ -318,6 +319,19 @@ function AppContent() {
   // Lien ouvert de l'extérieur (partage / QR / invitation) : dès que le profil est prêt, on lit
   // l'URL une seule fois puis on la nettoie. `/invite/:id` amène sur le profil de la personne (avec
   // le bouton "Ajouter en ami"), `/post/:id` ouvre la main partagée. Ignoré sur mobile natif.
+  // Lu UNE FOIS au montage, avant toute garde de session : l'effet de lien profond ci-dessous
+  // attend d'être connecté ET d'avoir un profil, ce qui arrive bien trop tard pour un visiteur sans
+  // compte. `useState` avec initialiseur paresseux plutôt qu'un effet : la valeur doit être connue
+  // dès le premier rendu, sinon l'écran de connexion s'affiche une fraction de seconde avant la
+  // main partagée.
+  const [publicPostId] = useState(() => {
+    const route = readInitialDeepLink();
+    return route?.type === 'post' ? route.postId : null;
+  });
+  // Passe outre l'aperçu public quand le visiteur clique « Créer un compte » — sans quoi il
+  // resterait bloqué sur la main, l'URL n'ayant pas changé.
+  const [veutSeConnecter, setVeutSeConnecter] = useState(false);
+
   const [deepLinkHandled, setDeepLinkHandled] = useState(false);
   useEffect(() => {
     if (!hasProfile || deepLinkHandled || !session) return;
@@ -397,6 +411,18 @@ function AppContent() {
   }
 
   if (!session) {
+    // Un lien vers une main PUBLIQUE s'ouvre sans compte (décision produit du 16/08). Le visiteur
+    // voit la main et son déroulé, jamais l'auteur ni la couche sociale — cf. `PublicPostScreen`.
+    // L'URL n'est volontairement PAS nettoyée ici : elle reste intacte pour l'effet de lien profond
+    // plus haut, qui rouvrira la main tout seul une fois le compte créé et le profil rempli.
+    if (publicPostId && !veutSeConnecter) {
+      return (
+        <View style={styles.container}>
+          <PublicPostScreen postId={publicPostId} onJoin={() => setVeutSeConnecter(true)} />
+          <StatusBar style="dark" />
+        </View>
+      );
+    }
     return (
       <View style={styles.container}>
         <AuthScreen />
