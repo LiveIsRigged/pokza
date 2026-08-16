@@ -168,11 +168,18 @@ export async function createComment(input: NewCommentInput): Promise<Comment> {
     const resized = await resizeToBase64(input.image, COMMENT_PHOTO_MAX_DIMENSION);
     const path = `${data.id}/photo.jpg`;
     await uploadPrivateImage(COMMENT_PHOTO_BUCKET, path, resized.base64);
-    const { error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from('comments')
       .update({ image_path: path, image_width: resized.width, image_height: resized.height })
-      .eq('id', data.id);
+      .eq('id', data.id)
+      .select('id');
     if (updateError) throw updateError;
+    // Sans ce garde-fou, une modification refusée répondait `204` sans erreur : la photo partait
+    // bien dans le bucket, le commentaire s'affichait AVEC son image grâce à l'URL signée rendue
+    // juste en dessous, et l'image disparaissait au rechargement suivant — la ligne n'ayant jamais
+    // reçu son `image_path`. Ici l'échec est rattrapable : le `catch` supprime le commentaire tout
+    // juste créé, la personne peut réessayer au lieu de garder un commentaire amputé.
+    assertWritten(updated, refusedMessage("La photo du commentaire n'a pas été enregistrée"));
     const { data: signed, error: signError } = await supabase.storage
       .from(COMMENT_PHOTO_BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { assertWritten, refusedMessage } from './writeGuard';
 import { cropAndResizeToBase64, uploadImageToBucket, type CropRegion } from './images';
 
 export type { CropRegion };
@@ -24,8 +25,12 @@ export async function uploadGroupAvatar(groupId: string, uri: string, region: Cr
 }
 
 async function saveGroupAvatarUrl(groupId: string, url: string | null): Promise<void> {
-  const { error } = await supabase.from('groups').update({ avatar_url: url }).eq('id', groupId);
+  // Même garde-fou que pour l'avatar personnel, et plus exposé encore : seul le créateur du groupe
+  // a le droit de modifier la ligne. Pour un simple membre, la modification ne touchait aucune
+  // ligne, ne renvoyait aucune erreur, et le logo semblait changé jusqu'au rechargement.
+  const { data, error } = await supabase.from('groups').update({ avatar_url: url }).eq('id', groupId).select('id');
   if (error) throw error;
+  assertWritten(data, refusedMessage(url ? "Le logo du groupe n'a pas été enregistré" : "Le logo du groupe n'a pas été retiré"));
 }
 
 /** Retire la photo — même ordre (référence d'abord, fichier ensuite) que pour un avatar

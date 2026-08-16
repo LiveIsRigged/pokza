@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { assertWritten, refusedMessage } from './writeGuard';
 import {
   cropAndResizeToBase64,
   pickImage,
@@ -36,8 +37,14 @@ export async function uploadAvatar(userId: string, uri: string, region: CropRegi
 }
 
 async function saveAvatarUrl(userId: string, url: string | null): Promise<void> {
-  const { error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', userId);
+  // Le fichier part dans le bucket AVANT cette ligne. Sans garde-fou, une modification refusée par
+  // la base répondait `204` sans erreur : la fonction rendait l'adresse, l'écran affichait la
+  // nouvelle photo, et elle redevenait l'ancienne au rechargement suivant sans que rien ne l'ait
+  // annoncé. `profiles` fait partie des tables où « pouvoir écrire » implique « pouvoir lire »
+  // (cf. l'analyse policy par policy dans `writeGuard.ts`), le `.select()` est donc sûr ici.
+  const { data, error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', userId).select('id');
   if (error) throw error;
+  assertWritten(data, refusedMessage(url ? "La photo de profil n'a pas été enregistrée" : "La photo de profil n'a pas été retirée"));
 }
 
 /**

@@ -29,6 +29,13 @@
  * Volontairement NON couvert : `markNotificationRead` / `markAllNotificationsRead`. Marquer comme
  * lues des notifications déjà lues touche légitimement zéro ligne — le garde-fou y crierait au
  * loup. Et un badge qui ne se vide pas se voit tout seul.
+ *
+ * Étendu le 16/08/2026 à trois écritures qui avaient échappé au lot F-15, toutes du même genre :
+ * un FICHIER part dans un bucket, puis son adresse est enregistrée en base. Quand la seconde étape
+ * était refusée en silence, la fonction rendait quand même l'adresse et l'écran affichait la
+ * nouvelle image — qui redevenait l'ancienne au rechargement, sans le moindre message.
+ *   `avatars.saveAvatarUrl`, `groupAvatars.saveGroupAvatarUrl` (le plus exposé : seul le créateur
+ *   du groupe a le droit d'écrire la ligne), et la pose de `image_path` dans `createComment`.
  */
 export function assertWritten<T>(rows: T[] | null | undefined, message: string): void {
   if (!rows || rows.length === 0) {
