@@ -66,6 +66,22 @@ export const fonts = {
   sans: 'System',
 } as const;
 
+/**
+ * ⚠️ TOUT `TextInput` DOIT ÊTRE À 16px AU MINIMUM — ce n'est pas un choix esthétique.
+ *
+ * Safari iOS zoome automatiquement sur un champ dont la police calculée est inférieure à 16px,
+ * et **ne dézoome jamais** ensuite : la page reste agrandie, y compris après un retour arrière.
+ * C'est le bug le plus visible qu'ait rencontré la bêta, sur 11 objets de style d'un coup.
+ *
+ * Le viewport n'est PAS un recours : depuis iOS 10, Safari ignore `maximum-scale` et
+ * `user-scalable=no` pour des raisons d'accessibilité. Les ajouter ne ferait que casser le zoom
+ * à deux doigts sur Android. La taille de police est le seul levier réel.
+ *
+ * Attention aux styles composés : `style={[styles.input, styles.description]}` prend le
+ * `fontSize` du DERNIER objet qui en définit un. Un champ peut donc repasser sous 16 sans que
+ * sa propre définition ne mente. Le relevé se refait avec `python3 scripts/zoom-scan.py`,
+ * lancé depuis la racine du dépôt : il liste tout champ sous 16px, styles composés résolus.
+ */
 export const typography = {
   authorName: { fontFamily: fonts.sans, fontWeight: '700' as const, fontSize: 16 },
   dateLocation: { fontFamily: fonts.sans, fontWeight: '400' as const, fontSize: 12 },

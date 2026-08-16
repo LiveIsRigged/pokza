@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(22,35,61,0.25)',
     borderRadius: radius.md,
     padding: spacing.sm,
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textPrimary,
     textAlignVertical: 'top',
   },

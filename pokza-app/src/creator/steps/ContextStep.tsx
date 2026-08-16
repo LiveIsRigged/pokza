@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textPrimary,
     flex: 1,
     marginBottom: 4,
