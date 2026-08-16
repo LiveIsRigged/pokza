@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme/theme';
@@ -37,15 +37,23 @@ interface GroupScreenProps {
   onSelectProfile: (profileId: string) => void;
 }
 
-export function GroupScreen({
-  groupId,
-  currentUserId,
-  currentUserName,
-  onBack,
-  onEditPost,
-  onInviteMembers,
-  onSelectProfile,
-}: GroupScreenProps) {
+export interface GroupScreenHandle {
+  /**
+   * Ferme le panneau ouvert (Modifier le groupe / Liste de membres / Exclure un membre) s'il y en a
+   * un, et renvoie `true` dans ce cas. `App.tsx` s'en sert pour le glissement de bord (`Screen`) :
+   * sans ça, ce geste ignore ces panneaux (rendus en overlay LOCAL à `GroupScreen`, invisibles du
+   * geste qui, lui, est attaché bien plus haut, autour de tout l'écran) et saute directement à « Mes
+   * groupes privés » au lieu de refermer le panneau — contrairement à la flèche ‹ de chaque panneau,
+   * qui referme correctement car elle appelle son propre `onCancel`/`onBack` local. Renvoie `false`
+   * quand rien n'est ouvert, pour laisser `App.tsx` faire son retour normal.
+   */
+  handleBack: () => boolean;
+}
+
+export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>(function GroupScreen(
+  { groupId, currentUserId, currentUserName, onBack, onEditPost, onInviteMembers, onSelectProfile },
+  ref
+) {
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -69,6 +77,28 @@ export function GroupScreen({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
   const [menuAnchor, setMenuAnchor] = useState<OverflowAnchor | null>(null);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      handleBack: () => {
+        if (editingGroup) {
+          setEditingGroup(false);
+          return true;
+        }
+        if (managingMembers) {
+          setManagingMembers(false);
+          return true;
+        }
+        if (viewingMembers) {
+          setViewingMembers(false);
+          return true;
+        }
+        return false;
+      },
+    }),
+    [editingGroup, managingMembers, viewingMembers]
+  );
 
   const openAvatarMenu = () => {
     avatarBadgeRef.current?.measureInWindow((x, y, width, height) => {
@@ -434,7 +464,7 @@ export function GroupScreen({
       <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={groupMenuItems} anchor={menuAnchor} />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

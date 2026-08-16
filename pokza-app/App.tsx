@@ -37,7 +37,7 @@ import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { FeedHeader } from './src/components/ui/FeedHeader';
 import { ConnectionErrorScreen } from './src/components/ui/ConnectionErrorScreen';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
-import { GroupScreen } from './src/groups/GroupScreen';
+import { GroupScreen, type GroupScreenHandle } from './src/groups/GroupScreen';
 import { fetchMyGroups, fetchPendingGroupInvites, inviteToGroup, type Group } from './src/data/groups';
 import { fetchPendingRequests } from './src/data/friends';
 import { AddFriendsScreen } from './src/friends/AddFriendsScreen';
@@ -142,6 +142,10 @@ function AppContent() {
   const [viewingPostComments, setViewingPostComments] = useState(false);
   const [editingPostFallback, setEditingPostFallback] = useState<Post | null>(null);
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
+  // Permet au glissement de bord (`Screen`) de refermer d'abord un panneau local de `GroupScreen`
+  // (Modifier le groupe / Liste de membres / Exclure un membre) au lieu de sauter directement à
+  // « Mes groupes privés » — cf. `GroupScreenHandle`.
+  const groupScreenRef = useRef<GroupScreenHandle>(null);
   const [invitingGroupId, setInvitingGroupId] = useState<string | null>(null);
   // Back-office admin : signalement/compte en cours d'examen, + clé pour rafraîchir la file au retour.
   const [adminReportId, setAdminReportId] = useState<string | null>(null);
@@ -666,9 +670,19 @@ function AppContent() {
       refreshFeed();
       refreshMyGroups();
     };
+    // Le glissement de bord (`Screen`) doit d'abord laisser `GroupScreen` refermer un panneau local
+    // ouvert (Modifier le groupe / Liste de membres / Exclure un membre) s'il y en a un — sinon ce
+    // geste, attaché ici et non conscient de ces panneaux internes, saute directement à « Mes
+    // groupes privés ». La flèche ‹ de `GroupScreen` n'a pas besoin de ce détour : masquée derrière
+    // ces mêmes panneaux, c'est leur propre flèche qui agit, déjà correctement liée en local.
+    const onSwipeBack = () => {
+      if (groupScreenRef.current?.handleBack()) return;
+      onBack();
+    };
     return (
-      <Screen onBack={onBack}>
+      <Screen onBack={onSwipeBack}>
         <GroupScreen
+          ref={groupScreenRef}
           groupId={viewingGroupId}
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
