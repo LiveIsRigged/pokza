@@ -277,19 +277,32 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
             let order = 1;
             const blindActions: Action[] = [];
 
+            // Une mise forcée ne peut pas dépasser le tapis de celui qui la poste. Sans ce
+            // plafonnement, un siège dont le stack est inférieur à sa blinde partait en négatif et
+            // le pot se retrouvait gonflé de jetons qui n'existaient pas — invisible à l'écran, car
+            // `SeatView` affiche `Math.max(stack, 0)`, mais bien présent dans le pot et donc dans
+            // tous les montants gagnés. Le cas réaliste n'est pas le tapis de 5 : c'est la personne
+            // qui saisit son tapis EN NOMBRE DE BLINDES (« 12 ») avec des blindes à 500/1000.
+            // Le compteur est cumulatif par siège : un même joueur peut poster un ante PUIS une
+            // blinde PUIS un BB ante, et c'est le total qui doit tenir dans son tapis.
+            const restant: Record<string, number> = {};
+            for (const seat of builtSeats) restant[seat.id] = seat.startingStack;
+            const poster = (id: string, seatId: string, type: Action['type'], nominal: number) => {
+              const dispo = restant[seatId] ?? 0;
+              const montant = Math.min(nominal, dispo);
+              // Rien à poster : le siège est déjà à tapis. On n'enregistre pas d'action à 0, qui
+              // n'apparaîtrait dans le replayer que comme un « poste 0 » sans signification.
+              if (montant <= 0) return;
+              restant[seatId] = dispo - montant;
+              blindActions.push({ id, street: 'preflop', seatId, type, amount: montant, order: order++ });
+            };
+
             if (context.bombPot) {
               // Bomb pot : chaque siège poste l'ante (la "bombe") en preflop, aucune blinde ni
               // straddle. Tous les joueurs restent en jeu et l'on saute directement au flop (cf.
               // onNext de holeCards).
               for (const seat of builtSeats) {
-                blindActions.push({
-                  id: `bomb-${seat.id}`,
-                  street: 'preflop',
-                  seatId: seat.id,
-                  type: 'post-ante',
-                  amount: context.bombAnte,
-                  order: order++,
-                });
+                poster(`bomb-${seat.id}`, seat.id, 'post-ante', context.bombAnte);
               }
             } else {
             const sbSeat = builtSeats.find((s) => s.position === 'SB') ?? builtSeats.find((s) => s.position === 'BTN')!;
@@ -298,44 +311,16 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
             // Ante par joueur : chaque siège poste son ante avant les blindes.
             if (context.anteType === 'per-player' && context.ante > 0) {
               for (const seat of builtSeats) {
-                blindActions.push({
-                  id: `ante-${seat.id}`,
-                  street: 'preflop',
-                  seatId: seat.id,
-                  type: 'post-ante',
-                  amount: context.ante,
-                  order: order++,
-                });
+                poster(`ante-${seat.id}`, seat.id, 'post-ante', context.ante);
               }
             }
 
-            blindActions.push({
-              id: 'blind-sb',
-              street: 'preflop',
-              seatId: sbSeat.id,
-              type: 'post-sb',
-              amount: context.sb,
-              order: order++,
-            });
-            blindActions.push({
-              id: 'blind-bb',
-              street: 'preflop',
-              seatId: bbSeat.id,
-              type: 'post-bb',
-              amount: context.bb,
-              order: order++,
-            });
+            poster('blind-sb', sbSeat.id, 'post-sb', context.sb);
+            poster('blind-bb', bbSeat.id, 'post-bb', context.bb);
 
             // BB ante : seule la BB poste l'ante (montant = BB), après les blindes.
             if (context.anteType === 'bb' && context.bb > 0) {
-              blindActions.push({
-                id: 'ante-bb',
-                street: 'preflop',
-                seatId: bbSeat.id,
-                type: 'post-ante',
-                amount: context.bb,
-                order: order++,
-              });
+              poster('ante-bb', bbSeat.id, 'post-ante', context.bb);
             }
 
             // Straddle(s) (cash game) : les joueurs successifs après la BB postent chacun un
@@ -347,14 +332,7 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
               for (let i = 0; i < context.straddleCount; i++) {
                 const straddlerSeat = straddleOrder[i];
                 if (!straddlerSeat) break;
-                blindActions.push({
-                  id: `straddle-${i + 1}`,
-                  street: 'preflop',
-                  seatId: straddlerSeat.id,
-                  type: 'post-straddle',
-                  amount: context.straddleAmount * 2 ** i,
-                  order: order++,
-                });
+                poster(`straddle-${i + 1}`, straddlerSeat.id, 'post-straddle', context.straddleAmount * 2 ** i);
               }
             }
             }
@@ -388,15 +366,18 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
       );
 
     case 'street-preflop': {
-      const sbSeat = seats.find((s) => s.position === 'SB') ?? seats.find((s) => s.position === 'BTN');
-      const bbSeat = seats.find((s) => s.position === 'BB');
       const straddleActions = actions.filter((a) => a.type === 'post-straddle').sort((a, b) => a.order - b.order);
       const lastStraddle = straddleActions[straddleActions.length - 1];
+      // Les contributions de départ se lisent sur les mises RÉELLEMENT postées, et non sur les
+      // montants nominaux du contexte : une blinde est plafonnée au tapis (cf. `poster` plus haut),
+      // et repartir de `context.bb` créditerait la grosse blinde d'une mise qu'elle n'a pas pu
+      // payer. Les antes sont volontairement exclus — ce sont des jetons morts, comptés à part via
+      // `anteCommitted`, et ils n'entrent pas dans le montant à suivre.
       const initialContributions: Record<string, number> = {};
-      if (sbSeat) initialContributions[sbSeat.id] = context.sb;
-      if (bbSeat) initialContributions[bbSeat.id] = context.bb;
-      for (const straddleAction of straddleActions) {
-        initialContributions[straddleAction.seatId] = straddleAction.amount ?? 0;
+      for (const a of actions) {
+        if (a.type === 'post-sb' || a.type === 'post-bb' || a.type === 'post-straddle') {
+          initialContributions[a.seatId] = a.amount ?? 0;
+        }
       }
       return (
         <StreetStep
@@ -407,6 +388,10 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
           seats={seats}
           activeSeatIds={activeSeatIds}
           startOrder={actions.length + 1}
+          // Le montant à suivre reste la blinde NOMINALE, même si la grosse blinde n'a pas pu la
+          // payer entièrement : au poker, un joueur à tapis pour moins que la blinde n'abaisse pas
+          // le niveau de mise pour les autres. C'est pour ça que ce montant peut légitimement être
+          // supérieur à la contribution réelle de la BB juste au-dessus.
           initialBetAmount={lastStraddle ? lastStraddle.amount : context.bb}
           initialContributions={initialContributions}
           priorCommitted={priorCommittedFor('preflop')}
