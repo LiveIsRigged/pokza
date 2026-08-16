@@ -45,7 +45,7 @@ import { FriendsListScreen } from './src/friends/FriendsListScreen';
 import { InvitationsScreen } from './src/invitations/InvitationsScreen';
 import { StatsScreen } from './src/stats/StatsScreen';
 import { BlockedListScreen } from './src/profile/BlockedListScreen';
-import { SettingsScreen } from './src/settings/SettingsScreen';
+import { SettingsScreen, type SettingsScreenHandle } from './src/settings/SettingsScreen';
 import { AdminReportsScreen } from './src/admin/AdminReportsScreen';
 import { AdminReportDetailScreen } from './src/admin/AdminReportDetailScreen';
 import { AdminUserScreen } from './src/admin/AdminUserScreen';
@@ -146,6 +146,7 @@ function AppContent() {
   // (Modifier le groupe / Liste de membres / Exclure un membre) au lieu de sauter directement à
   // « Mes groupes privés » — cf. `GroupScreenHandle`.
   const groupScreenRef = useRef<GroupScreenHandle>(null);
+  const settingsScreenRef = useRef<SettingsScreenHandle>(null);
   const [invitingGroupId, setInvitingGroupId] = useState<string | null>(null);
   // Back-office admin : signalement/compte en cours d'examen, + clé pour rafraîchir la file au retour.
   const [adminReportId, setAdminReportId] = useState<string | null>(null);
@@ -767,9 +768,21 @@ function AppContent() {
 
   if (mode === 'settings') {
     const onBack = () => setMode('feed');
+    // Même relais que `groupScreenRef` : le document légal ouvert par-dessus Réglages est un
+    // overlay local, invisible du glissement de bord attaché ici — sans ça, ce geste sautait
+    // directement au feed au lieu de refermer d'abord le document.
+    const onSwipeBack = () => {
+      if (settingsScreenRef.current?.handleBack()) return;
+      onBack();
+    };
     return (
-      <Screen onBack={onBack}>
-        <SettingsScreen userId={session.user.id} onBack={onBack} onOpenBlocked={() => setMode('blocked')} />
+      <Screen onBack={onSwipeBack}>
+        <SettingsScreen
+          ref={settingsScreenRef}
+          userId={session.user.id}
+          onBack={onBack}
+          onOpenBlocked={() => setMode('blocked')}
+        />
         <StatusBar style="dark" />
       </Screen>
     );

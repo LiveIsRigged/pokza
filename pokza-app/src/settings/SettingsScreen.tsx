@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useImperativeHandle, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
@@ -7,7 +7,7 @@ import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
 import { deleteOwnAccount } from '../data/profiles';
 import { supabase } from '../lib/supabase';
-import { enablePush, disablePush, pushState, pushSupported, type PushState } from '../web/push';
+import { enablePush, disablePush, isDeviceSubscribed, pushState, pushSupported, type PushState } from '../web/push';
 import {
   fetchNotificationPrefs,
   updateNotificationPrefs,
@@ -20,14 +20,26 @@ const CONTACT_EMAIL = 'contact@pokza.app';
 const FAMILY_ROWS: { key: keyof NotificationPrefs; label: string }[] = [
   { key: 'likes', label: "J'aime" },
   { key: 'comments', label: 'Commentaires et réponses' },
-  { key: 'friends', label: 'Amis' },
-  { key: 'groups', label: 'Groupes' },
+  { key: 'friends', label: 'Amis (demandes et acceptations)' },
+  { key: 'groups', label: 'Groupes (invitations et acceptations)' },
+  { key: 'posted', label: 'Mains partagées (amis et groupes)' },
 ];
 
 interface SettingsScreenProps {
   userId: string;
   onBack: () => void;
   onOpenBlocked: () => void;
+}
+
+export interface SettingsScreenHandle {
+  /**
+   * Ferme le document légal ouvert par-dessus Réglages s'il y en a un, et renvoie `true` dans ce
+   * cas. `App.tsx` s'en sert pour le glissement de bord (`Screen`) : ce panneau est un overlay LOCAL
+   * à `SettingsScreen`, invisible du geste attaché bien plus haut autour de tout l'écran — sans ce
+   * relais, le glissement saute directement au feed au lieu de refermer d'abord le document (même
+   * bug déjà corrigé pour `GroupScreen`, cf. `GroupScreenHandle`).
+   */
+  handleBack: () => boolean;
 }
 
 /**
@@ -38,8 +50,14 @@ interface SettingsScreenProps {
  * interrupteurs par famille ne filtrent QUE le push (l'historique in-app reste complet), pas de
  * réglage de confidentialité du profil, pas de thème sombre.
  */
-export function SettingsScreen({ userId, onBack, onOpenBlocked }: SettingsScreenProps) {
+export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScreenProps>(function SettingsScreen(
+  { userId, onBack, onOpenBlocked },
+  ref
+) {
   const [perm, setPerm] = useState<PushState>(() => pushState());
+  // `null` = encore en cours de lecture de l'abonnement réel (cf. `isDeviceSubscribed`) : distinct
+  // de la permission navigateur, qui elle ne redescend JAMAIS à `false` depuis le code.
+  const [deviceOn, setDeviceOn] = useState<boolean | null>(null);
   const [togglingDevice, setTogglingDevice] = useState(false);
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [prefsError, setPrefsError] = useState<string | null>(null);
@@ -51,6 +69,20 @@ export function SettingsScreen({ userId, onBack, onOpenBlocked }: SettingsScreen
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      handleBack: () => {
+        if (legalOpen) {
+          setLegalOpen(false);
+          return true;
+        }
+        return false;
+      },
+    }),
+    [legalOpen]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -66,15 +98,28 @@ export function SettingsScreen({ userId, onBack, onOpenBlocked }: SettingsScreen
     };
   }, [userId]);
 
+  useEffect(() => {
+    if (!pushSupported()) return;
+    let cancelled = false;
+    isDeviceSubscribed().then((on) => {
+      if (!cancelled) setDeviceOn(on);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleToggleDevice = async (on: boolean) => {
     setTogglingDevice(true);
     setPrefsError(null);
     try {
       if (on) {
-        setPerm(await enablePush(userId));
+        const result = await enablePush(userId);
+        setPerm(result);
+        setDeviceOn(result === 'granted');
       } else {
         await disablePush();
-        setPerm(pushState());
+        setDeviceOn(false);
       }
     } catch (err) {
       setPrefsError(errorMessage(err));
@@ -145,9 +190,9 @@ export function SettingsScreen({ userId, onBack, onOpenBlocked }: SettingsScreen
                 <Text style={styles.deniedHint}>Bloquées</Text>
               ) : (
                 <Switch
-                  value={perm === 'granted'}
+                  value={!!deviceOn}
                   onValueChange={handleToggleDevice}
-                  disabled={togglingDevice}
+                  disabled={togglingDevice || deviceOn === null}
                   trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
                   thumbColor="#fff"
                   ios_backgroundColor="rgba(22,35,61,0.18)"
@@ -226,7 +271,7 @@ export function SettingsScreen({ userId, onBack, onOpenBlocked }: SettingsScreen
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   overlay: {

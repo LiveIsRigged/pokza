@@ -11,15 +11,24 @@ export interface NotificationPrefs {
   comments: boolean;
   friends: boolean;
   groups: boolean;
+  /** Mains postées par un ami ou dans un groupe — distinct de « friends »/« groups », qui ne
+   * couvrent que le social (demandes, invitations, acceptations). */
+  posted: boolean;
 }
 
 // Absence de ligne en base = tout activé (cf. docs/dev/notification-prefs.sql).
-const DEFAULT_PREFS: NotificationPrefs = { likes: true, comments: true, friends: true, groups: true };
+const DEFAULT_PREFS: NotificationPrefs = {
+  likes: true,
+  comments: true,
+  friends: true,
+  groups: true,
+  posted: true,
+};
 
 export async function fetchNotificationPrefs(userId: string): Promise<NotificationPrefs> {
   const { data, error } = await supabase
     .from('notification_prefs')
-    .select('likes, comments, friends, groups')
+    .select('likes, comments, friends, groups, posted')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;

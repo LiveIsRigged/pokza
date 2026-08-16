@@ -8,10 +8,16 @@
 -- Familles couvertes (mapping exact dans `send-push/index.ts` et `notificationPrefs.ts`) :
 --   likes    → post_like, comment_like
 --   comments → post_comment, comment_reply
---   friends  → friend_request, friend_accept, friend_posted
---   groups   → group_invite, group_accept, group_posted
+--   friends  → friend_request, friend_accept                (social uniquement)
+--   groups   → group_invite, group_accept                   (social uniquement)
+--   posted   → friend_posted, group_posted                  (mains partagées — interrupteur séparé,
+--                                                              demandé le 16/08 après coup)
 -- La modération (report_resolved, content_removed, account_sanctioned) n'a PAS d'interrupteur :
 -- toujours envoyée, comme aujourd'hui.
+--
+-- Ce script a déjà tourné une première fois sans la colonne `posted` (DEV+PROD, 16/08) : le
+-- `alter table … add column if not exists` ci-dessous rattrape les installations existantes sans
+-- perdre les préférences déjà enregistrées.
 --
 -- Éditeur SQL PROD : https://supabase.com/dashboard/project/blfoycuvvyxaxftzuidf/sql/new
 -- Éditeur SQL DEV  : https://supabase.com/dashboard/project/ahdikgckctvduuestzrh/sql/new
@@ -27,6 +33,8 @@ create table if not exists public.notification_prefs (
   groups     boolean not null default true,
   updated_at timestamptz not null default now()
 );
+
+alter table public.notification_prefs add column if not exists posted boolean not null default true;
 
 alter table public.notification_prefs enable row level security;
 
@@ -53,4 +61,9 @@ from pg_class where relname = 'notification_prefs'
 union all
 select '3 policies en place',
        case when count(*) = 3 then 'OK' else 'ECHEC : ' || count(*)::text || '/3' end
-from pg_policies where tablename = 'notification_prefs';
+from pg_policies where tablename = 'notification_prefs'
+union all
+select 'Colonne posted présente',
+       case when count(*) = 1 then 'OK' else 'ECHEC' end
+from information_schema.columns
+where table_schema = 'public' and table_name = 'notification_prefs' and column_name = 'posted';

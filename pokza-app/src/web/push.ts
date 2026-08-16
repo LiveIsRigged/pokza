@@ -82,6 +82,20 @@ export async function enablePush(userId: string): Promise<PushState> {
   return 'granted';
 }
 
+/**
+ * L'appareil reçoit-il vraiment du push en ce moment ? À ne PAS confondre avec `pushState()` : la
+ * permission navigateur reste `granted` même après un `disablePush()` (elle ne se retire que dans les
+ * réglages du navigateur) — un interrupteur basé sur la seule permission ne pourrait donc jamais
+ * repasser à off. C'est l'abonnement (`pushManager.getSubscription()`), pas la permission, qui reflète
+ * l'état réellement pilotable par Réglages.
+ */
+export async function isDeviceSubscribed(): Promise<boolean> {
+  if (!pushSupported() || Notification.permission !== 'granted') return false;
+  const registration = await navigator.serviceWorker.getRegistration();
+  const subscription = await registration?.pushManager.getSubscription();
+  return !!subscription;
+}
+
 /** Désabonne l'appareil courant et retire l'abonnement en base. */
 export async function disablePush(): Promise<void> {
   if (!pushSupported()) return;
