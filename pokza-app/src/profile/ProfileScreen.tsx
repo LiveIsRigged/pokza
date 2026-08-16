@@ -18,6 +18,7 @@ import {
   deleteFriendRelation,
   fetchFriendCount,
   fetchFriendStatus,
+  fetchMutualFriendCount,
   fetchMutualFriendsPreview,
   fetchPendingRequests,
   sendFriendRequest,
@@ -40,6 +41,10 @@ import { playerSummary } from './profileOptions';
 function formatJoinDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function mutualFriendCountLabel(count: number): string {
+  return `${count} ami${count > 1 ? 's' : ''} en commun`;
 }
 
 function mutualFriendsLabel(pseudos: string[]): string {
@@ -89,6 +94,7 @@ export function ProfileScreen({
   const isOwnProfile = profileId === currentUserId;
   const [friendStatus, setFriendStatus] = useState<FriendStatus | null>(null);
   const [mutualFriends, setMutualFriends] = useState<MutualFriendPreview[]>([]);
+  const [mutualFriendCount, setMutualFriendCount] = useState(0);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [friendCount, setFriendCount] = useState(0);
@@ -229,6 +235,21 @@ export function ProfileScreen({
   useEffect(() => {
     if (isOwnProfile) return;
     let cancelled = false;
+    fetchMutualFriendCount(profileId)
+      .then((count) => {
+        if (!cancelled) setMutualFriendCount(count);
+      })
+      .catch(() => {
+        // Discret, même logique que l'aperçu ci-dessus : non bloquant.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId, isOwnProfile]);
+
+  useEffect(() => {
+    if (isOwnProfile) return;
+    let cancelled = false;
     isBlockedByMe(currentUserId, profileId)
       .then((v) => {
         if (!cancelled) setBlocked(v);
@@ -268,9 +289,13 @@ export function ProfileScreen({
     }
   };
 
-  // Menu ⋯ de l'en-tête, uniquement sur le profil d'un autre : signaler le compte, bloquer/débloquer.
+  // Menu ⋯ de l'en-tête, uniquement sur le profil d'un autre : signaler le compte, retirer l'ami
+  // (si on l'est déjà — sinon ce choix n'a pas de sens et n'apparaît pas), bloquer/débloquer.
   const menuItems: OverflowMenuItem[] = [
     { label: 'Signaler ce joueur', icon: '🚩', onPress: () => setReportOpen(true) },
+    ...(friendStatus === 'friends'
+      ? [{ label: 'Retirer cet ami', icon: '➖', destructive: true, onPress: () => setConfirmingRemove(true) }]
+      : []),
     blocked
       ? { label: 'Débloquer', icon: '↩️', onPress: handleUnblock }
       : { label: 'Bloquer ce joueur', icon: '🚫', destructive: true, onPress: handleBlock },
@@ -474,6 +499,12 @@ export function ProfileScreen({
                   <Text style={styles.statLabel}>ami{friendCount !== 1 ? 's' : ''}</Text>
                 </View>
               </View>
+              {/* Visible que l'on soit déjà ami ou non : contrairement au bloc détaillé plus bas
+                  (avatars + noms, réservé aux cas où il y en a au moins un), ce chiffre exact vient
+                  de `mutual_friend_count` côté base — jamais tronqué comme l'aperçu limité à 10. */}
+              {!isOwnProfile && !blocked && mutualFriendCount > 0 && (
+                <Text style={styles.mutualCountLine}>{mutualFriendCountLabel(mutualFriendCount)}</Text>
+              )}
               <Text style={styles.metaLine}>Membre depuis {formatJoinDate(profile.createdAt)}</Text>
 
               {isOwnProfile && (
@@ -506,13 +537,11 @@ export function ProfileScreen({
                       <Text style={styles.friendButtonText}>Accepter la demande d'ami</Text>
                     </Pressable>
                   )}
+                  {/* Le retrait d'ami n'est plus déclenché ici : il vit désormais dans le menu ⋯
+                      en haut de l'écran, pour ne pas laisser une option destructive en accès direct
+                      sur la page. */}
                   {friendStatus === 'friends' && !confirmingRemove && (
-                    <View style={styles.friendsRow}>
-                      <Text style={styles.friendsLabel}>✓ Amis</Text>
-                      <Pressable onPress={() => setConfirmingRemove(true)} hitSlop={8}>
-                        <Text style={styles.friendRemoveLink}>Retirer</Text>
-                      </Pressable>
-                    </View>
+                    <Text style={styles.friendsLabel}>✓ Amis</Text>
                   )}
                   {friendStatus === 'friends' && confirmingRemove && (
                     <View style={styles.friendsRow}>
@@ -789,6 +818,13 @@ const styles = StyleSheet.create({
     height: 26,
     backgroundColor: 'rgba(22,35,61,0.14)',
   },
+  mutualCountLine: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
   metaLine: {
     fontSize: 12,
     color: colors.textSecondary,
@@ -933,11 +969,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.action,
-  },
-  friendRemoveLink: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
   },
   confirmRemoveText: {
     fontSize: 13,

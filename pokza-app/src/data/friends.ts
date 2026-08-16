@@ -136,6 +136,15 @@ export async function fetchMutualFriendsPreview(otherUserId: string, limit = 10)
   }));
 }
 
+/** Nombre exact d'amis en commun avec `otherUserId` — contrairement à `fetchMutualFriendsPreview`
+ * (plafonnée à `limit`), ce compte n'est jamais tronqué. Même garantie de confidentialité : calculé
+ * uniquement sur MES propres amis (`auth.uid()` forcé côté fonction). */
+export async function fetchMutualFriendCount(otherUserId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('mutual_friend_count', { p_other: otherUserId });
+  if (error) throw error;
+  return data ?? 0;
+}
+
 export interface SuggestedFriend {
   id: string;
   pseudo: string;
