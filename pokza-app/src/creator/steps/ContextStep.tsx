@@ -219,62 +219,65 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
       totalSteps={totalSteps}
     >
       <View>
+        <Text style={styles.label}>Type de partie</Text>
+        {/* Le bomb pot tient sur la même ligne que Cash game / Tournoi : c'est une variation du type
+            de partie, pas un réglage de plus. Format spécial et rare, il reste un interrupteur
+            discret à droite plutôt qu'un choix de premier plan, et n'existe qu'en cash game (une
+            bombe n'a pas de sens en structure de tournoi). Les chips gardent leur `flexWrap` et
+            peuvent passer à la ligne si la largeur manque, sans pousser l'interrupteur dehors. */}
+        <View style={styles.gameTypeRow}>
+          <View style={[styles.row, styles.gameTypeChips]}>
+            <Chip
+              label="Cash game"
+              selected={value.gameType === 'cash'}
+              onPress={() => update({ gameType: 'cash', sb: 2, bb: 5, effectiveStack: defaultStackFor('cash', 5) })}
+            />
+            <Chip
+              label="Tournoi"
+              selected={value.gameType === 'tournament'}
+              onPress={() =>
+                update({
+                  gameType: 'tournament',
+                  sb: 100,
+                  bb: 200,
+                  effectiveStack: defaultStackFor('tournament', 200),
+                  // Le bomb pot n'existe qu'en cash game — on l'éteint pour ne pas laisser un état
+                  // caché actif si l'utilisateur l'avait coché avant de basculer sur Tournoi.
+                  bombPot: false,
+                })
+              }
+            />
+          </View>
+          {value.gameType === 'cash' && (
+            <View style={styles.bombPotToggle}>
+              <Text style={styles.toggleLabel}>Bomb pot</Text>
+              <Switch
+                value={!!value.bombPot}
+                onValueChange={(on) =>
+                  on
+                    ? // À l'activation, l'ante de la bombe démarre sur la valeur de la BB (repère
+                      // naturel), et le straddle n'a plus de sens (pas de preflop) : on le remet à zéro.
+                      update({ bombPot: true, bombAnte: value.bombAnte || value.bb, straddleCount: 0 })
+                    : update({ bombPot: false })
+                }
+                trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
+                thumbColor="#fff"
+                ios_backgroundColor="rgba(22,35,61,0.18)"
+                // `thumbColor` ne pilote QUE le pouce éteint sur react-native-web ; en position allumée il
+                // retombe sur son teal Material par défaut. On repasse donc le pouce en blanc via son prop
+                // hérité `activeThumbColor` (ignoré côté natif, où `thumbColor` couvre déjà les deux états).
+                {...({ activeThumbColor: '#fff' } as object)}
+              />
+            </View>
+          )}
+        </View>
+
         <Text style={styles.label}>Variante</Text>
         <View style={styles.row}>
           <Chip label="NLHE" selected={value.variant === 'nlhe'} onPress={() => update({ variant: 'nlhe' })} />
           <Chip label="PLO" selected={value.variant === 'plo'} onPress={() => update({ variant: 'plo' })} />
           <Chip label="PLO5" selected={value.variant === 'plo5'} onPress={() => update({ variant: 'plo5' })} />
         </View>
-
-        <Text style={styles.label}>Type de partie</Text>
-        <View style={styles.row}>
-          <Chip
-            label="Cash game"
-            selected={value.gameType === 'cash'}
-            onPress={() => update({ gameType: 'cash', sb: 2, bb: 5, effectiveStack: defaultStackFor('cash', 5) })}
-          />
-          <Chip
-            label="Tournoi"
-            selected={value.gameType === 'tournament'}
-            onPress={() =>
-              update({
-                gameType: 'tournament',
-                sb: 100,
-                bb: 200,
-                effectiveStack: defaultStackFor('tournament', 200),
-                // Le bomb pot n'existe qu'en cash game — on l'éteint pour ne pas laisser un état
-                // caché actif si l'utilisateur l'avait coché avant de basculer sur Tournoi.
-                bombPot: false,
-              })
-            }
-          />
-        </View>
-
-        {/* Format spécial et rare : un interrupteur discret plutôt qu'un choix de premier plan.
-            Éteint (défaut, main classique), il n'y a rien à cocher — juste une ligne sobre.
-            N'existe qu'en cash game (une bombe n'a pas de sens en structure de tournoi). */}
-        {value.gameType === 'cash' && (
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Bomb pot</Text>
-            <Switch
-              value={!!value.bombPot}
-              onValueChange={(on) =>
-                on
-                  ? // À l'activation, l'ante de la bombe démarre sur la valeur de la BB (repère
-                    // naturel), et le straddle n'a plus de sens (pas de preflop) : on le remet à zéro.
-                    update({ bombPot: true, bombAnte: value.bombAnte || value.bb, straddleCount: 0 })
-                  : update({ bombPot: false })
-              }
-              trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
-              thumbColor="#fff"
-              ios_backgroundColor="rgba(22,35,61,0.18)"
-              // `thumbColor` ne pilote QUE le pouce éteint sur react-native-web ; en position allumée il
-              // retombe sur son teal Material par défaut. On repasse donc le pouce en blanc via son prop
-              // hérité `activeThumbColor` (ignoré côté natif, où `thumbColor` couvre déjà les deux états).
-              {...({ activeThumbColor: '#fff' } as object)}
-            />
-          </View>
-        )}
 
         {value.bombPot ? (
           <>
@@ -587,13 +590,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     textAlign: 'center',
   },
-  toggleRow: {
+  gameTypeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 14,
-    marginBottom: 4,
-    paddingVertical: 4,
+    gap: 8,
+  },
+  // Les chips prennent la place restante et peuvent passer à la ligne ; l'interrupteur garde la
+  // sienne à droite (`flexShrink: 0`) pour ne jamais être compressé sur un écran étroit.
+  gameTypeChips: {
+    flex: 1,
+  },
+  bombPotToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+    // Même marge basse que les chips (`Chip.marginBottom: 8`) : les deux boîtes se centrent alors
+    // sur la même bande, l'interrupteur reste aligné avec les chips et non 4 px plus bas.
+    marginBottom: 8,
   },
   toggleLabel: {
     fontSize: 14,
