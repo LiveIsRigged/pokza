@@ -35,9 +35,6 @@ environnement as (
            else 'DEV (pas de push_subscriptions)'
          end as detail
   union all
-  select 'A. environnement', 'buckets de stockage',
-         coalesce((select count(*)::text from storage.buckets), 'inaccessible')
-  union all
   select 'A. environnement', 'trigger push sur notifications',
          case when exists (
            select 1 from pg_trigger t join pg_class c on c.oid = t.tgrelid

@@ -33,6 +33,10 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+# ⚠️ Les COPIES de sauvegarde aussi. `.env` seul ne couvre pas `.env.prod.bak`, et le dépôt est
+# PUBLIC : une sauvegarde faite avant de basculer sur le DEV serait partie avec le premier
+# `git add -A`. Le motif est large exprès.
+.env.*
 
 # typescript
 *.tsbuildinfo

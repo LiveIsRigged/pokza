@@ -16,15 +16,22 @@ C'est ce parcours-là. Il ne redémontre rien de ce qui est déjà prouvé.
 
 ## Préparation (3 minutes)
 
-### 1. Sauvegarder le `.env` de production, puis basculer sur le DEV
+### 1. Sauvegarder le fichier d'environnement, puis basculer sur le DEV
+
+Le fichier concerné est le `.env` du dossier `pokza-app`, à la racine du dépôt. La commande se place
+d'elle-même au bon endroit, quel que soit le dossier courant :
 
 ```bash
-cp pokza-app/.env pokza-app/.env.prod.bak
+cd "$(git rev-parse --show-toplevel)" && cp pokza-app/.env pokza-app/.env.prod.bak && echo "sauvegarde faite"
 ```
 
-Puis dans `pokza-app/.env`, remplacer l'URL et la clé par celles du projet **DEV**
-(`ahdikgckctvduuestzrh`), à récupérer dans *Project Settings → API* :
+Puis l'ouvrir et y remplacer l'URL et la clé par celles du projet **DEV** (`ahdikgckctvduuestzrh`),
+à récupérer dans *Project Settings → API* :
 <https://supabase.com/dashboard/project/ahdikgckctvduuestzrh/settings/api>
+
+```bash
+cd "$(git rev-parse --show-toplevel)" && open -e pokza-app/.env
+```
 
 ### 2. ⚠️ Le piège qui empêche de se connecter : Turnstile
 
@@ -47,8 +54,8 @@ Une fenêtre normale pour le premier compte, une fenêtre **de navigation privé
 C'est le seul moyen d'avoir deux sessions vivantes en même temps, et sans ça la moitié du parcours
 demande de se déconnecter/reconnecter à chaque étape.
 
-Les mots de passe des 7 comptes sont dans `docs/dev/seed-passwords.sql` — fichier volontairement
-**exclu du dépôt** (celui-ci est public).
+Les mots de passe des 7 comptes sont dans `seed-passwords.sql`, juste à côté de ce document —
+fichier volontairement **exclu du dépôt**, celui-ci étant public.
 
 ### 4. Ce qui ne marchera pas sur le DEV, et qui n'est pas un bug
 
@@ -118,10 +125,10 @@ Le filtrage du feed par blocage et par bannissement (alice ne voit ni bob ni mal
 ## Après
 
 ```bash
-cp pokza-app/.env.prod.bak pokza-app/.env
+cd "$(git rev-parse --show-toplevel)" && cp pokza-app/.env.prod.bak pokza-app/.env && echo "production restauree"
 ```
 
-⚠️ **Ne pas oublier.** Tant que le `.env` pointe sur le DEV, le serveur local travaille sur les
+⚠️ **Ne pas oublier.** Tant que le fichier pointe sur le DEV, le serveur local travaille sur les
 données de DEV — et l'inverse est pire : l'app locale tape la **production** par défaut.
 
 Pour chaque étape qui ne se comporte pas comme annoncé : une capture, le numéro de l'étape, et le
