@@ -208,12 +208,14 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
 
             <Text style={styles.subLabel}>Recevoir un push pour…</Text>
             {FAMILY_ROWS.map((f) => (
-              <View key={f.key} style={styles.row}>
+              <View key={f.key} style={[styles.row, !deviceOn && styles.rowMuted]}>
                 <Text style={styles.rowLabel}>{f.label}</Text>
                 <Switch
                   value={prefs ? prefs[f.key] : true}
                   onValueChange={(v) => handleToggleFamily(f.key, v)}
-                  disabled={!prefs || savingFamily === f.key}
+                  // Éditer ces préférences n'a aucun effet tant que le push est coupé au niveau de
+                  // l'appareil — les griser évite de laisser croire qu'elles font quelque chose.
+                  disabled={!prefs || savingFamily === f.key || !deviceOn}
                   trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
                   thumbColor="#fff"
                   ios_backgroundColor="rgba(22,35,61,0.18)"
@@ -322,6 +324,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(22,35,61,0.15)',
+  },
+  rowMuted: {
+    opacity: 0.4,
   },
   rowLabel: {
     fontSize: 15,
