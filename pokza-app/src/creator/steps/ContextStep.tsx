@@ -8,7 +8,12 @@ import { WizardScreen } from '../WizardScreen';
 import { POSITION_SETS } from '../positions';
 import { straddleAwarePositionLabel } from '../../engine/handEngine';
 import type { ContextData } from '../types';
-import { BUY_IN_MAX_LENGTH, LEVEL_DIGITS_MAX, LOCATION_MAX_LENGTH } from '../../constants/limits';
+import {
+  BUY_IN_MAX_LENGTH,
+  LEVEL_DIGITS_MAX,
+  LOCATION_MAX_LENGTH,
+  OPPONENT_NAME_MAX_LENGTH,
+} from '../../constants/limits';
 
 // Un TextInput contrôlé qui reflète `String(nombre)` se mord la queue dès qu'on tape une virgule
 // ou un point : "0." → parseFloat → 0 → réaffiché "0", le "." tapé disparaît aussitôt, rendant
@@ -468,6 +473,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
                 <TextInput
                   style={[styles.input, styles.playerNameInput]}
                   placeholder="Nom"
+                  maxLength={OPPONENT_NAME_MAX_LENGTH}
                   value={value.opponentNames?.[pos] ?? ''}
                   onChangeText={(t) => update({ opponentNames: { ...value.opponentNames, [pos]: t } })}
                 />

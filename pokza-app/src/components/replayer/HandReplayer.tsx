@@ -237,6 +237,14 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               stackRemaining={state.stacks[seat.id] ?? seat.startingStack}
               currentBet={state.streetContribution[seat.id]}
               isActive={state.lastAction?.seatId === seat.id && !state.foldedSeatIds.has(seat.id)}
+              // Même condition que la bulle d'action : `state.lastAction` survit aux events qui ne
+              // sont pas des actions (révélation d'une street, retournement des mains), le libellé
+              // se rallumerait donc à contretemps sans le garde `currentEventIsAction`.
+              justChecked={
+                currentEventIsAction &&
+                state.lastAction?.seatId === seat.id &&
+                state.lastAction.type === 'check'
+              }
               isWinner={state.winningSeatIds.includes(seat.id)}
               isAllIn={state.allInSeatIds.has(seat.id)}
               // L'équité est une comparaison ENTRE toutes les mains en lice : dès qu'une seule main

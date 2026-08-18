@@ -29,6 +29,19 @@ export const BIO_MAX_LENGTH = 150;
 export const TITLE_MAX_LENGTH = 40;
 export const DESCRIPTION_MAX_LENGTH = 600;
 
+/** Nom personnalisé d'un adversaire à table. Contrainte par le BADGE DE SIÈGE, pas par le
+ *  formulaire : le bloc d'un siège fait 80 px de large et le nom y est sur une seule ligne.
+ *  Mesuré sur la fonte système (12 px, gras) : 7,05 px par caractère en moyenne, soit 11
+ *  caractères — « Jean-Michel » passe à 5 px près, « LeBossDuPoker » est coupé. La bulle
+ *  d'action tombe au même endroit : dans son libellé le plus long (« X poste la grosse
+ *  blinde (5€) »), il reste 80 px pour le nom, soit ~10 caractères.
+ *
+ *  ⚠️ SEULE limite du produit qui n'a PAS de jumelle en base. Les noms vivent dans le JSON de
+ *  la main (colonne `hand`), pas dans une colonne : une contrainte `CHECK` ne peut pas y faire
+ *  de sous-requête, il faudrait une fonction immuable ou un déclencheur. La colonne `hand`
+ *  elle-même n'a d'ailleurs aucune limite de taille — sujet ouvert, distinct de celui-ci. */
+export const OPPONENT_NAME_MAX_LENGTH = 12;
+
 /** Main : contexte. Ces trois champs s'affichent côte à côte sur une seule ligne sous le titre —
  *  des valeurs longues s'y chevaucheraient. */
 export const LOCATION_MAX_LENGTH = 40;

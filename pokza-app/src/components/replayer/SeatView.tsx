@@ -26,6 +26,12 @@ interface SeatViewProps {
    * n'est pas résolue, quand le créateur a choisi de ne la révéler qu'au showdown (cf.
    * `revealShowdown`) : la vraie carte apparaît d'un coup dès que ce flag repasse à `false`. */
   showCardBacks?: boolean;
+  /** Ce siège vient de checker, à CE step précis. Contrairement à `folded` et `isAllIn`, qui sont
+   * des états persistants, c'est une action ponctuelle : le libellé disparaît au step suivant et
+   * le badge retrouve son stack. Un check ne déplace aucun jeton et ne change aucun stack —
+   * sans ce libellé, le seul signe qu'il s'est passé quelque chose est le halo doré qui change de
+   * siège, exactement le même signal que pour n'importe quelle autre action. */
+  justChecked?: boolean;
   stackRemaining: number;
   currentBet?: number;
   isActive: boolean;
@@ -202,6 +208,7 @@ export function SeatView({
   y,
   tableCenter,
   folded,
+  justChecked = false,
   showCardBacks = false,
   stackRemaining,
   currentBet,
@@ -499,6 +506,12 @@ export function SeatView({
         </Text>
         {folded ? (
           <Text style={styles.foldLabel}>fold</Text>
+        ) : justChecked ? (
+          // Au-dessus de l'équité, pas en dessous : dans une main où l'équité s'affiche (toutes les
+          // cartes connues), la placer en dessous reviendrait à ne jamais montrer le check là où le
+          // replay est justement le plus détaillé. Le % revient au step suivant, il n'est perdu que
+          // pour ce seul instant, et sur ce seul siège.
+          <Text style={styles.checkLabel}>check</Text>
         ) : equityPct != null ? (
           <Text style={styles.equityLabel}>{Math.round(equityPct)}%</Text>
         ) : equityPending ? (
@@ -638,6 +651,16 @@ const styles = StyleSheet.create({
     color: colors.goldBright,
   },
   foldLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.goldBright,
+    opacity: 0.85,
+    textTransform: 'lowercase',
+  },
+  // Volontairement identique à `foldLabel` : ce sont les deux seules choses qu'un joueur peut faire
+  // sans poser un jeton, elles se lisent donc de la même façon. Style dupliqué plutôt que partagé
+  // pour qu'on puisse en changer une sans toucher l'autre — elles n'ont pas la même durée de vie.
+  checkLabel: {
     fontSize: 10,
     fontWeight: '700',
     color: colors.goldBright,
