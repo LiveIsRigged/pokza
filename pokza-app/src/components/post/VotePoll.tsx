@@ -229,13 +229,17 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
   );
 }
 
+// Passe de densite A (2026-08-18) — on ne rogne QUE des espaces blancs, aucun element n'est
+// reduit : ni la table, ni les cartes, ni les tailles de texte, ni les cibles tactiles. Les
+// valeurs d'origine etaient toutes des jetons `spacing` par defaut, jamais choisies pour cette
+// carte en particulier. Reversible d'un seul `git revert` (commit isole).
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: 10,
   },
   question: {
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: 6,
   },
   error: {
     fontSize: 12,
@@ -309,7 +313,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.action,
-    marginTop: spacing.sm,
+    marginTop: 6,
   },
   resultFooter: {
     flexDirection: 'row',

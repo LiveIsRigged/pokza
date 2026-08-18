@@ -51,6 +51,10 @@ export function ActionCallout({ text, stepKey, danger = false }: ActionCalloutPr
   );
 }
 
+// Passe de densite A (2026-08-18) — on ne rogne QUE des espaces blancs, aucun element n'est
+// reduit : ni la table, ni les cartes, ni les tailles de texte, ni les cibles tactiles. Les
+// valeurs d'origine etaient toutes des jetons `spacing` par defaut, jamais choisies pour cette
+// carte en particulier. Reversible d'un seul `git revert` (commit isole).
 const styles = StyleSheet.create({
   slot: {
     alignItems: 'center',
@@ -58,12 +62,12 @@ const styles = StyleSheet.create({
     // Pas de `minHeight` ici : il y en avait un (34), plus petit que la bulle réellement rendue
     // (~37,5 px), et c'est exactement ce qui produisait le décalage. La hauteur vient désormais de
     // la bulle elle-même, toujours montée — inutile de la dupliquer en dur, et dangereux de le faire.
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   pill: {
     backgroundColor: colors.tableFelt,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: radius.full,
     maxWidth: '92%',
   },

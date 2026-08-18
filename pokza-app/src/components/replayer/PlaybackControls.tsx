@@ -78,16 +78,22 @@ export function PlaybackControls({
   );
 }
 
+// Passe de densite A (2026-08-18) — on ne rogne QUE des espaces blancs, aucun element n'est
+// reduit : ni la table, ni les cartes, ni les tailles de texte, ni les cibles tactiles. Les
+// valeurs d'origine etaient toutes des jetons `spacing` par defaut, jamais choisies pour cette
+// carte en particulier. Reversible d'un seul `git revert` (commit isole).
+// `segmentTouchable` garde ses 8 px de padding : c'est la zone tactile de la barre de seek, deja
+// a 19 px de haut. La rogner ferait gagner 4 px contre une cible plus dure a viser — mauvais echange.
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 4,
   },
   progressRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   streetLabel: {
     fontSize: 12,
@@ -118,7 +124,7 @@ const styles = StyleSheet.create({
   segmentsRow: {
     flexDirection: 'row',
     gap: 3,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   // La barre visible ne fait que 3px de haut ; ce padding vertical élargit la zone cliquable
   // sans changer l'apparence, pour une cible tactile confortable sur mobile.

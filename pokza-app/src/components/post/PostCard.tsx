@@ -411,18 +411,22 @@ function PostCardInner({
   );
 }
 
+// Passe de densite A (2026-08-18) — on ne rogne QUE des espaces blancs, aucun element n'est
+// reduit : ni la table, ni les cartes, ni les tailles de texte, ni les cibles tactiles. Les
+// valeurs d'origine etaient toutes des jetons `spacing` par defaut, jamais choisies pour cette
+// carte en particulier. Reversible d'un seul `git revert` (commit isole).
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.feedBackground,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: 12,
     paddingBottom: spacing.sm,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.sm,
+    marginBottom: 6,
   },
   authorPressable: {
     flex: 1,
@@ -459,11 +463,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   contextLine: {
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   title: {
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: 6,
   },
   descriptionWrapper: {
     position: 'relative',
@@ -495,7 +499,7 @@ const styles = StyleSheet.create({
   replayerWrapper: {
     borderRadius: radius.lg,
     overflow: 'hidden',
-    marginBottom: spacing.md,
+    marginBottom: 10,
   },
   engagementRow: {
     flexDirection: 'row',
