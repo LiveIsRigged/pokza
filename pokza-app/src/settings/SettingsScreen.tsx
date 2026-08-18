@@ -1,29 +1,16 @@
-import React, { useEffect, useImperativeHandle, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import React, { useImperativeHandle, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
+import { NotificationSettingsScreen } from './NotificationSettingsScreen';
 import { deleteOwnAccount } from '../data/profiles';
 import { supabase } from '../lib/supabase';
-import { enablePush, disablePush, isDeviceSubscribed, pushState, pushSupported, type PushState } from '../web/push';
-import {
-  fetchNotificationPrefs,
-  updateNotificationPrefs,
-  type NotificationPrefs,
-} from '../data/notificationPrefs';
 import appJson from '../../app.json';
 
 const CONTACT_EMAIL = 'contact@pokza.app';
-
-const FAMILY_ROWS: { key: keyof NotificationPrefs; label: string }[] = [
-  { key: 'likes', label: "J'aime" },
-  { key: 'comments', label: 'Commentaires et réponses' },
-  { key: 'friends', label: 'Amis (demandes et acceptations)' },
-  { key: 'groups', label: 'Groupes (invitations et acceptations)' },
-  { key: 'posted', label: 'Mains partagées (amis et groupes)' },
-];
 
 interface SettingsScreenProps {
   userId: string;
@@ -33,35 +20,30 @@ interface SettingsScreenProps {
 
 export interface SettingsScreenHandle {
   /**
-   * Ferme le document légal ouvert par-dessus Réglages s'il y en a un, et renvoie `true` dans ce
-   * cas. `App.tsx` s'en sert pour le glissement de bord (`Screen`) : ce panneau est un overlay LOCAL
-   * à `SettingsScreen`, invisible du geste attaché bien plus haut autour de tout l'écran — sans ce
-   * relais, le glissement saute directement au feed au lieu de refermer d'abord le document (même
-   * bug déjà corrigé pour `GroupScreen`, cf. `GroupScreenHandle`).
+   * Ferme le panneau ouvert par-dessus Réglages (document légal ou détail des notifications) s'il y
+   * en a un, et renvoie `true` dans ce cas. `App.tsx` s'en sert pour le glissement de bord
+   * (`Screen`) : ces panneaux sont des overlays LOCAUX à `SettingsScreen`, invisibles du geste
+   * attaché bien plus haut autour de tout l'écran — sans ce relais, le glissement saute directement
+   * au feed au lieu de refermer d'abord le panneau (même bug déjà corrigé pour `GroupScreen`, cf.
+   * `GroupScreenHandle`).
    */
   handleBack: () => boolean;
 }
 
 /**
- * Écran Réglages, ouvert depuis le menu latéral. Regroupe ce qui était jusqu'ici dispersé :
- * l'activation du push (bannière du panneau Notifications, qui ne permettait pas de le COUPER une
- * fois accordé), les comptes bloqués et la suppression de compte (« Modifier mon profil »), et les
- * informations légales (entrée à part entière du menu). Décisions verrouillées le 16/08 : les
- * interrupteurs par famille ne filtrent QUE le push (l'historique in-app reste complet), pas de
- * réglage de confidentialité du profil, pas de thème sombre.
+ * Écran Réglages, ouvert depuis le menu latéral. Regroupe ce qui était jusqu'ici dispersé : les
+ * notifications (détail dans son propre écran, cf. `NotificationSettingsScreen` — sinon l'appareil
+ * et les 5 familles à eux seuls occupaient plus de la moitié de la page), les comptes bloqués et la
+ * suppression de compte (« Modifier mon profil »), et les informations légales (entrée à part
+ * entière du menu). Décisions verrouillées le 16/08 : les interrupteurs par famille ne filtrent QUE
+ * le push (l'historique in-app reste complet), pas de réglage de confidentialité du profil, pas de
+ * thème sombre.
  */
 export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScreenProps>(function SettingsScreen(
   { userId, onBack, onOpenBlocked },
   ref
 ) {
-  const [perm, setPerm] = useState<PushState>(() => pushState());
-  // `null` = encore en cours de lecture de l'abonnement réel (cf. `isDeviceSubscribed`) : distinct
-  // de la permission navigateur, qui elle ne redescend JAMAIS à `false` depuis le code.
-  const [deviceOn, setDeviceOn] = useState<boolean | null>(null);
-  const [togglingDevice, setTogglingDevice] = useState(false);
-  const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
-  const [prefsError, setPrefsError] = useState<string | null>(null);
-  const [savingFamily, setSavingFamily] = useState<keyof NotificationPrefs | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [legalOpen, setLegalOpen] = useState(false);
   const [legalInitialDocId, setLegalInitialDocId] = useState<LegalDocId | undefined>(undefined);
@@ -74,6 +56,10 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
     ref,
     () => ({
       handleBack: () => {
+        if (notificationsOpen) {
+          setNotificationsOpen(false);
+          return true;
+        }
         if (legalOpen) {
           setLegalOpen(false);
           return true;
@@ -81,68 +67,8 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
         return false;
       },
     }),
-    [legalOpen]
+    [notificationsOpen, legalOpen]
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchNotificationPrefs(userId)
-      .then((data) => {
-        if (!cancelled) setPrefs(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setPrefsError(errorMessage(err));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  useEffect(() => {
-    if (!pushSupported()) return;
-    let cancelled = false;
-    isDeviceSubscribed().then((on) => {
-      if (!cancelled) setDeviceOn(on);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const handleToggleDevice = async (on: boolean) => {
-    setTogglingDevice(true);
-    setPrefsError(null);
-    try {
-      if (on) {
-        const result = await enablePush(userId);
-        setPerm(result);
-        setDeviceOn(result === 'granted');
-      } else {
-        await disablePush();
-        setDeviceOn(false);
-      }
-    } catch (err) {
-      setPrefsError(errorMessage(err));
-    } finally {
-      setTogglingDevice(false);
-    }
-  };
-
-  const handleToggleFamily = async (key: keyof NotificationPrefs, value: boolean) => {
-    if (!prefs) return;
-    const previous = prefs;
-    setPrefs({ ...prefs, [key]: value });
-    setSavingFamily(key);
-    setPrefsError(null);
-    try {
-      await updateNotificationPrefs(userId, { [key]: value });
-    } catch (err) {
-      setPrefs(previous);
-      setPrefsError(errorMessage(err));
-    } finally {
-      setSavingFamily(null);
-    }
-  };
 
   const openLegalIndex = () => {
     setLegalInitialDocId(undefined);
@@ -166,6 +92,10 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
     }
   };
 
+  if (notificationsOpen) {
+    return <NotificationSettingsScreen userId={userId} onBack={() => setNotificationsOpen(false)} />;
+  }
+
   if (legalOpen) {
     return <LegalScreen initialDocId={legalInitialDocId} onBack={() => setLegalOpen(false)} />;
   }
@@ -181,53 +111,10 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
         </View>
 
         <Text style={styles.sectionTitle}>Notifications</Text>
-
-        {pushSupported() ? (
-          <>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Notifications sur cet appareil</Text>
-              {perm === 'denied' ? (
-                <Text style={styles.deniedHint}>Bloquées</Text>
-              ) : (
-                <Switch
-                  value={!!deviceOn}
-                  onValueChange={handleToggleDevice}
-                  disabled={togglingDevice || deviceOn === null}
-                  trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
-                  thumbColor="#fff"
-                  ios_backgroundColor="rgba(22,35,61,0.18)"
-                  {...({ activeThumbColor: '#fff' } as object)}
-                />
-              )}
-            </View>
-            {perm === 'denied' && (
-              <Text style={styles.hint}>
-                Bloquées dans les réglages de ton navigateur — Pokza ne peut plus te les redemander directement.
-              </Text>
-            )}
-
-            <Text style={styles.subLabel}>Recevoir un push pour…</Text>
-            {FAMILY_ROWS.map((f) => (
-              <View key={f.key} style={[styles.row, !deviceOn && styles.rowMuted]}>
-                <Text style={styles.rowLabel}>{f.label}</Text>
-                <Switch
-                  value={prefs ? prefs[f.key] : true}
-                  onValueChange={(v) => handleToggleFamily(f.key, v)}
-                  // Éditer ces préférences n'a aucun effet tant que le push est coupé au niveau de
-                  // l'appareil — les griser évite de laisser croire qu'elles font quelque chose.
-                  disabled={!prefs || savingFamily === f.key || !deviceOn}
-                  trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
-                  thumbColor="#fff"
-                  ios_backgroundColor="rgba(22,35,61,0.18)"
-                  {...({ activeThumbColor: '#fff' } as object)}
-                />
-              </View>
-            ))}
-            {prefsError && <Text style={styles.error}>{prefsError}</Text>}
-          </>
-        ) : (
-          <Text style={styles.hint}>Les notifications ne sont pas disponibles sur cet appareil.</Text>
-        )}
+        <Pressable style={styles.linkRow} onPress={() => setNotificationsOpen(true)}>
+          <Text style={styles.linkRowLabel}>Notifications</Text>
+          <Text style={styles.linkRowChevron}>›</Text>
+        </Pressable>
 
         <Text style={styles.sectionTitle}>Confidentialité</Text>
         <Pressable style={styles.linkRow} onPress={onOpenBlocked}>
@@ -309,41 +196,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 24,
     marginBottom: 6,
-  },
-  subLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginTop: 14,
-    marginBottom: 2,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
-  },
-  rowMuted: {
-    opacity: 0.4,
-  },
-  rowLabel: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  deniedHint: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.cardTextRed,
-  },
-  hint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 6,
-    lineHeight: 17,
   },
   error: {
     color: colors.cardTextRed,
