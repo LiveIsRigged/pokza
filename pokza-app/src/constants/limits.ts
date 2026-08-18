@@ -19,8 +19,14 @@
 export const PSEUDO_MAX_LENGTH = 24;
 export const BIO_MAX_LENGTH = 150;
 
-/** Main : texte principal */
-export const TITLE_MAX_LENGTH = 80;
+/** Main : texte principal.
+ *  Le titre s'affiche sur UNE ligne dans le feed (19 px, gras). Mesuré sur SF Pro Bold : une
+ *  phrase française y tient à ~9,2 px par caractère, soit 37 caractères dans les 343 px utiles
+ *  d'un iPhone SE — le plus étroit des appareils visés. 40 est donc le seuil au-delà duquel un
+ *  titre commence à être tronqué à l'affichage plutôt qu'à la saisie : mieux vaut que l'auteur
+ *  le voie dans le compteur du formulaire que de découvrir sa main coupée dans le feed.
+ *  Le titre complet reste lisible en entier sur l'écran d'une main (`PostScreen`). */
+export const TITLE_MAX_LENGTH = 40;
 export const DESCRIPTION_MAX_LENGTH = 600;
 
 /** Main : contexte. Ces trois champs s'affichent côte à côte sur une seule ligne sous le titre —

@@ -46,7 +46,7 @@ alter table public.profiles  add  constraint profiles_pseudo_length
 
 alter table public.posts     drop constraint if exists posts_title_length;
 alter table public.posts     add  constraint posts_title_length
-  check (char_length(title) between 1 and 80) not valid;
+  check (char_length(title) between 1 and 40) not valid;  -- 80 -> 40 le 2026-08-18, cf. titre-40-caracteres.sql
 
 alter table public.posts     drop constraint if exists posts_description_length;
 alter table public.posts     add  constraint posts_description_length
@@ -234,7 +234,7 @@ select 'F-13 plafonds du formulaire public actifs',
 union all
 select 'Anciens pseudos trop longs',      count(*)::text from public.profiles where char_length(pseudo) > 24
 union all
-select 'Anciens titres trop longs',       count(*)::text from public.posts    where char_length(title) > 80
+select 'Anciens titres trop longs',       count(*)::text from public.posts    where char_length(title) > 40
 union all
 select 'Anciennes descriptions trop longues', count(*)::text from public.posts where char_length(coalesce(description,'')) > 600
 union all

@@ -301,7 +301,19 @@ function PostCardInner({
 
       <Text style={[typography.contextLine, styles.muted, styles.contextLine]}>{formatContextLine(post)}</Text>
 
-      <Text style={[typography.postTitle, styles.title]}>{post.title}</Text>
+      {/*
+        UNE seule ligne, toujours. La hauteur de ce bloc devient ainsi constante PAR CONSTRUCTION
+        (même remède que le slot de `ActionCallout`), quoi que l'auteur ait tapé : aucun titre ne
+        peut plus faire varier la hauteur de la carte dans le feed.
+        La limite de saisie (`TITLE_MAX_LENGTH`, 40) ne suffit PAS à le garantir — la largeur d'un
+        caractère varie d'un facteur 3,6 dans la police système (mesuré : « i » 5,4 px, « % »
+        19,4 px à 19 px gras). 40 caractères larges dépasseraient largement les 343 px utiles du
+        plus étroit des écrans visés. Les deux se complètent : la limite rend la troncature rare,
+        `numberOfLines` la rend sans conséquence sur la mise en page.
+      */}
+      <Text style={[typography.postTitle, styles.title]} numberOfLines={1}>
+        {post.title}
+      </Text>
 
       {post.description && <ExpandableDescription text={post.description} />}
 
