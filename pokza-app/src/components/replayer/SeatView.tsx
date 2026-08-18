@@ -26,6 +26,10 @@ interface SeatViewProps {
    * n'est pas résolue, quand le créateur a choisi de ne la révéler qu'au showdown (cf.
    * `revealShowdown`) : la vraie carte apparaît d'un coup dès que ce flag repasse à `false`. */
   showCardBacks?: boolean;
+  /** Ce siège vient de se coucher, à CE step précis — à distinguer de `folded`, qui dit qu'il EST
+   * couché et le reste jusqu'à la fin de la main. Seul le libellé est ponctuel : l'estompage et la
+   * disparition des cartes, eux, persistent. */
+  justFolded?: boolean;
   /** Ce siège vient de checker, à CE step précis. Contrairement à `folded` et `isAllIn`, qui sont
    * des états persistants, c'est une action ponctuelle : le libellé disparaît au step suivant et
    * le badge retrouve son stack. Un check ne déplace aucun jeton et ne change aucun stack —
@@ -208,6 +212,7 @@ export function SeatView({
   y,
   tableCenter,
   folded,
+  justFolded = false,
   justChecked = false,
   showCardBacks = false,
   stackRemaining,
@@ -443,6 +448,7 @@ export function SeatView({
   // Hero garde toujours "Hero" — jamais sa position ni un nom personnalisé (buildSeats ne lui en
   // assigne d'ailleurs jamais) : c'est le narrateur de la main, pas un joueur identifié par siège.
   const displayName = seat.isHero ? 'Hero' : seat.playerName ?? straddleLabel ?? seat.position;
+  const stackText = formatChipAmount(Math.max(stackRemaining, 0), gameType, { bb, useBB });
 
   return (
     <View style={[styles.wrapper, { left: x, top: y }]} pointerEvents="none">
@@ -504,14 +510,30 @@ export function SeatView({
         >
           {displayName}
         </Text>
-        {folded ? (
+        {/*
+          UNE SEULE RÈGLE, et elle s'énonce en une phrase : cette ligne dit ce que le joueur VIENT
+          de faire ; à défaut, elle affiche son stack.
+
+          « fold » et « check » ne durent donc que le step de leur action. « fold » persistait
+          auparavant toute la main, ce qui masquait définitivement le stack d'un joueur couché —
+          alors que savoir qui est court et qui est profond fait partie de la lecture d'un coup, y
+          compris pour les joueurs sortis. Qu'un siège soit couché reste dit par deux signaux
+          permanents, eux : ses cartes ont disparu et son nom est estompé. Le mot était un
+          troisième signal, redondant, qui coûtait une information.
+
+          L'ordre compte. Les deux libellés ponctuels passent devant tout le reste, y compris
+          l'équité : la placer avant reviendrait à ne jamais montrer le check dans les mains où
+          toutes les cartes sont connues, c'est-à-dire celles où le replay est le plus détaillé.
+          Le % revient au step suivant, il n'est perdu que pour cet instant et sur ce seul siège.
+          Vient ensuite `folded`, qui coupe court : un siège couché n'a plus ni équité ni tapis à
+          annoncer, il n'est plus dans le coup.
+        */}
+        {justFolded ? (
           <Text style={styles.foldLabel}>fold</Text>
         ) : justChecked ? (
-          // Au-dessus de l'équité, pas en dessous : dans une main où l'équité s'affiche (toutes les
-          // cartes connues), la placer en dessous reviendrait à ne jamais montrer le check là où le
-          // replay est justement le plus détaillé. Le % revient au step suivant, il n'est perdu que
-          // pour ce seul instant, et sur ce seul siège.
           <Text style={styles.checkLabel}>check</Text>
+        ) : folded ? (
+          <Text style={[typography.stackAmount, styles.stack, styles.textFolded]}>{stackText}</Text>
         ) : equityPct != null ? (
           <Text style={styles.equityLabel}>{Math.round(equityPct)}%</Text>
         ) : equityPending ? (
@@ -523,7 +545,7 @@ export function SeatView({
           <Text style={styles.allInLabel}>ALL-IN</Text>
         ) : (
           <Text style={[typography.stackAmount, styles.stack, isWinner && styles.textWinner]}>
-            {formatChipAmount(Math.max(stackRemaining, 0), gameType, { bb, useBB })}
+            {stackText}
           </Text>
         )}
       </Animated.View>

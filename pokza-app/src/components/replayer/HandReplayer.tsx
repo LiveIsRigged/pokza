@@ -240,6 +240,11 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               // Même condition que la bulle d'action : `state.lastAction` survit aux events qui ne
               // sont pas des actions (révélation d'une street, retournement des mains), le libellé
               // se rallumerait donc à contretemps sans le garde `currentEventIsAction`.
+              justFolded={
+                currentEventIsAction &&
+                state.lastAction?.seatId === seat.id &&
+                state.lastAction.type === 'fold'
+              }
               justChecked={
                 currentEventIsAction &&
                 state.lastAction?.seatId === seat.id &&
