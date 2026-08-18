@@ -105,7 +105,15 @@ function ExpandableDescription({ text }: { text: string }) {
 
 const VARIANT_LABEL: Record<string, string> = { nlhe: 'NLHE', plo: 'PLO', plo5: 'PLO5' };
 
-function formatContextLine(post: Post): string {
+/**
+ * Dénomination de la partie, telle qu'affichée sous l'en-tête.
+ *
+ * `withLocation` existe parce que cette même chaîne sert à DEUX endroits qui n'ont pas le même
+ * contexte. Dans la carte, le lieu est déjà écrit à côté de la date, juste au-dessus : l'ajouter
+ * ici l'affichait deux fois à trois pixels d'écart. Dans le message de partage, il n'y a pas
+ * d'en-tête — le lieu doit y rester, sinon le destinataire perd l'info.
+ */
+function formatContextLine(post: Post, { withLocation = true }: { withLocation?: boolean } = {}): string {
   const { hand } = post;
   const parts: string[] = [];
   parts.push(hand.gameType === 'cash' ? 'Cash game' : 'Tournoi');
@@ -125,7 +133,7 @@ function formatContextLine(post: Post): string {
     const stakes = [hand.blinds.sb, hand.blinds.bb, ...straddleAmounts].join('/') + cashCurrencySuffix(hand.gameType);
     parts.push(`${variantPrefix}${stakes}`);
   }
-  if (post.location) parts.push(post.location);
+  if (withLocation && post.location) parts.push(post.location);
   if (post.buyIn) parts.push(post.buyIn);
   if (post.level) parts.push(post.level);
   return parts.join(' · ');
@@ -299,7 +307,9 @@ function PostCardInner({
         )}
       </View>
 
-      <Text style={[typography.contextLine, styles.muted, styles.contextLine]}>{formatContextLine(post)}</Text>
+      <Text style={[typography.contextLine, styles.muted, styles.contextLine]}>
+        {formatContextLine(post, { withLocation: false })}
+      </Text>
 
       {/*
         UNE seule ligne, toujours. La hauteur de ce bloc devient ainsi constante PAR CONSTRUCTION
