@@ -35,16 +35,6 @@ export function PlaybackControls({
 }: PlaybackControlsProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.progressRow}>
-        <Text style={styles.streetLabel}>{streetLabel}</Text>
-        <Pressable
-          onPress={onToggleUseBB}
-          style={[styles.unitToggle, useBB && styles.unitToggleActive]}
-          hitSlop={8}
-        >
-          <Text style={[styles.unitToggleText, useBB && styles.unitToggleTextActive]}>BB</Text>
-        </Pressable>
-      </View>
       <View style={styles.segmentsRow}>
         {Array.from({ length: totalSteps }).map((_, i) => (
           <Pressable key={i} style={styles.segmentTouchable} onPress={() => onSeek(i)} hitSlop={8}>
@@ -54,25 +44,43 @@ export function PlaybackControls({
       </View>
 
       <View style={styles.row}>
-        <Pressable
-          onPress={onBack}
-          disabled={!canGoBack}
-          style={[styles.sideButton, !canGoBack && styles.disabled]}
-        >
-          <View style={styles.arrowLeft} />
-        </Pressable>
+        <View style={styles.flank}>
+          <Text style={styles.streetLabel} numberOfLines={1}>
+            {streetLabel}
+          </Text>
+        </View>
 
-        <Pressable onPress={onTogglePlay} style={styles.mainButton}>
-          <Text style={styles.mainIcon}>{playing ? '❚❚' : '▶'}</Text>
-        </Pressable>
+        <View style={styles.buttons}>
+          <Pressable
+            onPress={onBack}
+            disabled={!canGoBack}
+            style={[styles.sideButton, !canGoBack && styles.disabled]}
+          >
+            <View style={styles.arrowLeft} />
+          </Pressable>
 
-        <Pressable
-          onPress={onForward}
-          disabled={!canGoForward}
-          style={[styles.sideButton, !canGoForward && styles.disabled]}
-        >
-          <View style={styles.arrowRight} />
-        </Pressable>
+          <Pressable onPress={onTogglePlay} style={styles.mainButton}>
+            <Text style={styles.mainIcon}>{playing ? '❚❚' : '▶'}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onForward}
+            disabled={!canGoForward}
+            style={[styles.sideButton, !canGoForward && styles.disabled]}
+          >
+            <View style={styles.arrowRight} />
+          </Pressable>
+        </View>
+
+        <View style={[styles.flank, styles.flankRight]}>
+          <Pressable
+            onPress={onToggleUseBB}
+            style={[styles.unitToggle, useBB && styles.unitToggleActive]}
+            hitSlop={8}
+          >
+            <Text style={[styles.unitToggleText, useBB && styles.unitToggleTextActive]}>BB</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -88,12 +96,6 @@ const styles = StyleSheet.create({
   container: {
     paddingTop: 8,
     paddingBottom: 4,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 4,
   },
   streetLabel: {
     fontSize: 12,
@@ -140,10 +142,25 @@ const styles = StyleSheet.create({
   segmentFilled: {
     backgroundColor: colors.gold,
   },
+  // Le libelle de street et la pastille BB vivaient sur une rangee a eux, au-dessus de la barre de
+  // progression : 26 px pour deux elements qui tiennent largement de part et d'autre des boutons
+  // (les trois boutons font 162 px, il en reste ~98 de chaque cote a 390 pt d'ecran).
+  // Les deux flancs sont en `flex: 1` PLUTOT qu'a largeur fixe : c'est ce qui garde les boutons
+  // exactement centres quelle que soit la largeur d'ecran. Sur un ecran tres etroit, c'est le
+  // libelle qui s'abrege (numberOfLines) au lieu de pousser les boutons hors de l'axe.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  flank: {
+    flex: 1,
+  },
+  flankRight: {
+    alignItems: 'flex-end',
+  },
+  buttons: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 18,
   },
   sideButton: {
