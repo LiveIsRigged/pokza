@@ -6,7 +6,6 @@ interface PlaybackControlsProps {
   playing: boolean;
   step: number;
   totalSteps: number;
-  streetLabel: string;
   canGoBack: boolean;
   canGoForward: boolean;
   onBack: () => void;
@@ -14,73 +13,49 @@ interface PlaybackControlsProps {
   onTogglePlay: () => void;
   /** Va directement à l'état juste après l'action n° `index + 1` (segment cliqué). */
   onSeek: (index: number) => void;
-  /** Affichage des montants en BB plutôt qu'en jetons bruts — préférence mémorisée pour tout le feed. */
-  useBB: boolean;
-  onToggleUseBB: () => void;
 }
 
 export function PlaybackControls({
   playing,
   step,
   totalSteps,
-  streetLabel,
   canGoBack,
   canGoForward,
   onBack,
   onForward,
   onTogglePlay,
   onSeek,
-  useBB,
-  onToggleUseBB,
 }: PlaybackControlsProps) {
   return (
     <View style={styles.container}>
       <View style={styles.segmentsRow}>
         {Array.from({ length: totalSteps }).map((_, i) => (
-          <Pressable key={i} style={styles.segmentTouchable} onPress={() => onSeek(i)} hitSlop={8}>
+        <Pressable key={i} style={styles.segmentTouchable} onPress={() => onSeek(i)} hitSlop={8}>
             <View style={[styles.segment, i < step && styles.segmentFilled]} />
-          </Pressable>
+        </Pressable>
         ))}
       </View>
 
       <View style={styles.row}>
-        <View style={styles.flank}>
-          <Text style={styles.streetLabel} numberOfLines={1}>
-            {streetLabel}
-          </Text>
-        </View>
+        <Pressable
+          onPress={onBack}
+          disabled={!canGoBack}
+          style={[styles.sideButton, !canGoBack && styles.disabled]}
+        >
+          <View style={styles.arrowLeft} />
+        </Pressable>
 
-        <View style={styles.buttons}>
-          <Pressable
-            onPress={onBack}
-            disabled={!canGoBack}
-            style={[styles.sideButton, !canGoBack && styles.disabled]}
-          >
-            <View style={styles.arrowLeft} />
-          </Pressable>
+        <Pressable onPress={onTogglePlay} style={styles.mainButton}>
+          <Text style={styles.mainIcon}>{playing ? '❚❚' : '▶'}</Text>
+        </Pressable>
 
-          <Pressable onPress={onTogglePlay} style={styles.mainButton}>
-            <Text style={styles.mainIcon}>{playing ? '❚❚' : '▶'}</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={onForward}
-            disabled={!canGoForward}
-            style={[styles.sideButton, !canGoForward && styles.disabled]}
-          >
-            <View style={styles.arrowRight} />
-          </Pressable>
-        </View>
-
-        <View style={[styles.flank, styles.flankRight]}>
-          <Pressable
-            onPress={onToggleUseBB}
-            style={[styles.unitToggle, useBB && styles.unitToggleActive]}
-            hitSlop={8}
-          >
-            <Text style={[styles.unitToggleText, useBB && styles.unitToggleTextActive]}>BB</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={onForward}
+          disabled={!canGoForward}
+          style={[styles.sideButton, !canGoForward && styles.disabled]}
+        >
+          <View style={styles.arrowRight} />
+        </Pressable>
       </View>
     </View>
   );
@@ -96,32 +71,6 @@ const styles = StyleSheet.create({
   container: {
     paddingTop: 8,
     paddingBottom: 4,
-  },
-  streetLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  unitToggle: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
-  },
-  unitToggleActive: {
-    backgroundColor: colors.tableFelt,
-    borderColor: colors.tableFelt,
-  },
-  unitToggleText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  unitToggleTextActive: {
-    color: colors.textOnFelt,
   },
   segmentsRow: {
     flexDirection: 'row',
@@ -142,25 +91,10 @@ const styles = StyleSheet.create({
   segmentFilled: {
     backgroundColor: colors.gold,
   },
-  // Le libelle de street et la pastille BB vivaient sur une rangee a eux, au-dessus de la barre de
-  // progression : 26 px pour deux elements qui tiennent largement de part et d'autre des boutons
-  // (les trois boutons font 162 px, il en reste ~98 de chaque cote a 390 pt d'ecran).
-  // Les deux flancs sont en `flex: 1` PLUTOT qu'a largeur fixe : c'est ce qui garde les boutons
-  // exactement centres quelle que soit la largeur d'ecran. Sur un ecran tres etroit, c'est le
-  // libelle qui s'abrege (numberOfLines) au lieu de pousser les boutons hors de l'axe.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  flank: {
-    flex: 1,
-  },
-  flankRight: {
-    alignItems: 'flex-end',
-  },
-  buttons: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'center',
     gap: 18,
   },
   sideButton: {

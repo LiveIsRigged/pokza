@@ -19,15 +19,9 @@ import { BoardView } from './BoardView';
 import { SeatView } from './SeatView';
 import { ActionCallout } from './ActionCallout';
 import { PlaybackControls } from './PlaybackControls';
+import { UnitToggle, UNIT_TOGGLE_WIDTH } from './UnitToggle';
 
 const AUTOPLAY_INTERVAL_MS = 1400;
-
-const STREET_LABELS: Record<string, string> = {
-  preflop: 'Préflop',
-  flop: 'Flop',
-  turn: 'Turn',
-  river: 'River',
-};
 
 interface HandReplayerProps {
   hand: Hand;
@@ -266,17 +260,25 @@ export function HandReplayer({ hand }: HandReplayerProps) {
         })}
       </View>
 
-      <ActionCallout text={actionText} stepKey={step} danger={lastActionIsAllIn} />
+      {/*
+        La bascule BB partage la rangée de la bulle d'action : la bulle fait 27,5 px de haut, la
+        bascule 21 — elle tient donc dans une place qui existait déjà, sans rien ajouter.
+        Le cale-espace de gauche fait exactement la largeur de la bascule (source unique,
+        `UNIT_TOGGLE_WIDTH`) : sans lui la bulle serait centrée sur l'espace restant, donc décalée
+        vers la gauche par rapport à l'axe de la table.
+        La bascule est SŒUR de la bulle, jamais dedans : la bulle est une `Animated.View` dont
+        l'opacité retombe à 0 après 1,4 s, elle emporterait la bascule avec elle.
+      */}
+      <View style={styles.calloutRow}>
+        <View style={styles.calloutSpacer} />
+        <ActionCallout text={actionText} stepKey={step} danger={lastActionIsAllIn} />
+        <UnitToggle useBB={useBB} onToggle={toggleUseBB} />
+      </View>
 
       <PlaybackControls
         playing={playing}
         step={step - initialStep}
         totalSteps={totalSteps - initialStep}
-        // Un bomb pot n'a pas de preflop : le tout premier frame (antes postés, flop pas encore
-        // révélé) affiche "Bomb pot" plutôt que "Préflop", qui n'aurait aucun sens ici.
-        streetLabel={
-          hand.bombPot && state.currentStreet === 'preflop' ? 'Bomb pot' : STREET_LABELS[state.currentStreet]
-        }
         canGoBack={step > initialStep}
         canGoForward={step < totalSteps}
         onBack={() => {
@@ -297,8 +299,6 @@ export function HandReplayer({ hand }: HandReplayerProps) {
             return !p;
           });
         }}
-        useBB={useBB}
-        onToggleUseBB={toggleUseBB}
       />
     </View>
   );
@@ -317,6 +317,13 @@ const styles = StyleSheet.create({
     aspectRatio: 0.8,
     position: 'relative',
     backgroundColor: colors.feedBackground,
+  },
+  calloutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  calloutSpacer: {
+    width: UNIT_TOGGLE_WIDTH,
   },
   boardWrapper: {
     position: 'absolute',

@@ -57,6 +57,9 @@ export function ActionCallout({ text, stepKey, danger = false }: ActionCalloutPr
 // carte en particulier. Reversible d'un seul `git revert` (commit isole).
 const styles = StyleSheet.create({
   slot: {
+    // `flex: 1` : le slot partage desormais sa rangee avec la bascule BB (cf. `HandReplayer`), et
+    // c'est cette rangee qui le centre sur l'axe de la table, plus le slot lui-meme.
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     // Pas de `minHeight` ici : il y en avait un (34), plus petit que la bulle réellement rendue
@@ -69,7 +72,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: radius.full,
-    maxWidth: '92%',
+    // 100% et non plus 92% : ce sont maintenant le cale-espace et la bascule BB qui ecartent la
+    // bulle des bords de la carte. Garder 92% en plus lui aurait retire 45 px de texte utile.
+    maxWidth: '100%',
   },
   pillDanger: {
     backgroundColor: colors.cardTextRed,
