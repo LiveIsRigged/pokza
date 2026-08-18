@@ -56,7 +56,16 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
       totalSteps={totalSteps}
     >
       <View>
-        <Text style={styles.label}>Titre</Text>
+        {/* Compteur sur le titre comme sur la description : a 80 caracteres la limite ne se
+            rencontrait jamais, a 40 on la touche en pleine phrase. Sans ce chiffre, l auteur bute
+            sur un mur invisible. Il affiche aussi "52/40" sur une ancienne main trop longue —
+            c est voulu : ca lui dit exactement combien enlever pour pouvoir enregistrer. */}
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, styles.labelNoMargin]}>Titre</Text>
+          <Text style={styles.counter}>
+            {value.title.length}/{TITLE_MAX_LENGTH}
+          </Text>
+        </View>
         <TextInput
           style={styles.input}
           placeholder="Ex : Hero call contre un reg"
