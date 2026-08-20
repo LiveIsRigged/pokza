@@ -1,3 +1,5 @@
+import type { GameType } from '../types/poker';
+
 // Labels partagés entre le formulaire de création de profil et l'affichage d'un profil consulté —
 // une seule source pour ces libellés, pour ne jamais les faire diverger.
 
@@ -23,6 +25,18 @@ export const FREQUENCE_OPTIONS = [
   { value: 'regulier', label: 'Régulièrement (toutes les semaines)' },
   { value: 'tres_regulier', label: 'Très régulièrement (minimum trois fois par semaine)' },
 ] as const;
+
+/**
+ * Type de partie présélectionné à la création d'une main, d'après le format favori du profil : un
+ * spin est un sit & go hyper-turbo (blindes montantes, buy-in), donc du tournoi au même titre que
+ * les deux formats « Tournois ». Toute valeur inconnue (profil ancien, champ vide) retombe sur le
+ * cash game, valeur par défaut du formulaire.
+ */
+export function gameTypeForFormat(formatFavori: string | undefined): GameType {
+  return formatFavori === 'tournoi_live' || formatFavori === 'tournoi_online' || formatFavori === 'spins'
+    ? 'tournament'
+    : 'cash';
+}
 
 export function formatLabel(value: string): string {
   return FORMAT_OPTIONS.find((o) => o.value === value)?.label ?? value;

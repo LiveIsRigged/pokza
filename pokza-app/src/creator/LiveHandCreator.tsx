@@ -9,8 +9,8 @@ import { ShowdownStep } from './steps/ShowdownStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { buildSeats, getActingOrder } from './positions';
 import { committedBySeat } from '../engine/handEngine';
-import { DEFAULT_CONTEXT, type ContextData, type ReviewData } from './types';
-import { loadContextPrefs, saveContextPrefs } from './contextPrefs';
+import type { ContextData, ReviewData } from './types';
+import { defaultContextForPlayer, loadContextPrefs, saveContextPrefs } from './contextPrefs';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { TrashIcon } from '../components/ui/icons';
 
@@ -48,15 +48,31 @@ interface Snapshot {
 interface LiveHandCreatorProps {
   authorId: string;
   authorName: string;
+  /** Format favori et variante préférée du profil : présélectionnent le type de partie et la
+   * variante de l'étape 1, tant qu'aucune main n'a encore été créée sur cet appareil (cf.
+   * `defaultContextForPlayer`). */
+  formatFavori?: string;
+  varianteFavorite?: string;
   /** Peut être asynchrone : le créateur attend sa résolution pour relâcher le verrou anti-doublon. */
   onCreated: (post: Post) => void | Promise<void>;
   onCancel: () => void;
   groups: Group[];
 }
 
-export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, groups }: LiveHandCreatorProps) {
+export function LiveHandCreator({
+  authorId,
+  authorName,
+  formatFavori,
+  varianteFavorite,
+  onCreated,
+  onCancel,
+  groups,
+}: LiveHandCreatorProps) {
+  // Table de départ d'après le profil, calculée une fois : sert d'état initial ET de base au
+  // chargement des réglages mémorisés, qui la recouvrent (cf. l'effet plus bas).
+  const playerDefaults = useRef<ContextData>(defaultContextForPlayer({ formatFavori, varianteFavorite }));
   const [phase, setPhase] = useState<Phase>('context');
-  const [context, setContext] = useState<ContextData>(DEFAULT_CONTEXT);
+  const [context, setContext] = useState<ContextData>(playerDefaults.current);
   const [seats, setSeats] = useState<Seat[]>([]);
   // Longueur variable selon la variante (2/4/5) : remplie à l'étape "Tes cartes", et retaillée à la
   // sortie du contexte si la variante a changé (cf. onNext de ContextStep).
@@ -89,14 +105,14 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
   // pour savoir si le joueur a réellement saisi quelque chose. On ne compare PAS à
   // `DEFAULT_CONTEXT` — les préférences mémorisées (cf. `contextPrefs`) pré-remplissent l'étape,
   // et prendre les valeurs par défaut ferait passer un formulaire intact pour un formulaire rempli.
-  const pristineContext = useRef<ContextData>(DEFAULT_CONTEXT);
+  const pristineContext = useRef<ContextData>(playerDefaults.current);
 
   // Pré-remplissage du contexte avec les derniers réglages mémorisés (cf. contextPrefs), pour ne pas
   // retaper à chaque fois sa partie habituelle. Chargé une fois au montage (AsyncStorage répond en
   // quelques ms, bien avant toute interaction) ; garde-fou d'unmount pour ne pas setState après coup.
   useEffect(() => {
     let cancelled = false;
-    loadContextPrefs().then((prefs) => {
+    loadContextPrefs(playerDefaults.current).then((prefs) => {
       if (cancelled) return;
       setContext(prefs);
       pristineContext.current = prefs;

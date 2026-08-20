@@ -7,7 +7,7 @@ import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
 import { POSITION_SETS } from '../positions';
 import { straddleAwarePositionLabel } from '../../engine/handEngine';
-import type { ContextData } from '../types';
+import { TOURNAMENT_DEFAULTS, type ContextData } from '../types';
 import {
   BUY_IN_MAX_LENGTH,
   LEVEL_DIGITS_MAX,
@@ -259,9 +259,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
               onPress={() =>
                 update({
                   gameType: 'tournament',
-                  sb: 100,
-                  bb: 200,
-                  effectiveStack: defaultStackFor('tournament', 200),
+                  ...TOURNAMENT_DEFAULTS,
                   // Le bomb pot n'existe qu'en cash game — on l'éteint pour ne pas laisser un état
                   // caché actif si l'utilisateur l'avait coché avant de basculer sur Tournoi.
                   bombPot: false,

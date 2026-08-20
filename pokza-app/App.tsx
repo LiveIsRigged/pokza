@@ -104,6 +104,8 @@ function AppContent() {
     hasProfile,
     displayName,
     avatarUrl: myAvatarUrl,
+    formatFavori: myFormatFavori,
+    varianteFavorite: myVarianteFavorite,
     isAdmin,
     loading: profileLoading,
     error: profileError,
@@ -513,6 +515,8 @@ function AppContent() {
         <LiveHandCreator
           authorId={session.user.id}
           authorName={displayName ?? 'Joueur'}
+          formatFavori={myFormatFavori}
+          varianteFavorite={myVarianteFavorite}
           groups={myGroups}
           onCancel={() => setMode('feed')}
           onCreated={async (draftPost) => {

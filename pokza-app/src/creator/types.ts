@@ -51,6 +51,18 @@ export interface ReviewData {
   groupId?: string;
 }
 
+/**
+ * Réglages qui accompagnent un contexte de tournoi : premier palier de blindes et 50BB de stack
+ * (cf. `defaultStackFor` dans ContextStep). Partagés entre la chip « Tournoi » du formulaire et la
+ * présélection d'après le format favori du joueur (cf. `defaultContextForPlayer`), pour que les
+ * deux chemins donnent exactement la même table de départ.
+ */
+export const TOURNAMENT_DEFAULTS = { sb: 100, bb: 200, effectiveStack: 200 * 50 } as const;
+
+/**
+ * Table de départ d'une main, avant toute personnalisation. `heroPosition` vaut BTN : c'est la
+ * position la plus souvent racontée (et le siège le plus lisible d'une table de 6).
+ */
 export const DEFAULT_CONTEXT: ContextData = {
   gameType: 'cash',
   variant: 'nlhe',
@@ -61,7 +73,7 @@ export const DEFAULT_CONTEXT: ContextData = {
   bb: 5,
   effectiveStack: 500,
   numPlayers: 6,
-  heroPosition: 'CO',
+  heroPosition: 'BTN',
   anteType: 'none',
   ante: 0,
   straddleCount: 0,

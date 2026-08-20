@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_CONTEXT, type ContextData, type AnteType } from './types';
+import { DEFAULT_CONTEXT, TOURNAMENT_DEFAULTS, type ContextData, type AnteType } from './types';
+import { gameTypeForFormat } from '../profile/profileOptions';
 import type { GameType, Position, Variant } from '../types/poker';
 
 const KEY = 'pokza.creator.contextPrefs.v1';
@@ -56,29 +57,60 @@ export async function saveContextPrefs(context: ContextData): Promise<void> {
   }
 }
 
+/** Ce que le profil du joueur dit de sa partie habituelle (cf. `profiles.format_favori` et
+ * `profiles.variante_favorite`). Les deux champs sont optionnels : un profil incomplet ou une
+ * requête en échec laisse simplement le formulaire sur ses valeurs par défaut. */
+export interface PlayerGamePrefs {
+  formatFavori?: string;
+  varianteFavorite?: string;
+}
+
 /**
- * Renvoie DEFAULT_CONTEXT enrichi des derniers réglages mémorisés. Chaque champ est validé
- * individuellement : toute valeur absente, d'un mauvais type ou hors énumération retombe sur la
- * valeur par défaut, pour qu'un stockage corrompu ou issu d'une ancienne version ne casse jamais le
- * formulaire.
+ * Table de départ d'un joueur qui n'a encore jamais créé de main : DEFAULT_CONTEXT ajusté à sa
+ * partie habituelle déclarée au profil (variante préférée, et cash game / tournoi selon le format
+ * favori — le tournoi entraîne avec lui ses blindes et son stack, comme la chip « Tournoi »).
+ *
+ * ⚠️ Ce n'est qu'une BASE : dès qu'une main a été créée, `loadContextPrefs` recouvre ces champs par
+ * les derniers réglages réellement utilisés. Un joueur de cash game qui vient de raconter une main
+ * de tournoi retrouve donc « Tournoi » présélectionné, pas son format favori.
  */
-export async function loadContextPrefs(): Promise<ContextData> {
+export function defaultContextForPlayer(player?: PlayerGamePrefs): ContextData {
+  const base: ContextData = { ...DEFAULT_CONTEXT };
+  if (gameTypeForFormat(player?.formatFavori) === 'tournament') {
+    base.gameType = 'tournament';
+    base.sb = TOURNAMENT_DEFAULTS.sb;
+    base.bb = TOURNAMENT_DEFAULTS.bb;
+    base.effectiveStack = TOURNAMENT_DEFAULTS.effectiveStack;
+  }
+  const variant = player?.varianteFavorite;
+  if (variant && VARIANTS.includes(variant as Variant)) base.variant = variant as Variant;
+  return base;
+}
+
+/**
+ * Renvoie la base passée en argument (cf. `defaultContextForPlayer`) enrichie des derniers réglages
+ * mémorisés, qui ont le dernier mot : la dernière main créée est un meilleur indice de ce qu'on
+ * s'apprête à raconter que le format déclaré au profil. Chaque champ est validé individuellement :
+ * toute valeur absente, d'un mauvais type ou hors énumération retombe sur la valeur de base, pour
+ * qu'un stockage corrompu ou issu d'une ancienne version ne casse jamais le formulaire.
+ */
+export async function loadContextPrefs(base: ContextData = DEFAULT_CONTEXT): Promise<ContextData> {
   let raw: string | null = null;
   try {
     raw = await AsyncStorage.getItem(KEY);
   } catch {
-    return DEFAULT_CONTEXT;
+    return base;
   }
-  if (!raw) return DEFAULT_CONTEXT;
+  if (!raw) return base;
 
   let p: Partial<ContextPrefs>;
   try {
     p = JSON.parse(raw) as Partial<ContextPrefs>;
   } catch {
-    return DEFAULT_CONTEXT;
+    return base;
   }
 
-  const merged: ContextData = { ...DEFAULT_CONTEXT };
+  const merged: ContextData = { ...base };
   if (p.gameType && GAME_TYPES.includes(p.gameType)) merged.gameType = p.gameType;
   if (p.variant && VARIANTS.includes(p.variant)) merged.variant = p.variant;
   if (isNum(p.sb)) merged.sb = p.sb;

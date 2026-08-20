@@ -17,6 +17,12 @@ interface ProfileStatus {
   /** Photo de profil du compte courant — sert au menu latéral, seul endroit hors de la page de
    * profil elle-même qui affiche "mon" avatar. */
   avatarUrl: string | undefined;
+  /** Format favori et variante préférée déclarés au profil — servent à présélectionner le type de
+   * partie et la variante à la création d'une main (cf. `defaultContextForPlayer`), tant qu'aucune
+   * main n'a encore été créée. `undefined` tant que le profil n'a pas été lu, ou si la requête a
+   * échoué : le formulaire retombe alors sur ses valeurs par défaut. */
+  formatFavori: string | undefined;
+  varianteFavorite: string | undefined;
   /** Compte admin (présent dans la table `admins`) — n'affiche la page Stats que pour lui. Simple
    * gating d'UI : la vraie protection est côté base (fonction `get_admin_stats`). */
   isAdmin: boolean;
@@ -37,6 +43,8 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [formatFavori, setFormatFavori] = useState<string | undefined>(undefined);
+  const [varianteFavorite, setVarianteFavorite] = useState<string | undefined>(undefined);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +55,8 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
       setHasProfile(null);
       setDisplayName(null);
       setAvatarUrl(undefined);
+      setFormatFavori(undefined);
+      setVarianteFavorite(undefined);
       setIsAdmin(false);
       setError(null);
       setLoading(false);
@@ -61,7 +71,11 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
       try {
         const [nom, profil, admin] = await Promise.all([
           supabase.rpc('get_display_name', { profile_id: userId }),
-          supabase.from('profiles').select('avatar_url').eq('id', userId).maybeSingle(),
+          supabase
+            .from('profiles')
+            .select('avatar_url, format_favori, variante_favorite')
+            .eq('id', userId)
+            .maybeSingle(),
           // Vérif admin isolée : une erreur ici (table absente, réseau) ne doit jamais casser le
           // chargement du nom/avatar → on absorbe l'échec en "non-admin".
           supabase
@@ -84,8 +98,13 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
         setHasProfile(Boolean(nom.data));
         setDisplayName(nom.data ?? null);
         // L'avatar n'a pas voix au chapitre sur l'existence du profil : en cas d'erreur on garde
-        // celui qu'on avait plutôt que de le faire disparaître.
-        if (!profil.error) setAvatarUrl(profil.data?.avatar_url ?? undefined);
+        // celui qu'on avait plutôt que de le faire disparaître. Même traitement pour le format
+        // favori et la variante préférée, simples présélections du formulaire de création.
+        if (!profil.error) {
+          setAvatarUrl(profil.data?.avatar_url ?? undefined);
+          setFormatFavori(profil.data?.format_favori ?? undefined);
+          setVarianteFavorite(profil.data?.variante_favorite ?? undefined);
+        }
         setIsAdmin(Boolean(admin.data));
         setError(null);
         setLoading(false);
@@ -114,5 +133,5 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
 
   const refetch = useCallback(() => setRefetchCount((c) => c + 1), []);
 
-  return { hasProfile, displayName, avatarUrl, isAdmin, loading, error, refetch };
+  return { hasProfile, displayName, avatarUrl, formatFavori, varianteFavorite, isAdmin, loading, error, refetch };
 }
