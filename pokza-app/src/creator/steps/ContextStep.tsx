@@ -564,6 +564,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textPrimary,
     flex: 1,
+    // Indispensable sur le web : un TextInput devient un <input>, dont la largeur minimale
+    // intrinsèque (~203 px) l'emporte sur `flex: 1` tant que `minWidth` vaut `auto`. Deux champs
+    // sur une même rangée (SB/BB, Nom/Stack) débordaient donc de l'écran, hors d'atteinte à cause
+    // du `overflow-x: hidden` global. Sans effet sur un champ seul sur sa ligne, déjà au large.
+    minWidth: 0,
     marginBottom: 4,
   },
   playerRow: {
