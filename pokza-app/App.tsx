@@ -201,6 +201,11 @@ function AppContent() {
   // main fait environ 940 px de haut : à 800 px, le chargement démarre quand il reste moins d'une
   // main à faire défiler — assez tôt pour que la suite soit là avant qu'on l'atteigne.
   const FEED_LOAD_MORE_THRESHOLD = 800;
+  // Défilement, en écrans, au-delà duquel le bouton « remonter en haut » apparaît. Valeur décidée
+  // avec Victor le 20/08 : elle était d'abord à 1,5 écran, soit à peine deux mains — remonter n'a
+  // aucun intérêt à ce moment-là, un coup de pouce suffit. Trois fois plus loin, on est à environ
+  // 3 200 px sur un iPhone, soit trois à quatre mains : là, le retour en haut est un vrai trajet.
+  const SCROLL_TOP_SCREENS = 4.5;
 
   const handleFeedScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
@@ -219,10 +224,10 @@ function AppContent() {
       void handleLoadMore();
     }
 
-    // Le bouton « remonter en haut » n'apparaît qu'une fois qu'il y a vraiment de quoi remonter :
-    // une main et demie environ, soit plus d'un écran et demi. Plus tôt, il s'afficherait alors
-    // qu'un simple coup de pouce suffit.
-    const showTop = contentOffset.y > layoutMeasurement.height * 1.5;
+    // Le bouton « remonter en haut » n'apparaît qu'une fois qu'il y a vraiment de quoi remonter.
+    // En écrans et non en pixels : le trajet à refaire au pouce se compte en écrans, et un petit
+    // téléphone doit voir le bouton au même moment du parcours qu'un grand.
+    const showTop = contentOffset.y > layoutMeasurement.height * SCROLL_TOP_SCREENS;
     if (showTop !== scrollTopIsShown.current) {
       scrollTopIsShown.current = showTop;
       setShowScrollTop(showTop);
