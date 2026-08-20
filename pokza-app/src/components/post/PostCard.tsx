@@ -13,7 +13,7 @@ import { ReportModal } from '../moderation/ReportModal';
 import { blockUser } from '../../data/blocks';
 import { errorMessage } from '../../utils/errorMessage';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
-import { formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
+import { abbreviateChips, formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
 import { formatRelativeDate } from '../../utils/relativeDate';
 
 const DESCRIPTION_LINES = 3;
@@ -130,7 +130,14 @@ function formatContextLine(post: Post, { withLocation = true }: { withLocation?:
       .filter((a) => a.type === 'post-straddle')
       .sort((a, b) => a.order - b.order)
       .map((a) => a.amount ?? 0);
-    const stakes = [hand.blinds.sb, hand.blinds.bb, ...straddleAmounts].join('/') + cashCurrencySuffix(hand.gameType);
+    // Blindes de tournoi abrégées comme partout ailleurs ("15M/30M", pas "15000000/30000000") —
+    // c'est déjà ce qu'affiche l'écran de création juste avant de publier. La devise se pose une
+    // seule fois en fin de dénomination ("2/5€"), d'où le format à la main plutôt que
+    // `formatChipAmount`, qui l'accolerait à chaque montant. Le cash game reste inchangé.
+    const formatStake = (n: number) => (hand.gameType === 'tournament' ? abbreviateChips(n) : String(n));
+    const stakes =
+      [hand.blinds.sb, hand.blinds.bb, ...straddleAmounts].map(formatStake).join('/') +
+      cashCurrencySuffix(hand.gameType);
     parts.push(`${variantPrefix}${stakes}`);
   }
   if (withLocation && post.location) parts.push(post.location);
