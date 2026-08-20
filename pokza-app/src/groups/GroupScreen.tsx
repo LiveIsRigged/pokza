@@ -21,6 +21,7 @@ import { OverflowMenu, type OverflowAnchor, type OverflowMenuItem } from '../com
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { EditGroupScreen } from './EditGroupScreen';
 import { GroupMembersScreen } from './GroupMembersScreen';
+import { CameraIcon, ExitIcon, GroupTableIcon, ImageIcon, PencilIcon, TrashIcon } from '../components/ui/icons';
 
 /** Même format court que les dates de main / d'inscription ailleurs dans l'app (ex: "29 juil. 2026"). */
 function formatCreatedDate(iso: string): string {
@@ -197,11 +198,11 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
   // « Retirer la photo » isolé sous l'avatar du groupe.
   const avatarMenuItems: OverflowMenuItem[] = [
     ...(Platform.OS !== 'web'
-      ? [{ label: 'Prendre une photo', icon: '📷', onPress: handleTakePhoto }]
+      ? [{ label: 'Prendre une photo', icon: CameraIcon, onPress: handleTakePhoto }]
       : []),
-    { label: 'Choisir une photo', icon: '🖼️', onPress: handleChangeAvatar },
+    { label: 'Choisir une photo', icon: ImageIcon, onPress: handleChangeAvatar },
     ...(group?.avatarUrl
-      ? [{ label: 'Retirer la photo', icon: '🗑️', destructive: true, onPress: handleRemoveAvatar }]
+      ? [{ label: 'Retirer la photo', icon: TrashIcon, destructive: true, onPress: handleRemoveAvatar }]
       : []),
   ];
 
@@ -242,12 +243,12 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
   // (`confirmingLeave`) qu'auparavant, juste depuis le menu plutôt qu'un lien sur la page, et
   // affichée maintenant dans le `ConfirmSheet` partagé plutôt qu'en ligne.
   const groupMenuItems: OverflowMenuItem[] = [
-    ...(isOwner ? [{ label: 'Modifier le groupe', icon: '✏️', onPress: () => setEditingGroup(true) }] : []),
+    ...(isOwner ? [{ label: 'Modifier le groupe', icon: PencilIcon, onPress: () => setEditingGroup(true) }] : []),
     isOwner
-      ? { label: 'Supprimer le groupe', icon: '🗑️', destructive: true, onPress: () => setConfirmingLeave(true) }
-      : { label: 'Quitter le groupe', icon: '🚪', destructive: true, onPress: () => setConfirmingLeave(true) },
+      ? { label: 'Supprimer le groupe', icon: TrashIcon, destructive: true, onPress: () => setConfirmingLeave(true) }
+      : { label: 'Quitter le groupe', icon: ExitIcon, destructive: true, onPress: () => setConfirmingLeave(true) },
     ...(isOwner
-      ? [{ label: 'Exclure un membre', icon: '👥', onPress: () => setManagingMembers(true) }]
+      ? [{ label: 'Exclure un membre', icon: GroupTableIcon, onPress: () => setManagingMembers(true) }]
       : []),
   ];
 
@@ -321,7 +322,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
                     {avatarUploading ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                      <Text style={styles.avatarEditIcon}>📷</Text>
+                      <CameraIcon size={14} color="#fff" />
                     )}
                   </Pressable>
                 )}
@@ -460,7 +461,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
       <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={groupMenuItems} anchor={menuAnchor} />
       <ConfirmSheet
         visible={confirmingLeave}
-        icon={isOwner ? '🗑️' : '🚪'}
+        icon={isOwner ? TrashIcon : ExitIcon}
         title={isOwner ? 'Supprimer ce groupe privé ?' : 'Quitter ce groupe privé ?'}
         message={isOwner ? 'Le groupe et ses mains partagées disparaîtront pour tout le monde.' : undefined}
         confirmLabel={isOwner ? 'Supprimer' : 'Quitter'}
@@ -529,9 +530,6 @@ const styles = StyleSheet.create({
     borderColor: colors.feedBackground,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarEditIcon: {
-    fontSize: 12,
   },
   groupName: {
     ...typography.postTitle,

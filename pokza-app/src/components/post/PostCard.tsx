@@ -15,8 +15,12 @@ import { errorMessage } from '../../utils/errorMessage';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 import { abbreviateChips, formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
 import { formatRelativeDate } from '../../utils/relativeDate';
+import { BlockIcon, CommentIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, TrashIcon } from '../ui/icons';
 
 const DESCRIPTION_LINES = 3;
+/** Taille commune des trois icônes sous une main (j'aime / commenter / partager) : elles
+ *  forment un groupe, elles doivent peser pareil. */
+const ENGAGEMENT_ICON_SIZE = 20;
 
 interface PostCardProps {
   post: Post;
@@ -225,18 +229,18 @@ function PostCardInner({
   // plutôt que d'agir directement, comme avant.
   const menuItems: OverflowMenuItem[] = isOwnPost
     ? [
-        ...(onEdit ? [{ label: 'Modifier la main', icon: '✏️', onPress: onEdit }] : []),
+        ...(onEdit ? [{ label: 'Modifier la main', icon: PencilIcon, onPress: onEdit }] : []),
         ...(onDelete
-          ? [{ label: 'Supprimer la main', icon: '🗑', destructive: true, onPress: () => setConfirmingDelete(true) }]
+          ? [{ label: 'Supprimer la main', icon: TrashIcon, destructive: true, onPress: () => setConfirmingDelete(true) }]
           : []),
       ]
     : [
-        { label: 'Signaler cette main', icon: '🚩', onPress: () => setReportOpen(true) },
+        { label: 'Signaler cette main', icon: FlagIcon, onPress: () => setReportOpen(true) },
         ...(onBlockAuthor
           ? [
               {
                 label: `Bloquer ${post.authorName}`,
-                icon: '🚫',
+                icon: BlockIcon,
                 destructive: true,
                 onPress: () => setConfirmingBlock(true),
               },
@@ -302,8 +306,9 @@ function PostCardInner({
             disabled={!onOpenGroup || !post.groupId}
             hitSlop={4}
           >
+            <GroupTableIcon size={13} color={colors.textSecondary} />
             <Text style={styles.visibilityBadgeText} numberOfLines={1}>
-              👥 {post.groupName}
+              {post.groupName}
             </Text>
           </Pressable>
         )}
@@ -351,19 +356,21 @@ function PostCardInner({
 
       <View style={styles.engagementRow}>
         <Pressable style={styles.engagementItem} onPress={onToggleLike}>
-          <Text style={[styles.engagementIcon, post.likedByMe && styles.engagementIconActive]}>
-            {post.likedByMe ? '♥' : '♡'}
-          </Text>
+          <HeartIcon
+            size={ENGAGEMENT_ICON_SIZE}
+            color={post.likedByMe ? colors.action : colors.textSecondary}
+            filled={post.likedByMe}
+          />
           <Text style={[styles.engagementCount, post.likedByMe && styles.engagementCountActive]}>
             {post.likeCount}
           </Text>
         </Pressable>
         <Pressable style={styles.engagementItem} onPress={() => setShowComments(true)}>
-          <Text style={styles.engagementIcon}>💬</Text>
+          <CommentIcon size={ENGAGEMENT_ICON_SIZE} color={colors.textSecondary} />
           <Text style={styles.engagementCount}>{commentCount}</Text>
         </Pressable>
         <Pressable style={styles.engagementItem} onPress={handleShare}>
-          <Text style={styles.engagementIcon}>↗</Text>
+          <ShareIcon size={ENGAGEMENT_ICON_SIZE} color={colors.textSecondary} />
         </Pressable>
       </View>
 
@@ -391,7 +398,7 @@ function PostCardInner({
       {isOwnPost && (
         <ConfirmSheet
           visible={confirmingDelete}
-          icon="🗑"
+          icon={TrashIcon}
           title="Supprimer cette main ?"
           message="Cette action est définitive."
           confirmLabel="Supprimer"
@@ -405,7 +412,7 @@ function PostCardInner({
       {onBlockAuthor && (
         <ConfirmSheet
           visible={confirmingBlock}
-          icon="🚫"
+          icon={BlockIcon}
           title={`Bloquer ${post.authorName} ?`}
           message="Tu ne verras plus ses mains, et il ne pourra plus t'envoyer de demande d'ami."
           confirmLabel="Bloquer"
@@ -470,6 +477,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   visibilityBadgeText: {
     fontSize: 12,
@@ -531,14 +541,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  engagementIcon: {
-    fontSize: 20,
-    color: colors.textSecondary,
-  },
-  engagementIconActive: {
-    color: colors.action,
-    transform: [{ scale: 1.1 }],
   },
   engagementCount: {
     fontSize: 13,

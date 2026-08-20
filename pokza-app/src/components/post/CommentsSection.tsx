@@ -23,6 +23,7 @@ import { ReportModal } from '../moderation/ReportModal';
 import { ConfirmSheet } from '../ui/ConfirmSheet';
 import { Avatar } from '../ui/Avatar';
 import { COMMENT_MAX_LENGTH } from '../../constants/limits';
+import { CameraIcon, HeartIcon, TrashIcon } from '../ui/icons';
 
 interface CommentsSectionProps {
   visible: boolean;
@@ -154,9 +155,11 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpen
         {comment.body.length > 0 && <Text style={styles.commentBody}>{comment.body}</Text>}
         <View style={styles.commentActionsRow}>
           <Pressable style={styles.commentLikeButton} onPress={onToggleLike} hitSlop={8}>
-            <Text style={[styles.commentLikeIcon, comment.likedByMe && styles.commentLikeActive]}>
-              {comment.likedByMe ? '♥' : '♡'}
-            </Text>
+            <HeartIcon
+              size={14}
+              color={comment.likedByMe ? colors.action : colors.textSecondary}
+              filled={comment.likedByMe}
+            />
             {comment.likeCount > 0 && (
               <Text style={[styles.commentLikeCount, comment.likedByMe && styles.commentLikeActive]}>
                 {comment.likeCount}
@@ -177,7 +180,7 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpen
       </View>
       {canDelete && (
         <Pressable onPress={onDelete} hitSlop={8}>
-          <Text style={styles.commentDelete}>🗑</Text>
+          <TrashIcon size={14} color={colors.textSecondary} />
         </Pressable>
       )}
     </View>
@@ -452,7 +455,7 @@ export function CommentsSection({
 
           <View style={styles.inputRow}>
             <Pressable onPress={handlePickImage} hitSlop={8}>
-              <Text style={styles.attachButtonIcon}>📷</Text>
+              <CameraIcon size={18} color={colors.textSecondary} />
             </Pressable>
             <Pressable onPress={() => setGifPickerOpen(true)} hitSlop={8}>
               <Text style={styles.attachButtonText}>GIF</Text>
@@ -480,7 +483,7 @@ export function CommentsSection({
       {viewerUri && <MediaViewer uri={viewerUri} onClose={() => setViewerUri(null)} />}
       <ConfirmSheet
         visible={deletingCommentId != null}
-        icon="🗑"
+        icon={TrashIcon}
         title="Supprimer ce commentaire ?"
         message="Cette action est définitive."
         confirmLabel="Supprimer"

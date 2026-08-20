@@ -11,6 +11,7 @@ import {
   type UserModerationContext,
 } from '../data/admin';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
+import { WarningIcon } from '../components/ui/icons';
 
 interface AdminUserScreenProps {
   userId: string;
@@ -181,7 +182,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
 
       <ConfirmSheet
         visible={confirmingMinorFlag}
-        icon="⚠️"
+        icon={WarningIcon}
         title="Marquer ce compte « mineur soupçonné » ?"
         message="Sa monétisation sera bloquée jusqu'à ce que la confirmation d'âge soit rétablie."
         confirmLabel="Marquer"

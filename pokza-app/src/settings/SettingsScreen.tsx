@@ -9,6 +9,7 @@ import { NotificationSettingsScreen } from './NotificationSettingsScreen';
 import { deleteOwnAccount } from '../data/profiles';
 import { supabase } from '../lib/supabase';
 import appJson from '../../app.json';
+import { TrashIcon } from '../components/ui/icons';
 
 const CONTACT_EMAIL = 'contact@pokza.app';
 
@@ -150,7 +151,7 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
 
       <ConfirmSheet
         visible={confirmingDelete}
-        icon="🗑"
+        icon={TrashIcon}
         title="Supprimer ton compte ?"
         message="Ton compte, tes mains et tes commentaires seront définitivement supprimés."
         confirmLabel="Supprimer définitivement"

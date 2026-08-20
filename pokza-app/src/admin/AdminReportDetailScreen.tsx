@@ -14,6 +14,7 @@ import {
 } from '../data/admin';
 import { reportReasonLabel } from '../data/reports';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
+import { BlockIcon, ClockIcon, TrashIcon, WarningIcon, type IconProps } from '../components/ui/icons';
 
 interface AdminReportDetailScreenProps {
   reportId: string;
@@ -43,7 +44,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
   // Action de modération en attente de confirmation (contenu retiré, avertissement, suspension,
   // bannissement) — un seul `ConfirmSheet` partagé, paramétré par ce que le bouton pressé y dépose.
   const [pendingAction, setPendingAction] = useState<{
-    icon: string;
+    icon: React.ComponentType<IconProps>;
     title: string;
     message?: string;
     confirmLabel: string;
@@ -169,7 +170,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   disabled={busy}
                   onPress={() =>
                     setPendingAction({
-                      icon: '🗑',
+                      icon: TrashIcon,
                       title: `Retirer ${targetType === 'post' ? 'cette main' : 'ce commentaire'} ?`,
                       message: "Il ne sera plus visible par personne, seul l'auteur continuera de le voir.",
                       confirmLabel: 'Retirer',
@@ -225,7 +226,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   disabled={busy}
                   onPress={() =>
                     setPendingAction({
-                      icon: '⚠️',
+                      icon: WarningIcon,
                       title: "Avertir l'auteur ?",
                       confirmLabel: 'Avertir',
                       execute: () =>
@@ -240,7 +241,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   disabled={busy}
                   onPress={() =>
                     setPendingAction({
-                      icon: '⏱️',
+                      icon: ClockIcon,
                       title: 'Suspendre ce compte 7 jours ?',
                       confirmLabel: 'Suspendre',
                       execute: () =>
@@ -262,7 +263,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   disabled={busy}
                   onPress={() =>
                     setPendingAction({
-                      icon: '🚫',
+                      icon: BlockIcon,
                       title: 'Bannir ce compte ?',
                       message: 'Le bannissement est définitif.',
                       confirmLabel: 'Bannir',
@@ -318,7 +319,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
 
       <ConfirmSheet
         visible={pendingAction != null}
-        icon={pendingAction?.icon ?? '⚠️'}
+        icon={pendingAction?.icon ?? WarningIcon}
         title={pendingAction?.title ?? ''}
         message={pendingAction?.message}
         confirmLabel={pendingAction?.confirmLabel ?? 'Confirmer'}

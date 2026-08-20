@@ -3,6 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/theme';
 import { ChipStackIcon } from './ChipStackIcon';
+import { BellIcon, SearchIcon } from './icons';
 
 interface FeedHeaderProps {
   /** 0 = déployé (haut du feed), 1 = compact (feed défilé). Piloté par le scroll dans App. */
@@ -43,10 +44,10 @@ export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifica
           <Text style={styles.createButtonText}>+ Créer une main</Text>
         </Pressable>
         <Pressable style={styles.iconButton} onPress={onSearch} hitSlop={8}>
-          <Text style={styles.iconButtonText}>🔍</Text>
+          <SearchIcon size={20} color={colors.textPrimary} />
         </Pressable>
         <Pressable style={styles.iconButton} onPress={onNotifications} hitSlop={8}>
-          <Text style={styles.iconButtonText}>🔔</Text>
+          <BellIcon size={20} color={colors.textPrimary} />
           {unreadCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -88,9 +89,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(22,35,61,0.25)',
     position: 'relative',
-  },
-  iconButtonText: {
-    fontSize: 15,
   },
   badge: {
     position: 'absolute',

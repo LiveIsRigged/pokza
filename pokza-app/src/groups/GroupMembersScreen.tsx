@@ -4,6 +4,7 @@ import { colors, radius, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import type { GroupMember } from '../data/groups';
+import { PersonIcon } from '../components/ui/icons';
 
 interface GroupMembersScreenProps {
   members: GroupMember[];
@@ -68,7 +69,7 @@ export function GroupMembersScreen({
 
       <ConfirmSheet
         visible={excludingMember != null}
-        icon="👤"
+        icon={PersonIcon}
         title={`Retirer ${excludingMember?.pseudo ?? 'ce membre'} du groupe ?`}
         message="Il ne verra plus les mains partagées ici, et pourra être réinvité plus tard."
         confirmLabel="Retirer"

@@ -32,6 +32,15 @@ import { PostScreen } from './src/post/PostScreen';
 import { supabase } from './src/lib/supabase';
 import { fetchUnreadNotificationCount } from './src/data/notifications';
 import { SideMenu, useMenuEdgeSwipe } from './src/components/ui/SideMenu';
+import {
+  AuditIcon,
+  ChartIcon,
+  FriendsIcon,
+  GearIcon,
+  GroupTableIcon,
+  MailIcon,
+  ShieldIcon,
+} from './src/components/ui/icons';
 import { Screen } from './src/components/ui/Screen';
 import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { FeedHeader } from './src/components/ui/FeedHeader';
@@ -931,7 +940,7 @@ function AppContent() {
         items={[
           {
             label: 'Mes invitations',
-            icon: '✉️',
+            icon: MailIcon,
             badge: pendingInvitationsCount,
             onPress: () => {
               setMenuOpen(false);
@@ -940,7 +949,7 @@ function AppContent() {
           },
           {
             label: 'Ajouter des amis',
-            icon: '🤝',
+            icon: FriendsIcon,
             onPress: () => {
               setMenuOpen(false);
               setMode('addFriends');
@@ -948,7 +957,7 @@ function AppContent() {
           },
           {
             label: 'Mes groupes privés',
-            icon: '👥',
+            icon: GroupTableIcon,
             onPress: () => {
               setMenuOpen(false);
               setMode('groups');
@@ -958,7 +967,7 @@ function AppContent() {
           // ici : ce sont des réglages, rangés dans « Réglages » plutôt qu'au premier niveau du menu.
           {
             label: 'Réglages',
-            icon: '⚙️',
+            icon: GearIcon,
             onPress: () => {
               setMenuOpen(false);
               setMode('settings');
@@ -969,7 +978,7 @@ function AppContent() {
             ? [
                 {
                   label: 'Statistiques',
-                  icon: '📊',
+                  icon: ChartIcon,
                   onPress: () => {
                     setMenuOpen(false);
                     setMode('stats');
@@ -977,7 +986,7 @@ function AppContent() {
                 },
                 {
                   label: 'Modération',
-                  icon: '🛡️',
+                  icon: ShieldIcon,
                   onPress: () => {
                     setMenuOpen(false);
                     setAdminReportId(null);
@@ -986,7 +995,7 @@ function AppContent() {
                 },
                 {
                   label: "Journal d'audit",
-                  icon: '📜',
+                  icon: AuditIcon,
                   onPress: () => {
                     setMenuOpen(false);
                     setMode('adminAudit');

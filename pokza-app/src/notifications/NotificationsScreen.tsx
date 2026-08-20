@@ -12,6 +12,16 @@ import {
 import { acceptFriendRequest, deleteFriendRelation, fetchPendingRequests } from '../data/friends';
 import { acceptGroupInvite, fetchPendingGroupInvites, removeGroupMember } from '../data/groups';
 import { enablePush, pushState, pushSupported, type PushState } from '../web/push';
+import {
+  BellIcon,
+  CommentIcon,
+  GroupTableIcon,
+  HeartIcon,
+  PersonIcon,
+  ShieldIcon,
+  SpadeIcon,
+  type IconProps,
+} from '../components/ui/icons';
 
 interface NotificationsScreenProps {
   /** Panneau ouvert par-dessus le feed (bottom-sheet) : contrôle l'affichage + les (re)chargements. */
@@ -38,27 +48,27 @@ function timeAgo(iso: string): string {
   return `${days} j`;
 }
 
-function iconFor(type: AppNotification['type']): string {
+function iconFor(type: AppNotification['type']): React.ComponentType<IconProps> {
   switch (type) {
     case 'post_like':
     case 'comment_like':
-      return '♥';
+      return HeartIcon;
     case 'post_comment':
     case 'comment_reply':
-      return '💬';
+      return CommentIcon;
     case 'friend_request':
     case 'friend_accept':
-      return '👤';
+      return PersonIcon;
     case 'friend_posted':
-      return '♠';
+      return SpadeIcon;
     case 'group_invite':
     case 'group_accept':
     case 'group_posted':
-      return '👥';
+      return GroupTableIcon;
     case 'report_resolved':
     case 'content_removed':
     case 'account_sanctioned':
-      return '🛡';
+      return ShieldIcon;
   }
 }
 
@@ -266,12 +276,13 @@ export function NotificationsScreen({
           onPress={handleEnablePush}
           disabled={enabling || perm === 'denied'}
         >
+          <BellIcon size={15} color={colors.action} />
           <Text style={styles.pushBannerText}>
             {perm === 'denied'
-              ? '🔕 Notifications bloquées — réactive-les dans les réglages de ton navigateur.'
+              ? 'Notifications bloquées — réactive-les dans les réglages de ton navigateur.'
               : enabling
                 ? 'Activation…'
-                : '🔔 Activer les notifications sur cet appareil'}
+                : 'Activer les notifications sur cet appareil'}
           </Text>
         </Pressable>
       )}
@@ -286,7 +297,10 @@ export function NotificationsScreen({
             <View key={n.id} style={[styles.row, !n.read && styles.rowUnread]}>
               <Pressable style={styles.rowInfo} onPress={() => handlePress(n)}>
                 <View style={styles.iconBubble}>
-                  <Text style={styles.iconText}>{iconFor(n.type)}</Text>
+                  {(() => {
+                    const Icon = iconFor(n.type);
+                    return <Icon size={16} color={colors.textPrimary} />;
+                  })()}
                 </View>
                 <View style={styles.rowTextBlock}>
                   <Text style={styles.rowText}>{textFor(n)}</Text>
@@ -341,12 +355,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(232,87,31,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(232,87,31,0.25)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
   },
   pushBannerText: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.action,
-    textAlign: 'center',
+    flexShrink: 1,
   },
   // `flexShrink` (et non `flex: 1`) : le panneau épouse la hauteur du contenu, et ne défile que
   // lorsqu'il atteint la hauteur max de la carte (cf. `Popover`).

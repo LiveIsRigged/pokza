@@ -1,10 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../../theme/theme';
+import type { IconProps } from './icons';
+
+/** Rouge des actions destructrices, partagé par le libellé et son icône. */
+const DESTRUCTIVE = '#C0392B';
 
 export interface OverflowMenuItem {
   label: string;
-  icon?: string;
+  /** Composant d'icône (cf. `icons.tsx`) ; le menu impose taille et couleur, cette dernière
+   *  passant au rouge sur une entrée destructrice pour s'accorder au libellé. */
+  icon?: React.ComponentType<IconProps>;
   /** Style « attention » (rouge) pour les actions sensibles : bloquer, signaler, supprimer… */
   destructive?: boolean;
   onPress: () => void;
@@ -88,21 +94,26 @@ export function OverflowMenu({
           } as any,
         ]}
       >
-        {items.map((item, i) => (
-          <Pressable
-            key={i}
-            style={[styles.item, i > 0 && styles.itemBorder]}
-            onPress={() => {
-              onClose();
-              item.onPress();
-            }}
-          >
-            {item.icon != null && <Text style={styles.itemIcon}>{item.icon}</Text>}
-            <Text style={[styles.itemLabel, item.destructive && styles.itemDestructive]}>{item.label}</Text>
-          </Pressable>
-        ))}
+        {items.map((item, i) => {
+          const Icon = item.icon;
+          return (
+            <Pressable
+              key={i}
+              style={[styles.item, i > 0 && styles.itemBorder]}
+              onPress={() => {
+                onClose();
+                item.onPress();
+              }}
+            >
+              <View style={styles.itemIcon}>
+                {Icon && <Icon size={18} color={item.destructive ? DESTRUCTIVE : colors.textPrimary} />}
+              </View>
+              <Text style={[styles.itemLabel, item.destructive && styles.itemDestructive]}>{item.label}</Text>
+            </Pressable>
+          );
+        })}
         <Pressable style={[styles.item, styles.itemBorder]} onPress={onClose}>
-          <Text style={styles.itemIcon}> </Text>
+          <View style={styles.itemIcon} />
           <Text style={[styles.itemLabel, styles.cancelLabel]}>Annuler</Text>
         </Pressable>
       </Animated.View>
@@ -139,9 +150,9 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(22,35,61,0.12)',
   },
   itemIcon: {
-    fontSize: 16,
     width: 20,
-    textAlign: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemLabel: {
     fontSize: 14,
@@ -150,7 +161,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemDestructive: {
-    color: '#C0392B',
+    color: DESTRUCTIVE,
   },
   cancelLabel: {
     color: colors.textSecondary,

@@ -97,22 +97,9 @@ export function FeatureChatIcon({ size = 26, color = NAVY }: { size?: number; co
   );
 }
 
-/** Enveloppe au trait — champ email. */
-export function MailIcon({ size = 18, color }: { size?: number; color: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Rect x={3} y={5} width={18} height={14} rx={2.5} stroke={color} strokeWidth={1.8} fill="none" />
-      <Path
-        d="M4 7 L12 13 L20 7"
-        stroke={color}
-        strokeWidth={1.8}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
+// `MailIcon` vivait ici ; elle a rejoint `icons.tsx` quand le menu latéral en a eu besoin pour
+// « Mes invitations » — une seule définition, réutilisée par l'écran d'accueil.
+export { MailIcon } from './icons';
 
 /** Cadenas au trait — champ mot de passe. */
 export function LockIcon({ size = 18, color }: { size?: number; color: string }) {

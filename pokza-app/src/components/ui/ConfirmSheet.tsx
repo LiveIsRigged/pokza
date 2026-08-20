@@ -2,11 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '../../theme/theme';
+import type { IconProps } from './icons';
 
 export interface ConfirmSheetProps {
   visible: boolean;
-  /** Emoji affiché dans le rond en tête de feuille — même convention que les icônes d'`OverflowMenu`. */
-  icon: string;
+  /** Icône affichée dans le rond en tête de feuille (cf. `icons.tsx`) — même convention que
+   *  celles d'`OverflowMenu`. La feuille lui impose sa propre teinte, rouge ou orange selon
+   *  `destructive`, pour que le rond et le bouton de confirmation restent accordés. */
+  icon: React.ComponentType<IconProps>;
   title: string;
   /** Explique la conséquence en une ligne (ex: « Elle ne verra plus les mains partagées ici… »).
    * Facultatif : certaines confirmations (déconnexion) n'ont rien à ajouter à la question. */
@@ -32,7 +35,7 @@ export interface ConfirmSheetProps {
  */
 export function ConfirmSheet({
   visible,
-  icon,
+  icon: Icon,
   title,
   message,
   confirmLabel,
@@ -78,7 +81,7 @@ export function ConfirmSheet({
       >
         <View style={styles.grabber} />
         <View style={[styles.iconCircle, { backgroundColor: tintBg }]}>
-          <Text style={styles.iconText}>{icon}</Text>
+          <Icon size={24} color={tint} />
         </View>
         <Text style={styles.title}>{title}</Text>
         {message && <Text style={styles.message}>{message}</Text>}
@@ -131,9 +134,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
-  },
-  iconText: {
-    fontSize: 22,
   },
   title: {
     fontSize: 16,

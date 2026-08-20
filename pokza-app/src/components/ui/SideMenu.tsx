@@ -9,8 +9,11 @@ import {
 } from '../../navigation/edgeSwipe';
 import { Avatar } from './Avatar';
 import { ConfirmSheet } from './ConfirmSheet';
+import { PowerIcon, type IconProps } from './icons';
 
 const PANEL_WIDTH = 288;
+/** Taille commune des icônes de ligne, pour que le menu reste régulier. */
+const ROW_ICON_SIZE = 21;
 
 /**
  * Ouverture du menu en glissant du bord gauche vers le centre. À poser sur le conteneur du feed :
@@ -21,7 +24,9 @@ export const useMenuEdgeSwipe = useLeftEdgeSwipe;
 
 export interface SideMenuItem {
   label: string;
-  icon: string;
+  /** Composant d'icône (cf. `icons.tsx`), pas un emoji : c'est l'appelant qui choisit le dessin,
+   *  le menu impose la taille et la couleur pour que toutes les lignes restent alignées. */
+  icon: React.ComponentType<IconProps>;
   onPress: () => void;
   /** Pastille de comptage affichée à droite (invitations en attente, etc.). */
   badge?: number;
@@ -116,29 +121,36 @@ export function SideMenu({
           </View>
         </Pressable>
 
-        {items.map((item) => (
-          <Pressable key={item.label} style={styles.row} onPress={item.onPress}>
-            <Text style={styles.rowIcon}>{item.icon}</Text>
-            <Text style={styles.rowLabel}>{item.label}</Text>
-            {item.badge != null && item.badge > 0 && (
-              <View style={styles.rowBadge}>
-                <Text style={styles.rowBadgeText}>{item.badge}</Text>
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Pressable key={item.label} style={styles.row} onPress={item.onPress}>
+              <View style={styles.rowIcon}>
+                <Icon size={ROW_ICON_SIZE} color={colors.textPrimary} />
               </View>
-            )}
-          </Pressable>
-        ))}
+              <Text style={styles.rowLabel}>{item.label}</Text>
+              {item.badge != null && item.badge > 0 && (
+                <View style={styles.rowBadge}>
+                  <Text style={styles.rowBadgeText}>{item.badge}</Text>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
 
         <View style={styles.spacer} />
 
         <Pressable style={styles.row} onPress={() => setConfirmingSignOut(true)}>
-          <Text style={styles.rowIcon}>⏻</Text>
+          <View style={styles.rowIcon}>
+            <PowerIcon size={ROW_ICON_SIZE} color={colors.textSecondary} />
+          </View>
           <Text style={styles.rowLabelMuted}>Déconnexion</Text>
         </Pressable>
       </Animated.View>
 
       <ConfirmSheet
         visible={confirmingSignOut}
-        icon="⏻"
+        icon={PowerIcon}
         title="Se déconnecter ?"
         confirmLabel="Déconnexion"
         destructive={false}
@@ -208,10 +220,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     borderRadius: radius.md,
   },
+  // Gouttière fixe : les icônes n'ont pas toutes la même largeur apparente, une boîte commune garde
+  // les libellés parfaitement alignés d'une ligne à l'autre.
   rowIcon: {
-    fontSize: 17,
     width: 24,
-    textAlign: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowLabel: {
     flex: 1,

@@ -36,6 +36,7 @@ import { ReportModal } from '../components/moderation/ReportModal';
 import { blockUser, isBlockedByMe, unblockUser } from '../data/blocks';
 import { countryLabel } from '../data/countries';
 import { playerSummary } from './profileOptions';
+import { BlockIcon, CameraIcon, FlagIcon, ImageIcon, PersonIcon, PersonMinusIcon, TrashIcon, UndoIcon } from '../components/ui/icons';
 
 /** Même format que les dates de main affichées sur `PostCard` (ex: "29 juil. 2026") — cohérence
  * visuelle entre les deux, pas de format de date différent selon l'écran. */
@@ -291,13 +292,13 @@ export function ProfileScreen({
   // Menu ⋯ de l'en-tête, uniquement sur le profil d'un autre : signaler le compte, retirer l'ami
   // (si on l'est déjà — sinon ce choix n'a pas de sens et n'apparaît pas), bloquer/débloquer.
   const menuItems: OverflowMenuItem[] = [
-    { label: 'Signaler ce joueur', icon: '🚩', onPress: () => setReportOpen(true) },
+    { label: 'Signaler ce joueur', icon: FlagIcon, onPress: () => setReportOpen(true) },
     ...(friendStatus === 'friends'
-      ? [{ label: 'Retirer cet ami', icon: '➖', destructive: true, onPress: () => setConfirmingRemove(true) }]
+      ? [{ label: 'Retirer cet ami', icon: PersonMinusIcon, destructive: true, onPress: () => setConfirmingRemove(true) }]
       : []),
     blocked
-      ? { label: 'Débloquer', icon: '↩️', onPress: handleUnblock }
-      : { label: 'Bloquer ce joueur', icon: '🚫', destructive: true, onPress: () => setConfirmingBlock(true) },
+      ? { label: 'Débloquer', icon: UndoIcon, onPress: handleUnblock }
+      : { label: 'Bloquer ce joueur', icon: BlockIcon, destructive: true, onPress: () => setConfirmingBlock(true) },
   ];
 
   const handleSendFriendRequest = async () => {
@@ -389,11 +390,11 @@ export function ProfileScreen({
   // « Retirer la photo » isolé sous l'avatar.
   const avatarMenuItems: OverflowMenuItem[] = [
     ...(Platform.OS !== 'web'
-      ? [{ label: 'Prendre une photo', icon: '📷', onPress: handleTakePhoto }]
+      ? [{ label: 'Prendre une photo', icon: CameraIcon, onPress: handleTakePhoto }]
       : []),
-    { label: 'Choisir une photo', icon: '🖼️', onPress: handleChangeAvatar },
+    { label: 'Choisir une photo', icon: ImageIcon, onPress: handleChangeAvatar },
     ...(profile?.avatarUrl
-      ? [{ label: 'Retirer la photo', icon: '🗑️', destructive: true, onPress: handleRemoveAvatar }]
+      ? [{ label: 'Retirer la photo', icon: TrashIcon, destructive: true, onPress: handleRemoveAvatar }]
       : []),
   ];
 
@@ -473,7 +474,7 @@ export function ProfileScreen({
                     {avatarUploading ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                      <Text style={styles.avatarEditIcon}>📷</Text>
+                      <CameraIcon size={14} color="#fff" />
                     )}
                   </Pressable>
                 )}
@@ -638,7 +639,7 @@ export function ProfileScreen({
       />
       <ConfirmSheet
         visible={confirmingRemove}
-        icon="👤"
+        icon={PersonIcon}
         title="Retirer cet ami ?"
         confirmLabel="Retirer"
         onCancel={() => setConfirmingRemove(false)}
@@ -646,7 +647,7 @@ export function ProfileScreen({
       />
       <ConfirmSheet
         visible={confirmingBlock}
-        icon="🚫"
+        icon={BlockIcon}
         title={`Bloquer ${profile?.displayName ?? 'ce joueur'} ?`}
         message="Tu ne verras plus ses mains, et il ne pourra plus t'envoyer de demande d'ami."
         confirmLabel="Bloquer"
@@ -769,9 +770,6 @@ const styles = StyleSheet.create({
     borderColor: colors.feedBackground,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarEditIcon: {
-    fontSize: 13,
   },
   displayName: {
     ...typography.postTitle,

@@ -10,6 +10,7 @@ import {
   type PendingRequest,
 } from '../data/friends';
 import { acceptGroupInvite, fetchPendingGroupInvites, removeGroupMember, type PendingGroupInvite } from '../data/groups';
+import { GroupTableIcon } from '../components/ui/icons';
 
 interface InvitationsScreenProps {
   currentUserId: string;
@@ -167,7 +168,7 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
                   <View key={invite.groupId} style={styles.row}>
                     <View style={styles.rowInfo}>
                       <View style={styles.groupIconBubble}>
-                        <Text style={styles.groupIconText}>👥</Text>
+                        <GroupTableIcon size={16} color={colors.textSecondary} />
                       </View>
                       <Text style={styles.rowLabel} numberOfLines={1}>
                         {invite.groupName}
