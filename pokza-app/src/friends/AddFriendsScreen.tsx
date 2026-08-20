@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { Pressable } from '../components/ui/Pressable';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
-import { borders, colors, radius, spacing, tints, typography } from '../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, tints, typography } from '../theme/theme';
 import { Chip } from '../creator/Chip';
 import { Avatar } from '../components/ui/Avatar';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../utils/share';
@@ -160,14 +160,14 @@ function SuggestionsTab({
                 <Pressable
                   style={styles.declinePill}
                   onPress={() => handleDeclinePending(req.senderId)}
-                  hitSlop={8}
+                  hitSlop={hitSlopPairLeft}
                 >
                   <Text style={styles.declinePillText}>Refuser</Text>
                 </Pressable>
                 <Pressable
                   style={styles.acceptPill}
                   onPress={() => handleAcceptPending(req.senderId)}
-                  hitSlop={8}
+                  hitSlop={hitSlopPairRight}
                 >
                   <Text style={styles.acceptPillText}>Accepter</Text>
                 </Pressable>
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   pendingActions: {
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   declinePill: {
     paddingHorizontal: 12,

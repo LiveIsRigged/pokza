@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing } from '../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import {
   acceptFriendRequest,
@@ -150,10 +150,10 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
                     </Text>
                   </Pressable>
                   <View style={styles.actions}>
-                    <Pressable style={styles.declineButton} onPress={() => handleDeclineFriend(req.senderId)} hitSlop={8}>
+                    <Pressable style={styles.declineButton} onPress={() => handleDeclineFriend(req.senderId)} hitSlop={hitSlopPairLeft}>
                       <Text style={styles.declineButtonText}>Refuser</Text>
                     </Pressable>
-                    <Pressable style={styles.acceptButton} onPress={() => handleAcceptFriend(req.senderId)} hitSlop={8}>
+                    <Pressable style={styles.acceptButton} onPress={() => handleAcceptFriend(req.senderId)} hitSlop={hitSlopPairRight}>
                       <Text style={styles.acceptButtonText}>Accepter</Text>
                     </Pressable>
                   </View>
@@ -176,10 +176,10 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
                     </Text>
                   </View>
                   <View style={styles.actions}>
-                    <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(invite.groupId)} hitSlop={8}>
+                    <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(invite.groupId)} hitSlop={hitSlopPairLeft}>
                       <Text style={styles.declineButtonText}>Refuser</Text>
                     </Pressable>
-                    <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(invite.groupId)} hitSlop={8}>
+                    <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(invite.groupId)} hitSlop={hitSlopPairRight}>
                       <Text style={styles.acceptButtonText}>Accepter</Text>
                     </Pressable>
                   </View>
@@ -241,6 +241,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   row: {
+    // Écart entre le bloc « profil » (étiré, cf. `flex: 1`) et le bouton d'action : au moins le
+    // débordement de sa zone de touche (`HIT_SLOP`), sinon elle mord sur le bloc profil.
+    gap: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -275,7 +278,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   declineButton: {
     paddingHorizontal: 12,

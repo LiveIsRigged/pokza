@@ -2,7 +2,7 @@ import React from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from './Pressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { borders, colors, tints } from '../../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, tints } from '../../theme/theme';
 import { ChipStackIcon } from './ChipStackIcon';
 import { BellIcon, SearchIcon } from './icons';
 
@@ -44,10 +44,10 @@ export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifica
         <Pressable style={styles.createButton} onPress={onCreate}>
           <Text style={styles.createButtonText}>+ Créer une main</Text>
         </Pressable>
-        <Pressable style={styles.iconButton} onPress={onSearch} hitSlop={8}>
+        <Pressable style={styles.iconButton} onPress={onSearch} hitSlop={hitSlopPairLeft}>
           <SearchIcon size={20} color={colors.textPrimary} />
         </Pressable>
-        <Pressable style={styles.iconButton} onPress={onNotifications} hitSlop={8}>
+        <Pressable style={styles.iconButton} onPress={onNotifications} hitSlop={hitSlopPairRight}>
           <BellIcon size={20} color={colors.textPrimary} />
           {unreadCount > 0 && (
             <View style={styles.badge}>

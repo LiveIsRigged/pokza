@@ -74,6 +74,23 @@ export const spacing = {
   xl: 32,
 } as const;
 
+/**
+ * Débordement standard d'une zone de touche autour d'un bouton (`hitSlop`), et sa variante pour
+ * DEUX boutons côte à côte.
+ *
+ * ⚠️ `hitSlop={8}` de chaque côté d'un espace de 8 pt, ce sont deux zones qui se recouvrent, et
+ * c'est le dernier rendu qui rafle les appuis — y compris sur les pixels VISIBLES de son voisin.
+ * Un couple « Refuser / Accepter » séparé de `spacing.xs` faisait ainsi accepter une demande
+ * touchée sur le bord de « Refuser ». Les variantes ci-dessous s'arrêtent à la moitié de l'espace
+ * qui sépare les deux boutons (donc `spacing.sm / 2`), et gardent les 8 pt du côté libre.
+ *
+ * La règle qui va avec, côté mise en page : tout voisin d'un bouton à `hitSlop` doit en être écarté
+ * d'au moins autant que ce débordement, sinon la zone de touche du bouton mord sur lui.
+ */
+export const HIT_SLOP = 8;
+export const hitSlopPairLeft = { top: HIT_SLOP, bottom: HIT_SLOP, left: HIT_SLOP, right: spacing.sm / 2 } as const;
+export const hitSlopPairRight = { top: HIT_SLOP, bottom: HIT_SLOP, left: spacing.sm / 2, right: HIT_SLOP } as const;
+
 // Jetons alignés sur la palette officielle (gold/orange/navy) plutôt que des couleurs
 // "poker cliché" arbitraires — cohérence visuelle avec le reste du produit.
 export const chipColors = {

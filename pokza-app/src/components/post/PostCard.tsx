@@ -263,13 +263,15 @@ function PostCardInner({
     return (
       <View style={styles.card}>
         <View style={styles.header}>
-          <Pressable style={styles.authorPressable} onPress={onPressAuthor} disabled={!onPressAuthor}>
-            <Avatar url={post.authorAvatarUrl} name={post.authorName} size={36} />
-            <View style={styles.headerText}>
-              <Text style={typography.authorName}>{post.authorName}</Text>
-              <Text style={[typography.dateLocation, styles.muted]}>{formatRelativeDate(post.createdAt)}</Text>
-            </View>
-          </Pressable>
+          <View style={styles.authorSlot}>
+            <Pressable style={styles.authorPressable} onPress={onPressAuthor} disabled={!onPressAuthor}>
+              <Avatar url={post.authorAvatarUrl} name={post.authorName} size={36} />
+              <View style={styles.headerText}>
+                <Text style={typography.authorName}>{post.authorName}</Text>
+                <Text style={[typography.dateLocation, styles.muted]}>{formatRelativeDate(post.createdAt)}</Text>
+              </View>
+            </Pressable>
+          </View>
         </View>
         <View style={styles.moderationBanner}>
           <Text style={styles.moderationBannerTitle}>
@@ -288,19 +290,23 @@ function PostCardInner({
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Pressable style={styles.authorPressable} onPress={onPressAuthor} disabled={!onPressAuthor}>
-          <Avatar url={post.authorAvatarUrl} name={post.authorName} size={36} />
-          <View style={styles.headerText}>
-            <Text style={typography.authorName}>
-              {post.authorName}
-              {isGroupFounder && ' 👑'}
-            </Text>
-            <Text style={[typography.dateLocation, styles.muted]}>
-              {formatRelativeDate(post.createdAt)}
-              {post.location ? ` · ${post.location}` : ''}
-            </Text>
-          </View>
-        </Pressable>
+        {/* Le créneau prend toute la largeur restante — c'est lui qui pousse le badge et le "⋯" à
+            droite — mais la zone TOUCHABLE, elle, s'arrête au bout du texte (cf. `authorPressable`). */}
+        <View style={styles.authorSlot}>
+          <Pressable style={styles.authorPressable} onPress={onPressAuthor} disabled={!onPressAuthor}>
+            <Avatar url={post.authorAvatarUrl} name={post.authorName} size={36} />
+            <View style={styles.headerText}>
+              <Text style={typography.authorName}>
+                {post.authorName}
+                {isGroupFounder && ' 👑'}
+              </Text>
+              <Text style={[typography.dateLocation, styles.muted]}>
+                {formatRelativeDate(post.createdAt)}
+                {post.location ? ` · ${post.location}` : ''}
+              </Text>
+            </View>
+          </Pressable>
+        </View>
         {post.visibility === 'private' && (
           <View style={styles.visibilityBadge}>
             <Text style={styles.visibilityBadgeText}>🔒 Privé</Text>
@@ -461,14 +467,26 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: 6,
   },
-  authorPressable: {
+  // Espace réservé à l'auteur dans la ligne d'en-tête : il occupe toute la largeur laissée libre
+  // par le badge de visibilité et le "⋯", qu'il maintient collés à droite.
+  authorSlot: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // ⚠️ PAS de `flex: 1` ici, contrairement au créneau qui l'entoure. La zone touchable qui ouvre le
+  // profil doit s'arrêter au bout du pseudo et de la ligne date/lieu : étirée sur toute la largeur,
+  // elle transformait le vide à droite du pseudo en bouton "voir le profil", et venait border le
+  // "⋯" au point de lui voler des appuis. `flexShrink` (sans `flexGrow`) laisse le bloc à la taille
+  // de son contenu, tout en le laissant se comprimer quand le pseudo est long.
+  authorPressable: {
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
   headerText: {
-    flex: 1,
+    flexShrink: 1,
   },
   deleteButton: {
     padding: spacing.xs,

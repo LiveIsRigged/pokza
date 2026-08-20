@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';
 
@@ -100,7 +100,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
                   setCreating(false);
                   setNewName('');
                 }}
-                hitSlop={8}
+                hitSlop={hitSlopPairLeft}
               >
                 <Text style={styles.cancelButtonText}>Annuler</Text>
               </Pressable>
@@ -108,7 +108,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
                 style={[styles.confirmButton, !newName.trim() && styles.confirmButtonDisabled]}
                 onPress={handleCreate}
                 disabled={!newName.trim() || submitting}
-                hitSlop={8}
+                hitSlop={hitSlopPairRight}
               >
                 <Text style={styles.confirmButtonText}>Créer</Text>
               </Pressable>
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   createActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: spacing.xs,
+    gap: spacing.sm,
     marginTop: spacing.sm,
   },
   cancelButton: {

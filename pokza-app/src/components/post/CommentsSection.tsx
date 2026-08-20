@@ -17,7 +17,7 @@ import type { Comment } from '../../types/poker';
 import { createComment, deleteComment, fetchComments, setCommentLiked } from '../../data/comments';
 import { pickImage, type PickedImage } from '../../data/images';
 import type { GifResult } from '../../data/gifs';
-import { borders, colors, radius, spacing, tints } from '../../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, tints } from '../../theme/theme';
 import { GifPicker } from './GifPicker';
 import { ReportModal } from '../moderation/ReportModal';
 import { ConfirmSheet } from '../ui/ConfirmSheet';
@@ -461,10 +461,10 @@ export function CommentsSection({
           )}
 
           <View style={styles.inputRow}>
-            <Pressable onPress={handlePickImage} hitSlop={8}>
+            <Pressable onPress={handlePickImage} hitSlop={hitSlopPairLeft}>
               <CameraIcon size={18} color={colors.textSecondary} />
             </Pressable>
-            <Pressable onPress={() => setGifPickerOpen(true)} hitSlop={8}>
+            <Pressable onPress={() => setGifPickerOpen(true)} hitSlop={hitSlopPairRight}>
               <Text style={styles.attachButtonText}>GIF</Text>
             </Pressable>
             <TextInput
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,

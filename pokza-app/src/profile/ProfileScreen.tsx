@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing, tints, typography } from '../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, tints, typography } from '../theme/theme';
 import { fetchProfile, type ProfileDetails } from '../data/profiles';
 import { EditProfileScreen } from './EditProfileScreen';
 import {
@@ -585,14 +585,14 @@ export function ProfileScreen({
                       <Pressable
                         style={styles.pendingDeclineButton}
                         onPress={() => handleDeclinePending(req.senderId)}
-                        hitSlop={8}
+                        hitSlop={hitSlopPairLeft}
                       >
                         <Text style={styles.pendingDeclineText}>Refuser</Text>
                       </Pressable>
                       <Pressable
                         style={styles.pendingAcceptButton}
                         onPress={() => handleAcceptPending(req.senderId)}
-                        hitSlop={8}
+                        hitSlop={hitSlopPairRight}
                       >
                         <Text style={styles.pendingAcceptText}>Accepter</Text>
                       </Pressable>
@@ -927,6 +927,9 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   pendingRow: {
+    // Écart entre le bloc « profil » (étiré, cf. `flex: 1`) et les boutons d'action : au moins le
+    // débordement de leur zone de touche (`HIT_SLOP`), sinon elle mord sur le bloc profil.
+    gap: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -946,7 +949,7 @@ const styles = StyleSheet.create({
   },
   pendingActions: {
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   pendingDeclineButton: {
     paddingHorizontal: 10,

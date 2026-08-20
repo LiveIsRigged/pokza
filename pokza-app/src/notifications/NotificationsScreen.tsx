@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing } from '../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing } from '../theme/theme';
 import { Popover } from '../components/ui/Popover';
 import {
   fetchNotifications,
@@ -310,20 +310,20 @@ export function NotificationsScreen({
               </Pressable>
               {showFriendActions(n) && (
                 <View style={styles.actions}>
-                  <Pressable style={styles.declineButton} onPress={() => handleDecline(n)} hitSlop={8}>
+                  <Pressable style={styles.declineButton} onPress={() => handleDecline(n)} hitSlop={hitSlopPairLeft}>
                     <Text style={styles.declineButtonText}>Refuser</Text>
                   </Pressable>
-                  <Pressable style={styles.acceptButton} onPress={() => handleAccept(n)} hitSlop={8}>
+                  <Pressable style={styles.acceptButton} onPress={() => handleAccept(n)} hitSlop={hitSlopPairRight}>
                     <Text style={styles.acceptButtonText}>Accepter</Text>
                   </Pressable>
                 </View>
               )}
               {showGroupActions(n) && (
                 <View style={styles.actions}>
-                  <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(n)} hitSlop={8}>
+                  <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(n)} hitSlop={hitSlopPairLeft}>
                     <Text style={styles.declineButtonText}>Refuser</Text>
                   </Pressable>
-                  <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(n)} hitSlop={8}>
+                  <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(n)} hitSlop={hitSlopPairRight}>
                     <Text style={styles.acceptButtonText}>Accepter</Text>
                   </Pressable>
                 </View>
@@ -383,6 +383,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   row: {
+    // Écart entre le bloc « profil » (étiré, cf. `flex: 1`) et le bouton d'action : au moins le
+    // débordement de sa zone de touche (`HIT_SLOP`), sinon elle mord sur le bloc profil.
+    gap: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -428,7 +431,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   declineButton: {
     paddingHorizontal: 12,

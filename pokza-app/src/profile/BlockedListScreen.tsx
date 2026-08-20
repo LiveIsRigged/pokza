@@ -138,6 +138,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   row: {
+    // Écart entre le bloc « profil » (étiré, cf. `flex: 1`) et le bouton d'action : au moins le
+    // débordement de sa zone de touche (`HIT_SLOP`), sinon elle mord sur le bloc profil.
+    gap: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
