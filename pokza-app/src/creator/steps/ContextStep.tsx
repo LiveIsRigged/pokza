@@ -338,12 +338,25 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           ))}
         </View>
         <View style={styles.inlineInputs}>
+          {/* Saisir la SB pose la BB au double : c'est le cas de très loin le plus courant, ça
+              évite de taper deux nombres, et surtout ça évite de voir « la BB est plus petite »
+              pendant tout le temps où la SB est saisie et la BB pas encore corrigée. Une valeur
+              proposée, pas imposée : la BB reste modifiable juste à côté (et les presets 1/3 ou
+              2/5, qui ne sont pas des doubles, passent par un autre chemin). Le doublement est
+              exact même en décimal — multiplier par 2 ne perd rien en binaire, 0,25 donne 0,5.
+              SB vidée (0) : on ne touche pas à la BB, sinon le champ voisin tomberait à zéro. */}
           <DecimalTextInput
             style={styles.input}
             placeholder="SB"
             value={value.sb}
             gameType={value.gameType}
-            onChangeValue={(sb) => update({ sb })}
+            onChangeValue={(sb) =>
+              update(
+                sb > 0
+                  ? { sb, bb: sb * 2, effectiveStack: defaultStackFor(value.gameType, sb * 2) }
+                  : { sb },
+              )
+            }
           />
           <DecimalTextInput
             style={[styles.input, blindsInvalid && styles.inputError]}
@@ -357,7 +370,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
             changerait un nombre que le joueur n'a pas touché, et il ne saurait pas lequel des deux
             est faux. Le bouton Suivant reste bloqué tant que ce n'est pas réglé. */}
         {blindsInvalid && (
-          <Text style={styles.errorText}>La BB ne peut pas être plus petite que la SB (elles peuvent être égales).</Text>
+          <Text style={styles.errorText}>La BB ne peut pas être plus petite que la SB.</Text>
         )}
           </>
         )}
