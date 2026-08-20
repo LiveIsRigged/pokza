@@ -545,8 +545,10 @@ const styles = StyleSheet.create({
   engagementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    // Écart visible = ce gap + les deux rembourrages horizontaux, soit les 24 pt d'avant.
-    gap: spacing.sm,
+    // Écart visible = ce gap + les deux rembourrages horizontaux, soit 32 pt. Les 24 pt d'origine
+    // avaient été choisis pour des icônes de 20 : à 24, ils resserraient le trio d'autant. Un doigt
+    // qui vise Commenter et touche J'aime envoie un « j'aime » à quelqu'un, d'où la marge.
+    gap: spacing.md,
     marginHorizontal: -spacing.sm,
   },
   engagementItem: {
