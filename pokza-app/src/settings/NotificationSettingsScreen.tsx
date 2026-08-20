@@ -176,10 +176,13 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     paddingHorizontal: 4,
   },
+  // 18px noir : le standard des écrans empilés (Mes groupes privés, Mes amis, Mes invitations,
+  // Ajouter des amis, Informations légales, Signalements, Journal d'audit). Ces deux écrans de
+  // réglages étaient les seuls à 22px bleu marine, sans raison apparente à la navigation.
   headerTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.tableFelt,
+    color: colors.textPrimary,
   },
   subLabel: {
     fontSize: 13,
