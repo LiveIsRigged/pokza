@@ -524,15 +524,19 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
           return (
             <View key={pos} style={styles.playerRow}>
               <Text style={styles.playerRowLabel}>{isHero ? `${label} (toi)` : label}</Text>
-              {!isHero && (
-                <TextInput
-                  style={[styles.input, styles.playerNameInput]}
-                  placeholder="Nom"
-                  maxLength={OPPONENT_NAME_MAX_LENGTH}
-                  value={value.opponentNames?.[pos] ?? ''}
-                  onChangeText={(t) => update({ opponentNames: { ...value.opponentNames, [pos]: t } })}
-                />
-              )}
+              {/* Le héros a droit à son nom comme les autres, mais son champ est le seul à annoncer
+                  sa valeur par défaut : laissé vide, il s'affiche « Hero » partout dans la main.
+                  Son nom est rangé à part (`heroName`) et non dans `opponentNames`, indexé par
+                  position : sinon changer de siège laisserait son nom sur celui qu'il quitte. */}
+              <TextInput
+                style={[styles.input, styles.playerNameInput]}
+                placeholder={isHero ? 'Hero' : 'Nom'}
+                maxLength={OPPONENT_NAME_MAX_LENGTH}
+                value={(isHero ? value.heroName : value.opponentNames?.[pos]) ?? ''}
+                onChangeText={(t) =>
+                  update(isHero ? { heroName: t } : { opponentNames: { ...value.opponentNames, [pos]: t } })
+                }
+              />
               <OptionalDecimalTextInput
                 style={[styles.input, styles.playerStackInput]}
                 placeholder={formatChipInput(value.effectiveStack, value.gameType)}

@@ -311,7 +311,8 @@ export function LiveHandCreator({
               context.heroPosition,
               context.effectiveStack,
               context.opponentNames,
-              context.seatStacks
+              context.seatStacks,
+              context.heroName
             );
             let order = 1;
             const blindActions: Action[] = [];

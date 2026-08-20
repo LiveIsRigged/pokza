@@ -9,7 +9,8 @@ const KEY = 'pokza.creator.contextPrefs.v1';
  * Mémorisation des derniers réglages de table, d'une création de main à l'autre, pour accélérer la
  * saisie. On ne garde que les paramètres « de setup » que l'utilisateur retape à l'identique la
  * plupart du temps (sa partie habituelle) : variante, type de partie, blindes, ante, straddle, stack
- * effectif, nombre de joueurs (+ sa position, indissociable du nombre de joueurs) et le lieu.
+ * effectif, nombre de joueurs (+ sa position, indissociable du nombre de joueurs), le lieu et le
+ * nom que le joueur se donne — un pseudo ne change pas d'une main à l'autre.
  *
  * On ne mémorise volontairement PAS le mode bomb pot / double board (on repart en jeu classique par
  * défaut), ni les détails propres à une main donnée (noms/stacks adverses, buy-in, niveau).
@@ -23,6 +24,7 @@ interface ContextPrefs {
   numPlayers: number;
   heroPosition: Position;
   location?: string;
+  heroName?: string;
   anteType: AnteType;
   ante: number;
   straddleCount: 0 | 1 | 2 | 3;
@@ -45,6 +47,7 @@ export async function saveContextPrefs(context: ContextData): Promise<void> {
     numPlayers: context.numPlayers,
     heroPosition: context.heroPosition,
     location: context.location,
+    heroName: context.heroName,
     anteType: context.anteType,
     ante: context.ante,
     straddleCount: context.straddleCount,
@@ -119,6 +122,7 @@ export async function loadContextPrefs(base: ContextData = DEFAULT_CONTEXT): Pro
   if (isNum(p.numPlayers)) merged.numPlayers = p.numPlayers;
   if (typeof p.heroPosition === 'string') merged.heroPosition = p.heroPosition;
   if (typeof p.location === 'string') merged.location = p.location;
+  if (typeof p.heroName === 'string') merged.heroName = p.heroName;
   if (p.anteType && ANTE_TYPES.includes(p.anteType)) merged.anteType = p.anteType;
   if (isNum(p.ante)) merged.ante = p.ante;
   if (p.straddleCount === 0 || p.straddleCount === 1 || p.straddleCount === 2 || p.straddleCount === 3)

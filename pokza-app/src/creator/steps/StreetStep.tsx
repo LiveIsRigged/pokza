@@ -84,8 +84,11 @@ interface StreetStepProps {
 }
 
 function seatDisplay(seat: Seat, seats: Seat[], priorActions: Action[]): string {
-  const label = seat.playerName ?? straddleSeatLabel(seats, priorActions, seat.id) ?? seat.position;
-  return seat.isHero ? `Hero (${label})` : label;
+  const positional = straddleSeatLabel(seats, priorActions, seat.id) ?? seat.position;
+  // Le héros garde sa position entre parenthèses : c'est elle qui compte pour lire la main. Son nom
+  // ne remplace donc que le mot « Hero », il ne prend jamais la place du repère de position.
+  if (seat.isHero) return `${seat.playerName ?? 'Hero'} (${positional})`;
+  return seat.playerName ?? positional;
 }
 
 export function StreetStep({
@@ -454,7 +457,7 @@ export function StreetStep({
                       autre joueur ne pourrait tirer du contexte, contrairement au résumé des
                       actions et à la liste des stacks juste au-dessus, où elle aide à s'y retrouver
                       entre plusieurs sièges. */}
-                  {currentSeat.isHero ? 'Hero' : seatDisplay(currentSeat, seats, priorActions)} agit · reste{' '}
+                  {currentSeat.isHero ? currentSeat.playerName ?? 'Hero' : seatDisplay(currentSeat, seats, priorActions)} agit · reste{' '}
                   {fmt(Math.max(remainingFor(currentSeatId), 0))}
                 </Text>
                 {history.length > 0 && (

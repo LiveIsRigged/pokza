@@ -445,9 +445,11 @@ export function SeatView({
     y: seatAnchor.y + perpY * btnDistance + dirY * BTN_INWARD_NUDGE,
   };
 
-  // Hero garde toujours "Hero" — jamais sa position ni un nom personnalisé (buildSeats ne lui en
-  // assigne d'ailleurs jamais) : c'est le narrateur de la main, pas un joueur identifié par siège.
-  const displayName = seat.isHero ? 'Hero' : seat.playerName ?? straddleLabel ?? seat.position;
+  // Le héros porte son nom s'il s'en est donné un, sinon « Hero » — jamais sa position : c'est le
+  // narrateur de la main, pas un joueur identifié par son siège.
+  const displayName = seat.isHero
+    ? seat.playerName ?? 'Hero'
+    : seat.playerName ?? straddleLabel ?? seat.position;
   const stackText = formatChipAmount(Math.max(stackRemaining, 0), gameType, { bb, useBB });
 
   return (

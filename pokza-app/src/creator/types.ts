@@ -23,6 +23,10 @@ export interface ContextData {
   location?: string;
   buyIn?: string;
   level?: string;
+  /** Nom du héros, optionnel — vide, il s'affiche « Hero » partout. Séparé d'`opponentNames` (qui
+   * est indexé par position) parce qu'il suit le joueur : changer de position ne doit pas donner
+   * son nom au siège qu'il vient de quitter. */
+  heroName?: string;
   /** Noms des adversaires par position, optionnel (sinon l'acronyme de position est affiché) */
   opponentNames?: Partial<Record<Position, string>>;
   /** Stack par position, optionnel (sinon "Stack effectif" s'applique à tous) */

@@ -20,12 +20,14 @@ export function buildSeats(
   heroPosition: Position,
   startingStack: number,
   opponentNames?: Partial<Record<Position, string>>,
-  seatStacks?: Partial<Record<Position, number>>
+  seatStacks?: Partial<Record<Position, number>>,
+  /** Nom du héros ; absent ou vide, il reste « Hero » partout (cf. `SeatView`, `seatDisplay`). */
+  heroName?: string
 ): Seat[] {
   const positions = POSITION_SETS[numPlayers] ?? POSITION_SETS[6];
   return positions.map((position) => {
     const isHero = position === heroPosition;
-    const name = !isHero ? opponentNames?.[position]?.trim() : undefined;
+    const name = (isHero ? heroName : opponentNames?.[position])?.trim();
     const stack = seatStacks?.[position];
     return {
       id: `s-${position.toLowerCase()}`,
