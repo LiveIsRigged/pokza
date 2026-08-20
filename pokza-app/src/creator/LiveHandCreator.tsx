@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Action, Board, Card, Hand, Post, Seat } from '../types/poker';
 import { holeCardCount } from '../types/poker';
 import type { Group } from '../data/groups';
@@ -11,6 +11,8 @@ import { buildSeats, getActingOrder } from './positions';
 import { committedBySeat } from '../engine/handEngine';
 import { DEFAULT_CONTEXT, type ContextData, type ReviewData } from './types';
 import { loadContextPrefs, saveContextPrefs } from './contextPrefs';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
+import { TrashIcon } from '../components/ui/icons';
 
 type Phase =
   | 'context'
@@ -81,6 +83,13 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
   // Change à chaque changement de phase, pour forcer un remount propre des écrans de street
   // (sinon revenir en arrière puis ré-avancer réutilise un composant à l'état "terminé").
   const [phaseKey, setPhaseKey] = useState(0);
+  // Confirmation avant de quitter l'étape 1 en ayant déjà saisi quelque chose.
+  const [confirmingAbandon, setConfirmingAbandon] = useState(false);
+  // État du contexte tel qu'il était au chargement des préférences : sert de point de comparaison
+  // pour savoir si le joueur a réellement saisi quelque chose. On ne compare PAS à
+  // `DEFAULT_CONTEXT` — les préférences mémorisées (cf. `contextPrefs`) pré-remplissent l'étape,
+  // et prendre les valeurs par défaut ferait passer un formulaire intact pour un formulaire rempli.
+  const pristineContext = useRef<ContextData>(DEFAULT_CONTEXT);
 
   // Pré-remplissage du contexte avec les derniers réglages mémorisés (cf. contextPrefs), pour ne pas
   // retaper à chaque fois sa partie habituelle. Chargé une fois au montage (AsyncStorage répond en
@@ -88,7 +97,9 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
   useEffect(() => {
     let cancelled = false;
     loadContextPrefs().then((prefs) => {
-      if (!cancelled) setContext(prefs);
+      if (cancelled) return;
+      setContext(prefs);
+      pristineContext.current = prefs;
     });
     return () => {
       cancelled = true;
@@ -143,8 +154,19 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
     pushSnapshotAndGo(hasVillain ? 'showdown' : 'review', patch);
   };
 
+  // Le joueur a-t-il investi quelque chose ? L'étape 1 peut à elle seule contenir le type de partie,
+  // la variante, les blindes, le straddle, l'ante et les noms/stacks de jusqu'à 9 adversaires ; les
+  // cartes du hero comptent aussi, puisqu'on peut revenir à l'étape 1 après les avoir saisies.
+  const hasEnteredSomething = () =>
+    heroCards.some(Boolean) || JSON.stringify(context) !== JSON.stringify(pristineContext.current);
+
   const goBack = () => {
     if (history.length === 0) {
+      // Sortie définitive : un tap accidentel (ou un glissement de bord) effaçait tout sans un mot.
+      if (hasEnteredSomething()) {
+        setConfirmingAbandon(true);
+        return;
+      }
       onCancel();
       return;
     }
@@ -237,6 +259,7 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
   const totalSteps = totalStepsFor(context.bombPot);
   const step = phaseStepMap(context.bombPot)[phase];
 
+  const renderStep = () => {
   switch (phase) {
     case 'showdown':
       return (
@@ -538,4 +561,24 @@ export function LiveHandCreator({ authorId, authorName, onCreated, onCancel, gro
     default:
       return null;
   }
+  };
+
+  return (
+    <>
+      {renderStep()}
+      <ConfirmSheet
+        visible={confirmingAbandon}
+        icon={TrashIcon}
+        title="Abandonner cette main ?"
+        message="Ce que tu as saisi sera perdu."
+        confirmLabel="Abandonner"
+        cancelLabel="Continuer la saisie"
+        onCancel={() => setConfirmingAbandon(false)}
+        onConfirm={() => {
+          setConfirmingAbandon(false);
+          onCancel();
+        }}
+      />
+    </>
+  );
 }
