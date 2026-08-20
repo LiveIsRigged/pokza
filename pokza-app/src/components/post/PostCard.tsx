@@ -9,6 +9,7 @@ import { VotePoll } from './VotePoll';
 import { CommentsSection } from './CommentsSection';
 import { OverflowMenu, type OverflowMenuItem, type OverflowAnchor } from '../ui/OverflowMenu';
 import { ConfirmSheet } from '../ui/ConfirmSheet';
+import { LikersSheet } from './LikersSheet';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { ReportModal } from '../moderation/ReportModal';
 import { blockUser } from '../../data/blocks';
@@ -204,6 +205,7 @@ function PostCardInner({
     });
   };
   const [reportOpen, setReportOpen] = useState(false);
+  const [likersOpen, setLikersOpen] = useState(false);
   const [showComments, setShowComments] = useState(Boolean(initialCommentsOpen));
   // `post` vient du parent et ne se remet à jour que si le feed est rechargé — le compteur affiché
   // ici doit réagir immédiatement quand `CommentsSection` ajoute/supprime un commentaire.
@@ -369,16 +371,28 @@ function PostCardInner({
 
       <View style={styles.engagementDivider} />
       <View style={styles.engagementRow}>
-        <Pressable style={styles.engagementItem} onPress={onToggleLike}>
-          <HeartIcon
-            size={ENGAGEMENT_ICON_SIZE}
-            color={post.likedByMe ? colors.action : colors.textSecondary}
-            filled={post.likedByMe}
-          />
-          <Text style={[styles.engagementCount, post.likedByMe && styles.engagementCountActive]}>
-            {post.likeCount}
-          </Text>
-        </Pressable>
+        {/* Le cœur reste le bouton « j'aime » ; le CHIFFRE, lui, ouvre la liste de ceux qui ont
+            aimé — le geste qu'on a partout ailleurs. Les deux zones de touche se partagent les
+            6 pt qui les séparent sans se recouvrir, et l'ensemble occupe exactement la place de
+            l'ancien bouton unique (8 + icône + 6 + chiffre + 8). */}
+        <View style={styles.likeGroup}>
+          <Pressable style={styles.likeHeart} onPress={onToggleLike}>
+            <HeartIcon
+              size={ENGAGEMENT_ICON_SIZE}
+              color={post.likedByMe ? colors.action : colors.textSecondary}
+              filled={post.likedByMe}
+            />
+          </Pressable>
+          <Pressable
+            style={styles.likeCountButton}
+            onPress={() => setLikersOpen(true)}
+            disabled={post.likeCount === 0}
+          >
+            <Text style={[styles.engagementCount, post.likedByMe && styles.engagementCountActive]}>
+              {post.likeCount}
+            </Text>
+          </Pressable>
+        </View>
         <Pressable style={styles.engagementItem} onPress={() => setShowComments(true)}>
           <CommentIcon size={ENGAGEMENT_ICON_SIZE} color={colors.textSecondary} />
           <Text style={styles.engagementCount}>{commentCount}</Text>
@@ -403,6 +417,19 @@ function PostCardInner({
             // On ferme les commentaires avant d'ouvrir le profil (sinon la feuille resterait
             // au-dessus de la page profil).
             setShowComments(false);
+            onSelectProfile(profileId);
+          })
+        }
+      />
+
+      <LikersSheet
+        visible={likersOpen}
+        onClose={() => setLikersOpen(false)}
+        source={{ kind: 'post', id: post.id }}
+        onSelectProfile={
+          onSelectProfile &&
+          ((profileId) => {
+            setLikersOpen(false);
             onSelectProfile(profileId);
           })
         }
@@ -576,6 +603,24 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: ENGAGEMENT_TOUCH_PADDING,
     paddingHorizontal: spacing.sm,
+  },
+  // Le « j'aime » est le seul des trois à porter deux actions distinctes. Les rembourrages
+  // ci-dessous redécoupent ceux d'`engagementItem` : 8 pt à l'extérieur comme les autres boutons,
+  // et la moitié des 6 pt intérieurs pour chacun, de sorte que la frontière tombe pile au milieu
+  // de l'espace entre le cœur et le chiffre.
+  likeGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  likeHeart: {
+    paddingVertical: ENGAGEMENT_TOUCH_PADDING,
+    paddingLeft: spacing.sm,
+    paddingRight: 3,
+  },
+  likeCountButton: {
+    paddingVertical: ENGAGEMENT_TOUCH_PADDING,
+    paddingLeft: 3,
+    paddingRight: spacing.sm,
   },
   engagementCount: {
     fontSize: 14,

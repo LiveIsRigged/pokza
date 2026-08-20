@@ -21,6 +21,7 @@ import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, ti
 import { GifPicker } from './GifPicker';
 import { ReportModal } from '../moderation/ReportModal';
 import { ConfirmSheet } from '../ui/ConfirmSheet';
+import { LikersSheet } from './LikersSheet';
 import { Avatar } from '../ui/Avatar';
 import { COMMENT_MAX_LENGTH } from '../../constants/limits';
 import { CameraIcon, HeartIcon, TrashIcon } from '../ui/icons';
@@ -51,6 +52,9 @@ interface CommentRowProps {
   onReply?: () => void;
   onDelete: () => void;
   onToggleLike: () => void;
+  /** Ouvre « Qui a aimé » ce commentaire — appelé par le CHIFFRE à côté du cœur, jamais par le
+   * cœur lui-même, qui reste le bouton j'aime. */
+  onShowLikers: () => void;
   onOpenMedia: (uri: string) => void;
   canDelete: boolean;
   /** Fourni uniquement pour les commentaires des AUTRES → affiche le lien « Signaler ». */
@@ -120,7 +124,7 @@ function MediaViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   );
 }
 
-function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpenMedia, canDelete, onReport, onSelectProfile }: CommentRowProps) {
+function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onShowLikers, onOpenMedia, canDelete, onReport, onSelectProfile }: CommentRowProps) {
   const mediaUri = comment.imageUrl ?? comment.gifUrl;
   const openProfile = onSelectProfile ? () => onSelectProfile(comment.authorId) : undefined;
 
@@ -161,18 +165,23 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpen
         )}
         {comment.body.length > 0 && <Text style={styles.commentBody}>{comment.body}</Text>}
         <View style={styles.commentActionsRow}>
-          <Pressable style={styles.commentLikeButton} onPress={onToggleLike}>
+          <Pressable
+            style={[styles.commentLikeHeart, comment.likeCount === 0 && styles.commentLikeHeartAlone]}
+            onPress={onToggleLike}
+          >
             <HeartIcon
               size={COMMENT_LIKE_ICON_SIZE}
               color={comment.likedByMe ? colors.action : colors.textSecondary}
               filled={comment.likedByMe}
             />
-            {comment.likeCount > 0 && (
+          </Pressable>
+          {comment.likeCount > 0 && (
+            <Pressable style={styles.commentLikeCountButton} onPress={onShowLikers}>
               <Text style={[styles.commentLikeCount, comment.likedByMe && styles.commentLikeActive]}>
                 {comment.likeCount}
               </Text>
-            )}
-          </Pressable>
+            </Pressable>
+          )}
           {onReply && (
             <Pressable style={styles.commentAction} onPress={onReply}>
               <Text style={styles.replyLink}>Répondre</Text>
@@ -221,6 +230,7 @@ export function CommentsSection({
   // Un seul commentaire (ou une réponse) à la fois peut être en attente de confirmation de
   // suppression — son id, ou `null` si aucune ligne n'est en train de demander confirmation.
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [likersCommentId, setLikersCommentId] = useState<string | null>(null);
 
   // Fermeture en attrapant le bandeau du haut (poignée + titre + croix) et en tirant vers le bas,
   // façon bottom-sheet (logique partagée avec les autres feuilles, cf. `useSheetDismiss`).
@@ -410,6 +420,7 @@ export function CommentsSection({
                   onReply={() => setReplyingTo(comment)}
                   onDelete={() => setDeletingCommentId(comment.id)}
                   onToggleLike={() => handleToggleLike(comment)}
+                  onShowLikers={() => setLikersCommentId(comment.id)}
                   onOpenMedia={setViewerUri}
                   canDelete={comment.authorId === currentUserId}
                   onReport={comment.authorId !== currentUserId ? () => setReportingComment(comment) : undefined}
@@ -422,6 +433,7 @@ export function CommentsSection({
                     indented
                     onDelete={() => setDeletingCommentId(reply.id)}
                     onToggleLike={() => handleToggleLike(reply)}
+                    onShowLikers={() => setLikersCommentId(reply.id)}
                     onOpenMedia={setViewerUri}
                     canDelete={reply.authorId === currentUserId}
                     onReport={reply.authorId !== currentUserId ? () => setReportingComment(reply) : undefined}
@@ -485,6 +497,21 @@ export function CommentsSection({
           </View>
         </Animated.View>
       </View>
+
+      {likersCommentId && (
+        <LikersSheet
+          visible
+          onClose={() => setLikersCommentId(null)}
+          source={{ kind: 'comment', id: likersCommentId }}
+          onSelectProfile={
+            onSelectProfile &&
+            ((profileId) => {
+              setLikersCommentId(null);
+              onSelectProfile(profileId);
+            })
+          }
+        />
+      )}
 
       <GifPicker visible={gifPickerOpen} onClose={() => setGifPickerOpen(false)} onSelect={handleSelectGif} />
       {viewerUri && <MediaViewer uri={viewerUri} onClose={() => setViewerUri(null)} />}
@@ -625,12 +652,25 @@ const styles = StyleSheet.create({
     paddingVertical: COMMENT_ACTION_PADDING_V,
     paddingHorizontal: COMMENT_ACTION_PADDING_H,
   },
-  commentLikeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  // Cœur et chiffre sont deux boutons distincts (j'aime / qui a aimé). Les 4 pt qui les séparaient
+  // à l'intérieur de l'ancien bouton unique sont désormais fournis par le `gap` de la rangée : les
+  // deux boîtes épousent donc leur contenu, la rangée garde exactement la même largeur, et l'écart
+  // reste un espace mort que ni l'une ni l'autre ne revendique.
+  commentLikeHeart: {
     paddingVertical: COMMENT_ACTION_PADDING_V,
-    paddingHorizontal: COMMENT_ACTION_PADDING_H,
+    paddingLeft: COMMENT_ACTION_PADDING_H,
+    paddingRight: 0,
+  },
+  // Sans like, le chiffre n'est pas affiché : le cœur récupère alors le rembourrage qu'il
+  // partageait avec lui, sinon « Répondre » se décalerait de 4 pt selon qu'un commentaire est aimé
+  // ou non.
+  commentLikeHeartAlone: {
+    paddingRight: COMMENT_ACTION_PADDING_H,
+  },
+  commentLikeCountButton: {
+    paddingVertical: COMMENT_ACTION_PADDING_V,
+    paddingLeft: 0,
+    paddingRight: COMMENT_ACTION_PADDING_H,
   },
   commentLikeIcon: {
     fontSize: 14,
