@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../analytics';
 import { colors, radius } from '../theme/theme';
@@ -255,85 +255,74 @@ export function AuthScreen() {
 
   if (mode === 'forgotPassword') {
     return (
-      <View style={[styles.container, { paddingBottom: installInset }]}>
-        <BrandHeader compact />
-        <Text style={styles.subtitle}>Mot de passe oublié</Text>
+      <View style={styles.screen}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: installInset }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <BrandHeader compact />
+          <Text style={styles.subtitle}>Mot de passe oublié</Text>
 
-        {resetSent ? (
-          <Text style={styles.info}>
-            Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé —
-            vérifie ta boîte mail.
-          </Text>
-        ) : (
-          <>
-            <Text style={styles.helper}>On t'envoie un lien par email pour choisir un nouveau mot de passe.</Text>
-            <InputRow icon={<MailIcon color={ICON_MUTED} />}>
-              <TextInput
-                style={styles.inputField}
-                placeholder="Email"
-                placeholderTextColor={colors.textSecondary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                autoComplete="email"
-                textContentType="emailAddress"
-                returnKeyType="go"
-                onSubmitEditing={handleForgotPassword}
-                onKeyPress={onEnterKey(handleForgotPassword)}
-                value={email}
-                onChangeText={setEmail}
-              />
-            </InputRow>
-            <Turnstile ref={turnstileRef} onToken={setCaptchaToken} onError={setError} />
-            {error && <Text style={styles.error}>{error}</Text>}
-            <Pressable
-              style={[
-                styles.submitButton,
-                (submitting || !email || (captchaEnabled && !captchaToken)) && styles.submitButtonDisabled,
-              ]}
-              onPress={handleForgotPassword}
-              disabled={submitting || !email || (captchaEnabled && !captchaToken)}
-            >
-              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Envoyer le lien</Text>}
-            </Pressable>
-          </>
-        )}
+          {resetSent ? (
+            <Text style={styles.info}>
+              Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé —
+              vérifie ta boîte mail.
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.helper}>On t'envoie un lien par email pour choisir un nouveau mot de passe.</Text>
+              <InputRow icon={<MailIcon color={ICON_MUTED} />}>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Email"
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  returnKeyType="go"
+                  onSubmitEditing={handleForgotPassword}
+                  onKeyPress={onEnterKey(handleForgotPassword)}
+                  value={email}
+                  onChangeText={setEmail}
+                />
+              </InputRow>
+              <Turnstile ref={turnstileRef} onToken={setCaptchaToken} onError={setError} />
+              {error && <Text style={styles.error}>{error}</Text>}
+              <Pressable
+                style={[
+                  styles.submitButton,
+                  (submitting || !email || (captchaEnabled && !captchaToken)) && styles.submitButtonDisabled,
+                ]}
+                onPress={handleForgotPassword}
+                disabled={submitting || !email || (captchaEnabled && !captchaToken)}
+              >
+                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Envoyer le lien</Text>}
+              </Pressable>
+            </>
+          )}
 
-        <Pressable onPress={() => switchMode('signIn')} hitSlop={8}>
-          <Text style={styles.toggleText}>← Retour à la connexion</Text>
-        </Pressable>
+          <Pressable onPress={() => switchMode('signIn')} hitSlop={8}>
+            <Text style={styles.toggleText}>← Retour à la connexion</Text>
+          </Pressable>
+        </ScrollView>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: installInset }]}>
-      <BrandHeader compact={mode === 'signUp'} />
+    <View style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: installInset }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <BrandHeader compact={mode === 'signUp'} />
 
-      <InputRow icon={<MailIcon color={ICON_MUTED} />}>
-        <TextInput
-          style={styles.inputField}
-          placeholder="Email"
-          placeholderTextColor={colors.textSecondary}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          autoComplete="email"
-          textContentType="emailAddress"
-          returnKeyType="next"
-          onSubmitEditing={() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus())}
-          onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus()))}
-          blurOnSubmit={false}
-          value={email}
-          onChangeText={setEmail}
-        />
-      </InputRow>
-      {mode === 'signUp' && (
         <InputRow icon={<MailIcon color={ICON_MUTED} />}>
           <TextInput
-            ref={confirmEmailRef}
             style={styles.inputField}
-            placeholder="Confirme ton email"
+            placeholder="Email"
             placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
@@ -341,127 +330,148 @@ export function AuthScreen() {
             autoComplete="email"
             textContentType="emailAddress"
             returnKeyType="next"
-            onSubmitEditing={() => passwordRef.current?.focus()}
-            onKeyPress={onEnterKey(() => passwordRef.current?.focus())}
+            onSubmitEditing={() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus())}
+            onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmEmailRef.current?.focus() : passwordRef.current?.focus()))}
             blurOnSubmit={false}
-            value={confirmEmail}
-            onChangeText={setConfirmEmail}
+            value={email}
+            onChangeText={setEmail}
           />
         </InputRow>
-      )}
-      <InputRow
-        icon={<LockIcon color={ICON_MUTED} />}
-        trailing={
-          <Pressable style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
-            {showPassword ? <EyeOffIcon color="rgba(22,35,61,0.45)" /> : <EyeIcon color="rgba(22,35,61,0.45)" />}
-          </Pressable>
-        }
-      >
-        <TextInput
-          ref={passwordRef}
-          style={styles.inputField}
-          placeholder="Mot de passe"
-          placeholderTextColor={colors.textSecondary}
-          secureTextEntry={!showPassword}
-          autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
-          textContentType={mode === 'signUp' ? 'newPassword' : 'password'}
-          returnKeyType={mode === 'signUp' ? 'next' : 'go'}
-          onSubmitEditing={() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit())}
-          onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit()))}
-          blurOnSubmit={mode !== 'signUp'}
-          value={password}
-          onChangeText={setPassword}
-        />
-      </InputRow>
-      {mode === 'signUp' && (
-        <InputRow icon={<LockIcon color={ICON_MUTED} />}>
+        {mode === 'signUp' && (
+          <InputRow icon={<MailIcon color={ICON_MUTED} />}>
+            <TextInput
+              ref={confirmEmailRef}
+              style={styles.inputField}
+              placeholder="Confirme ton email"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              onKeyPress={onEnterKey(() => passwordRef.current?.focus())}
+              blurOnSubmit={false}
+              value={confirmEmail}
+              onChangeText={setConfirmEmail}
+            />
+          </InputRow>
+        )}
+        <InputRow
+          icon={<LockIcon color={ICON_MUTED} />}
+          trailing={
+            <Pressable style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+              {showPassword ? <EyeOffIcon color="rgba(22,35,61,0.45)" /> : <EyeIcon color="rgba(22,35,61,0.45)" />}
+            </Pressable>
+          }
+        >
           <TextInput
-            ref={confirmPasswordRef}
+            ref={passwordRef}
             style={styles.inputField}
-            placeholder="Confirme le mot de passe"
+            placeholder="Mot de passe"
             placeholderTextColor={colors.textSecondary}
             secureTextEntry={!showPassword}
-            autoComplete="new-password"
-            textContentType="newPassword"
-            returnKeyType="go"
-            onSubmitEditing={handleSubmit}
-            onKeyPress={onEnterKey(handleSubmit)}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
+            textContentType={mode === 'signUp' ? 'newPassword' : 'password'}
+            returnKeyType={mode === 'signUp' ? 'next' : 'go'}
+            onSubmitEditing={() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit())}
+            onKeyPress={onEnterKey(() => (mode === 'signUp' ? confirmPasswordRef.current?.focus() : handleSubmit()))}
+            blurOnSubmit={mode !== 'signUp'}
+            value={password}
+            onChangeText={setPassword}
           />
         </InputRow>
-      )}
+        {mode === 'signUp' && (
+          <InputRow icon={<LockIcon color={ICON_MUTED} />}>
+            <TextInput
+              ref={confirmPasswordRef}
+              style={styles.inputField}
+              placeholder="Confirme le mot de passe"
+              placeholderTextColor={colors.textSecondary}
+              secureTextEntry={!showPassword}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit}
+              onKeyPress={onEnterKey(handleSubmit)}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+          </InputRow>
+        )}
 
-      {mode === 'signUp' && (
-        <Pressable style={styles.consentRow} onPress={() => setAcceptedTerms((v) => !v)}>
-          <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
-            {acceptedTerms && <Text style={styles.checkboxTick}>✓</Text>}
-          </View>
-          <Text style={styles.consentText}>
-            Je certifie avoir 18 ans et j'accepte les{' '}
-            <Text style={styles.consentLink} onPress={() => setLegalDoc('cgu')}>
-              conditions d'utilisation
-            </Text>{' '}
-            et la{' '}
-            <Text style={styles.consentLink} onPress={() => setLegalDoc('confidentialite')}>
-              politique de confidentialité
+        {mode === 'signUp' && (
+          <Pressable style={styles.consentRow} onPress={() => setAcceptedTerms((v) => !v)}>
+            <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+              {acceptedTerms && <Text style={styles.checkboxTick}>✓</Text>}
+            </View>
+            <Text style={styles.consentText}>
+              Je certifie avoir 18 ans et j'accepte les{' '}
+              <Text style={styles.consentLink} onPress={() => setLegalDoc('cgu')}>
+                conditions d'utilisation
+              </Text>{' '}
+              et la{' '}
+              <Text style={styles.consentLink} onPress={() => setLegalDoc('confidentialite')}>
+                politique de confidentialité
+              </Text>
+              .
             </Text>
-            .
-          </Text>
-        </Pressable>
-      )}
+          </Pressable>
+        )}
 
-      {mode === 'signIn' && (
-        <Pressable onPress={() => switchMode('forgotPassword')} hitSlop={8}>
-          <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
-        </Pressable>
-      )}
+        {mode === 'signIn' && (
+          <Pressable onPress={() => switchMode('forgotPassword')} hitSlop={8}>
+            <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
+          </Pressable>
+        )}
 
-      <Turnstile ref={turnstileRef} onToken={setCaptchaToken} onError={setError} />
+        <Turnstile ref={turnstileRef} onToken={setCaptchaToken} onError={setError} />
 
-      {error && <Text style={styles.error}>{error}</Text>}
-      {signUpMessage && <Text style={styles.info}>{signUpMessage}</Text>}
+        {error && <Text style={styles.error}>{error}</Text>}
+        {signUpMessage && <Text style={styles.info}>{signUpMessage}</Text>}
 
-      <Pressable
-        style={[
-          styles.submitButton,
-          (submitting ||
+        <Pressable
+          style={[
+            styles.submitButton,
+            (submitting ||
+              !email ||
+              !password ||
+              (mode === 'signUp' && !acceptedTerms) ||
+              (captchaEnabled && !captchaToken)) &&
+              styles.submitButtonDisabled,
+          ]}
+          onPress={handleSubmit}
+          disabled={
+            submitting ||
             !email ||
             !password ||
             (mode === 'signUp' && !acceptedTerms) ||
-            (captchaEnabled && !captchaToken)) &&
-            styles.submitButtonDisabled,
-        ]}
-        onPress={handleSubmit}
-        disabled={
-          submitting ||
-          !email ||
-          !password ||
-          (mode === 'signUp' && !acceptedTerms) ||
-          (captchaEnabled && !captchaToken)
-        }
-      >
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitText}>{mode === 'signIn' ? 'Se connecter' : "S'inscrire"}</Text>
-        )}
-      </Pressable>
+            (captchaEnabled && !captchaToken)
+          }
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitText}>{mode === 'signIn' ? 'Se connecter' : "S'inscrire"}</Text>
+          )}
+        </Pressable>
 
-      <Pressable onPress={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')} hitSlop={8}>
-        <Text style={styles.toggleText}>
-          {mode === 'signIn' ? 'Pas de compte ? ' : 'Déjà un compte ? '}
-          <Text style={styles.toggleAccent}>{mode === 'signIn' ? 'Crée-en un' : 'Connecte-toi'}</Text>
-        </Text>
-      </Pressable>
-
-      {reportTarget && (
-        <Pressable onPress={() => openPublicReport(reportTarget)} hitSlop={8}>
-          <Text style={styles.reportLink}>
-            {reportTarget.type === 'post' ? 'Signaler ce contenu sans compte' : 'Signaler ce profil sans compte'}
+        <Pressable onPress={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')} hitSlop={8}>
+          <Text style={styles.toggleText}>
+            {mode === 'signIn' ? 'Pas de compte ? ' : 'Déjà un compte ? '}
+            <Text style={styles.toggleAccent}>{mode === 'signIn' ? 'Crée-en un' : 'Connecte-toi'}</Text>
           </Text>
         </Pressable>
-      )}
+
+        {reportTarget && (
+          <Pressable onPress={() => openPublicReport(reportTarget)} hitSlop={8}>
+            <Text style={styles.reportLink}>
+              {reportTarget.type === 'post' ? 'Signaler ce contenu sans compte' : 'Signaler ce profil sans compte'}
+            </Text>
+          </Pressable>
+        )}
+      </ScrollView>
 
       {legalDoc && (
         <View style={styles.legalOverlay}>
@@ -473,11 +483,14 @@ export function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
+    backgroundColor: colors.feedBackground,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 28,
-    backgroundColor: colors.feedBackground,
   },
   logoWrap: {
     alignItems: 'center',
