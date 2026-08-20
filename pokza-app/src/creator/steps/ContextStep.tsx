@@ -27,6 +27,7 @@ function DecimalTextInput({
   style,
   placeholder,
   gameType,
+  onFocusChange,
 }: {
   value: number;
   onChangeValue: (n: number) => void;
@@ -34,6 +35,8 @@ function DecimalTextInput({
   placeholder?: string;
   /** Sert au format abrégé rendu à la sortie du champ ; absent = pas d'abréviation. */
   gameType?: ContextData['gameType'];
+  /** Suit l'entrée et la sortie du champ, pour qui veut attendre la fin d'une saisie. */
+  onFocusChange?: (focused: boolean) => void;
 }) {
   const [text, setText] = useState(String(value));
 
@@ -57,7 +60,9 @@ function DecimalTextInput({
       }}
       // La réécriture abrégée attend la sortie du champ : la faire à chaque frappe ferait muter
       // "3000" en "3k" au milieu de la saisie de "30000", et la frappe suivante donnerait "3k0".
+      onFocus={() => onFocusChange?.(true)}
       onBlur={() => {
+        onFocusChange?.(false);
         if (!gameType) return;
         const parsed = parseChipAmount(text);
         if (parsed !== undefined) setText(formatChipInput(parsed, gameType));
@@ -194,6 +199,12 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
   // Égales, en revanche, c'est légitime et courant (blindes 5-5) — on interdit donc strictement
   // l'inférieur, jamais l'égalité. Rien à valider en bomb pot : il se joue sans blindes.
   const blindsInvalid = !value.bombPot && value.sb > 0 && value.bb > 0 && value.bb < value.sb;
+  // ...mais on ne le DIT qu'une fois le champ quitté. Un nombre se tape chiffre par chiffre : pour
+  // écrire 60 derrière une SB à 25, on passe forcément par 6, et accuser à cet instant-là reviendrait
+  // à reprocher une erreur que personne n'a encore commise. Le bouton Continuer, lui, reste bloqué
+  // dès la frappe : la valeur est fausse tant qu'elle l'est, qu'on le dise ou non.
+  const [bbFocused, setBbFocused] = useState(false);
+  const showBlindsError = blindsInvalid && !bbFocused;
 
   // Même résultat que `straddleSeatLabel` dans handEngine.ts (straddle + décalage UTG/UTG1/UTG2),
   // calculé ici uniquement à partir du rang dans `availablePositions` puisqu'aucune action
@@ -359,17 +370,18 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
             }
           />
           <DecimalTextInput
-            style={[styles.input, blindsInvalid && styles.inputError]}
+            style={[styles.input, showBlindsError && styles.inputError]}
             placeholder="BB"
             value={value.bb}
             gameType={value.gameType}
+            onFocusChange={setBbFocused}
             onChangeValue={(bb) => update({ bb, effectiveStack: defaultStackFor(value.gameType, bb) })}
           />
         </View>
         {/* On signale plutôt que de corriger tout seul : remonter la BB à la valeur de la SB
             changerait un nombre que le joueur n'a pas touché, et il ne saurait pas lequel des deux
             est faux. Le bouton Suivant reste bloqué tant que ce n'est pas réglé. */}
-        {blindsInvalid && (
+        {showBlindsError && (
           <Text style={styles.errorText}>La BB ne peut pas être plus petite que la SB.</Text>
         )}
           </>
