@@ -95,17 +95,23 @@ function BrandHeader({ compact }: { compact: boolean }) {
       </Text>
       <View style={styles.featureRow}>
         <View style={styles.featureCol}>
-          <FeatureCardIcon size={38} />
+          <View style={styles.featureIconBox}>
+            <FeatureCardIcon size={38} />
+          </View>
           <Text style={styles.featureLabel}>Crée</Text>
         </View>
         <View style={styles.featureDivider} />
         <View style={styles.featureCol}>
-          <FeatureShareIcon size={32} />
+          <View style={styles.featureIconBox}>
+            <FeatureShareIcon size={32} />
+          </View>
           <Text style={styles.featureLabel}>Partage</Text>
         </View>
         <View style={styles.featureDivider} />
         <View style={styles.featureCol}>
-          <FeatureChatIcon size={32} />
+          <View style={styles.featureIconBox}>
+            <FeatureChatIcon size={32} />
+          </View>
           <Text style={styles.featureLabel}>Débat</Text>
         </View>
       </View>
@@ -483,6 +489,9 @@ export function AuthScreen() {
   );
 }
 
+/** Hauteur de la plus haute des trois icônes du trio Crée / Partage / Débat. */
+const FEATURE_ICON_BOX_HEIGHT = 38;
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -527,6 +536,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     minWidth: 60,
+  },
+  // Boîte de hauteur fixe, centrée : les trois icônes n'ont pas la même hauteur (38 pour les deux
+  // cartes, 32 pour les autres — le dessin des cartes est plus large que haut, il a été agrandi
+  // exprès pour ne pas paraître plus petit). Sans elle, la rangée alignait par le haut et poussait
+  // « Crée » 6 px plus bas que ses voisins. La boîte règle aussi le cas d'une future 4ᵉ colonne.
+  featureIconBox: {
+    height: FEATURE_ICON_BOX_HEIGHT,
+    justifyContent: 'center',
   },
   featureLabel: {
     fontSize: 13,

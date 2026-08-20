@@ -118,7 +118,6 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
 
   const visibleFriendRequests = friendRequests.filter((r) => !resolvedFriendIds.has(r.senderId));
   const visibleGroupInvites = groupInvites.filter((g) => !resolvedGroupIds.has(g.groupId));
-  const isEmpty = !loading && visibleFriendRequests.length === 0 && visibleGroupInvites.length === 0;
 
   return (
     <View style={styles.container}>
@@ -134,58 +133,58 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
           <Text style={styles.statusText}>Chargement…</Text>
-        ) : isEmpty ? (
-          <Text style={styles.statusText}>Aucune invitation en attente.</Text>
         ) : (
           <>
-            {visibleFriendRequests.length > 0 && (
-              <>
-                <Text style={styles.sectionTitle}>Demandes d'ami</Text>
-                {visibleFriendRequests.map((req) => (
-                  <View key={req.senderId} style={styles.row}>
-                    <Pressable style={styles.rowInfo} onPress={() => onSelectProfile(req.senderId)}>
-                      <Avatar url={req.senderAvatarUrl} name={req.senderPseudo} size={36} />
-                      <Text style={styles.rowLabel} numberOfLines={1}>
-                        {req.senderPseudo}
-                      </Text>
+            {/* Les deux sections restent affichées même vides : sans elles, un écran qui ne dit que
+                « aucune invitation » n'apprend pas ce qu'il est censé contenir. */}
+            <Text style={styles.sectionTitle}>Demandes d'ami</Text>
+            {visibleFriendRequests.length === 0 ? (
+              <Text style={styles.sectionEmpty}>Aucune demande pour l'instant.</Text>
+            ) : (
+              visibleFriendRequests.map((req) => (
+                <View key={req.senderId} style={styles.row}>
+                  <Pressable style={styles.rowInfo} onPress={() => onSelectProfile(req.senderId)}>
+                    <Avatar url={req.senderAvatarUrl} name={req.senderPseudo} size={36} />
+                    <Text style={styles.rowLabel} numberOfLines={1}>
+                      {req.senderPseudo}
+                    </Text>
+                  </Pressable>
+                  <View style={styles.actions}>
+                    <Pressable style={styles.declineButton} onPress={() => handleDeclineFriend(req.senderId)} hitSlop={8}>
+                      <Text style={styles.declineButtonText}>Refuser</Text>
                     </Pressable>
-                    <View style={styles.actions}>
-                      <Pressable style={styles.declineButton} onPress={() => handleDeclineFriend(req.senderId)} hitSlop={8}>
-                        <Text style={styles.declineButtonText}>Refuser</Text>
-                      </Pressable>
-                      <Pressable style={styles.acceptButton} onPress={() => handleAcceptFriend(req.senderId)} hitSlop={8}>
-                        <Text style={styles.acceptButtonText}>Accepter</Text>
-                      </Pressable>
-                    </View>
+                    <Pressable style={styles.acceptButton} onPress={() => handleAcceptFriend(req.senderId)} hitSlop={8}>
+                      <Text style={styles.acceptButtonText}>Accepter</Text>
+                    </Pressable>
                   </View>
-                ))}
-              </>
+                </View>
+              ))
             )}
 
-            {visibleGroupInvites.length > 0 && (
-              <>
-                <Text style={styles.sectionTitle}>Groupes privés</Text>
-                {visibleGroupInvites.map((invite) => (
-                  <View key={invite.groupId} style={styles.row}>
-                    <View style={styles.rowInfo}>
-                      <View style={styles.groupIconBubble}>
-                        <GroupTableIcon size={16} color={colors.textSecondary} />
-                      </View>
-                      <Text style={styles.rowLabel} numberOfLines={1}>
-                        {invite.groupName}
-                      </Text>
+            <Text style={styles.sectionTitle}>Groupes privés</Text>
+            {visibleGroupInvites.length === 0 ? (
+              <Text style={styles.sectionEmpty}>Aucune invitation pour l'instant.</Text>
+            ) : (
+              visibleGroupInvites.map((invite) => (
+                <View key={invite.groupId} style={styles.row}>
+                  <View style={styles.rowInfo}>
+                    <View style={styles.groupIconBubble}>
+                      <GroupTableIcon size={16} color={colors.textSecondary} />
                     </View>
-                    <View style={styles.actions}>
-                      <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(invite.groupId)} hitSlop={8}>
-                        <Text style={styles.declineButtonText}>Refuser</Text>
-                      </Pressable>
-                      <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(invite.groupId)} hitSlop={8}>
-                        <Text style={styles.acceptButtonText}>Accepter</Text>
-                      </Pressable>
-                    </View>
+                    <Text style={styles.rowLabel} numberOfLines={1}>
+                      {invite.groupName}
+                    </Text>
                   </View>
-                ))}
-              </>
+                  <View style={styles.actions}>
+                    <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(invite.groupId)} hitSlop={8}>
+                      <Text style={styles.declineButtonText}>Refuser</Text>
+                    </Pressable>
+                    <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(invite.groupId)} hitSlop={8}>
+                      <Text style={styles.acceptButtonText}>Accepter</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))
             )}
           </>
         )}
@@ -226,6 +225,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  sectionEmpty: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    paddingVertical: 6,
   },
   sectionTitle: {
     fontSize: 12,

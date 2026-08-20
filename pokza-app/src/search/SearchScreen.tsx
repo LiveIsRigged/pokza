@@ -45,6 +45,10 @@ export function SearchScreen({
   const [error, setError] = useState<string | null>(null);
   // Liste d'amis invitables (mode invitation, recherche vide). `null` = pas encore chargée.
   const [invitableFriends, setInvitableFriends] = useState<ProfileSummary[] | null>(null);
+  // Nombre d'amis AVANT filtrage. C'est la seule façon de distinguer « tu n'as encore aucun ami »
+  // de « tes amis sont tous déjà dans le groupe » : la liste filtrée est vide dans les deux cas, et
+  // l'app affirmait la seconde à quelqu'un qui venait de s'inscrire.
+  const [friendCount, setFriendCount] = useState<number | null>(null);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
   // Recherche à la volée, avec un léger débounce pour ne pas envoyer une requête à chaque frappe.
@@ -78,6 +82,7 @@ export function SearchScreen({
       .then(([friends, members]) => {
         if (cancelled) return;
         const memberIds = new Set(members.map((m) => m.userId));
+        setFriendCount(friends.length);
         setInvitableFriends(
           friends
             .filter((f) => !memberIds.has(f.id))
@@ -128,6 +133,8 @@ export function SearchScreen({
             {showFriendsList
               ? invitableFriends === null
                 ? 'Chargement…'
+                : friendCount === 0
+                ? "Tu n'as pas encore d'amis sur Pokza. Recherche un pseudo pour inviter quelqu'un."
                 : "Tous tes amis sont déjà dans le groupe. Recherche un pseudo pour inviter quelqu'un d'autre."
               : query.trim().length > 0
               ? 'Aucun pseudo ne correspond.'
