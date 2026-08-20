@@ -366,6 +366,8 @@ function PostCardInner({
           options={voteOptions}
           initialCounts={post.voteCounts}
           myVote={post.myVote}
+          isAuthor={isOwnPost}
+          onSelectProfile={onSelectProfile}
         />
       )}
 

@@ -4,6 +4,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../ui/Pressable';
 import { borders, colors, radius, spacing, tints, typography } from '../../theme/theme';
 import { castVote, retractVote } from '../../data/posts';
+import { VotersSheet } from './VotersSheet';
 
 interface VotePollProps {
   postId: string;
@@ -14,14 +15,40 @@ interface VotePollProps {
   /** Option déjà votée par l'utilisateur courant lors d'une session précédente (cf. `posts_feed`) —
    * permet de rouvrir un post déjà voté directement sur les résultats, sans réanimer l'apparition. */
   myVote?: string;
+  /** L'auteur du sondage : il voit les résultats d'emblée et ne vote pas (cf. le commentaire du
+   * composant). */
+  isAuthor?: boolean;
+  /** Ouvre un profil depuis la liste « qui a voté quoi ». Absent = lignes non cliquables. */
+  onSelectProfile?: (profileId: string) => void;
 }
 
-export function VotePoll({ postId, currentUserId, question, options, initialCounts, myVote }: VotePollProps) {
+/**
+ * Le sondage d'une main.
+ *
+ * RÈGLE DU SECRET, posée le 21/08 : on ne voit les résultats qu'après s'être prononcé. Un lien
+ * « Voir les résultats » existait auparavant et vidait la règle de son sens — il suffisait de le
+ * toucher pour tout voir sans rien risquer, et connaître la réponse majoritaire avant de choisir
+ * influence le choix. Il a été retiré, pas déplacé.
+ *
+ * DEUX EXCEPTIONS, une seule en réalité : l'AUTEUR. Il voit les résultats d'emblée puisqu'il pose
+ * la question, et il ne peut pas y répondre — voter sur son propre sondage fausserait son propre
+ * échantillon.
+ *
+ * En échange du secret, qui a le droit de voir les résultats a aussi le droit de savoir QUI a voté
+ * QUOI (cf. `VotersSheet`) : auteur, ou personne ayant déjà voté.
+ */
+export function VotePoll({
+  postId,
+  currentUserId,
+  question,
+  options,
+  initialCounts,
+  myVote,
+  isAuthor,
+  onSelectProfile,
+}: VotePollProps) {
   const [voted, setVoted] = useState<string | null>(myVote ?? null);
-  // L'utilisateur (souvent l'auteur, ou quelqu'un qui ne veut pas se prononcer) a demandé à voir les
-  // résultats sans voter. On garde ça distinct de `voted` : aucune option n'est cochée et il peut
-  // encore revenir en arrière pour voter.
-  const [peeked, setPeeked] = useState(false);
+  const [votersOpen, setVotersOpen] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>(() => {
     const c: Record<string, number> = {};
     options.forEach((o) => {
@@ -31,20 +58,20 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
   });
   const [error, setError] = useState<string | null>(null);
 
-  const alreadyVoted = Boolean(myVote);
+  // L'auteur est dans le même état d'ouverture qu'un votant : résultats déjà là, sans animation
+  // d'apparition à chaque fois qu'il rouvre son post.
+  const openOnResults = Boolean(myVote) || Boolean(isAuthor);
   const initialTotal = Object.values(counts).reduce((a, b) => a + b, 0);
 
   const barWidths = useRef<Record<string, Animated.Value>>(
     Object.fromEntries(
       options.map((o) => [
         o,
-        new Animated.Value(alreadyVoted && initialTotal > 0 ? (counts[o] ?? 0) / initialTotal : 0),
+        new Animated.Value(openOnResults && initialTotal > 0 ? (counts[o] ?? 0) / initialTotal : 0),
       ])
     )
   ).current;
-  // Si l'utilisateur a déjà voté lors d'une session précédente, les résultats s'affichent tels
-  // quels au montage (pas de ré-animation d'apparition à chaque fois qu'on rouvre le post).
-  const resultsAnim = useRef(new Animated.Value(alreadyVoted ? 1 : 0)).current;
+  const resultsAnim = useRef(new Animated.Value(openOnResults ? 1 : 0)).current;
 
   const totalVotes = Object.values(counts).reduce((a, b) => a + b, 0);
 
@@ -60,43 +87,19 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
     });
     setCounts(nextCounts);
     const total = Object.values(nextCounts).reduce((a, b) => a + b, 0);
-    resultsAnim.setValue(myVote ? 1 : 0);
+    resultsAnim.setValue(myVote || isAuthor ? 1 : 0);
     options.forEach((opt) => {
       barWidths[opt].setValue(total > 0 ? (nextCounts[opt] ?? 0) / total : 0);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myVote, initialCounts]);
+  }, [myVote, initialCounts, isAuthor]);
 
-  const showResults = voted !== null || peeked;
-
-  const handlePeek = () => {
-    setPeeked(true);
-    Animated.spring(resultsAnim, {
-      toValue: 1,
-      friction: 7,
-      tension: 60,
-      useNativeDriver: true,
-    }).start();
-    options.forEach((opt) => {
-      const pct = totalVotes > 0 ? (counts[opt] ?? 0) / totalVotes : 0;
-      Animated.timing(barWidths[opt], {
-        toValue: pct,
-        duration: 500,
-        delay: 80,
-        useNativeDriver: false,
-      }).start();
-    });
-  };
-
-  const handleBackToVote = () => {
-    setPeeked(false);
-    resultsAnim.setValue(0);
-    options.forEach((opt) => barWidths[opt].setValue(0));
-  };
+  const showResults = voted !== null || Boolean(isAuthor);
+  // Qui a le droit de voir les résultats a le droit de savoir qui a voté quoi — et personne d'autre.
+  const canSeeVoters = showResults;
 
   const handleVote = async (option: string) => {
-    if (voted) return;
-    setPeeked(false);
+    if (voted || isAuthor) return;
     setError(null);
     const previousCounts = counts;
     const nextCounts = { ...counts, [option]: (counts[option] ?? 0) + 1 };
@@ -135,7 +138,7 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
   };
 
   const handleRetract = async () => {
-    if (!voted) return;
+    if (!voted || isAuthor) return;
     setError(null);
     const previousVoted = voted;
     const previousCounts = counts;
@@ -176,9 +179,8 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
               </Pressable>
             ))}
           </View>
-          <Pressable onPress={handlePeek} hitSlop={6}>
-            <Text style={styles.peekLink}>Voir les résultats</Text>
-          </Pressable>
+          {/* Rien sous les options : ni lien vers les résultats, ni compteur. Le nombre de votes
+              déjà exprimés est lui-même une information sur le sondage. */}
         </View>
       ) : (
         <Animated.View
@@ -199,7 +201,9 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
               <Pressable
                 key={option}
                 style={styles.resultTrack}
-                onPress={isSelected ? handleRetract : peeked && !voted ? () => handleVote(option) : undefined}
+                // Seul son propre vote est cliquable, pour le retirer. L'auteur, lui, ne peut rien
+                // toucher : il n'a pas de vote à reprendre et ne peut pas en poser.
+                onPress={isSelected && !isAuthor ? handleRetract : undefined}
               >
                 <Animated.View style={[styles.resultFill, isSelected && styles.resultFillActive, { width }]} />
                 <View style={styles.resultLabelRow}>
@@ -218,14 +222,31 @@ export function VotePoll({ postId, currentUserId, question, options, initialCoun
             <Text style={styles.totalText}>
               {totalVotes} vote{totalVotes > 1 ? 's' : ''}
             </Text>
-            {peeked && !voted && (
-              <Pressable onPress={handleBackToVote} hitSlop={6}>
-                <Text style={styles.peekLink}>Voter</Text>
+            {canSeeVoters && totalVotes > 0 && (
+              <Pressable onPress={() => setVotersOpen(true)} hitSlop={6}>
+                <Text style={styles.votersLink}>Qui a voté quoi</Text>
               </Pressable>
             )}
           </View>
         </Animated.View>
       )}
+
+      <VotersSheet
+        visible={votersOpen}
+        onClose={() => setVotersOpen(false)}
+        postId={postId}
+        options={options}
+        onSelectProfile={
+          onSelectProfile
+            ? (profileId) => {
+                // On referme avant d'ouvrir le profil : sinon la feuille reste posée au-dessus de
+                // l'écran suivant (même précaution que dans `LikersSheet`).
+                setVotersOpen(false);
+                onSelectProfile(profileId);
+              }
+            : undefined
+        }
+      />
     </View>
   );
 }
@@ -310,7 +331,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
-  peekLink: {
+  votersLink: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.action,
