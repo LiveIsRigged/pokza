@@ -44,9 +44,22 @@ Dans le `.env` de DEV, **vider** la ligne :
 EXPO_PUBLIC_TURNSTILE_SITE_KEY=
 ```
 
+Garder la ligne, effacer seulement ce qui suit le `=`. Vérifié dans `src/auth/Turnstile.tsx` :
+`captchaEnabled` vaut `SITE_KEY.length > 0`, donc une valeur vide suffit à désactiver le widget. La
+vraie clé reste dans la sauvegarde `.env.prod.bak`.
+
 Si jamais le DEV avait le CAPTCHA activé côté Supabase, mettre à la place la clé de test qui réussit
 toujours : `1x00000000000000000000AA`. Les deux vont ensemble — une clé vide avec un CAPTCHA activé
 côté serveur, et plus personne ne se connecte.
+
+⚠️ **Redémarrer le serveur Expo après avoir touché au `.env`.** Les variables `EXPO_PUBLIC_*` sont
+inlinées **au moment du build** par Metro, pas lues à l'exécution : recharger la page ne suffit pas,
+l'ancienne clé reste dans le bundle. Sans ça, tu videras la ligne, le widget s'affichera quand même,
+et tu croiras que ce document raconte n'importe quoi.
+
+```bash
+cd "$(git rev-parse --show-toplevel)/pokza-app" && npx expo start --web --clear
+```
 
 ### 3. Ouvrir deux sessions en parallèle
 
