@@ -33,29 +33,20 @@ Puis l'ouvrir et y remplacer l'URL et la clé par celles du projet **DEV** (`ahd
 cd "$(git rev-parse --show-toplevel)" && open -e pokza-app/.env
 ```
 
-### 2. ⚠️ Le piège qui empêche de se connecter : Turnstile
+### 2. Turnstile — ne rien toucher
 
-Le CAPTCHA est activé sur la **production**, pas sur le DEV. Et la clé du widget est liée au
-domaine `pokza.app`, donc elle ne validera jamais sur `localhost`.
+**Correction du 20/08 : ne PAS vider `EXPO_PUBLIC_TURNSTILE_SITE_KEY`.** Ce document conseillait
+l'inverse, en supposant que la clé du widget était bornée au domaine `pokza.app`. C'est faux :
+`localhost` fait partie des hostnames autorisés, le widget affiche « Succès ! » en local. Vérifié à
+l'écran.
 
-Dans le `.env` de DEV, **vider** la ligne :
-
-```
-EXPO_PUBLIC_TURNSTILE_SITE_KEY=
-```
-
-Garder la ligne, effacer seulement ce qui suit le `=`. Vérifié dans `src/auth/Turnstile.tsx` :
-`captchaEnabled` vaut `SITE_KEY.length > 0`, donc une valeur vide suffit à désactiver le widget. La
-vraie clé reste dans la sauvegarde `.env.prod.bak`.
-
-Si jamais le DEV avait le CAPTCHA activé côté Supabase, mettre à la place la clé de test qui réussit
-toujours : `1x00000000000000000000AA`. Les deux vont ensemble — une clé vide avec un CAPTCHA activé
-côté serveur, et plus personne ne se connecte.
+Vider la ligne serait même contre-productif si le `.env` pointe encore sur la production : le
+CAPTCHA y est exigé **côté serveur**, donc un écran de connexion sans widget ne peut plus produire
+de jeton et la connexion devient impossible. Les deux vont ensemble, dans ce sens-là.
 
 ⚠️ **Redémarrer le serveur Expo après avoir touché au `.env`.** Les variables `EXPO_PUBLIC_*` sont
 inlinées **au moment du build** par Metro, pas lues à l'exécution : recharger la page ne suffit pas,
-l'ancienne clé reste dans le bundle. Sans ça, tu videras la ligne, le widget s'affichera quand même,
-et tu croiras que ce document raconte n'importe quoi.
+l'ancienne valeur reste dans le bundle.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/pokza-app" && npx expo start --web --clear
