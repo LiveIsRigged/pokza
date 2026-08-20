@@ -352,3 +352,13 @@ export function ExitIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: Ic
     </Svg>
   );
 }
+
+/** Flèche vers le haut — bouton « remonter en haut du feed ». */
+export function ArrowUpIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 20.5 V4.2" {...line(color)} />
+      <Path d="M5.6 10.6 L12 4.2 L18.4 10.6" {...line(color)} />
+    </Svg>
+  );
+}

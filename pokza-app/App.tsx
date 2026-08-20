@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces/400Regular';
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native';
 import { ActivityIndicator, Animated, AppState, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { installPwaMeta } from './src/web/installPwaMeta';
@@ -48,6 +48,7 @@ const ADMIN_SECTION = 'Administration';
 import { Screen } from './src/components/ui/Screen';
 import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { FeedHeader } from './src/components/ui/FeedHeader';
+import { ScrollToTopButton } from './src/components/ui/ScrollToTopButton';
 import { ConnectionErrorScreen } from './src/components/ui/ConnectionErrorScreen';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
 import { GroupScreen, type GroupScreenHandle } from './src/groups/GroupScreen';
@@ -191,6 +192,11 @@ function AppContent() {
   // lorsqu'on franchit le petit seuil, pas à chaque événement de scroll.
   const headerCompact = useRef(new Animated.Value(0)).current;
   const headerIsCompact = useRef(false);
+  // Bouton « remonter en haut » : la ref sert à sauter au sommet, le booléen à l'afficher. Le miroir
+  // en ref évite un `setState` à chaque événement de scroll (16 ms), comme pour la barre.
+  const feedScrollRef = useRef<ScrollView>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollTopIsShown = useRef(false);
   // Distance au bas du feed à partir de laquelle la page suivante part toute seule. Une carte de
   // main fait environ 940 px de haut : à 800 px, le chargement démarre quand il reste moins d'une
   // main à faire défiler — assez tôt pour que la suite soit là avant qu'on l'atteigne.
@@ -213,10 +219,31 @@ function AppContent() {
       void handleLoadMore();
     }
 
+    // Le bouton « remonter en haut » n'apparaît qu'une fois qu'il y a vraiment de quoi remonter :
+    // une main et demie environ, soit plus d'un écran et demi. Plus tôt, il s'afficherait alors
+    // qu'un simple coup de pouce suffit.
+    const showTop = contentOffset.y > layoutMeasurement.height * 1.5;
+    if (showTop !== scrollTopIsShown.current) {
+      scrollTopIsShown.current = showTop;
+      setShowScrollTop(showTop);
+    }
+
     const compact = contentOffset.y > 8;
     if (compact === headerIsCompact.current) return;
     headerIsCompact.current = compact;
     Animated.timing(headerCompact, { toValue: compact ? 1 : 0, duration: 150, useNativeDriver: false }).start();
+  };
+
+  // Saut SEC et non défilement animé : sur un feed infini de plusieurs milliers de pixels, le
+  // défilement « doux » de Safari met plusieurs secondes et donne l'impression que l'app rame.
+  //
+  // On remonte D'ABORD, on rafraîchit ENSUITE : le spinner s'ouvre en haut du feed, là où le regard
+  // vient d'arriver. Le rafraîchissement ne jette pas les pages déjà déroulées (cf. `refreshFeed`),
+  // il ne fait qu'ajouter les mains parues depuis — redescendre reste possible sans tout recharger.
+  const handleScrollToTop = () => {
+    feedScrollRef.current?.scrollTo({ y: 0, animated: false });
+    if (refreshing) return; // un tirer-pour-rafraîchir est déjà en cours : pas de seconde requête
+    void handlePullToRefresh();
   };
 
   // Analytics : init une fois (dormant tant qu'aucune clé PostHog), puis on lie/délie l'identité au
@@ -915,6 +942,7 @@ function AppContent() {
         unreadCount={unreadNotificationCount}
       />
       <PullToRefresh
+        ref={feedScrollRef}
         style={styles.feedScroll}
         contentContainerStyle={styles.scrollContent}
         refreshing={refreshing}
@@ -967,6 +995,7 @@ function AppContent() {
           </View>
         )}
       </PullToRefresh>
+      <ScrollToTopButton visible={showScrollTop} onPress={handleScrollToTop} />
       <SideMenu
         visible={menuOpen}
         displayName={displayName ?? 'Joueur'}

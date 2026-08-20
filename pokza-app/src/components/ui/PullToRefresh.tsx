@@ -38,23 +38,36 @@ interface PullToRefreshProps extends ScrollViewProps {
  * `RefreshControl` — le geste n'existe donc pas dans le navigateur du téléphone, où tourne pokza.app.
  * On le réimplémente à la main pour le web : au sommet du feed, un tirage vers le bas révèle un
  * spinner et déclenche le rechargement une fois le seuil franchi.
+ *
+ * `forwardRef` : le feed pose une `ref` dessus pour remonter tout en haut d'un coup (bouton ↑). Elle
+ * doit atteindre le ScrollView RÉEL, pas cette enveloppe — sinon `scrollTo` n'existe pas dessus.
  */
-export function PullToRefresh({ refreshing, onRefresh, children, ...scrollProps }: PullToRefreshProps) {
+export const PullToRefresh = React.forwardRef<ScrollView, PullToRefreshProps>(function PullToRefresh(
+  { refreshing, onRefresh, children, ...scrollProps },
+  ref,
+) {
   if (Platform.OS !== 'web') {
     return (
-      <ScrollView {...scrollProps} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      <ScrollView
+        ref={ref}
+        {...scrollProps}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         {children}
       </ScrollView>
     );
   }
   return (
-    <WebPullToRefresh refreshing={refreshing} onRefresh={onRefresh} {...scrollProps}>
+    <WebPullToRefresh ref={ref} refreshing={refreshing} onRefresh={onRefresh} {...scrollProps}>
       {children}
     </WebPullToRefresh>
   );
-}
+});
 
-function WebPullToRefresh({ refreshing, onRefresh, children, ...scrollProps }: PullToRefreshProps) {
+const WebPullToRefresh = React.forwardRef<ScrollView, PullToRefreshProps>(function WebPullToRefresh(
+  { refreshing, onRefresh, children, ...scrollProps },
+  ref,
+) {
   // Hauteur animée de l'entête qui pousse le contenu vers le bas et abrite le spinner.
   const height = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(0);
@@ -74,11 +87,16 @@ function WebPullToRefresh({ refreshing, onRefresh, children, ...scrollProps }: P
     };
   }, []);
 
-  // Le rafraîchissement terminé (refreshing repasse à false), on referme l'entête en douceur.
+  // L'entête suit `refreshing` dans LES DEUX SENS : elle s'ouvre quand un rafraîchissement démarre,
+  // se referme en douceur quand il finit. Elle ne se contentait de se refermer que parce que seul le
+  // doigt pouvait la déclencher (`endPull` l'ouvrait lui-même) ; le bouton « remonter en haut »
+  // rafraîchit aussi, et sans cela il n'aurait affiché aucun signe de chargement sur le web.
   useEffect(() => {
-    if (!refreshing) {
-      Animated.timing(height, { toValue: 0, duration: 220, useNativeDriver: false }).start();
-    }
+    Animated.timing(height, {
+      toValue: refreshing ? THRESHOLD : 0,
+      duration: refreshing ? 150 : 220,
+      useNativeDriver: false,
+    }).start();
   }, [refreshing, height]);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -123,6 +141,7 @@ function WebPullToRefresh({ refreshing, onRefresh, children, ...scrollProps }: P
 
   return (
     <ScrollView
+      ref={ref}
       {...scrollProps}
       onScroll={handleScroll}
       scrollEventThrottle={16}
@@ -139,4 +158,4 @@ function WebPullToRefresh({ refreshing, onRefresh, children, ...scrollProps }: P
       {children}
     </ScrollView>
   );
-}
+});
