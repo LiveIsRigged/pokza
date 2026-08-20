@@ -3,9 +3,8 @@ import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } fro
 import { colors, radius, spacing, typography } from '../../theme/theme';
 import {
   CLAIM_DISTANCE,
-  FLICK_VELOCITY,
-  TRIGGER_DISTANCE,
   isHorizontal,
+  passesTriggerThreshold,
   useLeftEdgeSwipe,
 } from '../../navigation/edgeSwipe';
 import { Avatar } from './Avatar';
@@ -63,8 +62,11 @@ export function SideMenu({
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_e, g) => g.dx < -CLAIM_DISTANCE && isHorizontal(g),
+        // Mêmes seuils que l'ouverture, en miroir : on passe les valeurs en positif. L'ancienne
+        // règle refermait le menu sur la seule vitesse, sans distance minimale — un effleurement
+        // vers la gauche suffisait.
         onPanResponderRelease: (_e, g) => {
-          if (g.dx <= -TRIGGER_DISTANCE || g.vx <= -FLICK_VELOCITY) onCloseRef.current();
+          if (passesTriggerThreshold(-g.dx, -g.vx)) onCloseRef.current();
         },
       }),
     [],

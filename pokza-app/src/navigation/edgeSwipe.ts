@@ -9,9 +9,14 @@ import {
  * large pour un pouce, assez étroite pour ne pas confisquer les gestes du contenu (défilement,
  * boutons). Valeur partagée par l'ouverture du menu (feed) et le retour arrière (autres écrans). */
 export const EDGE_ZONE = 36;
-/** Distance horizontale à parcourir pour déclencher — ou moins si le geste est vif (vélocité). */
-export const TRIGGER_DISTANCE = 56;
-export const FLICK_VELOCITY = 0.3;
+/** Distance horizontale à parcourir pour déclencher : environ un quart de la largeur d'un iPhone,
+ * assez pour que le geste soit délibéré. */
+export const TRIGGER_DISTANCE = 90;
+/** Raccourci pour un geste vif : plus court, mais il faut alors une vraie vitesse (`FLICK_VELOCITY`).
+ * Les deux conditions vont ensemble — une vitesse seule, sans distance minimale, se déclenchait sur
+ * un simple ajustement de prise. */
+export const FLICK_DISTANCE = 56;
+export const FLICK_VELOCITY = 0.5;
 /** Course horizontale minimale avant de confisquer le geste : en dessous, un simple tremblement de
  * pouce au début d'un défilement suffirait à voler le mouvement au contenu (qui ne le récupère plus). */
 export const CLAIM_DISTANCE = 12;
@@ -19,6 +24,15 @@ export const CLAIM_DISTANCE = 12;
 /** Un geste est « horizontal » s'il avance deux fois plus en X qu'en Y — sinon c'est un défilement. */
 export function isHorizontal(g: PanResponderGestureState) {
   return Math.abs(g.dx) > Math.abs(g.dy) * 2;
+}
+
+/**
+ * Le geste est-il assez franc pour déclencher ? Ample, ou plus court mais nettement vif. Les deux
+ * valeurs sont exprimées en positif : un geste vers la gauche (fermeture du menu) passe ses
+ * `-dx`/`-vx`, ce qui garde exactement le même ressenti dans les deux sens.
+ */
+export function passesTriggerThreshold(distance: number, velocity: number): boolean {
+  return distance >= TRIGGER_DISTANCE || (distance >= FLICK_DISTANCE && velocity >= FLICK_VELOCITY);
 }
 
 /** Abscisse du doigt, robuste multi-plateformes (même problème que `touchPageY` dans PullToRefresh) :
@@ -47,7 +61,6 @@ export function useLeftEdgeSwipe(onTrigger: () => void, enabled = true) {
   onTriggerRef.current = onTrigger;
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
-  const fired = useRef(false);
   const startX = useRef(Number.POSITIVE_INFINITY);
 
   return useMemo(
@@ -62,17 +75,14 @@ export function useLeftEdgeSwipe(onTrigger: () => void, enabled = true) {
         },
         onMoveShouldSetPanResponderCapture: (_e, g) =>
           enabledRef.current && startX.current <= EDGE_ZONE && g.dx > CLAIM_DISTANCE && isHorizontal(g),
-        onPanResponderGrant: () => {
-          fired.current = false;
-        },
-        // On déclenche dès le seuil franchi, sans attendre le relâchement : sur le menu le panneau se
-        // met à glisser pendant que le doigt continue, sur un écran empilé le retour part aussitôt.
-        onPanResponderMove: (_e, g) => {
-          if (fired.current) return;
-          if (g.dx >= TRIGGER_DISTANCE || (g.dx > 24 && g.vx >= FLICK_VELOCITY)) {
-            fired.current = true;
-            onTriggerRef.current();
-          }
+        // On attend le RELÂCHEMENT du doigt, et non le franchissement du seuil en cours de geste.
+        // Déclencher en plein mouvement rendait l'action irrévocable dès 56 px parcourus (voire 24 px
+        // à peine rapides) : un ajustement de prise ou un défilement légèrement diagonal parti du bord
+        // suffisait à naviguer, sans aucun moyen de se raviser. En jugeant au relâchement, ramener le
+        // doigt en arrière avant de lever annule le geste — c'est aussi ce que fait déjà la fermeture
+        // du menu latéral (cf. `SideMenu`).
+        onPanResponderRelease: (_e, g) => {
+          if (passesTriggerThreshold(g.dx, g.vx)) onTriggerRef.current();
         },
         // Le geste nous appartient : le contenu ne doit pas pouvoir le reprendre en cours de route.
         onPanResponderTerminationRequest: () => false,
