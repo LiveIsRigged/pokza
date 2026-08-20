@@ -41,6 +41,9 @@ import {
   MailIcon,
   ShieldIcon,
 } from './src/components/ui/icons';
+
+/** Intitulé de la section réservée au fondateur dans le menu latéral. */
+const ADMIN_SECTION = 'Administration';
 import { Screen } from './src/components/ui/Screen';
 import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { FeedHeader } from './src/components/ui/FeedHeader';
@@ -973,11 +976,14 @@ function AppContent() {
               setMode('settings');
             },
           },
-          // Uniquement pour le compte admin (fondateur).
+          // Uniquement pour le compte admin (fondateur). `section` insère un filet et un intitulé
+          // au-dessus de la première : les outils d'administration ne doivent pas se lire comme la
+          // suite des fonctions sociales.
           ...(isAdmin
             ? [
                 {
                   label: 'Statistiques',
+                  section: ADMIN_SECTION,
                   icon: ChartIcon,
                   onPress: () => {
                     setMenuOpen(false);
@@ -986,6 +992,7 @@ function AppContent() {
                 },
                 {
                   label: 'Modération',
+                  section: ADMIN_SECTION,
                   icon: ShieldIcon,
                   onPress: () => {
                     setMenuOpen(false);
@@ -995,6 +1002,7 @@ function AppContent() {
                 },
                 {
                   label: "Journal d'audit",
+                  section: ADMIN_SECTION,
                   icon: AuditIcon,
                   onPress: () => {
                     setMenuOpen(false);

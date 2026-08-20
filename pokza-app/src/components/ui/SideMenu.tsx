@@ -30,6 +30,13 @@ export interface SideMenuItem {
   onPress: () => void;
   /** Pastille de comptage affichée à droite (invitations en attente, etc.). */
   badge?: number;
+  /**
+   * Intitulé de section : un filet et ce libellé s'insèrent AU-DESSUS de la première entrée qui le
+   * porte. Sert à détacher les outils d'administration des fonctions sociales dans le menu du
+   * fondateur — sans cela, « Modération » s'enchaînait à « Réglages » comme s'il s'agissait du même
+   * registre. Les entrées sans section restent groupées en tête, sans en-tête ni filet.
+   */
+  section?: string;
 }
 
 interface SideMenuProps {
@@ -121,20 +128,30 @@ export function SideMenu({
           </View>
         </Pressable>
 
-        {items.map((item) => {
+        {items.map((item, i) => {
           const Icon = item.icon;
+          // En-tête affiché seulement sur la PREMIÈRE entrée d'une section : les suivantes se
+          // rattachent silencieusement à celle du dessus.
+          const startsSection = item.section != null && item.section !== items[i - 1]?.section;
           return (
-            <Pressable key={item.label} style={styles.row} onPress={item.onPress}>
-              <View style={styles.rowIcon}>
-                <Icon size={ROW_ICON_SIZE} color={colors.textPrimary} />
-              </View>
-              <Text style={styles.rowLabel}>{item.label}</Text>
-              {item.badge != null && item.badge > 0 && (
-                <View style={styles.rowBadge}>
-                  <Text style={styles.rowBadgeText}>{item.badge}</Text>
+            <React.Fragment key={item.label}>
+              {startsSection && (
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionLabel}>{item.section}</Text>
                 </View>
               )}
-            </Pressable>
+              <Pressable style={styles.row} onPress={item.onPress}>
+                <View style={styles.rowIcon}>
+                  <Icon size={ROW_ICON_SIZE} color={colors.textPrimary} />
+                </View>
+                <Text style={styles.rowLabel}>{item.label}</Text>
+                {item.badge != null && item.badge > 0 && (
+                  <View style={styles.rowBadge}>
+                    <Text style={styles.rowBadgeText}>{item.badge}</Text>
+                  </View>
+                )}
+              </Pressable>
+            </React.Fragment>
           );
         })}
 
@@ -219,6 +236,22 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: spacing.xs,
     borderRadius: radius.md,
+  },
+  // Filet puis intitulé : même traitement que les intitulés de section de l'écran Réglages, pour
+  // que « section » veuille dire la même chose partout dans l'app.
+  sectionHeader: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(22,35,61,0.08)',
+    marginTop: spacing.sm,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   // Gouttière fixe : les icônes n'ont pas toutes la même largeur apparente, une boîte commune garde
   // les libellés parfaitement alignés d'une ligne à l'autre.
