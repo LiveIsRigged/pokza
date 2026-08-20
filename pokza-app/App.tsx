@@ -7,8 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces/400Regular';
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { ActivityIndicator, Animated, AppState, StyleSheet, Text, View } from 'react-native';
-import { Pressable } from './src/components/ui/Pressable';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { installPwaMeta } from './src/web/installPwaMeta';
 import { InstallPromptProvider } from './src/web/InstallPrompt';
@@ -169,6 +169,8 @@ function AppContent() {
   const [postsLoading, setPostsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Verrou synchrone du chargement automatique (cf. `handleFeedScroll`).
+  const loadingMoreRef = useRef(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -187,8 +189,29 @@ function AppContent() {
   // lorsqu'on franchit le petit seuil, pas à chaque événement de scroll.
   const headerCompact = useRef(new Animated.Value(0)).current;
   const headerIsCompact = useRef(false);
-  const handleFeedScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => {
-    const compact = e.nativeEvent.contentOffset.y > 8;
+  // Distance au bas du feed à partir de laquelle la page suivante part toute seule. Une carte de
+  // main fait environ 940 px de haut : à 800 px, le chargement démarre quand il reste moins d'une
+  // main à faire défiler — assez tôt pour que la suite soit là avant qu'on l'atteigne.
+  const FEED_LOAD_MORE_THRESHOLD = 800;
+
+  const handleFeedScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+
+    // Le bas du feed approche : on charge sans attendre un tap. `loadingMoreRef` plutôt que l'état
+    // `loadingMore` — l'état ne devient vrai qu'au rendu suivant, et un défilement continu émet
+    // plusieurs événements d'ici là, donc plusieurs requêtes pour la même page.
+    const distanceToBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    if (
+      distanceToBottom < FEED_LOAD_MORE_THRESHOLD &&
+      hasMorePosts &&
+      !loadingMoreRef.current &&
+      !postsLoading &&
+      posts.length > 0
+    ) {
+      void handleLoadMore();
+    }
+
+    const compact = contentOffset.y > 8;
     if (compact === headerIsCompact.current) return;
     headerIsCompact.current = compact;
     Animated.timing(headerCompact, { toValue: compact ? 1 : 0, duration: 150, useNativeDriver: false }).start();
@@ -300,6 +323,7 @@ function AppContent() {
   };
 
   const handleLoadMore = async () => {
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const older = await fetchFeed(posts.length);
@@ -313,6 +337,7 @@ function AppContent() {
     } catch (err) {
       setPostsError(errorMessage(err));
     } finally {
+      loadingMoreRef.current = false;
       setLoadingMore(false);
     }
   };
@@ -929,14 +954,13 @@ function AppContent() {
             />
           ))
         )}
+        {/* Le feed charge la suite tout seul (cf. `handleFeedScroll`) : il ne reste qu'à occuper la
+            place pendant la requête. Le bouton « Charger plus de mains » demandait un tap toutes
+            les dix mains, ce que ne fait aucun feed social. */}
         {!postsLoading && posts.length > 0 && hasMorePosts && (
-          <Pressable style={styles.loadMoreButton} onPress={handleLoadMore} disabled={loadingMore}>
-            {loadingMore ? (
-              <ActivityIndicator color={colors.textSecondary} />
-            ) : (
-              <Text style={styles.loadMoreText}>Charger plus de mains</Text>
-            )}
-          </Pressable>
+          <View style={styles.loadMoreSpinner}>
+            <ActivityIndicator color={colors.textSecondary} />
+          </View>
         )}
       </PullToRefresh>
       <SideMenu
@@ -1089,18 +1113,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  loadMoreButton: {
+  loadMoreSpinner: {
     marginHorizontal: 14,
     marginTop: 6,
     paddingVertical: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
     alignItems: 'center',
-  },
-  loadMoreText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textSecondary,
   },
 });

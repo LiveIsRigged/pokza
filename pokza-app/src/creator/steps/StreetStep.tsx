@@ -567,15 +567,19 @@ export function StreetStep({
                       </Pressable>
                     </>
                   )}
+                  {/* Même traitement que Fold et Suivre : au poker aucune de ces actions n'est
+                      « la bonne », et Relancer était le seul en orange plein — la couleur d'appel
+                      de la marque, qui poussait vers la relance sans que ce soit voulu. Seul
+                      Tapis reste distinct, parce qu'il est irréversible. */}
                   {currentRemaining > betAmount && (
                     <Pressable
-                      style={styles.actionButtonPrimary}
+                      style={styles.actionButton}
                       onPress={() => {
                         setAmountError(null);
                         setEnteringAmount(betAmount > 0 ? 'raise' : 'bet');
                       }}
                     >
-                      <Text style={styles.actionTextPrimary}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
+                      <Text style={styles.actionText}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
                     </Pressable>
                   )}
                   <Pressable style={styles.allInButton} onPress={handleAllIn}>
@@ -768,17 +772,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-  },
-  actionButtonPrimary: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    backgroundColor: colors.action,
-  },
-  actionTextPrimary: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
   },
   allInButton: {
     paddingHorizontal: 16,
