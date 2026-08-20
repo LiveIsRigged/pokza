@@ -11,6 +11,9 @@ export const colors = {
   gold: '#C9A227',
   goldBright: '#E8C93B',
   action: '#E8571F',
+  // Rouge des erreurs de saisie et des messages de refus. Même valeur que le rouge des cartes,
+  // mais nommée à part : les deux n'ont aucune raison de bouger ensemble.
+  error: '#C0392B',
   textPrimary: '#1A1A1A',
   textSecondary: '#6B6B63',
   textOnFelt: '#EDEAE2',

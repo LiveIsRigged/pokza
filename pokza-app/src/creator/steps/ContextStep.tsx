@@ -190,6 +190,10 @@ interface ContextStepProps {
 export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps }: ContextStepProps) {
   const availablePositions = POSITION_SETS[value.numPlayers] ?? POSITION_SETS[6];
   const heroValid = availablePositions.includes(value.heroPosition);
+  // La grosse blinde ne peut pas être plus PETITE que la petite : SB 100 / BB 5 n'a aucun sens.
+  // Égales, en revanche, c'est légitime et courant (blindes 5-5) — on interdit donc strictement
+  // l'inférieur, jamais l'égalité. Rien à valider en bomb pot : il se joue sans blindes.
+  const blindsInvalid = !value.bombPot && value.sb > 0 && value.bb > 0 && value.bb < value.sb;
 
   // Même résultat que `straddleSeatLabel` dans handEngine.ts (straddle + décalage UTG/UTG1/UTG2),
   // calculé ici uniquement à partir du rang dans `availablePositions` puisqu'aucune action
@@ -234,7 +238,7 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
       title="La table"
       subtitle="Contexte de la main"
       onNext={onNext}
-      nextDisabled={!heroValid || !value.sb || !value.bb || !value.effectiveStack}
+      nextDisabled={!heroValid || !value.sb || !value.bb || !value.effectiveStack || blindsInvalid}
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
@@ -342,13 +346,19 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
             onChangeValue={(sb) => update({ sb })}
           />
           <DecimalTextInput
-            style={styles.input}
+            style={[styles.input, blindsInvalid && styles.inputError]}
             placeholder="BB"
             value={value.bb}
             gameType={value.gameType}
             onChangeValue={(bb) => update({ bb, effectiveStack: defaultStackFor(value.gameType, bb) })}
           />
         </View>
+        {/* On signale plutôt que de corriger tout seul : remonter la BB à la valeur de la SB
+            changerait un nombre que le joueur n'a pas touché, et il ne saurait pas lequel des deux
+            est faux. Le bouton Suivant reste bloqué tant que ce n'est pas réglé. */}
+        {blindsInvalid && (
+          <Text style={styles.errorText}>La BB ne peut pas être plus petite que la SB (elles peuvent être égales).</Text>
+        )}
           </>
         )}
 
@@ -593,6 +603,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginBottom: 6,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginBottom: 6,
+  },
+  inputError: {
+    borderColor: colors.error,
   },
   inlineFieldRow: {
     flexDirection: 'row',
