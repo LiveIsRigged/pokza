@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import { LEGAL_DOCS, LEGAL_DRAFT, LEGAL_UPDATED, getLegalDoc, type LegalDoc, type LegalDocId } from './legalContent';
 
 interface LegalScreenProps {
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   indexLabel: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, flexShrink: 1 },
   indexChevron: { fontSize: 20, color: colors.textSecondary },

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Modal, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from './Pressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, radius, spacing, tints } from '../../theme/theme';
 import type { IconProps } from './icons';
 
 export interface ConfirmSheetProps {
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(22,35,61,0.15)',
+    backgroundColor: tints.medium,
     marginBottom: spacing.md,
   },
   iconCircle: {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.22)',
+    borderColor: borders.default,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.sm,

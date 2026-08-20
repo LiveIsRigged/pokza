@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import { Popover } from '../components/ui/Popover';
 import {
   fetchNotifications,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   pushBanner: {
     marginHorizontal: spacing.sm,
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: radius.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   rowUnread: {
     backgroundColor: 'rgba(232,87,31,0.06)',
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   declineButtonText: {
     fontSize: 12,

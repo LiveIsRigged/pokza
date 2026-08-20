@@ -2,7 +2,7 @@ import React from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from './Pressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../../theme/theme';
+import { borders, colors, tints } from '../../theme/theme';
 import { ChipStackIcon } from './ChipStackIcon';
 import { BellIcon, SearchIcon } from './icons';
 
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     position: 'relative',
   },
   badge: {
@@ -118,6 +118,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(22,35,61,0.14)',
+    backgroundColor: tints.medium,
   },
 });

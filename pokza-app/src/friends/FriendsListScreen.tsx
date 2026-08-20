@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchFriends, type Friend } from '../data/friends';
 
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   friendPseudo: {
     fontSize: 15,

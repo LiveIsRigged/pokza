@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing, tints } from '../theme/theme';
 import { listReports, REPORT_STATUS_LABEL, type AdminReport, type ReportStatus } from '../data/admin';
 import { reportReasonLabel } from '../data/reports';
 
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   tabActive: { backgroundColor: colors.tableFelt, borderColor: colors.tableFelt },
   tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.1)',
+    borderColor: borders.subtle,
   },
   rowHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 6 },
   grow: { flex: 1 },
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.textSecondary,
-    backgroundColor: 'rgba(22,35,61,0.08)',
+    backgroundColor: tints.light,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.sm,

@@ -2,7 +2,7 @@ import React, { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, radius, spacing, tints, typography } from '../theme/theme';
 import {
   deleteGroup,
   fetchGroup,
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(22,35,61,0.12)',
+    backgroundColor: tints.light,
   },
   avatarStack: {
     flexDirection: 'row',
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(22,35,61,0.12)',
+    backgroundColor: tints.light,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
   },
   membersButton: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,

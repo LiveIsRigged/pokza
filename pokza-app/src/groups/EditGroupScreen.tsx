@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import { updateGroupDescription } from '../data/groups';
 
 import { GROUP_DESCRIPTION_MAX_LENGTH as DESCRIPTION_MAX_LENGTH } from '../constants/limits';
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import { searchProfiles, type ProfileSummary } from '../data/profiles';
 import { fetchFriends } from '../data/friends';
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -221,11 +221,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   searchInputSheet: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   resultInfo: {
     flexDirection: 'row',

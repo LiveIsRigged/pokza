@@ -13,7 +13,7 @@ import {
   VOTE_OPTION_MAX_LENGTH,
   VOTE_QUESTION_MAX_LENGTH,
 } from '../constants/limits';
-import { colors } from '../theme/theme';
+import { borders, colors } from '../theme/theme';
 
 export interface PostEdits {
   title: string;
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,

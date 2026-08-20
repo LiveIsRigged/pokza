@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import {
   getUserContext,
   liftSanction,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.1)',
+    borderColor: borders.subtle,
   },
   name: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
   metaLine: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginTop: spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,

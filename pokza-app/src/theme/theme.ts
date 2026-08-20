@@ -22,6 +22,42 @@ export const colors = {
   seatFolded: '#0A1223',
 } as const;
 
+// Traits, fonds teintés et icônes estompées : tous dérivés du MÊME navy que le feutre de la table,
+// rendu semi-transparent sur le beige du feed. Ils étaient auparavant écrits à la main dans chaque
+// fichier — 118 fois, avec 18 opacités différentes dont beaucoup indiscernables entre elles (0,14
+// contre 0,15, 0,04 contre 0,05). Ces valeurs sont désormais les seules autorisées : ajouter une
+// nouvelle opacité navy ailleurs dans le code recrée exactement le problème.
+//
+// Les trois familles sont volontairement séparées : un contour de bouton et un fond de bulle n'ont
+// aucune raison de bouger ensemble le jour où l'un des deux est retouché.
+const navy = (opacity: number) => `rgba(22,35,61,${opacity})`;
+
+/** Traits : contours de boutons et de champs, filets de séparation. */
+export const borders = {
+  /** Séparation à peine suggérée. */
+  subtle: navy(0.1),
+  /** Filet entre deux lignes d'une liste — le plus courant. */
+  hairline: navy(0.15),
+  /** Contour d'un bouton ou d'un champ. */
+  default: navy(0.25),
+  /** Contour appuyé, quand il doit se voir avant le texte qu'il entoure. */
+  strong: navy(0.35),
+} as const;
+
+/** Fonds teintés : pastilles, bulles, zones inertes. */
+export const tints = {
+  faint: navy(0.05),
+  light: navy(0.1),
+  medium: navy(0.15),
+  /** Piste des interrupteurs natifs — imposée par le composant, pas un fond comme les autres. */
+  switchTrack: navy(0.18),
+  /** Voile sombre derrière du texte blanc (bandeau du scanner de QR code). */
+  scrim: navy(0.85),
+} as const;
+
+/** Teinte des icônes secondaires (champs de connexion, décor). */
+export const iconMuted = navy(0.45);
+
 // Rayons et espacements alignés sur DESIGN_SYSTEM.md (base 4px)
 export const radius = {
   sm: 4,

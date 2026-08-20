@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { Pressable } from '../ui/Pressable';
-import { colors, radius } from '../../theme/theme';
+import { borders, colors, radius } from '../../theme/theme';
 
 /**
  * Largeur rendue de la pastille : texte « BB » (11 px / 700) + padding 10×2 + bordure 1×2, mesuré
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   toggleActive: {
     backgroundColor: colors.tableFelt,

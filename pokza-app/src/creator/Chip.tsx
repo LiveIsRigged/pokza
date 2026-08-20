@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors } from '../theme/theme';
+import { borders, colors } from '../theme/theme';
 
 interface ChipProps {
   label: string;
@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     marginRight: 8,
     marginBottom: 8,
   },

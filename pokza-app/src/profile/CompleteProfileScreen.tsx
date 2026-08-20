@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
 import { countryByCode, flagEmoji } from '../data/countries';
-import { colors, radius } from '../theme/theme';
+import { borders, colors, radius } from '../theme/theme';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
 interface CompleteProfileScreenProps {
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   },
   dobInput: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,

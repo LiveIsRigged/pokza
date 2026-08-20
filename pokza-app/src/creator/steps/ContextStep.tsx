@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
 import type { Position } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
-import { colors } from '../../theme/theme';
+import { borders, colors, tints } from '../../theme/theme';
 import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
 import { POSITION_SETS } from '../positions';
@@ -281,9 +281,9 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
                       update({ bombPot: true, bombAnte: value.bombAnte || value.bb, straddleCount: 0 })
                     : update({ bombPot: false })
                 }
-                trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
+                trackColor={{ false: tints.switchTrack, true: colors.action }}
                 thumbColor="#fff"
-                ios_backgroundColor="rgba(22,35,61,0.18)"
+                ios_backgroundColor={tints.switchTrack}
                 // `thumbColor` ne pilote QUE le pouce éteint sur react-native-web ; en position allumée il
                 // retombe sur son teal Material par défaut. On repasse donc le pouce en blanc via son prop
                 // hérité `activeThumbColor` (ignoré côté natif, où `thumbColor` couvre déjà les deux états).
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,

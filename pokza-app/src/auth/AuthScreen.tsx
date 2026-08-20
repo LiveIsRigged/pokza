@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../analytics';
-import { colors, radius } from '../theme/theme';
+import { borders, colors, iconMuted, radius, tints } from '../theme/theme';
 import { webOrigin, readInitialDeepLink } from '../navigation/deepLink';
 import { openPublicReport, type PublicReportTarget } from '../utils/publicReport';
 import { passwordError } from './passwordRules';
@@ -24,7 +24,6 @@ import {
   PokzaLogo,
 } from '../components/ui/authIcons';
 
-const ICON_MUTED = 'rgba(22,35,61,0.5)';
 
 type Mode = 'signIn' | 'signUp' | 'forgotPassword';
 
@@ -278,7 +277,7 @@ export function AuthScreen() {
           ) : (
             <>
               <Text style={styles.helper}>On t'envoie un lien par email pour choisir un nouveau mot de passe.</Text>
-              <InputRow icon={<MailIcon color={ICON_MUTED} />}>
+              <InputRow icon={<MailIcon color={iconMuted} />}>
                 <TextInput
                   style={styles.inputField}
                   placeholder="Email"
@@ -326,7 +325,7 @@ export function AuthScreen() {
       >
         <BrandHeader compact={mode === 'signUp'} />
 
-        <InputRow icon={<MailIcon color={ICON_MUTED} />}>
+        <InputRow icon={<MailIcon color={iconMuted} />}>
           <TextInput
             style={styles.inputField}
             placeholder="Email"
@@ -345,7 +344,7 @@ export function AuthScreen() {
           />
         </InputRow>
         {mode === 'signUp' && (
-          <InputRow icon={<MailIcon color={ICON_MUTED} />}>
+          <InputRow icon={<MailIcon color={iconMuted} />}>
             <TextInput
               ref={confirmEmailRef}
               style={styles.inputField}
@@ -366,10 +365,10 @@ export function AuthScreen() {
           </InputRow>
         )}
         <InputRow
-          icon={<LockIcon color={ICON_MUTED} />}
+          icon={<LockIcon color={iconMuted} />}
           trailing={
             <Pressable style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
-              {showPassword ? <EyeOffIcon color="rgba(22,35,61,0.45)" /> : <EyeIcon color="rgba(22,35,61,0.45)" />}
+              {showPassword ? <EyeOffIcon color={iconMuted} /> : <EyeIcon color={iconMuted} />}
             </Pressable>
           }
         >
@@ -390,7 +389,7 @@ export function AuthScreen() {
           />
         </InputRow>
         {mode === 'signUp' && (
-          <InputRow icon={<LockIcon color={ICON_MUTED} />}>
+          <InputRow icon={<LockIcon color={iconMuted} />}>
             <TextInput
               ref={confirmPasswordRef}
               style={styles.inputField}
@@ -552,7 +551,7 @@ const styles = StyleSheet.create({
   featureDivider: {
     width: 1,
     height: 40,
-    backgroundColor: 'rgba(22,35,61,0.14)',
+    backgroundColor: tints.medium,
   },
   brandRow: {
     flexDirection: 'row',
@@ -583,7 +582,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.2)',
+    borderColor: borders.default,
     borderRadius: radius.lg,
     paddingHorizontal: 14,
     marginBottom: 12,
@@ -621,7 +620,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.4)',
+    borderColor: borders.strong,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',

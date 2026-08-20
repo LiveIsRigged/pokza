@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from './Pressable';
-import { colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, radius, spacing } from '../../theme/theme';
 import { COUNTRIES, flagEmoji, type Country } from '../../data/countries';
 
 interface CountryPickerProps {
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   headerTitle: {
     fontSize: 15,
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   },
   search: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.1)',
+    borderBottomColor: borders.subtle,
   },
   clearText: {
     fontSize: 15,

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import {
   getReportContext,
   resolveReport,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.1)',
+    borderColor: borders.subtle,
   },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   reason: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, flexShrink: 1 },
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
   actionBtn: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   noteInput: {
     minHeight: 60,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.md,
     padding: spacing.sm,
     fontSize: 16,

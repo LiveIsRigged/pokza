@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Pressable } from '../ui/Pressable';
-import { colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, radius, spacing, tints } from '../../theme/theme';
 import { fetchTrendingGifs, searchGifs, type GifResult } from '../../data/gifs';
 import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
 
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(22,35,61,0.15)',
+    backgroundColor: tints.medium,
   },
   header: {
     flexDirection: 'row',
@@ -137,12 +137,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   searchInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 8,
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: radius.sm,
     overflow: 'hidden',
-    backgroundColor: 'rgba(22,35,61,0.05)',
+    backgroundColor: tints.faint,
   },
   gifThumb: {
     width: '100%',

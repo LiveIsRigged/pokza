@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
 import type { Action, ActionType, Card, GameType, Seat, Street } from '../../types/poker';
-import { colors, typography } from '../../theme/theme';
+import { borders, colors, tints, typography } from '../../theme/theme';
 import { getActingOrder, getActingOrderAfter } from '../positions';
 import { WizardScreen } from '../WizardScreen';
 import { MultiCardPicker } from '../MultiCardPicker';
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   },
   actionSection: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(22,35,61,0.15)',
+    borderTopColor: borders.hairline,
     paddingTop: 16,
     marginTop: 4,
   },
@@ -684,8 +684,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.2)',
-    backgroundColor: 'rgba(22,35,61,0.04)',
+    borderColor: borders.default,
+    backgroundColor: tints.faint,
   },
   // Même forme que les chips "fold jusqu'à" mais teinte felt distincte : les deux rangées listent les
   // mêmes sièges pour des actions opposées, la couleur évite le mauvais tap.
@@ -694,8 +694,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.35)',
-    backgroundColor: 'rgba(22,35,61,0.1)',
+    borderColor: borders.strong,
+    backgroundColor: tints.light,
   },
   foldUntilChipText: {
     fontSize: 12,
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
-    backgroundColor: 'rgba(22,35,61,0.06)',
+    backgroundColor: tints.faint,
   },
   stackChipName: {
     fontSize: 11,
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: 'rgba(22,35,61,0.08)',
+    backgroundColor: tints.light,
   },
   undoText: {
     fontSize: 12,
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   actionText: {
     fontSize: 14,
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
   },
   amountInput: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   secondaryText: {
     fontSize: 14,

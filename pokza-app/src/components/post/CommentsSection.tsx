@@ -17,7 +17,7 @@ import type { Comment } from '../../types/poker';
 import { createComment, deleteComment, fetchComments, setCommentLiked } from '../../data/comments';
 import { pickImage, type PickedImage } from '../../data/images';
 import type { GifResult } from '../../data/gifs';
-import { colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, radius, spacing, tints } from '../../theme/theme';
 import { GifPicker } from './GifPicker';
 import { ReportModal } from '../moderation/ReportModal';
 import { ConfirmSheet } from '../ui/ConfirmSheet';
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(22,35,61,0.15)',
+    backgroundColor: tints.medium,
   },
   header: {
     flexDirection: 'row',
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   headerTitle: {
     fontSize: 15,
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
   },
   commentBubble: {
     flex: 1,
-    backgroundColor: 'rgba(22,35,61,0.05)',
+    backgroundColor: tints.faint,
     borderRadius: radius.md,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     marginTop: 4,
     marginBottom: 4,
-    backgroundColor: 'rgba(22,35,61,0.05)',
+    backgroundColor: tints.faint,
   },
   commentActionsRow: {
     flexDirection: 'row',
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.sm,
-    backgroundColor: 'rgba(22,35,61,0.05)',
+    backgroundColor: tints.faint,
   },
   attachmentRemove: {
     fontSize: 12,
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(22,35,61,0.15)',
+    borderTopColor: borders.hairline,
   },
   attachButtonIcon: {
     fontSize: 18,
@@ -718,7 +718,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 8,

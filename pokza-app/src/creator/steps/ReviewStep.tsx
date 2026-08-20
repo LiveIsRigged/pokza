@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors } from '../../theme/theme';
+import { borders, colors } from '../../theme/theme';
 import type { Group } from '../../data/groups';
 import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   previewBubbleText: {
     fontSize: 12,

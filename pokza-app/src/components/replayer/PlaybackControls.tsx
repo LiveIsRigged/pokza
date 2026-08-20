@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Pressable } from '../ui/Pressable';
-import { colors, radius } from '../../theme/theme';
+import { colors, radius, tints } from '../../theme/theme';
 import { PauseIcon, PlayIcon } from '../ui/icons';
 
 // Les trois boutons partagent le même triangle : le pas arrière n'est que `PlayIcon` en miroir.
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   segment: {
     height: 3,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(22,35,61,0.1)',
+    backgroundColor: tints.light,
   },
   segmentFilled: {
     backgroundColor: colors.gold,

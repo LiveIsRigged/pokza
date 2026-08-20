@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, radius, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';
 
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   groupName: {
     ...typography.authorName,
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   cancelButtonText: {
     fontSize: 13,

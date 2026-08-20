@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-n
 import { Pressable } from '../components/ui/Pressable';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import type { Card, Rank, Suit } from '../types/poker';
-import { colors } from '../theme/theme';
+import { borders, colors, tints } from '../theme/theme';
 import { CardView } from '../components/replayer/CardView';
 
 const RANKS: Rank[] = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
@@ -205,8 +205,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: 'rgba(22,35,61,0.3)',
-    backgroundColor: 'rgba(22,35,61,0.04)',
+    borderColor: borders.strong,
+    backgroundColor: tints.faint,
   },
   // Repère du fondu, qui se pose en absolu sur le bord droit de la zone visible.
   rowWrap: {

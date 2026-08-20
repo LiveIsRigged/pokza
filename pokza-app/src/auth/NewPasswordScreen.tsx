@@ -3,7 +3,7 @@ import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-nat
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
-import { colors, radius } from '../theme/theme';
+import { borders, colors, radius } from '../theme/theme';
 import { clearDeepLinkFromUrl } from '../navigation/deepLink';
 import { passwordError } from './passwordRules';
 
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,

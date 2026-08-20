@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, radius, spacing, tints, typography } from '../theme/theme';
 import { fetchProfile, type ProfileDetails } from '../data/profiles';
 import { EditProfileScreen } from './EditProfileScreen';
 import {
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
   unblockButton: {
     marginTop: spacing.xs,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing.lg,
     paddingVertical: 8,
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 26,
-    backgroundColor: 'rgba(22,35,61,0.14)',
+    backgroundColor: tints.medium,
   },
   mutualCountLine: {
     fontSize: 12,
@@ -848,7 +848,7 @@ const styles = StyleSheet.create({
   },
   editProfileButton: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing.lg,
     paddingVertical: 8,
@@ -953,7 +953,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   pendingDeclineText: {
     fontSize: 11,
@@ -984,7 +984,7 @@ const styles = StyleSheet.create({
   },
   friendButtonOutline: {
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,

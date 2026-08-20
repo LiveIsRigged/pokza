@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from './Pressable';
-import { colors, radius, spacing, typography } from '../../theme/theme';
+import { borders, colors, radius, spacing, typography } from '../../theme/theme';
 import {
   CLAIM_DISTANCE,
   isHorizontal,
@@ -213,9 +213,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(22,35,61,0.08)',
+    borderTopColor: borders.subtle,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(22,35,61,0.08)',
+    borderBottomColor: borders.subtle,
     marginBottom: spacing.sm,
   },
   profileText: {
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   // que « section » veuille dire la même chose partout dans l'app.
   sectionHeader: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(22,35,61,0.08)',
+    borderTopColor: borders.subtle,
     marginTop: spacing.sm,
     paddingTop: spacing.md,
     paddingHorizontal: spacing.xs,

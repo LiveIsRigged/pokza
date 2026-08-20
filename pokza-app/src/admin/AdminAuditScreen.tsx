@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import { listAuditLog, type AuditEntry } from '../data/admin';
 
 interface AdminAuditScreenProps {
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.1)',
+    borderColor: borders.subtle,
   },
   rowHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   action: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, flexShrink: 1 },

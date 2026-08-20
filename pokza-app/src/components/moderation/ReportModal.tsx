@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../ui/Pressable';
-import { colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, radius, spacing, tints } from '../../theme/theme';
 import { errorMessage } from '../../utils/errorMessage';
 import { REPORT_REASONS, submitReport, type ReportReason, type ReportTargetType } from '../../data/reports';
 import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(22,35,61,0.15)',
+    backgroundColor: tints.medium,
   },
   header: {
     flexDirection: 'row',
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   headerTitle: {
     fontSize: 15,
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: radius.full,
     borderWidth: 2,
-    borderColor: 'rgba(22,35,61,0.3)',
+    borderColor: borders.strong,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   detailsInput: {
     minHeight: 72,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     borderRadius: radius.md,
     padding: spacing.sm,
     fontSize: 16,
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   footer: {
     padding: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(22,35,61,0.15)',
+    borderTopColor: borders.hairline,
   },
   submitButton: {
     backgroundColor: colors.action,

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing, tints } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { fetchAdminStats, type AdminStats, type DayCount } from '../data/stats';
 import { formatLabel } from '../profile/profileOptions';
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.08)',
+    borderColor: borders.subtle,
   },
   tileValue: {
     fontSize: 26,
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.08)',
+    borderColor: borders.subtle,
   },
   barsRow: {
     flexDirection: 'row',
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   breakBarTrack: {
     flex: 1,
     height: 8,
-    backgroundColor: 'rgba(22,35,61,0.08)',
+    backgroundColor: tints.light,
     borderRadius: 4,
     overflow: 'hidden',
   },

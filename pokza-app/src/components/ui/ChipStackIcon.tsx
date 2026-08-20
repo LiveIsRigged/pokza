@@ -1,21 +1,21 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { colors } from '../../theme/theme';
+import { colors, iconMuted } from '../../theme/theme';
 
 // La silhouette est volontairement celle d'un menu "hamburger" — trois barres horizontales de
 // même largeur, sans décalage : c'est ce qui fait que l'icône est comprise sans réfléchir. Le
 // vocabulaire poker (tranche des jetons, alternance des couleurs) n'est qu'un habillage par-dessus.
 const CHIPS = [
   { fill: colors.tableFelt, rim: 'rgba(201,162,39,0.55)' },
-  { fill: colors.gold, rim: 'rgba(22,35,61,0.45)' },
+  { fill: colors.gold, rim: iconMuted },
   { fill: colors.tableFelt, rim: 'rgba(201,162,39,0.55)' },
 ];
 
 // Sur fond marine (en-tête du feed) : jetons clairs (parchemin / or vif) pour rester visibles.
 const CHIPS_DARK = [
-  { fill: colors.textOnFelt, rim: 'rgba(22,35,61,0.45)' },
-  { fill: colors.goldBright, rim: 'rgba(22,35,61,0.45)' },
-  { fill: colors.textOnFelt, rim: 'rgba(22,35,61,0.45)' },
+  { fill: colors.textOnFelt, rim: iconMuted },
+  { fill: colors.goldBright, rim: iconMuted },
+  { fill: colors.textOnFelt, rim: iconMuted },
 ];
 
 interface ChipStackIconProps {

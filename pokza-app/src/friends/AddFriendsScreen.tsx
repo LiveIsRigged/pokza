@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { Pressable } from '../components/ui/Pressable';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
-import { colors, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, radius, spacing, tints, typography } from '../theme/theme';
 import { Chip } from '../creator/Chip';
 import { Avatar } from '../components/ui/Avatar';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../utils/share';
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.12)',
+    borderColor: borders.subtle,
     marginBottom: spacing.md,
   },
   explainer: {
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     right: spacing.md,
     textAlign: 'center',
     color: '#fff',
-    backgroundColor: 'rgba(22,35,61,0.85)',
+    backgroundColor: tints.scrim,
     borderRadius: radius.md,
     paddingVertical: 8,
     fontSize: 13,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   declinePillText: {
     fontSize: 12,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   suggestionInfo: {
     flex: 1,

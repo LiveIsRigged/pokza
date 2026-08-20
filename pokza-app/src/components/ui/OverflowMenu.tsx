@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Modal, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from './Pressable';
-import { colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, radius, spacing } from '../../theme/theme';
 import type { IconProps } from './icons';
 
 /** Rouge des actions destructrices, partagé par le libellé et son icône. */
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   },
   itemBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(22,35,61,0.12)',
+    borderTopColor: borders.subtle,
   },
   itemIcon: {
     width: 20,

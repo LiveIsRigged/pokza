@@ -1,7 +1,7 @@
 import React, { useImperativeHandle, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { borders, colors, radius, spacing } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { LegalScreen } from '../legal/LegalScreen';
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   linkRowLabel: {
     fontSize: 15,

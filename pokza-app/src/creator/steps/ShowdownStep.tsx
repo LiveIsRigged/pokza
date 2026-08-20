@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
 import type { Action, Card, Seat } from '../../types/poker';
-import { colors, typography } from '../../theme/theme';
+import { borders, colors, typography } from '../../theme/theme';
 import { WizardScreen } from '../WizardScreen';
 import { MultiCardPicker } from '../MultiCardPicker';
 import { CardView } from '../../components/replayer/CardView';
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
     alignItems: 'center',
     gap: 6,
   },
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: 'rgba(22,35,61,0.3)',
+    borderColor: borders.strong,
   },
   pickerSection: {
     marginTop: 4,

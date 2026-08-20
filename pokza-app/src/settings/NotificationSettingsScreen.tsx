@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, spacing } from '../theme/theme';
+import { borders, colors, spacing, tints } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { enablePush, disablePush, isDeviceSubscribed, pushState, pushSupported, type PushState } from '../web/push';
 import { fetchNotificationPrefs, updateNotificationPrefs, type NotificationPrefs } from '../data/notificationPrefs';
@@ -116,9 +116,9 @@ export function NotificationSettingsScreen({ userId, onBack }: NotificationSetti
                   value={!!deviceOn}
                   onValueChange={handleToggleDevice}
                   disabled={togglingDevice || deviceOn === null}
-                  trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
+                  trackColor={{ false: tints.switchTrack, true: colors.action }}
                   thumbColor="#fff"
-                  ios_backgroundColor="rgba(22,35,61,0.18)"
+                  ios_backgroundColor={tints.switchTrack}
                   {...({ activeThumbColor: '#fff' } as object)}
                 />
               )}
@@ -139,9 +139,9 @@ export function NotificationSettingsScreen({ userId, onBack }: NotificationSetti
                   // Éditer ces préférences n'a aucun effet tant que le push est coupé au niveau de
                   // l'appareil — les griser évite de laisser croire qu'elles font quelque chose.
                   disabled={!prefs || savingFamily === f.key || !deviceOn}
-                  trackColor={{ false: 'rgba(22,35,61,0.18)', true: colors.action }}
+                  trackColor={{ false: tints.switchTrack, true: colors.action }}
                   thumbColor="#fff"
-                  ios_backgroundColor="rgba(22,35,61,0.18)"
+                  ios_backgroundColor={tints.switchTrack}
                   {...({ activeThumbColor: '#fff' } as object)}
                 />
               </View>
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(22,35,61,0.15)',
+    borderBottomColor: borders.hairline,
   },
   rowMuted: {
     opacity: 0.4,

@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../ui/Pressable';
 import type { Post } from '../../types/poker';
-import { colors, radius, spacing, typography } from '../../theme/theme';
+import { borders, colors, radius, spacing, typography } from '../../theme/theme';
 import { Avatar } from '../ui/Avatar';
 import { HandReplayer } from '../replayer/HandReplayer';
 import { VotePoll } from './VotePoll';
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   // vraie surface au doigt, et un filet qui déborderait avec elle ne serait plus aligné sur la carte.
   engagementDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(22,35,61,0.15)',
+    borderTopColor: borders.hairline,
   },
   engagementRow: {
     flexDirection: 'row',

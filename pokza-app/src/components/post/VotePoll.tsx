@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../../utils/errorMessage';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../ui/Pressable';
-import { colors, radius, spacing, typography } from '../../theme/theme';
+import { borders, colors, radius, spacing, tints, typography } from '../../theme/theme';
 import { castVote, retractVote } from '../../data/posts';
 
 interface VotePollProps {
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.25)',
+    borderColor: borders.default,
   },
   bubbleText: {
     fontSize: 13,
@@ -269,8 +269,8 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(22,35,61,0.15)',
-    backgroundColor: 'rgba(22,35,61,0.05)',
+    borderColor: borders.hairline,
+    backgroundColor: tints.faint,
     overflow: 'hidden',
     justifyContent: 'center',
     marginBottom: spacing.xs + 2,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(22,35,61,0.12)',
+    backgroundColor: tints.light,
   },
   resultFillActive: {
     backgroundColor: 'rgba(232,87,31,0.22)',
