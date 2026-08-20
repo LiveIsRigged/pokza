@@ -616,6 +616,7 @@ function AppContent() {
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
           onProfileChanged={refetchProfile}
+          onCreateHand={() => setMode('create')}
           onBack={onBack}
           onEditPost={(postId) => {
             setEditingPostId(postId);
@@ -698,6 +699,7 @@ function AppContent() {
           groupId={viewingGroupId}
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
+          onCreateHand={() => setMode('create')}
           onBack={onBack}
           onEditPost={(postId) => {
             setEditingPostId(postId);

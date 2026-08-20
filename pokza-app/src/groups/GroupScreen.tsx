@@ -37,6 +37,9 @@ interface GroupScreenProps {
   onInviteMembers: (groupId: string) => void;
   /** Ouvre le profil d'un membre ou de l'auteur d'une main — comme le clic sur un auteur dans le feed. */
   onSelectProfile: (profileId: string) => void;
+  /** Lance la création d'une main. Proposé quand le groupe n'a encore aucune main : sans lui, la
+   *  page d'un groupe fraîchement créé ne dit pas quoi faire ensuite. */
+  onCreateHand?: () => void;
 }
 
 export interface GroupScreenHandle {
@@ -53,7 +56,7 @@ export interface GroupScreenHandle {
 }
 
 export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>(function GroupScreen(
-  { groupId, currentUserId, currentUserName, onBack, onEditPost, onInviteMembers, onSelectProfile },
+  { groupId, currentUserId, currentUserName, onBack, onEditPost, onInviteMembers, onSelectProfile, onCreateHand },
   ref
 ) {
   const [group, setGroup] = useState<Group | null>(null);
@@ -394,7 +397,14 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
 
             <Text style={styles.sectionTitle}>Mains du groupe privé</Text>
             {posts.length === 0 ? (
-              <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
+              <View style={styles.emptyState}>
+                <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
+                {onCreateHand && (
+                  <Pressable style={styles.emptyButton} onPress={onCreateHand}>
+                    <Text style={styles.emptyButtonText}>+ Créer une main</Text>
+                  </Pressable>
+                )}
+              </View>
             ) : (
               posts.map((post) => (
                 <PostCard
@@ -501,6 +511,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textSecondary,
     paddingHorizontal: 4,
+  },
+  // Même bouton d'amorce que sur un profil vide et sous la liste des groupes privés.
+  emptyState: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyButton: {
+    backgroundColor: colors.action,
+    borderRadius: radius.full,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  emptyButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   statusText: {
     marginHorizontal: 14,

@@ -70,6 +70,9 @@ interface ProfileScreenProps {
   onOpenGroup?: (groupId: string) => void;
   /** Ouvre l'écran séparé « Mes amis » (uniquement sur son propre profil). */
   onOpenFriends?: () => void;
+  /** Lance la création d'une main. Sert au bouton proposé quand SON PROPRE profil est encore vide :
+   *  la moitié basse de l'écran restait inerte, sans rien indiquer quoi faire ensuite. */
+  onCreateHand?: () => void;
   /** Prévient l'écran parent qu'il faut rafraîchir sa propre copie du profil (menu latéral) —
    * après un changement d'avatar, de pseudo ou de préférence d'affichage. */
   onProfileChanged?: () => void;
@@ -84,6 +87,7 @@ export function ProfileScreen({
   onSelectProfile,
   onOpenGroup,
   onOpenFriends,
+  onCreateHand,
   onProfileChanged,
 }: ProfileScreenProps) {
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
@@ -609,7 +613,14 @@ export function ProfileScreen({
                 </Pressable>
               </View>
             ) : posts.length === 0 ? (
-              <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
+              <View style={styles.emptyState}>
+                <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
+                {isOwnProfile && onCreateHand && (
+                  <Pressable style={styles.emptyButton} onPress={onCreateHand}>
+                    <Text style={styles.emptyButtonText}>+ Créer une main</Text>
+                  </Pressable>
+                )}
+              </View>
             ) : (
               posts.map((post) => (
                 <PostCard
@@ -845,6 +856,25 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
     fontSize: 13,
+  },
+  // État vide de SON PROPRE profil : le texte seul laissait la moitié basse de l'écran inerte.
+  // Même bouton que celui déjà proposé sous la liste vide des groupes privés.
+  emptyState: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyButton: {
+    backgroundColor: colors.action,
+    borderRadius: radius.full,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  emptyButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   statusText: {
     marginHorizontal: 14,
