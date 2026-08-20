@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { colors, radius, spacing } from '../theme/theme';
 import { listReports, REPORT_STATUS_LABEL, type AdminReport, type ReportStatus } from '../data/admin';
 import { reportReasonLabel } from '../data/reports';

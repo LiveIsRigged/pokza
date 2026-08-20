@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from './Pressable';
 import { colors, radius, spacing, typography } from '../../theme/theme';
 import {
   CLAIM_DISTANCE,

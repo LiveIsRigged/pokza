@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable } from '../ui/Pressable';
 import { colors, radius, spacing } from '../../theme/theme';
 import { errorMessage } from '../../utils/errorMessage';
 import { REPORT_REASONS, submitReport, type ReportReason, type ReportTargetType } from '../../data/reports';

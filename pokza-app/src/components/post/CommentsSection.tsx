@@ -5,13 +5,13 @@ import {
   Animated,
   Image,
   Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { Pressable } from '../ui/Pressable';
 import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
 import type { Comment } from '../../types/poker';
 import { createComment, deleteComment, fetchComments, setCommentLiked } from '../../data/comments';

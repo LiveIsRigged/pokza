@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { colors } from '../theme/theme';
 
 interface ChipProps {

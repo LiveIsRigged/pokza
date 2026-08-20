@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../../utils/errorMessage';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../ui/Pressable';
 import { colors, radius, spacing, typography } from '../../theme/theme';
 import { castVote, retractVote } from '../../data/posts';
 

@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Pressable } from './Pressable';
 import { colors, radius, spacing } from '../../theme/theme';
 import { PokzaLogo } from './authIcons';
 
@@ -23,7 +24,7 @@ export function ConnectionErrorScreen({ message, onRetry }: ConnectionErrorScree
       <PokzaLogo size={92} />
       <Text style={styles.message}>{message}</Text>
       <Pressable
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+        style={styles.button}
         onPress={onRetry}
         accessibilityRole="button"
       >
@@ -55,9 +56,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 32,
     alignItems: 'center',
-  },
-  buttonPressed: {
-    opacity: 0.8,
   },
   buttonText: {
     color: '#fff',

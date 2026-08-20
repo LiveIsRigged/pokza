@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { colors, radius, spacing } from '../theme/theme';
 import {
   getUserContext,

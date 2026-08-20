@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Easing, Modal, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from './Pressable';
 import { colors, radius, spacing } from '../../theme/theme';
 import type { IconProps } from './icons';
 

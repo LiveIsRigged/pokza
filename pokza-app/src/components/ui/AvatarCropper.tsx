@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Image, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from './Pressable';
 import { colors, radius, spacing } from '../../theme/theme';
 import type { CropRegion } from '../../data/avatars';
 

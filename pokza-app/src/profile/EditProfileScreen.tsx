@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { colors, radius, spacing } from '../theme/theme';
 import { updateProfile, type ProfileDetails } from '../data/profiles';
 import { Chip } from '../creator/Chip';

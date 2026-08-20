@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { colors, spacing } from '../theme/theme';
 import { deletePost, fetchPost, setLiked } from '../data/posts';
 import type { Post } from '../types/poker';

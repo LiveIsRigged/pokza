@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';

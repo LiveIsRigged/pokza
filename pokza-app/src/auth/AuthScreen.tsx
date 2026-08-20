@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../analytics';
 import { colors, radius } from '../theme/theme';

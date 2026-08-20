@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { HandReplayer } from '../components/replayer/HandReplayer';
 import { PokzaLogo } from '../components/ui/authIcons';
 import { fetchPublicPost, type PublicPost } from '../data/posts';

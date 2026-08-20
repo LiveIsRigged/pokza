@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { colors, radius, spacing } from '../theme/theme';
 import { LEGAL_DOCS, LEGAL_DRAFT, LEGAL_UPDATED, getLegalDoc, type LegalDoc, type LegalDocId } from './legalContent';
 

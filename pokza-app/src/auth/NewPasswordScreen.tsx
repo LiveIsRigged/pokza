@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
 import { colors, radius } from '../theme/theme';
 import { clearDeepLinkFromUrl } from '../navigation/deepLink';

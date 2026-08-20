@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable } from './Pressable';
 import { colors, radius, spacing } from '../../theme/theme';
 import { COUNTRIES, flagEmoji, type Country } from '../../data/countries';
 

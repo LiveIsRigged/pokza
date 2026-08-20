@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../components/ui/Pressable';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
 import { colors, radius, spacing, typography } from '../theme/theme';

@@ -5,13 +5,13 @@ import {
   Animated,
   Image,
   Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { Pressable } from '../ui/Pressable';
 import { colors, radius, spacing } from '../../theme/theme';
 import { fetchTrendingGifs, searchGifs, type GifResult } from '../../data/gifs';
 import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';

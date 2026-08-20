@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../ui/Pressable';
 import type { Post } from '../../types/poker';
 import { colors, radius, spacing, typography } from '../../theme/theme';
 import { Avatar } from '../ui/Avatar';

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable } from '../../components/ui/Pressable';
 import type { Action, ActionType, Card, GameType, Seat, Street } from '../../types/poker';
 import { colors, typography } from '../../theme/theme';
 import { getActingOrder, getActingOrderAfter } from '../positions';
