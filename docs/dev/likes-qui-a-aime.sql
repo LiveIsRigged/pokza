@@ -17,6 +17,18 @@
 -- Policies RESTRICTIVES : elles s'ajoutent en ET aux policies de lecture
 -- existantes, elles ne peuvent donc que restreindre.
 --
+-- ⚠️ `private.` ET NON `public.` — la première version de ce script a cassé le
+-- feed en PROD (« permission denied for function is_banned »). Les quatre
+-- fonctions ont été déplacées vers `private` au lot 1, et le correctif F-06 a
+-- recréé dans `public` des relais dont l'exécution est RÉVOQUÉE pour
+-- `authenticated`. Les policies de `posts`/`comments`, écrites avant le
+-- déplacement, marchent toujours parce qu'une policy retient l'OID de la
+-- fonction, qui a suivi le changement de schéma : leur code source dit encore
+-- `public.is_banned(...)` alors qu'elles appellent la fonction privée. Recopier
+-- ce code source dans une policy NEUVE l'accroche au relais interdit.
+-- Seul `private.*` est exécutable par `authenticated` (cf. securite-lot1.sql :
+-- `grant usage on schema private` + `grant execute on function private.…`).
+--
 -- CONSÉQUENCE ATTENDUE, à ne pas prendre pour un bug : `posts.like_count` est
 -- tenu par un trigger, qui ne connaît pas les blocages de celui qui regarde. Un
 -- compteur à 5 peut donc n'ouvrir que 4 lignes. C'est le comportement des
@@ -32,15 +44,15 @@
 drop policy if exists "likes moderation and blocks" on public.likes;
 create policy "likes moderation and blocks" on public.likes as restrictive for select
   using (
-    not public.is_blocked_pair(auth.uid(), user_id)
-    and not public.is_banned(user_id)
+    not private.is_blocked_pair(auth.uid(), user_id)
+    and not private.is_banned(user_id)
   );
 
 drop policy if exists "comment_likes moderation and blocks" on public.comment_likes;
 create policy "comment_likes moderation and blocks" on public.comment_likes as restrictive for select
   using (
-    not public.is_blocked_pair(auth.uid(), user_id)
-    and not public.is_banned(user_id)
+    not private.is_blocked_pair(auth.uid(), user_id)
+    and not private.is_banned(user_id)
   );
 
 -- ----------------------------------------------------------------------------
@@ -52,7 +64,14 @@ select c.relname                       as table_name,
        p.polname                       as policy,
        case p.polpermissive when false then 'RESTRICTIVE' else 'PERMISSIVE (⚠️)' end as type,
        p.polcmd                        as commande,
-       pg_get_expr(p.polqual, p.polrelid) as using_expr
+       pg_get_expr(p.polqual, p.polrelid) as using_expr,
+       -- Le schéma réellement appelé, que `pg_get_expr` masque (il affiche le nom nu si le
+       -- schéma est dans le search_path) : c'est LUI qui doit dire `private`.
+       (select string_agg(distinct n.nspname || '.' || f.proname, ', ')
+          from pg_depend d
+          join pg_proc f on f.oid = d.refobjid
+          join pg_namespace n on n.oid = f.pronamespace
+         where d.objid = p.oid and d.refclassid = 'pg_proc'::regclass) as fonctions_appelees
 from pg_policy p
 join pg_class c on c.oid = p.polrelid
 where c.relname in ('likes', 'comment_likes')
