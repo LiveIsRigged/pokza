@@ -29,7 +29,8 @@
 -- cohérent — bloquer quelqu'un, c'est cesser de compter son avis — mais cela
 -- signifie que deux personnes peuvent lire deux totaux différents.
 --
--- À lancer sur DEV d'abord (avec la SECTION 2), puis sur PROD.
+-- À lancer sur DEV d'abord, puis sur PROD — et à faire suivre, chaque fois, de
+-- `votes-qui-a-vote-test.sql`, qui est la seule vraie preuve (cf. SECTION 2).
 --   Dev  : https://supabase.com/dashboard/project/ahdikgckctvduuestzrh/sql/new
 --   Prod : https://supabase.com/dashboard/project/blfoycuvvyxaxftzuidf/sql/new
 -- Re-jouable (drop/create de la policy).
@@ -64,80 +65,17 @@ where c.relname = 'votes'
 order by p.polname;
 
 
+
 -- ----------------------------------------------------------------------------
--- SECTION 2 — MESURE, sous l'identité d'un vrai utilisateur.
+-- SECTION 2 — LA MESURE EST DANS UN AUTRE FICHIER : `votes-qui-a-vote-test.sql`.
 --
--- Une requête lancée normalement dans l'éditeur tourne en `postgres` : elle
--- contourne toutes les policies et ne prouve RIEN. Et un « 0 ligne lue » ne
--- prouve rien non plus — `permission denied` ne se déclenche qu'au moment
--- d'évaluer la condition SUR UNE LIGNE. D'où le vote de test posé ci-dessous,
--- sur une main DU COMPTE LUI-MÊME (personne n'est notifié), puis retiré.
+-- Le contrôle ci-dessus dit que la policy EXISTE et sur quelles fonctions elle
+-- s'accroche. Il ne dit pas qu'elle s'EXÉCUTE. `permission denied` ne se
+-- déclenche qu'au moment d'évaluer la condition sur une ligne réelle : sur une
+-- table sans vote, une policy cassée passe le test en vert — c'est arrivé sur
+-- DEV le 21/08, et c'est ce qui avait laissé passer la panne du 20/08.
 --
--- ATTENDU : aucune ligne « ERREUR ». Une seule = ne pas passer en production.
+-- Enchaîner impérativement avec `votes-qui-a-vote-test.sql`, qui pose un vote
+-- le temps de la mesure (et fabrique même un sondage s'il n'en existe aucun),
+-- relit sous l'identité d'un vrai compte, puis remet tout en état.
 -- ----------------------------------------------------------------------------
-drop table if exists _res;
-create temp table _res (lecture text, resultat text);
-
-do $$
-declare
-  v_user uuid;
-  v_post uuid;
-  v_opt  text;
-  v_rel  text;
-  v_n    bigint;
-  v_out  text;
-  v_pose boolean := false;
-begin
-  select id into v_user from public.profiles order by created_at limit 1;
-  if v_user is null then
-    insert into _res values ('compte impersonné', 'AUCUN PROFIL — test impossible');
-    return;
-  end if;
-  insert into _res values ('compte impersonné', v_user::text);
-
-  -- Un sondage de ce compte, et une option réellement proposée : la policy d'écriture
-  -- « votes cible valide » (lot 2, F-10) refuse toute option inventée.
-  select p.id, o.value::text
-    into v_post, v_opt
-    from public.posts p
-    cross join lateral jsonb_array_elements_text(p.vote_options) as o(value)
-   where p.author_id = v_user
-     and p.vote_options is not null
-   limit 1;
-
-  if v_post is not null then
-    insert into public.votes (post_id, user_id, option) values (v_post, v_user, v_opt)
-      on conflict do nothing;
-    v_pose := found;
-    insert into _res values ('vote de test posé', v_post::text || ' → ' || v_opt);
-  else
-    insert into _res values ('vote de test posé',
-      'AUCUN SONDAGE de ce compte — la lecture ci-dessous peut ne rien mesurer');
-  end if;
-
-  -- `posts_ranked` et `posts_feed` sont les deux vues du feed ; elles agrègent `votes` pour les
-  -- résultats, d'où la panne en cascade si la policy appelle une fonction interdite.
-  foreach v_rel in array array['posts_ranked', 'posts_feed', 'votes'] loop
-    begin
-      perform set_config('request.jwt.claims',
-                         json_build_object('sub', v_user, 'role', 'authenticated')::text, true);
-      perform set_config('role', 'authenticated', true);
-      execute format('select count(*) from public.%I', v_rel) into v_n;
-      v_out := v_n::text || ' lignes lues';
-    exception when others then
-      v_out := 'ERREUR — ' || sqlerrm;
-    end;
-    -- Rendu du rôle avant d'écrire dans la table temporaire (`authenticated` n'a aucun droit
-    -- dessus), et pour que le tour suivant reparte propre.
-    perform set_config('role', 'postgres', true);
-    insert into _res values (v_rel, v_out);
-  end loop;
-
-  if v_pose then
-    delete from public.votes where post_id = v_post and user_id = v_user;
-    insert into _res values ('nettoyage', 'vote de test retiré');
-  end if;
-end;
-$$;
-
-select * from _res;
