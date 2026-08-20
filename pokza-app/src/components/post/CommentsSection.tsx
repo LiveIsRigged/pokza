@@ -25,6 +25,13 @@ import { Avatar } from '../ui/Avatar';
 import { COMMENT_MAX_LENGTH } from '../../constants/limits';
 import { CameraIcon, HeartIcon, TrashIcon } from '../ui/icons';
 
+// Cœur d'un commentaire : plus petit que celui d'une main (24), mais assez grand pour être vu et
+// visé. 18 + 2 × 9 = 36 pt de surface tactile — on ne peut pas monter aux 44 recommandés sans que
+// les zones de « Répondre » et « Signaler » se chevauchent dans une liste aussi dense.
+const COMMENT_LIKE_ICON_SIZE = 18;
+const COMMENT_ACTION_PADDING_V = 9;
+const COMMENT_ACTION_PADDING_H = 6;
+
 interface CommentsSectionProps {
   visible: boolean;
   onClose: () => void;
@@ -154,9 +161,9 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpen
         )}
         {comment.body.length > 0 && <Text style={styles.commentBody}>{comment.body}</Text>}
         <View style={styles.commentActionsRow}>
-          <Pressable style={styles.commentLikeButton} onPress={onToggleLike} hitSlop={8}>
+          <Pressable style={styles.commentLikeButton} onPress={onToggleLike}>
             <HeartIcon
-              size={14}
+              size={COMMENT_LIKE_ICON_SIZE}
               color={comment.likedByMe ? colors.action : colors.textSecondary}
               filled={comment.likedByMe}
             />
@@ -167,12 +174,12 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onOpen
             )}
           </Pressable>
           {onReply && (
-            <Pressable onPress={onReply} hitSlop={8}>
+            <Pressable style={styles.commentAction} onPress={onReply}>
               <Text style={styles.replyLink}>Répondre</Text>
             </Pressable>
           )}
           {onReport && (
-            <Pressable onPress={onReport} hitSlop={8}>
+            <Pressable style={styles.commentAction} onPress={onReport}>
               <Text style={styles.reportLink}>Signaler</Text>
             </Pressable>
           )}
@@ -607,13 +614,23 @@ const styles = StyleSheet.create({
   commentActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginTop: 6,
+    // Écart visible = ce gap + les deux rembourrages horizontaux, soit les 16 pt d'avant.
+    gap: spacing.xs,
+    marginHorizontal: -COMMENT_ACTION_PADDING_H,
+  },
+  // Rembourrage réel plutôt que `hitSlop` : celui-ci n'existe que dans l'ancien `Touchable` de
+  // react-native-web, pas dans `Pressable` — sur la PWA il n'agrandissait rien du tout, et le cœur
+  // n'offrait au doigt que ses 14 × 14 pt de dessin.
+  commentAction: {
+    paddingVertical: COMMENT_ACTION_PADDING_V,
+    paddingHorizontal: COMMENT_ACTION_PADDING_H,
   },
   commentLikeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingVertical: COMMENT_ACTION_PADDING_V,
+    paddingHorizontal: COMMENT_ACTION_PADDING_H,
   },
   commentLikeIcon: {
     fontSize: 14,

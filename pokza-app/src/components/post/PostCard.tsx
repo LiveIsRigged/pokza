@@ -20,7 +20,13 @@ import { BlockIcon, CommentIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon
 const DESCRIPTION_LINES = 3;
 /** Taille commune des trois icônes sous une main (j'aime / commenter / partager) : elles
  *  forment un groupe, elles doivent peser pareil. */
-const ENGAGEMENT_ICON_SIZE = 20;
+// 24 pt : la taille des rangées d'engagement d'Instagram et de Strava. À 20, nos boutons étaient
+// visiblement plus petits que les leurs alors qu'ils jouent le même rôle.
+const ENGAGEMENT_ICON_SIZE = 24;
+// Rembourrage vertical des boutons : 10 + 24 + 10 = 44 pt, le minimum tactile recommandé par Apple.
+// Il tient lieu de hauteur de rangée — d'où le filet séparé, qui doit rester aligné sur la carte
+// pendant que les boutons, eux, débordent de 8 pt à gauche pour que l'icône reste alignée au texte.
+const ENGAGEMENT_TOUCH_PADDING = 10;
 
 interface PostCardProps {
   post: Post;
@@ -354,6 +360,7 @@ function PostCardInner({
         />
       )}
 
+      <View style={styles.engagementDivider} />
       <View style={styles.engagementRow}>
         <Pressable style={styles.engagementItem} onPress={onToggleLike}>
           <HeartIcon
@@ -444,7 +451,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.feedBackground,
     paddingHorizontal: spacing.md,
     paddingTop: 12,
-    paddingBottom: spacing.sm,
+    // Pas de rembourrage bas : les 10 pt sous les icônes d'engagement en tiennent lieu.
+    paddingBottom: 0,
   },
   header: {
     flexDirection: 'row',
@@ -528,22 +536,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 10,
   },
+  // Le filet est porté par une vue à part : la rangée, elle, déborde latéralement pour offrir une
+  // vraie surface au doigt, et un filet qui déborderait avec elle ne serait plus aligné sur la carte.
+  engagementDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(22,35,61,0.15)',
+  },
   engagementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(22,35,61,0.15)',
+    // Écart visible = ce gap + les deux rembourrages horizontaux, soit les 24 pt d'avant.
+    gap: spacing.sm,
+    marginHorizontal: -spacing.sm,
   },
   engagementItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingVertical: ENGAGEMENT_TOUCH_PADDING,
+    paddingHorizontal: spacing.sm,
   },
   engagementCount: {
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textSecondary,
     fontWeight: '500',
   },
@@ -556,6 +570,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontStyle: 'italic',
     paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   moderationBanner: {
     backgroundColor: 'rgba(192,57,43,0.08)',

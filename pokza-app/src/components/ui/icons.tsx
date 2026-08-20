@@ -8,6 +8,11 @@ import { colors } from '../../theme/theme';
 //
 // Règles communes, reprises de `authIcons.tsx` : grille 24×24, trait 1.8, bouts et jointures
 // arrondis, MONOCHROME (la couleur vient du seul prop `color`, jamais d'un remplissage décoratif).
+//
+// Un tracé doit OCCUPER sa grille, sinon deux icônes de même `size` n'ont pas la même présence :
+// le cœur ne faisait que 18,6 unités de large et la flèche de partage 12,8, contre 22 pour la bulle
+// de commentaire — d'où un bouton Partager qui paraissait deux fois plus petit que son voisin dans
+// la rangée du feed. Viser ~21 unités d'encre pour tout ce qui cohabite sur une même rangée.
 // Aucune dépendance ajoutée : `react-native-svg` est déjà là (cf. `TableSurface`, `authIcons`).
 
 export interface IconProps {
@@ -119,7 +124,7 @@ export function HeartIcon({ size = DEFAULT_SIZE, color = colors.textPrimary, fil
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
-        d="M12 20.4 C12 20.4 3.6 15 3.6 9.4 A4.8 4.8 0 0 1 12 6.6 A4.8 4.8 0 0 1 20.4 9.4 C20.4 15 12 20.4 12 20.4 Z"
+        d="M12 21.4 C12 21.4 2.2 15.3 2.2 9 A5.6 5.6 0 0 1 12 5.5 A5.6 5.6 0 0 1 21.8 9 C21.8 15.3 12 21.4 12 21.4 Z"
         {...line(color)}
         fill={filled ? color : 'none'}
       />
@@ -145,9 +150,9 @@ export function CommentIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }:
 export function ShareIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d="M6.5 11.5 V19.5 H17.5 V11.5" {...line(color)} />
-      <Path d="M12 15 V4" {...line(color)} />
-      <Path d="M8.4 7.4 L12 3.8 L15.6 7.4" {...line(color)} />
+      <Path d="M4.4 11.6 V20.4 H19.6 V11.6" {...line(color)} />
+      <Path d="M12 15.6 V3.2" {...line(color)} />
+      <Path d="M7.4 7.8 L12 3.2 L16.6 7.8" {...line(color)} />
     </Svg>
   );
 }
