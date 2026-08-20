@@ -119,6 +119,31 @@ export function PowerIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: I
   );
 }
 
+/**
+ * Triangle de lecture, PLEIN. Exception assumée à la règle du trait : les commandes du replayer
+ * sont des pastilles orange sur lesquelles un glyphe plein se lit de loin, là où un contour blanc
+ * disparaîtrait. Même tracé pour les trois boutons de la rangée — le retour arrière l'utilise en
+ * miroir — pour que les triangles soient identiques au pixel près, ce que l'ancien montage
+ * (bordures CSS d'un côté, glyphe texte « ▶ » de l'autre) ne garantissait pas.
+ */
+export function PlayIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M7.5 3.5 L20 12 L7.5 20.5 Z" fill={color} />
+    </Svg>
+  );
+}
+
+/** Deux barres pleines — pause du replayer. Même hauteur que le triangle de `PlayIcon`. */
+export function PauseIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={7.6} y={3.5} width={3.6} height={17} rx={1.2} fill={color} />
+      <Rect x={12.8} y={3.5} width={3.6} height={17} rx={1.2} fill={color} />
+    </Svg>
+  );
+}
+
 /** Cœur — « J'aime ». `filled` le remplit (état actif), sinon simple contour. */
 export function HeartIcon({ size = DEFAULT_SIZE, color = colors.textPrimary, filled = false }: IconProps & { filled?: boolean }) {
   return (

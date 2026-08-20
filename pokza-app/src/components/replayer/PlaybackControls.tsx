@@ -1,7 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Pressable } from '../ui/Pressable';
 import { colors, radius } from '../../theme/theme';
+import { PauseIcon, PlayIcon } from '../ui/icons';
+
+// Les trois boutons partagent le même triangle : le pas arrière n'est que `PlayIcon` en miroir.
+// Avant, le pas à pas était dessiné avec des bordures CSS et la lecture était le caractère « ▶ »
+// de la police système — trois rendus différents pour la même forme, côte à côte.
+const MAIN_ICON_SIZE = 26;
+const SIDE_ICON_SIZE = 20;
 
 interface PlaybackControlsProps {
   playing: boolean;
@@ -43,11 +50,17 @@ export function PlaybackControls({
           disabled={!canGoBack}
           style={[styles.sideButton, !canGoBack && styles.disabled]}
         >
-          <View style={styles.arrowLeft} />
+          <View style={styles.mirrored}>
+            <PlayIcon size={SIDE_ICON_SIZE} color="#fff" />
+          </View>
         </Pressable>
 
         <Pressable onPress={onTogglePlay} style={styles.mainButton}>
-          <Text style={styles.mainIcon}>{playing ? '❚❚' : '▶'}</Text>
+          {playing ? (
+            <PauseIcon size={MAIN_ICON_SIZE} color="#fff" />
+          ) : (
+            <PlayIcon size={MAIN_ICON_SIZE} color="#fff" />
+          )}
         </Pressable>
 
         <Pressable
@@ -55,7 +68,7 @@ export function PlaybackControls({
           disabled={!canGoForward}
           style={[styles.sideButton, !canGoForward && styles.disabled]}
         >
-          <View style={styles.arrowRight} />
+          <PlayIcon size={SIDE_ICON_SIZE} color="#fff" />
         </Pressable>
       </View>
     </View>
@@ -108,28 +121,6 @@ const styles = StyleSheet.create({
   },
   // Triangle plein dessiné via l'astuce des bordures (plutôt qu'un glyphe texte ‹/› dont
   // l'épaisseur/le rendu varie selon la police) : forme géométrique nette et identique partout.
-  arrowLeft: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 7,
-    borderBottomWidth: 7,
-    borderRightWidth: 10,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderRightColor: '#fff',
-    marginRight: 1,
-  },
-  arrowRight: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 7,
-    borderBottomWidth: 7,
-    borderLeftWidth: 10,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderLeftColor: '#fff',
-    marginLeft: 1,
-  },
   mainButton: {
     width: 54,
     height: 54,
@@ -138,9 +129,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.action,
   },
-  mainIcon: {
-    fontSize: 24,
-    color: '#fff',
+  // Le pas arrière réutilise le triangle de lecture retourné.
+  mirrored: {
+    transform: [{ scaleX: -1 }],
   },
   disabled: {
     opacity: 0.35,

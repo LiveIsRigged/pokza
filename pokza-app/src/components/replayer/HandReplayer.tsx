@@ -198,6 +198,7 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               cards2={hand.board2 ? state.board2 : undefined}
               pot={state.potTotal}
               winnerShares={winnerShares}
+              unresolved={step >= totalSteps && state.winningSeatIds.length === 0}
               gameType={hand.gameType}
               tableWidth={size.width}
               verticalOffset={boardVerticalOffset()}

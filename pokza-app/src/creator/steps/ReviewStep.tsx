@@ -41,6 +41,10 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
   };
 
   const filledOptions = voteOptions.map((o) => o.trim()).filter(Boolean);
+  // `maxLength` empêche de dépasser à la saisie, mais pas de coller un texte plus long ni de
+  // reprendre une main d'avant la limite : la base refuserait la publication, l'interface ne
+  // disait rien. Le compteur passe au rouge et le bouton se ferme.
+  const titleTooLong = value.title.length > TITLE_MAX_LENGTH;
 
   return (
     <WizardScreen
@@ -49,7 +53,10 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
       onNext={onSubmit}
       nextLabel={submitting ? 'Publication…' : 'Publier la main'}
       nextDisabled={
-        submitting || !value.title.trim() || (value.visibility === 'group' && !value.groupId)
+        submitting ||
+        !value.title.trim() ||
+        titleTooLong ||
+        (value.visibility === 'group' && !value.groupId)
       }
       onBack={onBack}
       step={step}
@@ -62,7 +69,7 @@ export function ReviewStep({ value, onChange, onSubmit, onBack, step, totalSteps
             c est voulu : ca lui dit exactement combien enlever pour pouvoir enregistrer. */}
         <View style={styles.labelRow}>
           <Text style={[styles.label, styles.labelNoMargin]}>Titre</Text>
-          <Text style={styles.counter}>
+          <Text style={[styles.counter, titleTooLong && styles.counterOver]}>
             {value.title.length}/{TITLE_MAX_LENGTH}
           </Text>
         </View>
@@ -180,6 +187,10 @@ const styles = StyleSheet.create({
   counter: {
     fontSize: 11,
     color: colors.textSecondary,
+  },
+  counterOver: {
+    color: colors.cardTextRed,
+    fontWeight: '700',
   },
   input: {
     borderWidth: 1,

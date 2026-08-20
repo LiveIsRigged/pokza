@@ -74,13 +74,18 @@ export function EditPostScreen({ post, onSave, onCancel, groups }: EditPostScree
     });
   };
 
+  // Une main publiée avant l'entrée en vigueur de la limite peut afficher « 52/40 » : le compteur
+  // passe au rouge et l'enregistrement reste fermé tant que le texte n'a pas été raccourci, plutôt
+  // que de laisser la base refuser l'écriture.
+  const titleTooLong = title.length > TITLE_MAX_LENGTH;
+
   return (
     <WizardScreen
       title="Modifier le post"
       subtitle="Le déroulé de la main ne change pas, seulement le texte"
       onNext={handleSave}
       nextLabel="Enregistrer"
-      nextDisabled={!title.trim() || (visibility === 'group' && !groupId)}
+      nextDisabled={!title.trim() || titleTooLong || (visibility === 'group' && !groupId)}
       onBack={onCancel}
     >
       <View>
@@ -90,7 +95,7 @@ export function EditPostScreen({ post, onSave, onCancel, groups }: EditPostScree
             c est voulu : ca lui dit exactement combien enlever pour pouvoir enregistrer. */}
         <View style={styles.labelRow}>
           <Text style={[styles.label, styles.labelNoMargin]}>Titre</Text>
-          <Text style={styles.counter}>
+          <Text style={[styles.counter, titleTooLong && styles.counterOver]}>
             {title.length}/{TITLE_MAX_LENGTH}
           </Text>
         </View>
@@ -223,6 +228,10 @@ const styles = StyleSheet.create({
   counter: {
     fontSize: 11,
     color: colors.textSecondary,
+  },
+  counterOver: {
+    color: colors.cardTextRed,
+    fontWeight: '700',
   },
   input: {
     borderWidth: 1,

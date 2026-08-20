@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import type { Card, GameType } from '../../types/poker';
 import { colors } from '../../theme/theme';
 import { boardCardSize } from '../../engine/layout';
@@ -20,6 +20,10 @@ interface BoardViewProps {
   gameType?: GameType;
   /** Largeur de la table : sert à dimensionner les cartes pour qu'elles ne débordent jamais sur les sièges. */
   tableWidth?: number;
+  /** Main terminée sans vainqueur déterminable (Hero couché et cartes adverses non saisies) : la
+   *  relecture s'arrêtait alors sur un pot figé au centre, sans rien dire — ce qui ressemble à un
+   *  chargement bloqué plutôt qu'à un état normal. */
+  unresolved?: boolean;
   /** Décalage vertical (cf. `boardVerticalOffset`) pour recentrer le bloc board+pot entre BB et Hero. */
   verticalOffset?: number;
   bb: number;
@@ -94,6 +98,7 @@ export function BoardView({
   cards2,
   pot,
   winnerShares,
+  unresolved = false,
   gameType = 'cash',
   tableWidth = 0,
   verticalOffset = 0,
@@ -129,6 +134,12 @@ export function BoardView({
       {doubleBoard && (
         <BoardRow cards={cards2!} cardWidth={cardWidth} cardHeight={cardHeight} style={styles.secondBoard} />
       )}
+
+      {unresolved && (
+        <View style={styles.noteFloat}>
+          <Text style={styles.noteText}>Mains non révélées</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -137,6 +148,20 @@ const styles = StyleSheet.create({
   wrapper: {
     position: 'relative',
     alignItems: 'center',
+  },
+  // Flottant comme la pastille de pot, en miroir sous le board : la note ne doit rien pousser, la
+  // hauteur d'une carte de main est déjà comptée au pixel près.
+  noteFloat: {
+    position: 'absolute',
+    top: '100%',
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  noteText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: colors.textOnFeltMuted,
   },
   chipsFloat: {
     position: 'absolute',
