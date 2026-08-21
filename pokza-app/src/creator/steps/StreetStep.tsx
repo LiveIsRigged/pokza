@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
-import type { Action, ActionType, Card, GameType, Seat, Street } from '../../types/poker';
+import type { Action, ActionType, Card, GameType, Seat, Street, Variant } from '../../types/poker';
 import { borders, colors, tints, typography } from '../../theme/theme';
 import { getActingOrder, getActingOrderAfter } from '../positions';
 import { WizardScreen } from '../WizardScreen';
 import { MultiCardPicker } from '../MultiCardPicker';
-import { formatChipAmount } from '../../utils/chipFormat';
+import { formatChipAmount, roundMoney } from '../../utils/chipFormat';
+import { nextBetAbove, roundBet, type BetRoundingContext } from '../../utils/betRounding';
 import { straddleSeatLabel } from '../../engine/handEngine';
 
 const STREET_TITLES: Record<Street, string> = {
@@ -23,14 +24,35 @@ const POT_SHORTCUTS: { label: string; fraction: number }[] = [
   { label: 'Pot', fraction: 1 },
 ];
 
-// Préflop : le %pot n'est pas le repère habituel, on raisonne en multiples de BB.
-const CASH_PREFLOP_BB_MULTIPLES = [3, 4, 5, 10];
-const TOURNAMENT_PREFLOP_BB_MULTIPLES = [2, 3.5, 6, 10];
+// Préflop sans relance : le %pot n'est pas le repère, on raisonne en multiples de BB. Mêmes valeurs
+// en cash et en tournoi. (10BB a été retiré : c'est un montant qu'on n'ouvre jamais, le bouton ne
+// servait à rien ; 2,5BB le remplace.)
+const PREFLOP_OPEN_BB_MULTIPLES = [2.5, 3, 4, 5];
+
+// DÈS QU'IL Y A QUELQUE CHOSE À SURRELANCER, le repère n'est plus la BB ni le pot mais LA MISE À
+// SUIVRE. Laisser les multiples de BB à ce moment-là donnait des boutons morts : en 2-5 face à une
+// ouverture à 15, « 3BB » valait 15, soit exactement la mise à suivre, et « 4BB » 20 — un 3bet que
+// personne ne fait. Les deux fusionnaient après remontée forcée, laissant trois boutons injouables.
+//
+// Trois jeux, parce qu'une surrelance ne se dimensionne pas pareil selon l'étage : on 3bet gros
+// (×3 à ×6 de l'ouverture) mais on 4bet petit (×2 à ×4 du 3bet, qui est déjà large).
+const PREFLOP_3BET_MULTIPLES = [3, 4, 5, 6];
+const PREFLOP_4BET_PLUS_MULTIPLES = [2, 2.5, 3, 4];
+const POSTFLOP_RAISE_MULTIPLES = [2, 3, 4, 5];
+// En pot-limit, ×4 et ×5 peuvent dépasser le maximum légal (4× la mise > pot + 3× la mise dès que
+// la mise excède le pot), alors que ×2 et ×3 lui sont TOUJOURS inférieurs. D'où deux multiples
+// seulement, complétés par le pot lui-même — qui est justement ce maximum.
+const POSTFLOP_RAISE_MULTIPLES_POT_LIMIT = [2, 3];
+
+/** « ×2,5 » — virgule décimale, comme partout ailleurs dans l'app (cf. `abbreviateChips`). */
+function formatMultiple(n: number): string {
+  return `×${String(n).replace('.', ',')}`;
+}
 
 // Avec un straddle, le repère "BB" ne veut plus rien dire pour ces raccourcis (le niveau à suivre
 // est déjà le straddle, pas la BB) : suffixe générique "x" plutôt qu'une unité fausse.
 function formatBbMultiple(n: number, hasStraddle: boolean): string {
-  const value = Number.isInteger(n) ? String(n) : n.toFixed(1);
+  const value = Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',');
   return hasStraddle ? `${value}x` : `${value}BB`;
 }
 
@@ -66,6 +88,12 @@ interface StreetStepProps {
   priorActions?: Action[];
   /** BB de la main, utilisée pour les raccourcis de taille en multiples de BB au préflop */
   bb?: number;
+  /** SB de la main : avec la BB, elle détermine le pas d'arrondi des raccourcis postflop (cf.
+   * `tableStep`). 0 en bomb pot, où il n'y a pas de blindes. */
+  sb?: number;
+  /** Variante : en PLO/PLO5 le pot est le maximum légal, donc le raccourci « Pot » vaut le pot
+   * exact au lieu d'être arrondi. */
+  variant?: Variant;
   gameType?: GameType;
   /** Main jouée en bomb pot : les raccourcis « check/fold rapide jusqu'à » restent proposés à chaque
    * street (checker/folder en cascade est courant au flop d'un bomb pot). Hors bomb pot, ils ne sont
@@ -106,6 +134,8 @@ export function StreetStep({
   firstToActAfterSeatId,
   priorActions = [],
   bb = 0,
+  sb = 0,
+  variant = 'nlhe',
   gameType = 'cash',
   bombPot = false,
   onBack,
@@ -160,14 +190,6 @@ export function StreetStep({
   // doivent se baser dessus, sinon "3BB" afficherait un montant sans rapport avec 3x la BB.
   const hasStraddle = Boolean(firstToActAfterSeatId);
   const preflopRaiseUnit = street === 'preflop' && hasStraddle ? initialBetAmount : bb;
-  const sizeShortcuts: { label: string; amount: number }[] =
-    street === 'preflop'
-      ? (gameType === 'tournament' ? TOURNAMENT_PREFLOP_BB_MULTIPLES : CASH_PREFLOP_BB_MULTIPLES).map((m) => ({
-          label: formatBbMultiple(m, hasStraddle),
-          amount: Math.round(preflopRaiseUnit * m),
-        }))
-      : POT_SHORTCUTS.map(({ label, fraction }) => ({ label, amount: Math.round(potNow * fraction) }));
-
   const currentSeatId = queue[0];
   const currentSeat = seats.find((s) => s.id === currentSeatId);
   const owed = betAmount - (contributions[currentSeatId] ?? 0);
@@ -178,6 +200,99 @@ export function StreetStep({
   const currentRemaining = currentSeatId ? availableAtStart(currentSeatId) : 0;
   const callTo = Math.min(betAmount, currentRemaining); // suivre est plafonné au tapis
   const isCallAllIn = callTo >= currentRemaining && callTo < betAmount;
+
+  const rounding: BetRoundingContext = { gameType, sb, bb };
+  const isPotLimit = variant === 'plo' || variant === 'plo5';
+  // Étage de surrelance au préflop : 0 relance = personne n'a encore ouvert (la mise à suivre est
+  // la BB ou le straddle), 1 = on répond à une ouverture (3bet), 2+ = 4bet et au-delà.
+  const preflopRaises = street === 'preflop' ? recorded.filter((a) => a.type === 'raise').length : 0;
+
+  const rawShortcuts: { label: string; amount: number; exact: number }[] = (() => {
+    if (street === 'preflop') {
+      // Si un straddle a été posté, le niveau à suivre n'est plus la BB mais ce straddle
+      // (`initialBetAmount`, déjà égal au montant du DERNIER straddle côté créateur) : les multiples
+      // doivent se baser dessus, sinon « 3BB » afficherait un montant sans rapport avec 3x la BB.
+      if (preflopRaises === 0) {
+        // Arrondis comme partout ailleurs : sans ça « 2,5BB » affiche 13 € en 2-5, une ouverture qui
+        // n'existe pas. L'arrondi en fait doublonner certains (2,5BB et 3BB tombent tous deux sur
+        // 15 € en 2-5) — c'est voulu, le dédoublonnage plus bas resserre alors la rangée à trois
+        // boutons, tous jouables, plutôt que d'en afficher quatre dont un mort.
+        return PREFLOP_OPEN_BB_MULTIPLES.map((m) => ({
+          label: formatBbMultiple(m, hasStraddle),
+          amount: roundBet(preflopRaiseUnit * m, rounding),
+          exact: preflopRaiseUnit * m,
+        }));
+      }
+      // Ces montants-ci sont arrondis, contrairement aux multiples de BB ci-dessus : une ouverture
+      // straddlée ou irrégulière (35 €) donnerait sinon des surrelances à 105, 140, 175…
+      const multiples = preflopRaises === 1 ? PREFLOP_3BET_MULTIPLES : PREFLOP_4BET_PLUS_MULTIPLES;
+      return multiples.map((m) => ({
+        label: formatMultiple(m),
+        amount: roundBet(betAmount * m, rounding),
+        exact: betAmount * m,
+      }));
+    }
+
+    if (betAmount > 0) {
+      // Relance postflop : même repère qu'au préflop, la mise à suivre. Le %pot n'y survit pas —
+      // sur un pot de 100 où le vilain mise 50, « 1/3 pot » calcule 50 (la mise elle-même, bouton
+      // mort) et « 1/2 pot » 75, soit une relance SOUS le minimum légal de 100. ×2 est au contraire
+      // toujours légal : c'est exactement la relance minimale quand la mise ouvre les enchères.
+      const multiples = isPotLimit ? POSTFLOP_RAISE_MULTIPLES_POT_LIMIT : POSTFLOP_RAISE_MULTIPLES;
+      const shortcuts = multiples.map((m) => ({
+        label: formatMultiple(m),
+        amount: roundBet(betAmount * m, rounding),
+        exact: betAmount * m,
+      }));
+      if (isPotLimit) {
+        // Le « pot » d'une RELANCE ne vaut pas le pot courant : on relance de la taille du pot une
+        // fois qu'on a suivi, soit `mise à suivre + pot courant + ce qu'il reste à payer`. Sur
+        // l'exemple ci-dessus : 50 + 150 + 50 = 250, et non 150. C'est le maximum légal en PLO,
+        // donc un montant exact, jamais arrondi.
+        const potLimit = roundMoney(betAmount + potNow + owed);
+        shortcuts.push({ label: 'Pot', amount: potLimit, exact: potLimit });
+      }
+      return shortcuts;
+    }
+
+    return POT_SHORTCUTS.map(({ label, fraction }) => ({
+      label,
+      exact: potNow * fraction,
+      // Le raccourci « Pot » ne monte jamais au-dessus du pot : en PLO c'est le maximum légal, donc
+      // on l'affiche au centime près sans arrondir du tout ; ailleurs on descend au pas plutôt que
+      // d'annoncer « Pot » sur un montant qui le dépasse.
+      amount:
+        fraction === 1
+          ? isPotLimit
+            ? roundMoney(potNow)
+            : roundBet(potNow, rounding, 'down')
+          : roundBet(potNow * fraction, rounding),
+    }));
+  })();
+
+  // Raccourcis effectivement affichés, une fois ramenés dans les bornes du coup :
+  // - un montant sous la mise à suivre serait refusé à la validation (cf. `confirmAmount`), donc
+  //   un bouton mort — l'arrondi vers le bas peut y tomber dans les petits pots ;
+  // - un montant au-dessus du tapis est impossible, on le plafonne ;
+  // - deux boutons affichant le MÊME montant n'apportent rien (dans un petit pot, 1/2 et 2/3 se
+  //   rejoignent souvent après arrondi) : on ne garde que le premier, donc la plus petite fraction.
+  const parMontant = new Map<number, { label: string; amount: number; exact: number }>();
+  for (const { label, amount, exact } of rawShortcuts) {
+    const lifted = amount <= betAmount && amount < currentRemaining ? nextBetAbove(betAmount, rounding) : amount;
+    const borne = Math.min(lifted, currentRemaining);
+    // Un raccourci retombé sur le tapis n'est plus une taille de mise, c'est un tapis — que le
+    // bouton dédié affiche déjà avec son traitement distinct, justement parce qu'il est
+    // irréversible. Le garder ici le ferait poser en un tap sans cette friction voulue.
+    if (borne <= 0 || borne >= currentRemaining) continue;
+    // Entre deux raccourcis retombés sur le MÊME montant, on garde celui dont la valeur exacte en
+    // est la plus proche — donc le libellé qui ne ment pas. Sans cet arbitrage, « 2,5BB » resterait
+    // affiché sur 15 € en 2-5, alors que 15 €, c'est très exactement 3BB.
+    const enPlace = parMontant.get(borne);
+    if (!enPlace || Math.abs(exact - borne) < Math.abs(enPlace.exact - borne)) {
+      parMontant.set(borne, { label, amount: borne, exact });
+    }
+  }
+  const sizeShortcuts = [...parMontant.values()];
 
   // ⚠️ Le filtre sur les jetons restants est INDISPENSABLE ici, et il manquait. `order` (en début de
   // street) écarte bien les joueurs sans jetons, mais cette file-ci est reconstruite après chaque
@@ -469,22 +584,34 @@ export function StreetStep({
 
               {enteringAmount ? (
                 <View>
-                  {/* Raccourcis de taille (BB au préflop, %pot ensuite), pour miser/relancer sans calcul de tête */}
-                  <View style={styles.potShortcutsRow}>
-                    {sizeShortcuts.map(({ label, amount: rawAmount }) => {
-                      const amount = Math.max(1, Math.min(rawAmount, currentRemaining));
-                      return (
-                        <Pressable
-                          key={label}
-                          style={styles.potShortcutChip}
-                          onPress={() => setAmountInput(String(amount))}
-                        >
-                          <Text style={styles.potShortcutLabel}>{label}</Text>
-                          <Text style={styles.potShortcutValue}>{fmt(amount)}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+                  {/* Raccourcis de taille (BB au préflop, %pot ensuite), pour miser/relancer sans calcul
+                      de tête. Un tap POSE la mise et passe au joueur suivant : le montant vient d'être
+                      désigné, redemander « Valider » ne confirmerait rien de neuf, et le clavier
+                      numérique (le champ est en `autoFocus`) est justement en travers du chemin.
+                      C'est la mécanique des chips « Fold/Check rapide jusqu'à » de cet écran, qu'elles
+                      partageaient déjà en apparence sans la partager en comportement — d'où le mot
+                      « rapide » repris ici, qui y signifie déjà « un tap et c'est joué ».
+                      Un mauvais tap se répare par « ↩ Annuler » juste au-dessus (`commitBetTo` empile
+                      un snapshot). Le champ en dessous reste le chemin du montant libre. */}
+                  {sizeShortcuts.length > 0 && (
+                    <>
+                      <Text style={styles.sectionLabel}>
+                        {enteringAmount === 'raise' ? 'Relance rapide' : 'Mise rapide'}
+                      </Text>
+                      <View style={styles.potShortcutsRow}>
+                        {sizeShortcuts.map(({ label, amount }) => (
+                          <Pressable
+                            key={label}
+                            style={styles.potShortcutChip}
+                            onPress={() => commitBetTo(amount, enteringAmount === 'raise' ? 'raise' : 'bet')}
+                          >
+                            <Text style={styles.potShortcutLabel}>{label}</Text>
+                            <Text style={styles.potShortcutValue}>{fmt(amount)}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </>
+                  )}
                   <TextInput
                     style={styles.amountInput}
                     keyboardType="numeric"
@@ -517,7 +644,7 @@ export function StreetStep({
                   {(street === 'preflop' || bombPot) && betAmount === 0 && queue.length > 1 && (
                     // Personne n'a misé : proposer aussi le batch "check" (cf. handleCheckUntil).
                     <View style={styles.foldUntilSection}>
-                      <Text style={styles.foldUntilLabel}>Check rapide jusqu'à</Text>
+                      <Text style={styles.sectionLabel}>Check rapide jusqu'à</Text>
                       <View style={styles.potShortcutsRow}>
                         {queue.slice(1).map((seatId) => {
                           const seat = seats.find((s) => s.id === seatId)!;
@@ -536,7 +663,7 @@ export function StreetStep({
                   )}
                   {(street === 'preflop' || bombPot) && queue.length > 1 && (
                     <View style={styles.foldUntilSection}>
-                      <Text style={styles.foldUntilLabel}>Fold rapide jusqu'à</Text>
+                      <Text style={styles.sectionLabel}>Fold rapide jusqu'à</Text>
                       <View style={styles.potShortcutsRow}>
                         {queue.slice(1).map((seatId) => {
                           const seat = seats.find((s) => s.id === seatId)!;
@@ -674,7 +801,8 @@ const styles = StyleSheet.create({
   foldUntilSection: {
     marginBottom: 14,
   },
-  foldUntilLabel: {
+  // Coiffe les trois rangées de chips à tap direct (fold jusqu'à, check jusqu'à, mise rapide).
+  sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: colors.textSecondary,

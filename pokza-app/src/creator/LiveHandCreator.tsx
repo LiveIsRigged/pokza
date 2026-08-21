@@ -272,6 +272,18 @@ export function LiveHandCreator({
     }
   };
 
+  // Réglages de table communs aux quatre écrans de street : ils pilotent le format des montants
+  // (devise en cash, jetons abrégés en tournoi) et l'arrondi des raccourcis de taille. Ils étaient
+  // jusqu'ici passés au SEUL écran préflop — flop/turn/river retombaient donc sur le défaut 'cash',
+  // et un tournoi y affichait « 16777€ » au lieu de « 16,8k ». En bomb pot, la « BB » est le
+  // montant de la bombe et il n'y a pas de petite blinde : même convention que `finalize`.
+  const tableProps = {
+    gameType: context.gameType,
+    variant: context.variant,
+    sb: context.bombPot ? 0 : context.sb,
+    bb: context.bombPot ? context.bombAnte : context.bb,
+  };
+
   const totalSteps = totalStepsFor(context.bombPot);
   const step = phaseStepMap(context.bombPot)[phase];
 
@@ -438,8 +450,7 @@ export function LiveHandCreator({
           anteCommitted={committedBySeat(actions.filter((a) => a.type === 'post-ante'))}
           firstToActAfterSeatId={lastStraddle?.seatId}
           priorActions={actions}
-          bb={context.bb}
-          gameType={context.gameType}
+          {...tableProps}
           step={step}
           totalSteps={totalSteps}
           onBack={goBack}
@@ -467,6 +478,7 @@ export function LiveHandCreator({
           startOrder={actions.length + 1}
           priorCommitted={priorCommittedFor('flop')}
           priorActions={actions}
+          {...tableProps}
           step={step}
           totalSteps={totalSteps}
           onBack={goBack}
@@ -503,6 +515,7 @@ export function LiveHandCreator({
           startOrder={actions.length + 1}
           priorCommitted={priorCommittedFor('turn')}
           priorActions={actions}
+          {...tableProps}
           step={step}
           totalSteps={totalSteps}
           onBack={goBack}
@@ -539,6 +552,7 @@ export function LiveHandCreator({
           startOrder={actions.length + 1}
           priorCommitted={priorCommittedFor('river')}
           priorActions={actions}
+          {...tableProps}
           step={step}
           totalSteps={totalSteps}
           onBack={goBack}
