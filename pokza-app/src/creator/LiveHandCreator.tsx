@@ -57,6 +57,8 @@ interface LiveHandCreatorProps {
   onCreated: (post: Post) => void | Promise<void>;
   onCancel: () => void;
   groups: Group[];
+  /** Crée un groupe sans quitter le créateur, et renvoie son id (cf. ReviewStep). */
+  onCreateGroup: (name: string) => Promise<string>;
 }
 
 export function LiveHandCreator({
@@ -67,6 +69,7 @@ export function LiveHandCreator({
   onCreated,
   onCancel,
   groups,
+  onCreateGroup,
 }: LiveHandCreatorProps) {
   // Table de départ d'après le profil, calculée une fois : sert d'état initial ET de base au
   // chargement des réglages mémorisés, qui la recouvrent (cf. l'effet plus bas).
@@ -586,6 +589,7 @@ export function LiveHandCreator({
           onSubmit={() => void finalize(actions, board)}
           submitting={submitting}
           groups={groups}
+          onCreateGroup={onCreateGroup}
         />
       );
 

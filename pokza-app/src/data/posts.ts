@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
+import { attachFriendEchoes } from './friendEcho';
 import type { Hand, ModStatus, Post, Visibility } from '../types/poker';
 
 // Forme exacte renvoyée par la vue `posts_feed` (cf. script SQL) : author_name/avatar déjà résolus
@@ -10,6 +11,9 @@ interface PostFeedRow {
   author_name: string;
   author_avatar_url: string | null;
   created_at: string;
+  /** Ajouté en fin des vues de lecture par la migration « modifié ». Absent tant que la migration
+   * n'est pas passée → aucune mention ne s'affiche, ce qui est le bon état de repli. */
+  edited_at?: string | null;
   location: string | null;
   buy_in: string | null;
   level: string | null;
@@ -43,6 +47,7 @@ function rowToPost(row: PostFeedRow): Post {
     authorName: row.author_name,
     authorAvatarUrl: row.author_avatar_url ?? undefined,
     createdAt: row.created_at,
+    editedAt: row.edited_at ?? undefined,
     location: row.location ?? undefined,
     buyIn: row.buy_in ?? undefined,
     level: row.level ?? undefined,
@@ -78,8 +83,12 @@ export const FEED_PAGE_SIZE = 10;
  * (tous les inconnus sans ami commun ont le même score), et sans départage stable Postgres est
  * libre de renvoyer ces lignes dans un ordre différent d'un appel à l'autre — une même main
  * pourrait alors apparaître sur deux pages, ou aucune.
+ *
+ * `viewerId` absent → pas de mention « Julien a aimé cette main » (cf. `attachFriendEchoes`), le
+ * reste du feed est identique. Le plafond de mentions s'applique PAR APPEL, donc par page : c'est
+ * bien ce qu'on veut, chaque page en porte au plus trois.
  */
-export async function fetchFeed(offset = 0): Promise<Post[]> {
+export async function fetchFeed(offset = 0, viewerId?: string): Promise<Post[]> {
   const { data, error } = await supabase
     .from('posts_ranked')
     .select('*')
@@ -87,7 +96,8 @@ export async function fetchFeed(offset = 0): Promise<Post[]> {
     .order('created_at', { ascending: false })
     .range(offset, offset + FEED_PAGE_SIZE - 1);
   if (error) throw error;
-  return (data as PostFeedRow[]).map(rowToPost);
+  const posts = (data as PostFeedRow[]).map(rowToPost);
+  return viewerId ? attachFriendEchoes(posts, viewerId) : posts;
 }
 
 /** Posts d'un seul auteur (page de profil) : ordre chronologique, le classement social n'a pas de
@@ -276,8 +286,16 @@ export interface PostEditInput {
   groupId?: string;
 }
 
-/** Ne touche jamais à `hand` — seul le texte/contexte du post est modifiable après publication. */
-export async function updatePost(postId: string, edits: PostEditInput): Promise<void> {
+/**
+ * Ne touche jamais à `hand` — seul le texte/contexte du post est modifiable après publication.
+ *
+ * Renvoie le `edited_at` que la BASE vient de décider (trigger `posts_mark_edited`), pour que la
+ * carte déjà à l'écran porte la mention sans attendre un rechargement du feed. Surtout : l'app ne
+ * l'invente pas. Elle n'a même pas le droit d'écrire cette colonne (cf. F-21, droits par colonne),
+ * et c'est voulu — un auteur ne doit pas pouvoir effacer la trace de sa propre réécriture.
+ * `null` = la base n'a vu aucun changement de contenu (enregistrement à l'identique).
+ */
+export async function updatePost(postId: string, edits: PostEditInput): Promise<string | null> {
   const { data, error } = await supabase
     .from('posts')
     .update({
@@ -292,9 +310,10 @@ export async function updatePost(postId: string, edits: PostEditInput): Promise<
       group_id: edits.visibility === 'group' ? edits.groupId : null,
     })
     .eq('id', postId)
-    .select('id');
+    .select('id, edited_at');
   if (error) throw error;
   assertWritten(data, refusedMessage("Les modifications n'ont pas été enregistrées"));
+  return (data?.[0] as { edited_at: string | null } | undefined)?.edited_at ?? null;
 }
 
 /** `posts.like_count` est maintenu par un trigger côté base — rien à recalculer ici. */

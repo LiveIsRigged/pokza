@@ -107,6 +107,9 @@ sensible(tbl, col) as (
   values
     ('posts','mod_status'),('posts','removed_at'),('posts','mod_reason'),('posts','like_count'),
     ('posts','comment_count'),('posts','created_at'),('posts','hand'),('posts','author_id'),
+    -- Ajoutée le 21/08 avec la mention « modifié » : c'est le trigger qui la pose, jamais l'auteur.
+    -- Accordée en écriture, elle laisserait effacer la trace de sa propre réécriture.
+    ('posts','edited_at'),
     ('comments','mod_status'),('comments','removed_at'),('comments','mod_reason'),
     ('comments','like_count'),('comments','created_at'),('comments','author_id')
 ),

@@ -41,6 +41,11 @@ interface GroupScreenProps {
   /** Lance la création d'une main. Proposé quand le groupe n'a encore aucune main : sans lui, la
    *  page d'un groupe fraîchement créé ne dit pas quoi faire ensuite. */
   onCreateHand?: () => void;
+  /** Bandeau d'arrivée après avoir publié une main dans un groupe créé pendant cette création :
+   *  la main est bien là, mais personne d'autre n'est encore dans le groupe pour la voir. Ne
+   *  survit pas à la sortie de l'écran (cf. App.tsx) — il annonce un fait qui vient d'arriver,
+   *  pas un état du groupe. */
+  showPublishedNotice?: boolean;
 }
 
 export interface GroupScreenHandle {
@@ -57,7 +62,17 @@ export interface GroupScreenHandle {
 }
 
 export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>(function GroupScreen(
-  { groupId, currentUserId, currentUserName, onBack, onEditPost, onInviteMembers, onSelectProfile, onCreateHand },
+  {
+    groupId,
+    currentUserId,
+    currentUserName,
+    onBack,
+    onEditPost,
+    onInviteMembers,
+    onSelectProfile,
+    onCreateHand,
+    showPublishedNotice,
+  },
   ref
 ) {
   const [group, setGroup] = useState<Group | null>(null);
@@ -305,6 +320,15 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
             </Pressable>
           )}
         </View>
+
+        {showPublishedNotice && (
+          <View style={styles.publishedNotice}>
+            <Text style={styles.publishedNoticeText}>
+              Ta main est publiée ici. Tu es seul dans ce groupe pour l'instant — invite des joueurs
+              pour qu'ils la voient.
+            </Text>
+          </View>
+        )}
 
         {error && <Text style={styles.statusText}>{error}</Text>}
 
@@ -649,6 +673,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 13,
+  },
+  publishedNotice: {
+    marginHorizontal: 14,
+    marginBottom: spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: radius.lg,
+    backgroundColor: tints.light,
+  },
+  publishedNoticeText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textPrimary,
   },
   sectionTitle: {
     fontSize: 12,

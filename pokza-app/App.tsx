@@ -52,7 +52,7 @@ import { ScrollToTopButton } from './src/components/ui/ScrollToTopButton';
 import { ConnectionErrorScreen } from './src/components/ui/ConnectionErrorScreen';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
 import { GroupScreen, type GroupScreenHandle } from './src/groups/GroupScreen';
-import { fetchMyGroups, fetchPendingGroupInvites, inviteToGroup, type Group } from './src/data/groups';
+import { createGroup, fetchMyGroups, fetchPendingGroupInvites, inviteToGroup, type Group } from './src/data/groups';
 import { fetchPendingRequests } from './src/data/friends';
 import { AddFriendsScreen } from './src/friends/AddFriendsScreen';
 import { FriendsListScreen } from './src/friends/FriendsListScreen';
@@ -163,6 +163,12 @@ function AppContent() {
   // « Mes groupes privés » — cf. `GroupScreenHandle`.
   const groupScreenRef = useRef<GroupScreenHandle>(null);
   const settingsScreenRef = useRef<SettingsScreenHandle>(null);
+  // Groupes créés depuis l'étape « Publier » du créateur (cf. `onCreateGroup`). Ils n'ont qu'un
+  // membre : leur auteur. Publier dedans revient à publier devant personne tant qu'il n'a invité
+  // personne — d'où l'atterrissage sur la page du groupe plutôt que sur le feed, juste après.
+  // Une `ref` et non un état : ça ne change rien à l'affichage, seulement la destination du retour.
+  const groupsCreatedInCreator = useRef<Set<string>>(new Set());
+  const [showPublishedNotice, setShowPublishedNotice] = useState(false);
   const [invitingGroupId, setInvitingGroupId] = useState<string | null>(null);
   // Back-office admin : signalement/compte en cours d'examen, + clé pour rafraîchir la file au retour.
   const [adminReportId, setAdminReportId] = useState<string | null>(null);
@@ -272,7 +278,7 @@ function AppContent() {
   useEffect(() => {
     if (!hasProfile) return;
     let cancelled = false;
-    fetchFeed()
+    fetchFeed(0, session?.user?.id)
       .then((data) => {
         if (cancelled) return;
         setPosts(data);
@@ -331,11 +337,19 @@ function AppContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasProfile]);
 
+  // Le bandeau d'arrivée annonce une publication qui vient d'avoir lieu, ce n'est pas un état du
+  // groupe : il ne survit pas à la sortie de la page, par quelque chemin qu'on la quitte (retour,
+  // « Inviter », profil d'un membre, modification d'une main). Le faire ici plutôt que dans chacun
+  // de ces départs, sinon il en resterait un.
+  useEffect(() => {
+    if (mode !== 'group') setShowPublishedNotice(false);
+  }, [mode]);
+
   // En revenant d'un profil consulté, le feed peut être périmé (like/suppression faits là-bas) —
   // on le recharge plutôt que de laisser un état obsolète affiché.
   const refreshFeed = async () => {
     try {
-      const fresh = await fetchFeed();
+      const fresh = await fetchFeed(0, session?.user?.id);
       setPosts((current) => {
         if (current.length <= fresh.length) return fresh;
         // L'utilisateur avait déjà chargé plusieurs pages : on remet à jour celles du haut sans
@@ -360,7 +374,7 @@ function AppContent() {
     loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      const older = await fetchFeed(posts.length);
+      const older = await fetchFeed(posts.length, session?.user?.id);
       setPosts((current) => {
         // Une main publiée entre deux pages décale la fenêtre et peut renvoyer une main déjà
         // affichée — deux cartes identiques feraient planter le rendu (clés React en double).
@@ -550,7 +564,26 @@ function AppContent() {
           formatFavori={myFormatFavori}
           varianteFavorite={myVarianteFavorite}
           groups={myGroups}
-          onCancel={() => setMode('feed')}
+          // Créer un groupe depuis l'étape « Publier » sans quitter le créateur : partir vers
+          // « Mes groupes » démonterait `LiveHandCreator` (il n'existe que sous `mode === 'create'`)
+          // et jetterait la main en cours de saisie. On ajoute donc le groupe à la liste locale au
+          // lieu de la relire — `refreshMyGroups` la remplacera par la version en base au prochain
+          // passage sur l'écran des groupes.
+          onCreateGroup={async (name) => {
+            const groupId = await createGroup(name);
+            setMyGroups((prev) => [
+              ...prev,
+              { id: groupId, name, ownerId: session.user.id, createdAt: new Date().toISOString() },
+            ]);
+            groupsCreatedInCreator.current.add(groupId);
+            return groupId;
+          }}
+          onCancel={() => {
+            // Main abandonnée : le groupe créé reste, mais il ne doit plus détourner l'atterrissage
+            // d'une publication ultérieure — d'ici là il aura peut-être des membres.
+            groupsCreatedInCreator.current.clear();
+            setMode('feed');
+          }}
           onCreated={async (draftPost) => {
             try {
               const saved = await createPost(
@@ -572,7 +605,19 @@ function AppContent() {
               );
               setPosts((p) => [saved, ...p]);
               trackEvent('hand_created', { variant: saved.hand.variant, game_type: saved.hand.gameType });
-              setMode('feed');
+              // Main publiée dans un groupe créé à l'instant : on ouvre le groupe au lieu du feed.
+              // C'est le seul endroit où le bouton « Inviter » est à portée, et le seul moment où
+              // l'auteur a une raison d'y penser. Dans tous les autres cas, retour au feed.
+              const landsInNewGroup =
+                saved.visibility === 'group' && !!saved.groupId && groupsCreatedInCreator.current.has(saved.groupId);
+              groupsCreatedInCreator.current.clear();
+              if (landsInNewGroup) {
+                setViewingGroupId(saved.groupId!);
+                setShowPublishedNotice(true);
+                setMode('group');
+              } else {
+                setMode('feed');
+              }
             } catch (err) {
               setPostsError(errorMessage(err));
             }
@@ -597,8 +642,15 @@ function AppContent() {
           onSave={async (edits) => {
             const postId = editingPost.id;
             try {
-              await updatePost(postId, edits);
-              setPosts((p) => p.map((post) => (post.id === postId ? { ...post, ...edits } : post)));
+              // `editedAt` vient de la base et non de l'horloge du téléphone : c'est le trigger
+              // qui décide si le contenu a réellement changé (réenregistrer à l'identique ne
+              // marque rien), et lui seul a le droit d'écrire cette colonne.
+              const editedAt = await updatePost(postId, edits);
+              setPosts((p) =>
+                p.map((post) =>
+                  post.id === postId ? { ...post, ...edits, editedAt: editedAt ?? undefined } : post
+                )
+              );
               setEditingPostId(null);
               setMode(editReturnMode);
             } catch (err) {
@@ -761,6 +813,7 @@ function AppContent() {
           groupId={viewingGroupId}
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
+          showPublishedNotice={showPublishedNotice}
           onCreateHand={() => setMode('create')}
           onBack={onBack}
           onEditPost={(postId) => {

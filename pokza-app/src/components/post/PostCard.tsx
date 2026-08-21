@@ -17,6 +17,8 @@ import { errorMessage } from '../../utils/errorMessage';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 import { abbreviateChips, formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
 import { formatRelativeDate } from '../../utils/relativeDate';
+import { wasEdited } from '../../utils/postEdited';
+import { friendEchoLabel } from '../../utils/friendEchoLabel';
 import { BlockIcon, CommentIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, TrashIcon } from '../ui/icons';
 
 const DESCRIPTION_LINES = 3;
@@ -291,6 +293,22 @@ function PostCardInner({
 
   return (
     <View style={styles.card}>
+      {/* Au-dessus de l'auteur, comme partout ailleurs : la ligne répond à « pourquoi cette main
+          d'inconnu est-elle dans mon fil ? », elle doit donc se lire AVANT la main elle-même.
+          Non cliquable à dessein — le compteur de likes ouvre déjà la liste de ceux qui ont aimé,
+          deux chemins vers la même feuille ne feraient qu'embrouiller. */}
+      {post.friendEcho && (
+        <View style={styles.friendEcho}>
+          {post.friendEcho.kind === 'comment' ? (
+            <CommentIcon size={12} color={colors.textSecondary} />
+          ) : (
+            <HeartIcon size={12} color={colors.textSecondary} filled />
+          )}
+          <Text style={[typography.dateLocation, styles.muted]} numberOfLines={1}>
+            {friendEchoLabel(post.friendEcho)}
+          </Text>
+        </View>
+      )}
       <View style={styles.header}>
         {/* Le créneau prend toute la largeur restante — c'est lui qui pousse le badge et le "⋯" à
             droite — mais la zone TOUCHABLE, elle, s'arrête au bout du texte (cf. `authorPressable`). */}
@@ -302,8 +320,13 @@ function PostCardInner({
                 {post.authorName}
                 {isGroupFounder && ' 👑'}
               </Text>
+              {/* « modifié » se glisse dans la ligne qui existe déjà : aucune hauteur ajoutée à une
+                  carte qui en manque, et la mention reste plus discrète que « Julien a aimé cette
+                  main » (qui, elle, occupe sa propre ligne). Collée au temps, qu'elle qualifie —
+                  le lieu ne se modifie pas moins que le reste, mais il ne se date pas. */}
               <Text style={[typography.dateLocation, styles.muted]}>
                 {formatRelativeDate(post.createdAt)}
+                {wasEdited(post) ? ' · modifié' : ''}
                 {post.location ? ` · ${post.location}` : ''}
               </Text>
             </View>
@@ -489,6 +512,14 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     // Pas de rembourrage bas : les 10 pt sous les icônes d'engagement en tiennent lieu.
     paddingBottom: 0,
+  },
+  // `flexShrink` sur rien ici : le texte est en `numberOfLines={1}`, un pseudo à rallonge se
+  // termine donc en « … » au lieu de pousser la ligne sur deux hauteurs.
+  friendEcho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 6,
   },
   header: {
     flexDirection: 'row',

@@ -108,6 +108,10 @@ export interface Post {
   authorName: string;
   authorAvatarUrl?: string;
   createdAt: string;
+  /** Date de la dernière modification du CONTENU (cf. trigger `posts_mark_edited`). Absente = la
+   * main n'a jamais été retouchée. Ce n'est pas encore la mention « modifié » à l'écran : celle-ci
+   * n'apparaît qu'au-delà du délai de grâce, cf. `wasEdited()`. */
+  editedAt?: string;
   location?: string;
   buyIn?: string;
   level?: string;
@@ -140,6 +144,23 @@ export interface Post {
    * sur la page de profil (complété par `attachGroupNames`) — volontairement absent sur la page du
    * groupe lui-même, où rappeler le groupe n'aurait aucun sens. */
   groupName?: string;
+  /** Mention sociale du feed, cf. `FriendEcho`. Absente partout ailleurs. */
+  friendEcho?: FriendEcho;
+}
+
+/**
+ * « Julien et 2 autres amis ont aimé cette main » : la ligne discrète qui explique pourquoi une
+ * main d'inconnu est dans le fil. Renseignée par `attachFriendEchoes`, et UNIQUEMENT dans le feed
+ * principal — sur un profil ou dans un groupe elle n'expliquerait rien (tout y vient de la même
+ * personne, ou tout le monde y voit déjà tout).
+ */
+export interface FriendEcho {
+  /** Les deux réactions ne se mélangent jamais sur une ligne : commenter prime sur aimer. */
+  kind: 'like' | 'comment';
+  /** Pseudo de l'ami dont la réaction est la plus récente — le seul nom affiché. */
+  name: string;
+  /** Nombre d'AUTRES amis ayant fait la même chose. 0 = cet ami est seul. */
+  otherCount: number;
 }
 
 export interface Comment {
