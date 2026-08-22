@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
 import { countryByCode, flagEmoji } from '../data/countries';
-import { borders, colors, radius } from '../theme/theme';
+import { borders, colors, radius, tints } from '../theme/theme';
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
@@ -431,9 +431,13 @@ const styles = StyleSheet.create({
     marginTop: 18,
     padding: 12,
     borderWidth: 1,
-    borderColor: borders.default,
+    // Fond teinté et trait discret, PAS le blanc et le contour des champs de saisie : avec eux,
+    // l'encadré se lisait comme un champ de plus, en plus gros — et sautait à la figure. Le
+    // vocabulaire du thème le dit : `tints` est la famille des « zones inertes », ce qu'est une
+    // mention de consentement. La séparation exigée par l'art. 7 §2 du RGPD reste lisible.
+    borderColor: borders.subtle,
     borderRadius: radius.md,
-    backgroundColor: '#fff',
+    backgroundColor: tints.faint,
   },
   checkbox: {
     width: 22,
