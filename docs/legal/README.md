@@ -80,9 +80,24 @@ l'app (menu → « Informations légales »).
 - [x] **2ᵉ passage juriste** — FAIT le 21/08/2026. Ses 4 réponses (entité Supabase, téléphone
       hébergeur, réserve consommateur, base légale de l'IP) n'ont demandé **aucun changement de
       texte**. La question de l'âge qu'il a rouverte a été tranchée en interne, voir plus bas.
-- [ ] **Déploiement de l'app** puis `consentement-identite-cloture.sql` sur DEV et PROD. Suspendu au
-      21/08 : une autre session travaille dans l'arbre (chantier groupes + création de main), on ne
-      pousse pas tant qu'elle n'a pas fini.
+- [x] **`consentement-identite-cloture.sql`** — **FAIT le 22/08/2026 sur DEV et sur PROD**, les deux
+      contrôles renvoient bien deux lignes (`ACTIVE` en `boolean`, `NEUTRALISEE`). L'ancienne
+      signature n'est pas supprimée mais vidée : elle échoue avec un message en français demandant
+      de rouvrir l'application, parce qu'un client servi depuis un cache périmé l'appelle encore et
+      qu'on ne peut plus corriger l'affichage de son bundle. Plus aucun profil ne peut être créé
+      sans consentement ni trace. Suppression définitive possible plus tard, commande dans le
+      `comment on function`.
+- [ ] **Test de bout en bout de l'inscription, en PROD, avant l'ouverture aux testeurs.**
+      `CompleteProfileScreen` porte du code neuf jamais vu à l'écran : case de consentement,
+      encadré, surcouche vers la politique de confidentialité, blocage du bouton. C'est le premier
+      écran que tous les testeurs verront.
+      ⚠️ **PIÈGE VÉRIFIÉ LE 22/08** : fermer et rouvrir la PWA ne suffit PAS à récupérer un nouveau
+      bundle — le service worker resert sa version en cache, l'URL de démarrage étant identique.
+      Constaté sur l'iPhone de Victor : la case n'apparaissait pas alors qu'elle est bien présente
+      dans le bundle servi par pokza.app (vérifié par position dans le fichier). Pour forcer :
+      ouvrir `https://pokza.app/?r=1` dans Safari, puis réinstaller le raccourci.
+      Sans conséquence pour les testeurs de demain, qui n'ont jamais ouvert l'app et n'ont donc
+      aucun cache — mais à savoir pour quiconque y aurait déjà jeté un œil.
 - [ ] **`LEGAL_DRAFT = false`** — le geste final, une fois tout ce qui précède clos.
 
 ## Notes pour le juriste
@@ -252,7 +267,10 @@ de profil :
    consentement sans écriture, droits de colonne effectifs, compte d'essai nettoyé) ;
 2. ~~`consentement-identite.sql` sur **PROD**~~ — **FAIT le 21/08/2026**, et le test rejoué sur
    PROD y donne aussi 6 mesures sur 6 : aucune divergence DEV/PROD sur ce lot ;
-3. déployer l'app ;
+3. ~~déployer l'app~~ — **FAIT le 22/08/2026** (commit `dbba437`). Vérifié dans le bundle servi par
+   pokza.app, pas seulement au hash : `p_consentement_identite`, `Je consens`, `tribunal
+   judiciaire`, `maintenance du Service` et le paragraphe sur l'adresse IP y sont tous présents
+   (les accents y sont échappés en `\xe9`, ne pas chercher les chaînes accentuées telles quelles) ;
 4. une fois le nouveau bundle bien en ligne : `consentement-identite-cloture.sql`.
 
 L'étape 4 n'est pas cosmétique : tant que l'ancienne signature à 7 arguments existe, un client peut

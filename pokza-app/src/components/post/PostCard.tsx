@@ -19,7 +19,7 @@ import { abbreviateChips, formatChipAmount, cashCurrencySuffix } from '../../uti
 import { formatRelativeDate } from '../../utils/relativeDate';
 import { wasEdited } from '../../utils/postEdited';
 import { friendEchoLabel } from '../../utils/friendEchoLabel';
-import { BlockIcon, CommentIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, TrashIcon } from '../ui/icons';
+import { BlockIcon, CommentIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, SpadeIcon, TrashIcon } from '../ui/icons';
 
 const DESCRIPTION_LINES = 3;
 /** Taille commune des trois icônes sous une main (j'aime / commenter / partager) : elles
@@ -42,6 +42,9 @@ interface PostCardProps {
    * (👑) que dans la liste des membres du groupe, cf. GroupScreen. */
   isGroupFounder?: boolean;
   onEdit?: () => void;
+  /** Rouvre la main dans le créateur pour en refaire le déroulé, puis la republie (cf. `mode`
+   * « correct » dans App.tsx). Distinct d'`onEdit`, qui ne touche qu'au texte du post. */
+  onCorrect?: () => void;
   onDelete?: () => void;
   onToggleLike?: () => void;
   onPressAuthor?: () => void;
@@ -184,6 +187,7 @@ function PostCardInner({
   isOwnPost,
   isGroupFounder,
   onEdit,
+  onCorrect,
   onDelete,
   onToggleLike,
   onPressAuthor,
@@ -193,6 +197,7 @@ function PostCardInner({
   onSelectProfile,
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingCorrect, setConfirmingCorrect] = useState(false);
   const [confirmingBlock, setConfirmingBlock] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
@@ -217,6 +222,22 @@ function PostCardInner({
 
   const voteOptions = post.voteOptions && post.voteOptions.length >= 2 ? post.voteOptions : ['Oui', 'Non'];
 
+  // Corriger le déroulé REPUBLIE la main : la base ne laisse pas réécrire `hand` après coup (F-21),
+  // et c'est voulu — sinon un auteur pourrait changer une mise sous les commentaires qui la
+  // discutent. Conséquence annoncée avant, jamais découverte après. On NOMME ce qui va être perdu
+  // plutôt que de dire « tes réactions » : perdre 12 commentaires et ne rien perdre du tout ne se
+  // décident pas de la même façon.
+  const voteTotal = Object.values(post.voteCounts ?? {}).reduce((n, v) => n + v, 0);
+  const pertes = [
+    post.likeCount > 0 ? `${post.likeCount} j'aime` : null,
+    commentCount > 0 ? `${commentCount} commentaire${commentCount > 1 ? 's' : ''}` : null,
+    voteTotal > 0 ? `${voteTotal} vote${voteTotal > 1 ? 's' : ''}` : null,
+  ].filter(Boolean) as string[];
+  const correctionWarning =
+    pertes.length > 0
+      ? `Elle est republiée avec une date neuve, et ${pertes.join(', ')} ne la suivent pas.`
+      : "Elle est republiée avec une date neuve. Elle n'a encore rien récolté, donc rien à perdre.";
+
   const handleShare = async () => {
     const outcome = await shareOrCopy(buildShareContent(post));
     if (outcome === 'copied') setShareFeedback('Lien copié dans le presse-papiers !');
@@ -235,12 +256,20 @@ function PostCardInner({
   };
 
   // Un seul bouton ⋯ pour toutes les mains ; son menu change selon qu'on en est l'auteur ou non.
-  // Sur sa propre main : modifier / supprimer. Sur celle d'un autre : signaler (+ bloquer l'auteur
-  // quand le parent le permet, càd le feed principal). « Supprimer » ouvre la confirmation en ligne
-  // plutôt que d'agir directement, comme avant.
+  // Sur sa propre main : modifier / corriger / supprimer. Sur celle d'un autre : signaler
+  // (+ bloquer l'auteur quand le parent le permet, càd le feed principal). « Supprimer » ouvre la
+  // confirmation en ligne plutôt que d'agir directement, comme avant.
+  //
+  // « Modifier le post » et « Corriger la main » ne font pas la même chose et le disent : le
+  // premier ne touche qu'au texte (titre, description, contexte), le second refait le déroulé et
+  // republie. L'ancien libellé « Modifier la main » promettait le second en ne faisant que le
+  // premier.
   const menuItems: OverflowMenuItem[] = isOwnPost
     ? [
-        ...(onEdit ? [{ label: 'Modifier la main', icon: PencilIcon, onPress: onEdit }] : []),
+        ...(onEdit ? [{ label: 'Modifier le post', icon: PencilIcon, onPress: onEdit }] : []),
+        ...(onCorrect
+          ? [{ label: 'Corriger la main', icon: SpadeIcon, onPress: () => setConfirmingCorrect(true) }]
+          : []),
         ...(onDelete
           ? [{ label: 'Supprimer la main', icon: TrashIcon, destructive: true, onPress: () => setConfirmingDelete(true) }]
           : []),
@@ -461,6 +490,20 @@ function PostCardInner({
       />
 
       <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} anchor={menuAnchor} />
+      {isOwnPost && onCorrect && (
+        <ConfirmSheet
+          visible={confirmingCorrect}
+          icon={SpadeIcon}
+          title="Corriger cette main ?"
+          message={correctionWarning}
+          confirmLabel="Corriger"
+          onCancel={() => setConfirmingCorrect(false)}
+          onConfirm={() => {
+            setConfirmingCorrect(false);
+            onCorrect();
+          }}
+        />
+      )}
       {isOwnPost && (
         <ConfirmSheet
           visible={confirmingDelete}

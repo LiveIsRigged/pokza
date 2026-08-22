@@ -1,4 +1,4 @@
-import type { GameType, Position, Variant, Visibility } from '../types/poker';
+import type { Action, Board, Card, GameType, Position, Seat, Variant, Visibility } from '../types/poker';
 
 export type AnteType = 'none' | 'bb' | 'per-player';
 
@@ -83,3 +83,42 @@ export const DEFAULT_CONTEXT: ContextData = {
   straddleCount: 0,
   straddleAmount: 0,
 };
+
+/**
+ * Les étapes du créateur, dans l'ordre. Un bomb pot saute `street-preflop` (chacun poste sa bombe
+ * et on voit le flop directement), et `showdown` reste un écran optionnel intercalé avant la
+ * publication — seulement s'il reste un adversaire en jeu.
+ *
+ * Vit ici plutôt que dans `LiveHandCreator` pour que la reprise d'une main publiée
+ * (cf. `rehydrate.ts`) puisse reconstituer une pile d'historique sans importer le composant.
+ */
+export type Phase =
+  | 'context'
+  | 'holeCards'
+  | 'street-preflop'
+  | 'street-flop'
+  | 'street-turn'
+  | 'street-river'
+  | 'showdown'
+  | 'review';
+
+/**
+ * L'état du créateur à un instant donné, empilé AVANT chaque changement d'étape — c'est ce qui rend
+ * le retour arrière possible sans perdre ni dupliquer les données.
+ *
+ * ⚠️ Un instantané porte l'état tel qu'il était PENDANT son étape, donc AVANT les données que cette
+ * étape produit : l'instantané de `street-flop` ne contient pas le flop, qui n'est posé qu'en la
+ * quittant. Revenir à une street y efface donc tout ce qui suit — comportement voulu, et ce qui
+ * fait qu'on ne peut pas corriger une mise preflop sans ressaisir la suite.
+ */
+export interface Snapshot {
+  phase: Phase;
+  context: ContextData;
+  seats: Seat[];
+  heroCards: (Card | undefined)[];
+  actions: Action[];
+  activeSeatIds: string[];
+  board: Board;
+  board2: Board;
+  revealedCards: Record<string, (Card | undefined)[]>;
+}

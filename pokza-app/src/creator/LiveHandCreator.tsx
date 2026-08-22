@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Action, Board, Card, Hand, Post, Seat } from '../types/poker';
 import { holeCardCount } from '../types/poker';
 import type { Group } from '../data/groups';
@@ -9,20 +9,18 @@ import { ShowdownStep } from './steps/ShowdownStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { buildSeats, getActingOrder } from './positions';
 import { committedBySeat } from '../engine/handEngine';
-import type { ContextData, ReviewData } from './types';
+import type { ContextData, Phase, ReviewData, Snapshot } from './types';
 import { defaultContextForPlayer, loadContextPrefs, saveContextPrefs } from './contextPrefs';
+import { seedHistory, type CreatorSeed } from './rehydrate';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
+import { GroupPickerScreen } from '../groups/GroupPickerScreen';
+import {
+  defaultGroupId,
+  loadLastUsedGroupIds,
+  orderGroupsByLastUsed,
+  rememberUsedGroup,
+} from '../groups/lastUsedGroups';
 import { TrashIcon } from '../components/ui/icons';
-
-type Phase =
-  | 'context'
-  | 'holeCards'
-  | 'street-preflop'
-  | 'street-flop'
-  | 'street-turn'
-  | 'street-river'
-  | 'showdown'
-  | 'review';
 
 // Un bomb pot n'a pas de preflop : une étape de moins (6 au lieu de 7), et la numérotation des
 // étapes décale d'autant. L'abattage reste un écran optionnel intercalé avant la publication, sans
@@ -32,18 +30,6 @@ const phaseStepMap = (bombPot: boolean): Partial<Record<Phase, number>> =>
   bombPot
     ? { context: 1, holeCards: 2, 'street-flop': 3, 'street-turn': 4, 'street-river': 5, review: 6 }
     : { context: 1, holeCards: 2, 'street-preflop': 3, 'street-flop': 4, 'street-turn': 5, 'street-river': 6, review: 7 };
-
-interface Snapshot {
-  phase: Phase;
-  context: ContextData;
-  seats: Seat[];
-  heroCards: (Card | undefined)[];
-  actions: Action[];
-  activeSeatIds: string[];
-  board: Board;
-  board2: Board;
-  revealedCards: Record<string, (Card | undefined)[]>;
-}
 
 interface LiveHandCreatorProps {
   authorId: string;
@@ -59,6 +45,12 @@ interface LiveHandCreatorProps {
   groups: Group[];
   /** Crée un groupe sans quitter le créateur, et renvoie son id (cf. ReviewStep). */
   onCreateGroup: (name: string) => Promise<string>;
+  /**
+   * Reprise d'une main déjà publiée (« Corriger la main »). Fourni, le créateur s'ouvre DIRECTEMENT
+   * sur l'étape de publication, tout étant déjà saisi, et le « ‹ » redescend étape par étape
+   * jusqu'à celle qu'on veut refaire. Absent = création normale, à partir d'une table vide.
+   */
+  initial?: CreatorSeed;
 }
 
 export function LiveHandCreator({
@@ -70,40 +62,43 @@ export function LiveHandCreator({
   onCancel,
   groups,
   onCreateGroup,
+  initial,
 }: LiveHandCreatorProps) {
   // Table de départ d'après le profil, calculée une fois : sert d'état initial ET de base au
   // chargement des réglages mémorisés, qui la recouvrent (cf. l'effet plus bas).
   const playerDefaults = useRef<ContextData>(defaultContextForPlayer({ formatFavori, varianteFavorite }));
-  const [phase, setPhase] = useState<Phase>('context');
-  const [context, setContext] = useState<ContextData>(playerDefaults.current);
-  const [seats, setSeats] = useState<Seat[]>([]);
+  const [phase, setPhase] = useState<Phase>(initial ? 'review' : 'context');
+  const [context, setContext] = useState<ContextData>(initial?.context ?? playerDefaults.current);
+  const [seats, setSeats] = useState<Seat[]>(initial?.seats ?? []);
   // Longueur variable selon la variante (2/4/5) : remplie à l'étape "Tes cartes", et retaillée à la
   // sortie du contexte si la variante a changé (cf. onNext de ContextStep).
-  const [heroCards, setHeroCards] = useState<(Card | undefined)[]>([]);
-  const [actions, setActions] = useState<Action[]>([]);
-  const [activeSeatIds, setActiveSeatIds] = useState<string[]>([]);
-  const [board, setBoard] = useState<Board>({});
+  const [heroCards, setHeroCards] = useState<(Card | undefined)[]>(initial?.heroCards ?? []);
+  const [actions, setActions] = useState<Action[]>(initial?.actions ?? []);
+  const [activeSeatIds, setActiveSeatIds] = useState<string[]>(initial?.activeSeatIds ?? []);
+  const [board, setBoard] = useState<Board>(initial?.board ?? {});
   // Second board d'un double board bomb pot ; reste vide en un seul board.
-  const [board2, setBoard2] = useState<Board>({});
-  const [review, setReview] = useState<ReviewData>({
-    title: '',
-    description: '',
-    voteQuestion: '',
-    visibility: 'public',
-  });
+  const [board2, setBoard2] = useState<Board>(initial?.board2 ?? {});
+  const [review, setReview] = useState<ReviewData>(
+    initial?.review ?? { title: '', description: '', voteQuestion: '', visibility: 'public' }
+  );
   // Cartes montrées par les adversaires à l'abattage (seatId -> deux cartes, éventuellement partielles).
-  const [revealedCards, setRevealedCards] = useState<Record<string, (Card | undefined)[]>>({});
+  const [revealedCards, setRevealedCards] = useState<Record<string, (Card | undefined)[]>>(initial?.revealedCards ?? {});
   // Réglage global à la main (pas par adversaire, cf. ShowdownStep) : une fois activé, les mains
   // adverses saisies ci-dessus restent visibles dans le replayer même perdantes. Comme
   // `review.visibility`, ce n'est pas dans `Snapshot` — persiste tel quel à travers la navigation
   // arrière/avant plutôt que d'être restauré à une valeur antérieure.
-  const [revealShowdown, setRevealShowdown] = useState(false);
-  const [history, setHistory] = useState<Snapshot[]>([]);
+  const [revealShowdown, setRevealShowdown] = useState(initial?.revealShowdown ?? false);
+  const [history, setHistory] = useState<Snapshot[]>(initial ? seedHistory(initial) : []);
   // Change à chaque changement de phase, pour forcer un remount propre des écrans de street
   // (sinon revenir en arrière puis ré-avancer réutilise un composant à l'état "terminé").
   const [phaseKey, setPhaseKey] = useState(0);
   // Confirmation avant de quitter l'étape 1 en ayant déjà saisi quelque chose.
   const [confirmingAbandon, setConfirmingAbandon] = useState(false);
+  // Derniers groupes publiés, lus une fois sur l'appareil : ils ordonnent la rangée de chips et
+  // désignent la présélection. Tant que la lecture n'est pas revenue, la liste garde l'ordre reçu
+  // et rien n'est présélectionné — jamais un mauvais groupe le temps d'un aller-retour disque.
+  const [lastUsedGroupIds, setLastUsedGroupIds] = useState<string[]>([]);
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   // État du contexte tel qu'il était au chargement des préférences : sert de point de comparaison
   // pour savoir si le joueur a réellement saisi quelque chose. On ne compare PAS à
   // `DEFAULT_CONTEXT` — les préférences mémorisées (cf. `contextPrefs`) pré-remplissent l'étape,
@@ -114,6 +109,9 @@ export function LiveHandCreator({
   // retaper à chaque fois sa partie habituelle. Chargé une fois au montage (AsyncStorage répond en
   // quelques ms, bien avant toute interaction) ; garde-fou d'unmount pour ne pas setState après coup.
   useEffect(() => {
+    // Main reprise : son propre contexte fait foi. Sans ce garde-fou, les réglages mémorisés
+    // écraseraient les blindes et la table de la main qu'on vient d'ouvrir pour la corriger.
+    if (initial) return;
     let cancelled = false;
     loadContextPrefs(playerDefaults.current).then((prefs) => {
       if (cancelled) return;
@@ -124,6 +122,19 @@ export function LiveHandCreator({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadLastUsedGroupIds().then((ids) => {
+      if (!cancelled) setLastUsedGroupIds(ids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const orderedGroups = useMemo(() => orderGroupsByLastUsed(groups, lastUsedGroupIds), [groups, lastUsedGroupIds]);
+  const preselectedGroupId = defaultGroupId(orderedGroups, lastUsedGroupIds);
 
   // Cartes prises par le hero et le board (sert de base d'exclusion aux sélecteurs).
   const baseUsedCards: Card[] = [
@@ -270,6 +281,12 @@ export function LiveHandCreator({
     setSubmitting(true);
     try {
       await onCreated(post);
+      // Ce groupe devient le premier proposé à la prochaine main (et le présélectionné).
+      if (post.visibility === 'group' && post.groupId) {
+        const groupId = post.groupId;
+        void rememberUsedGroup(groupId);
+        setLastUsedGroupIds((ids) => [groupId, ...ids.filter((id) => id !== groupId)]);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -588,8 +605,10 @@ export function LiveHandCreator({
           onBack={goBack}
           onSubmit={() => void finalize(actions, board)}
           submitting={submitting}
-          groups={groups}
+          groups={orderedGroups}
+          defaultGroupId={preselectedGroupId}
           onCreateGroup={onCreateGroup}
+          onOpenGroupPicker={() => setGroupPickerOpen(true)}
         />
       );
 
@@ -614,6 +633,21 @@ export function LiveHandCreator({
           onCancel();
         }}
       />
+      {/* Frère de l'étape et non enfant : le glissement de bord du wizard est attaché à
+          `WizardScreen`, qui n'est pas un ancêtre d'ici — le geste ne traverse donc pas le
+          sélecteur pour reculer d'une étape dans son dos. */}
+      {groupPickerOpen && (
+        <GroupPickerScreen
+          groups={orderedGroups}
+          selectedId={review.groupId}
+          onSelect={(groupId) => {
+            setReview((r) => ({ ...r, visibility: 'group', groupId }));
+            setGroupPickerOpen(false);
+          }}
+          onCreateGroup={onCreateGroup}
+          onBack={() => setGroupPickerOpen(false)}
+        />
+      )}
     </>
   );
 }

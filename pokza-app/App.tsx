@@ -15,7 +15,8 @@ import { InstallPromptProvider } from './src/web/InstallPrompt';
 import { registerPushServiceWorker } from './src/web/push';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
-import { createPost, deletePost, fetchFeed, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
+import { postToSeed } from './src/creator/rehydrate';
+import { createPost, deletePost, fetchFeed, fetchPost, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
 import { colors } from './src/theme/theme';
 import type { Post } from './src/types/poker';
 import { DisplayUnitProvider } from './src/state/displayUnit';
@@ -28,7 +29,7 @@ import { CompleteProfileScreen } from './src/profile/CompleteProfileScreen';
 import { ProfileScreen } from './src/profile/ProfileScreen';
 import { SearchScreen } from './src/search/SearchScreen';
 import { NotificationsScreen } from './src/notifications/NotificationsScreen';
-import { EditPostScreen } from './src/post/EditPostScreen';
+import { EditPostScreen, type EditPostScreenHandle } from './src/post/EditPostScreen';
 import { PostScreen } from './src/post/PostScreen';
 import { supabase } from './src/lib/supabase';
 import { fetchUnreadNotificationCount } from './src/data/notifications';
@@ -133,6 +134,7 @@ function AppContent() {
     | 'feed'
     | 'create'
     | 'edit'
+    | 'correct'
     | 'profile'
     | 'groups'
     | 'group'
@@ -157,12 +159,20 @@ function AppContent() {
   const [viewingPostId, setViewingPostId] = useState<string | null>(null);
   const [viewingPostComments, setViewingPostComments] = useState(false);
   const [editingPostFallback, setEditingPostFallback] = useState<Post | null>(null);
+  // « Corriger la main » : on garde le POST ENTIER et pas son id. Le créateur a besoin de `hand`,
+  // et la main peut très bien ne pas être dans `posts` (ouverte depuis un profil ou un groupe) —
+  // d'où la relecture en base quand elle manque, plutôt qu'un bouton qui ne fait rien.
+  const [correctingPost, setCorrectingPost] = useState<Post | null>(null);
+  const [correctReturnMode, setCorrectReturnMode] = useState<'feed' | 'profile' | 'group' | 'post'>('feed');
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
   // Permet au glissement de bord (`Screen`) de refermer d'abord un panneau local de `GroupScreen`
   // (Modifier le groupe / Liste de membres / Exclure un membre) au lieu de sauter directement à
   // « Mes groupes privés » — cf. `GroupScreenHandle`.
   const groupScreenRef = useRef<GroupScreenHandle>(null);
   const settingsScreenRef = useRef<SettingsScreenHandle>(null);
+  // Même relais que `groupScreenRef` : le sélecteur de groupe ouvert par-dessus la modification
+  // d'une main est un overlay local, invisible du glissement de bord attaché ici.
+  const editPostScreenRef = useRef<EditPostScreenHandle>(null);
   // Groupes créés depuis l'étape « Publier » du créateur (cf. `onCreateGroup`). Ils n'ont qu'un
   // membre : leur auteur. Publier dedans revient à publier devant personne tant qu'il n'a invité
   // personne — d'où l'atterrissage sur la page du groupe plutôt que sur le feed, juste après.
@@ -344,6 +354,22 @@ function AppContent() {
   useEffect(() => {
     if (mode !== 'group') setShowPublishedNotice(false);
   }, [mode]);
+
+  const openCorrection = async (postId: string, retour: 'feed' | 'profile' | 'group' | 'post') => {
+    const local = posts.find((p) => p.id === postId) ?? (editingPostFallback?.id === postId ? editingPostFallback : null);
+    try {
+      const post = local ?? (await fetchPost(postId));
+      if (!post) {
+        setPostsError("Cette main n'est plus disponible.");
+        return;
+      }
+      setCorrectingPost(post);
+      setCorrectReturnMode(retour);
+      setMode('correct');
+    } catch (err) {
+      setPostsError(errorMessage(err));
+    }
+  };
 
   // En revenant d'un profil consulté, le feed peut être périmé (like/suppression faits là-bas) —
   // on le recharge plutôt que de laisser un état obsolète affiché.
@@ -555,6 +581,19 @@ function AppContent() {
     );
   }
 
+  // Création d'un groupe sans quitter l'écran courant — créateur de main comme modification d'une
+  // main. Sortir vers « Mes groupes » démonterait l'écran appelant et jetterait la saisie en cours.
+  // On ajoute le groupe à la liste locale au lieu de la relire : `refreshMyGroups` la remplacera
+  // par la version en base au prochain passage sur l'écran des groupes.
+  const createGroupInPlace = async (name: string): Promise<string> => {
+    const groupId = await createGroup(name);
+    setMyGroups((prev) => [
+      ...prev,
+      { id: groupId, name, ownerId: session.user.id, createdAt: new Date().toISOString() },
+    ]);
+    return groupId;
+  };
+
   if (mode === 'create') {
     return (
       <View style={styles.container}>
@@ -564,17 +603,10 @@ function AppContent() {
           formatFavori={myFormatFavori}
           varianteFavorite={myVarianteFavorite}
           groups={myGroups}
-          // Créer un groupe depuis l'étape « Publier » sans quitter le créateur : partir vers
-          // « Mes groupes » démonterait `LiveHandCreator` (il n'existe que sous `mode === 'create'`)
-          // et jetterait la main en cours de saisie. On ajoute donc le groupe à la liste locale au
-          // lieu de la relire — `refreshMyGroups` la remplacera par la version en base au prochain
-          // passage sur l'écran des groupes.
+          // Le groupe créé ici est retenu à part : c'est lui qui détourne l'atterrissage après
+          // publication vers la page du groupe (cf. `onCreated`).
           onCreateGroup={async (name) => {
-            const groupId = await createGroup(name);
-            setMyGroups((prev) => [
-              ...prev,
-              { id: groupId, name, ownerId: session.user.id, createdAt: new Date().toISOString() },
-            ]);
+            const groupId = await createGroupInPlace(name);
             groupsCreatedInCreator.current.add(groupId);
             return groupId;
           }}
@@ -633,11 +665,17 @@ function AppContent() {
       setEditingPostId(null);
       setMode(editReturnMode);
     };
+    const onSwipeBack = () => {
+      if (editPostScreenRef.current?.handleBack()) return;
+      onBack();
+    };
     return (
-      <Screen onBack={onBack}>
+      <Screen onBack={onSwipeBack}>
         <EditPostScreen
+          ref={editPostScreenRef}
           post={editingPost}
           groups={myGroups}
+          onCreateGroup={createGroupInPlace}
           onCancel={onBack}
           onSave={async (edits) => {
             const postId = editingPost.id;
@@ -660,6 +698,74 @@ function AppContent() {
         />
         <StatusBar style="dark" />
       </Screen>
+    );
+  }
+
+  if (mode === 'correct' && correctingPost) {
+    const onBack = () => {
+      setCorrectingPost(null);
+      setMode(correctReturnMode);
+    };
+    const ancien = correctingPost;
+    return (
+      <View style={styles.container}>
+        <LiveHandCreator
+          authorId={session.user.id}
+          authorName={displayName ?? 'Joueur'}
+          formatFavori={myFormatFavori}
+          varianteFavorite={myVarianteFavorite}
+          groups={myGroups}
+          initial={postToSeed(ancien)}
+          onCreateGroup={async (name) => {
+            const groupId = await createGroup(name);
+            setMyGroups((prev) => [
+              ...prev,
+              { id: groupId, name, ownerId: session.user.id, createdAt: new Date().toISOString() },
+            ]);
+            return groupId;
+          }}
+          onCreated={async (draftPost) => {
+            // ORDRE NON NÉGOCIABLE : publier D'ABORD, supprimer ENSUITE. L'inverse perdrait la main
+            // pour de bon si la publication échouait (réseau coupé, session expirée). Ici, le pire
+            // cas laisse deux exemplaires — visible, et réparable d'un geste par l'auteur.
+            const saved = await createPost(
+              {
+                authorId: draftPost.authorId,
+                location: draftPost.location,
+                buyIn: draftPost.buyIn,
+                level: draftPost.level,
+                title: draftPost.title,
+                description: draftPost.description,
+                hand: draftPost.hand,
+                voteQuestion: draftPost.voteQuestion,
+                voteOptions: draftPost.voteOptions,
+                visibility: draftPost.visibility,
+                groupId: draftPost.groupId,
+              },
+              draftPost.authorName,
+              myAvatarUrl
+            );
+            try {
+              await deletePost(ancien.id);
+            } catch (err) {
+              // La correction EST publiée : on ne la présente pas comme un échec. On dit seulement
+              // que l'ancienne version est encore là, ce que l'auteur peut corriger lui-même.
+              setPostsError(
+                "La main corrigée est publiée, mais l'ancienne version n'a pas pu être supprimée — retire-la depuis son menu ⋯."
+              );
+            }
+            setPosts((p) => [saved, ...p.filter((x) => x.id !== ancien.id)]);
+            trackEvent('hand_corrected', { variant: saved.hand.variant, game_type: saved.hand.gameType });
+            setCorrectingPost(null);
+            // Retour au feed et pas à l'écran d'origine : la main corrigée a un nouvel id, donc la
+            // page de l'ancienne n'existe plus, et la liste d'un profil ou d'un groupe déjà chargée
+            // montrerait encore la version supprimée.
+            setMode('feed');
+          }}
+          onCancel={onBack}
+        />
+        <StatusBar style="dark" />
+      </View>
     );
   }
 
@@ -705,6 +811,7 @@ function AppContent() {
             setEditReturnMode('post');
             setMode('edit');
           }}
+          onCorrectPost={(postId) => void openCorrection(postId, 'post')}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -737,6 +844,7 @@ function AppContent() {
             setEditReturnMode('profile');
             setMode('edit');
           }}
+          onCorrectPost={(postId) => void openCorrection(postId, 'profile')}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -821,6 +929,7 @@ function AppContent() {
             setEditReturnMode('group');
             setMode('edit');
           }}
+          onCorrectPost={(postId) => void openCorrection(postId, 'group')}
           onInviteMembers={(groupId) => {
             setInvitingGroupId(groupId);
             setMode('inviteToGroup');
@@ -1027,6 +1136,7 @@ function AppContent() {
                 setEditReturnMode('feed');
                 setMode('edit');
               }}
+              onCorrect={() => void openCorrection(post.id, 'feed')}
               onToggleLike={() => handleToggleLike(post.id)}
               onPressAuthor={() => {
                 setViewingProfileId(post.authorId);

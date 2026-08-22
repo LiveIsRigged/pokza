@@ -66,6 +66,7 @@ interface ProfileScreenProps {
   currentUserName: string;
   onBack: () => void;
   onEditPost: (postId: string) => void;
+  onCorrectPost: (postId: string) => void;
   onSelectProfile?: (profileId: string) => void;
   /** Ouvre la page du groupe depuis la pastille 👥 d'une main de groupe. */
   onOpenGroup?: (groupId: string) => void;
@@ -85,6 +86,7 @@ export function ProfileScreen({
   currentUserName,
   onBack,
   onEditPost,
+  onCorrectPost,
   onSelectProfile,
   onOpenGroup,
   onOpenFriends,
@@ -632,6 +634,7 @@ export function ProfileScreen({
                   isOwnPost={post.authorId === currentUserId}
                   onDelete={() => handleDelete(post.id)}
                   onEdit={() => onEditPost(post.id)}
+                  onCorrect={() => onCorrectPost(post.id)}
                   onToggleLike={() => handleToggleLike(post.id)}
                   onOpenGroup={onOpenGroup}
                   onSelectProfile={onSelectProfile}
