@@ -231,15 +231,12 @@ function PostCardInner({
 
   // Corriger le déroulé REPUBLIE la main : la base ne laisse pas réécrire `hand` après coup (F-21),
   // et c'est voulu — sinon un auteur pourrait changer une mise sous les commentaires qui la
-  // discutent. Conséquence annoncée avant, jamais découverte après. On NOMME ce qui va être perdu
-  // plutôt que de dire « tes réactions » : perdre 12 commentaires et ne rien perdre du tout ne se
-  // décident pas de la même façon.
-  const voteTotal = Object.values(post.voteCounts ?? {}).reduce((n, v) => n + v, 0);
-  const pertes = [
-    post.likeCount > 0 ? `${post.likeCount} j'aime` : null,
-    commentCount > 0 ? `${commentCount} commentaire${commentCount > 1 ? 's' : ''}` : null,
-    voteTotal > 0 ? `${voteTotal} vote${voteTotal > 1 ? 's' : ''}` : null,
-  ].filter(Boolean) as string[];
+  // discutent.
+  //
+  // Le message est le MÊME que la main ait récolté quelque chose ou non. Une première version
+  // comptait les pertes (« et 14 j'aime, 3 commentaires ne la suivent pas ») : elle disparaissait
+  // donc au moment précis où l'on découvre la fonction, sur une main neuve — c'est-à-dire quand il
+  // fallait justement apprendre la règle. Ici on énonce la mécanique, pas l'inventaire.
   // Ce que l'étape choisie va coûter en ressaisie. Reprendre une street efface celles qui suivent
   // — y compris la sienne, dont l'instantané précède ses propres actions. Une liste sans articles
   // (« flop, turn, rivière ») plutôt qu'une phrase : « le turn » et « la rivière » n'ont pas le
@@ -252,9 +249,8 @@ function PostCardInner({
     return `À ressaisir : ${streets.slice(i).map((e) => e.label.toLowerCase()).join(', ')}.`;
   })();
   const correctionWarning =
-    pertes.length > 0
-      ? `Elle est republiée avec une date neuve, et ${pertes.join(', ')} ne la suivent pas.`
-      : "Elle est republiée avec une date neuve. Elle n'a encore rien récolté, donc rien à perdre.";
+    "Corriger une main, c'est la republier : elle repart à zéro dans le fil. " +
+    'Les anciens j\'aime, commentaires et votes seront perdus.';
 
   const handleShare = async () => {
     const outcome = await shareOrCopy(buildShareContent(post));
@@ -528,9 +524,6 @@ function PostCardInner({
           title="Corriger cette main ?"
           message={correctionWarning}
           confirmLabel="Corriger"
-          // Rouge seulement quand il y a vraiment quelque chose à perdre — la règle que se donne
-          // `ConfirmSheet` elle-même. Une main que personne n'a touchée ne mérite pas l'alarme.
-          destructive={pertes.length > 0}
           onCancel={() => setConfirmingCorrect(false)}
           onConfirm={() => {
             setConfirmingCorrect(false);
