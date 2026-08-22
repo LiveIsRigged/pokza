@@ -1,12 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, radius, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';
+import { NewGroupForm } from './NewGroupForm';
+import { formatRelativeDate } from '../utils/relativeDate';
 
-import { GROUP_NAME_MAX_LENGTH } from '../constants/limits';
+/**
+ * Nombre de groupes à partir duquel le champ de recherche apparaît. Une ligne fait 64 pt et
+ * l'écran en montre 9 (iPhone SE) à 11 (iPhone standard) : à 15, la liste vient tout juste de
+ * cesser de tenir sur un écran. En dessous, un pouce suffit et le champ ne serait qu'un rang de
+ * plus à traverser. Valeur produit arbitrée le 2026-08-21.
+ */
+const SEARCH_FROM = 15;
+
+/** « Hier » et « Lundi » arrivent capitalisés de `formatRelativeDate` (ils y commencent une
+ *  phrase) ; ici ils sont au milieu d'une, d'où la minuscule. */
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+function subtitle(group: Group): string {
+  const members = group.memberCount ?? 0;
+  const membersLabel = `${members} membre${members > 1 ? 's' : ''}`;
+  const activity = group.lastPostAt ? `dernière main ${lowerFirst(formatRelativeDate(group.lastPostAt))}` : 'aucune main';
+  return `${membersLabel} · ${activity}`;
+}
 
 interface GroupsListScreenProps {
   currentUserId: string;
@@ -19,12 +40,11 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    fetchMyGroups(currentUserId)
+    fetchMyGroups()
       .then((data) => {
         if (!cancelled) {
           setGroups(data);
@@ -42,20 +62,18 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
     };
   }, [currentUserId]);
 
-  const handleCreate = async () => {
-    const name = newName.trim();
-    if (!name) return;
-    setSubmitting(true);
-    try {
-      const groupId = await createGroup(name);
-      setCreating(false);
-      setNewName('');
-      onSelectGroup(groupId);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setSubmitting(false);
-    }
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return groups;
+    return groups.filter((g) => g.name.toLowerCase().includes(q));
+  }, [groups, query]);
+
+  // Le nouveau groupe s'ouvre aussitôt : c'est là qu'on invite des joueurs, et un groupe vide
+  // n'a rien à montrer dans la liste.
+  const handleCreate = async (name: string) => {
+    const groupId = await createGroup(name);
+    setCreating(false);
+    onSelectGroup(groupId);
   };
 
   return (
@@ -69,57 +87,59 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
 
       {error && <Text style={styles.statusText}>{error}</Text>}
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {loading ? (
-          <Text style={styles.statusText}>Chargement…</Text>
-        ) : groups.length === 0 ? (
-          <Text style={styles.statusText}>Aucun groupe privé pour l'instant.</Text>
-        ) : (
-          groups.map((g) => (
-            <Pressable key={g.id} style={styles.groupRow} onPress={() => onSelectGroup(g.id)}>
-              <Avatar url={g.avatarUrl} name={g.name} size={40} shape="square" />
-              <Text style={styles.groupName}>{g.name}</Text>
-            </Pressable>
-          ))
-        )}
+      {/* Le champ n'apparaît qu'au-delà de `SEARCH_FROM`, et hors de la liste : en en-tête de
+          `FlatList` il perdrait le focus à chaque frappe, la liste se re-rendant à chaque lettre. */}
+      {groups.length >= SEARCH_FROM && (
+        <TextInput
+          style={styles.search}
+          placeholder="Rechercher un groupe"
+          value={query}
+          onChangeText={setQuery}
+          autoCorrect={false}
+        />
+      )}
 
-        {creating ? (
-          <View style={styles.createForm}>
-            <TextInput
-              style={styles.input}
-              placeholder="Nom du groupe privé"
-              value={newName}
-              onChangeText={(text) => setNewName(text.slice(0, GROUP_NAME_MAX_LENGTH))}
-              maxLength={GROUP_NAME_MAX_LENGTH}
-              autoFocus
-            />
-            <View style={styles.createActions}>
-              <Pressable
-                style={styles.cancelButton}
-                onPress={() => {
-                  setCreating(false);
-                  setNewName('');
-                }}
-                hitSlop={hitSlopPairLeft}
-              >
-                <Text style={styles.cancelButtonText}>Annuler</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.confirmButton, !newName.trim() && styles.confirmButtonDisabled]}
-                onPress={handleCreate}
-                disabled={!newName.trim() || submitting}
-                hitSlop={hitSlopPairRight}
-              >
-                <Text style={styles.confirmButtonText}>Créer</Text>
-              </Pressable>
+      {/* `FlatList` et non `ScrollView` : celui-ci montait toutes les lignes et tous leurs avatars
+          d'un coup, donc autant de chargements d'images simultanés qu'il y a de groupes. */}
+      <FlatList
+        data={filtered}
+        keyExtractor={(g) => g.id}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.content}
+        ListEmptyComponent={
+          <Text style={styles.statusText}>
+            {loading
+              ? 'Chargement…'
+              : query.trim()
+                ? 'Aucun groupe ne porte ce nom.'
+                : "Aucun groupe privé pour l'instant."}
+          </Text>
+        }
+        renderItem={({ item }) => (
+          <Pressable style={styles.groupRow} onPress={() => onSelectGroup(item.id)}>
+            <Avatar url={item.avatarUrl} name={item.name} size={40} shape="square" />
+            <View style={styles.groupTexts}>
+              <Text style={styles.groupName} numberOfLines={1}>
+                {item.name}
+              </Text>
+              {/* Deux groupes peuvent porter le même nom, rien ne l'interdit : cette ligne est ce
+                  qui permet de les distinguer. */}
+              <Text style={styles.groupMeta} numberOfLines={1}>
+                {subtitle(item)}
+              </Text>
             </View>
-          </View>
-        ) : (
-          <Pressable style={styles.createButton} onPress={() => setCreating(true)}>
-            <Text style={styles.createButtonText}>+ Créer un groupe privé</Text>
           </Pressable>
         )}
-      </ScrollView>
+        ListFooterComponent={
+          creating ? (
+            <NewGroupForm onCreate={handleCreate} onCancel={() => setCreating(false)} />
+          ) : (
+            <Pressable style={styles.createButton} onPress={() => setCreating(true)}>
+              <Text style={styles.createButtonText}>+ Créer un groupe privé</Text>
+            </Pressable>
+          )
+        }
+      />
     </View>
   );
 }
@@ -157,6 +177,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  search: {
+    marginHorizontal: 14,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: borders.default,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
   groupRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -165,9 +196,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: borders.hairline,
   },
+  groupTexts: {
+    flexShrink: 1,
+  },
   groupName: {
     ...typography.authorName,
     color: colors.textPrimary,
+  },
+  groupMeta: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   createButton: {
     marginTop: spacing.lg,
@@ -180,50 +219,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
-  },
-  createForm: {
-    marginTop: spacing.lg,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: borders.default,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: colors.textPrimary,
-    backgroundColor: '#fff',
-  },
-  createActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  cancelButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: borders.default,
-  },
-  cancelButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  confirmButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: radius.full,
-    backgroundColor: colors.action,
-  },
-  confirmButtonDisabled: {
-    opacity: 0.5,
-  },
-  confirmButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
   },
 });

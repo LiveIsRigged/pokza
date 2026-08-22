@@ -349,7 +349,7 @@ function AppContent() {
 
   const refreshMyGroups = () => {
     if (!session) return;
-    fetchMyGroups(session.user.id)
+    fetchMyGroups()
       .then(setMyGroups)
       .catch(() => {});
   };

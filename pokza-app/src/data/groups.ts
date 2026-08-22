@@ -9,6 +9,11 @@ export interface Group {
   avatarUrl?: string;
   /** Libre, façon Instagram, 300 caractères max (contrainte vérifiée côté base). */
   description?: string;
+  /** Date de la main la plus récente du groupe — absente s'il n'en a aucune. Renseignée par
+   *  `fetchMyGroups` (RPC `my_groups`), qui s'en sert aussi pour trier. Absente ailleurs. */
+  lastPostAt?: string;
+  /** Membres acceptés, invitations en attente exclues. Même origine que `lastPostAt`. */
+  memberCount?: number;
 }
 
 export type GroupMemberStatus = 'pending' | 'accepted';
@@ -41,22 +46,32 @@ function rowToGroup(row: GroupRow): Group {
   };
 }
 
-/** Groupes où l'utilisateur a une appartenance acceptée (le créateur en fait partie dès la
- * création, cf. `create_group`) — pas les invitations en attente, celles-là vivent dans les
- * notifications et sur le profil, comme pour les demandes d'ami. */
-export async function fetchMyGroups(userId: string): Promise<Group[]> {
-  const { data: memberRows, error: memberError } = await supabase
-    .from('group_members')
-    .select('group_id')
-    .eq('user_id', userId)
-    .eq('status', 'accepted');
-  if (memberError) throw memberError;
-  const groupIds = (memberRows ?? []).map((r) => r.group_id);
-  if (groupIds.length === 0) return [];
+interface MyGroupRow extends GroupRow {
+  last_post_at: string | null;
+  member_count: number | null;
+}
 
-  const { data, error } = await supabase.from('groups').select('*').in('id', groupIds).order('created_at');
+/**
+ * Groupes où l'utilisateur a une appartenance acceptée (le créateur en fait partie dès la
+ * création, cf. `create_group`) — pas les invitations en attente, celles-là vivent dans les
+ * notifications et sur le profil, comme pour les demandes d'ami.
+ *
+ * Une seule requête (RPC `my_groups`, cf. docs/dev/my-groups.sql), là où il en fallait deux dont
+ * un `.in('id', [...])` qui portait tous les identifiants dans l'URL. Le tri vient de la base :
+ * dernière main du groupe en tête, date de création pour ceux qui n'en ont pas encore — l'ancien
+ * ordre, la création du groupe par ordre croissant, mettait le plus ancien en tête et enterrait
+ * les groupes vivants.
+ *
+ * Sans argument : la fonction lit `auth.uid()`, l'identifiant ne fait plus l'aller-retour.
+ */
+export async function fetchMyGroups(): Promise<Group[]> {
+  const { data, error } = await supabase.rpc('my_groups');
   if (error) throw error;
-  return (data as GroupRow[]).map(rowToGroup);
+  return (data as MyGroupRow[]).map((row) => ({
+    ...rowToGroup(row),
+    lastPostAt: row.last_post_at ?? undefined,
+    memberCount: row.member_count ?? undefined,
+  }));
 }
 
 export async function fetchGroup(groupId: string): Promise<Group> {
