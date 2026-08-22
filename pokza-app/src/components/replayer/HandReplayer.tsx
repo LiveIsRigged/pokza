@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import type { Hand } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
 import {
   computeHandState,
   describeAction,
+  expeditedFoldEventIndices,
   initialReplayStep,
   straddleSeatLabel,
   totalReplaySteps,
@@ -22,6 +23,12 @@ import { PlaybackControls } from './PlaybackControls';
 import { UnitToggle, UNIT_TOGGLE_WIDTH } from './UnitToggle';
 
 const AUTOPLAY_INTERVAL_MS = 1400;
+/**
+ * Durée d'un fold préflop « sans enjeu » (cf. `expeditedFoldEventIndices`) : presque trois fois plus
+ * court que le reste. Valeur tranchée avec Victor le 23/08 — assez pour voir le siège s'éteindre et
+ * savoir QUI passe. Beaucoup plus bas, la série de folds devient un clignotement illisible.
+ */
+const AUTOPLAY_FOLD_INTERVAL_MS = 500;
 
 interface HandReplayerProps {
   hand: Hand;
@@ -69,7 +76,6 @@ export function HandReplayer({ hand }: HandReplayerProps) {
   const [step, setStep] = useState(initialStep);
   const [playing, setPlaying] = useState(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const totalSteps = totalReplaySteps(hand);
   const state = useMemo(() => computeHandState(hand, step), [hand, step]);
@@ -87,22 +93,25 @@ export function HandReplayer({ hand }: HandReplayerProps) {
   );
   const tableCenter = { x: size.width / 2, y: size.height / 2 };
 
+  const expeditedFolds = useMemo(() => expeditedFoldEventIndices(hand), [hand]);
+  // La durée d'un step, c'est le temps pendant lequel l'event DÉJÀ appliqué reste à l'écran : au
+  // step `s`, le dernier event appliqué est `events[s - 1]` (cf. `computeHandState`, qui prend les
+  // events jusqu'à `step` exclu). C'est donc bien la durée d'affichage du fold qu'on raccourcit,
+  // pas celle de l'action qui le suit.
+  const stepDelayMs = expeditedFolds.has(step - 1) ? AUTOPLAY_FOLD_INTERVAL_MS : AUTOPLAY_INTERVAL_MS;
+
+  // Un `setTimeout` relancé à chaque step, et non un `setInterval` unique : c'est ce qui permet à
+  // deux steps voisins de ne pas durer le même temps. L'effet ne dépend que de ces quatre valeurs —
+  // un calcul d'équité qui se termine provoque un rendu mais ne redémarre pas le compte à rebours.
   useEffect(() => {
-    if (playing) {
-      intervalRef.current = setInterval(() => {
-        setStep((s) => {
-          if (s >= totalSteps) {
-            setPlaying(false);
-            return s;
-          }
-          return s + 1;
-        });
-      }, AUTOPLAY_INTERVAL_MS);
+    if (!playing) return;
+    if (step >= totalSteps) {
+      setPlaying(false);
+      return;
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [playing, totalSteps]);
+    const id = setTimeout(() => setStep((s) => s + 1), stepDelayMs);
+    return () => clearTimeout(id);
+  }, [playing, step, totalSteps, stepDelayMs]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;

@@ -104,6 +104,62 @@ export function initialReplayStep(hand: Hand): number {
 }
 
 /**
+ * Index des events de fold « sans enjeu », à jouer plus vite en lecture automatique.
+ *
+ * Un fold préflop d'un siège qui n'a pas mis UN SEUL jeton volontairement ne raconte rien : le pot
+ * ne bouge pas, personne n'a pris de décision devant quoi que ce soit, seul le nombre de joueurs
+ * encore en vie change. Sur une table à 9, ces folds-là occupaient à eux seuls les premières
+ * secondes de chaque main. Les durées, elles, vivent dans `HandReplayer` : ici on ne décide que du
+ * CRITÈRE, qui est une question de poker.
+ *
+ * Deux garde-fous, tranchés avec Victor le 23/08 :
+ *
+ * 1. **Les mises forcées ne comptent pas comme un jeton mis** — blindes, antes et straddle. Le
+ *    straddle est volontaire dans son geste mais forcé dans sa nature : celui qui straddle puis se
+ *    couche n'a pas plus décidé que la BB qui passe. C'est exactement `MECHANICAL_POSTS`, le même
+ *    ensemble qui fait démarrer le replay après ces postages. Sans cette exclusion, une main avec
+ *    antes n'aurait plus AUCUN fold accéléré : tout le monde aurait « mis un jeton ».
+ * 2. **Le fold qui termine la main n'est jamais accéléré.** Quand tout le monde passe sur une
+ *    relance, le dernier fold est la conclusion de la main, pas du remplissage — l'expédier ferait
+ *    s'arrêter le replayer sur une fin sèche, sans qu'on ait vu que c'était fini.
+ */
+export function expeditedFoldEventIndices(hand: Hand): Set<number> {
+  const events = buildReplayEvents(hand);
+  const expedited = new Set<number>();
+
+  let lastActionIndex = -1;
+  for (let i = 0; i < events.length; i++) {
+    if (events[i].kind === 'action') lastActionIndex = i;
+  }
+
+  // Se remplit AU FIL des events : au moment où on examine un fold, cet ensemble décrit donc bien
+  // ce que le siège avait mis AVANT de se coucher.
+  const hasInvested = new Set<string>();
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
+    if (ev.kind !== 'action') continue;
+    const { action } = ev;
+
+    if (
+      action.type === 'fold' &&
+      action.street === 'preflop' &&
+      !hasInvested.has(action.seatId) &&
+      i !== lastActionIndex
+    ) {
+      expedited.add(i);
+    }
+
+    // Reste donc : call, bet, raise. Un check n'ajoute rien au pot (la BB qui checke préflop
+    // n'a toujours rien misé volontairement), un fold non plus.
+    if (!MECHANICAL_POSTS.has(action.type) && action.type !== 'fold' && action.type !== 'check') {
+      hasInvested.add(action.seatId);
+    }
+  }
+
+  return expedited;
+}
+
+/**
  * Total misé par chaque siège sur l'ensemble des actions fournies.
  * `amount` est cumulé par street pour les actions de mise (check/call/bet/raise/blindes) : on garde
  * donc la dernière valeur de chaque street. L'ante est une mise forcée indépendante (elle ne compte
