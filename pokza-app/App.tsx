@@ -394,6 +394,33 @@ function AppContent() {
     }
   };
 
+  /**
+   * « Modifier le post ». Passe par la MÊME relecture que la correction et la duplication, et pas
+   * par un simple `setEditingPostId` : `editingPost` se résout dans `posts`, c'est-à-dire dans le
+   * FEED. Une main absente du feed — une main privée, ou une vieille main d'un profil au-delà des
+   * pages déjà chargées — laissait donc `editingPost` à `undefined`, et l'écran d'édition ne
+   * s'affichait pas du tout : on retombait sur le feed sans le moindre message. C'est ce que
+   * Victor a rencontré le 22/08 en modifiant un brouillon depuis son profil.
+   */
+  const openEdition = async (postId: string, retour: 'feed' | 'profile' | 'group' | 'post') => {
+    const local = posts.find((p) => p.id === postId) ?? (editingPostFallback?.id === postId ? editingPostFallback : null);
+    try {
+      const post = local ?? (await fetchPost(postId));
+      if (!post) {
+        setPostsError("Cette main n'est plus disponible.");
+        return;
+      }
+      // Renseigner le repli MÊME quand la main vient du feed : c'est lui que `editingPost`
+      // consultera si la liste change sous les pieds de l'écran d'édition.
+      setEditingPostFallback(post);
+      setEditingPostId(postId);
+      setEditReturnMode(retour);
+      setMode('edit');
+    } catch (err) {
+      setPostsError(errorMessage(err));
+    }
+  };
+
   // Même relecture que `openCorrection`, et pour la même raison : la main peut être affichée depuis
   // un profil ou un groupe sans être dans `posts`, et une copie a besoin de `hand`.
   const openDuplication = async (postId: string, retour: 'feed' | 'profile' | 'group' | 'post') => {
@@ -909,11 +936,7 @@ function AppContent() {
           currentUserName={displayName ?? 'Joueur'}
           openComments={viewingPostComments}
           onBack={onBack}
-          onEditPost={(postId) => {
-            setEditingPostId(postId);
-            setEditReturnMode('post');
-            setMode('edit');
-          }}
+          onEditPost={(postId) => void openEdition(postId, 'post')}
           onCorrectPost={(postId, depuis) => void openCorrection(postId, 'post', depuis)}
           onDuplicatePost={(postId) => void openDuplication(postId, 'post')}
           onSelectProfile={(profileId) => {
@@ -943,11 +966,7 @@ function AppContent() {
           onProfileChanged={refetchProfile}
           onCreateHand={() => setMode('create')}
           onBack={onBack}
-          onEditPost={(postId) => {
-            setEditingPostId(postId);
-            setEditReturnMode('profile');
-            setMode('edit');
-          }}
+          onEditPost={(postId) => void openEdition(postId, 'profile')}
           onCorrectPost={(postId, depuis) => void openCorrection(postId, 'profile', depuis)}
           onDuplicatePost={(postId) => void openDuplication(postId, 'profile')}
           onSelectProfile={(profileId) => {
@@ -1029,11 +1048,7 @@ function AppContent() {
           showPublishedNotice={showPublishedNotice}
           onCreateHand={() => setMode('create')}
           onBack={onBack}
-          onEditPost={(postId) => {
-            setEditingPostId(postId);
-            setEditReturnMode('group');
-            setMode('edit');
-          }}
+          onEditPost={(postId) => void openEdition(postId, 'group')}
           onCorrectPost={(postId, depuis) => void openCorrection(postId, 'group', depuis)}
           onDuplicatePost={(postId) => void openDuplication(postId, 'group')}
           onInviteMembers={(groupId) => {
@@ -1237,11 +1252,7 @@ function AppContent() {
               currentUserName={displayName ?? 'Joueur'}
               isOwnPost={post.authorId === session.user.id}
               onDelete={() => handleDelete(post.id)}
-              onEdit={() => {
-                setEditingPostId(post.id);
-                setEditReturnMode('feed');
-                setMode('edit');
-              }}
+              onEdit={() => void openEdition(post.id, 'feed')}
               onCorrect={(depuis) => void openCorrection(post.id, 'feed', depuis)}
               onDuplicate={() => void openDuplication(post.id, 'feed')}
               onToggleLike={() => handleToggleLike(post.id)}
