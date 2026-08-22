@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
+import type { Phase } from '../creator/types';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, tints, typography } from '../theme/theme';
@@ -66,7 +67,7 @@ interface ProfileScreenProps {
   currentUserName: string;
   onBack: () => void;
   onEditPost: (postId: string) => void;
-  onCorrectPost: (postId: string) => void;
+  onCorrectPost: (postId: string, depuis: Phase) => void;
   onSelectProfile?: (profileId: string) => void;
   /** Ouvre la page du groupe depuis la pastille 👥 d'une main de groupe. */
   onOpenGroup?: (groupId: string) => void;
@@ -634,7 +635,7 @@ export function ProfileScreen({
                   isOwnPost={post.authorId === currentUserId}
                   onDelete={() => handleDelete(post.id)}
                   onEdit={() => onEditPost(post.id)}
-                  onCorrect={() => onCorrectPost(post.id)}
+                  onCorrect={(depuis) => onCorrectPost(post.id, depuis)}
                   onToggleLike={() => handleToggleLike(post.id)}
                   onOpenGroup={onOpenGroup}
                   onSelectProfile={onSelectProfile}

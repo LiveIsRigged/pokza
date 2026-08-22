@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
+import type { Phase } from '../creator/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { colors, spacing } from '../theme/theme';
@@ -15,7 +16,7 @@ interface PostScreenProps {
   openComments?: boolean;
   onBack: () => void;
   onEditPost: (postId: string) => void;
-  onCorrectPost: (postId: string) => void;
+  onCorrectPost: (postId: string, depuis: Phase) => void;
   onSelectProfile: (profileId: string) => void;
   /** Remonte la main chargée pour que l'écran de modification puisse s'en servir même quand elle
    * n'est pas dans le feed (feed chargé une seule fois, main publiée depuis un autre appareil). */
@@ -116,7 +117,7 @@ export function PostScreen({
             initialCommentsOpen={openComments}
             onDelete={handleDelete}
             onEdit={() => onEditPost(post.id)}
-            onCorrect={() => onCorrectPost(post.id)}
+            onCorrect={(depuis) => onCorrectPost(post.id, depuis)}
             onToggleLike={handleToggleLike}
             onPressAuthor={() => onSelectProfile(post.authorId)}
             onSelectProfile={onSelectProfile}

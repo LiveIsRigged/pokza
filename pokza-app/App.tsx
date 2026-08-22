@@ -16,6 +16,7 @@ import { registerPushServiceWorker } from './src/web/push';
 import { PostCard } from './src/components/post/PostCard';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { postToSeed } from './src/creator/rehydrate';
+import type { Phase } from './src/creator/types';
 import { createPost, deletePost, fetchFeed, fetchPost, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
 import { colors } from './src/theme/theme';
 import type { Post } from './src/types/poker';
@@ -164,6 +165,8 @@ function AppContent() {
   // d'où la relecture en base quand elle manque, plutôt qu'un bouton qui ne fait rien.
   const [correctingPost, setCorrectingPost] = useState<Post | null>(null);
   const [correctReturnMode, setCorrectReturnMode] = useState<'feed' | 'profile' | 'group' | 'post'>('feed');
+  // L'étape désignée dans la feuille de confirmation, avant même d'ouvrir le créateur.
+  const [correctFromPhase, setCorrectFromPhase] = useState<Phase | undefined>(undefined);
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
   // Permet au glissement de bord (`Screen`) de refermer d'abord un panneau local de `GroupScreen`
   // (Modifier le groupe / Liste de membres / Exclure un membre) au lieu de sauter directement à
@@ -365,7 +368,11 @@ function AppContent() {
     if (mode !== 'group') setShowPublishedNotice(false);
   }, [mode]);
 
-  const openCorrection = async (postId: string, retour: 'feed' | 'profile' | 'group' | 'post') => {
+  const openCorrection = async (
+    postId: string,
+    retour: 'feed' | 'profile' | 'group' | 'post',
+    depuis: Phase
+  ) => {
     const local = posts.find((p) => p.id === postId) ?? (editingPostFallback?.id === postId ? editingPostFallback : null);
     try {
       const post = local ?? (await fetchPost(postId));
@@ -375,6 +382,7 @@ function AppContent() {
       }
       setCorrectingPost(post);
       setCorrectReturnMode(retour);
+      setCorrectFromPhase(depuis);
       setMode('correct');
     } catch (err) {
       setPostsError(errorMessage(err));
@@ -726,6 +734,7 @@ function AppContent() {
           varianteFavorite={myVarianteFavorite}
           groups={myGroups}
           initial={postToSeed(ancien)}
+          initialPhase={correctFromPhase}
           onCreateGroup={async (name) => {
             const groupId = await createGroup(name);
             setMyGroups((prev) => [
@@ -821,7 +830,7 @@ function AppContent() {
             setEditReturnMode('post');
             setMode('edit');
           }}
-          onCorrectPost={(postId) => void openCorrection(postId, 'post')}
+          onCorrectPost={(postId, depuis) => void openCorrection(postId, 'post', depuis)}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -854,7 +863,7 @@ function AppContent() {
             setEditReturnMode('profile');
             setMode('edit');
           }}
-          onCorrectPost={(postId) => void openCorrection(postId, 'profile')}
+          onCorrectPost={(postId, depuis) => void openCorrection(postId, 'profile', depuis)}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -939,7 +948,7 @@ function AppContent() {
             setEditReturnMode('group');
             setMode('edit');
           }}
-          onCorrectPost={(postId) => void openCorrection(postId, 'group')}
+          onCorrectPost={(postId, depuis) => void openCorrection(postId, 'group', depuis)}
           onInviteMembers={(groupId) => {
             setInvitingGroupId(groupId);
             setMode('inviteToGroup');
@@ -1146,7 +1155,7 @@ function AppContent() {
                 setEditReturnMode('feed');
                 setMode('edit');
               }}
-              onCorrect={() => void openCorrection(post.id, 'feed')}
+              onCorrect={(depuis) => void openCorrection(post.id, 'feed', depuis)}
               onToggleLike={() => handleToggleLike(post.id)}
               onPressAuthor={() => {
                 setViewingProfileId(post.authorId);

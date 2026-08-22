@@ -5,7 +5,6 @@ import { borders, colors, radius, spacing } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { LegalScreen } from '../legal/LegalScreen';
-import type { LegalDocId } from '../legal/legalContent';
 import { NotificationSettingsScreen } from './NotificationSettingsScreen';
 import { deleteOwnAccount } from '../data/profiles';
 import { supabase } from '../lib/supabase';
@@ -48,7 +47,6 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [legalOpen, setLegalOpen] = useState(false);
-  const [legalInitialDocId, setLegalInitialDocId] = useState<LegalDocId | undefined>(undefined);
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -72,14 +70,7 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
     [notificationsOpen, legalOpen]
   );
 
-  const openLegalIndex = () => {
-    setLegalInitialDocId(undefined);
-    setLegalOpen(true);
-  };
-  const openJeuResponsable = () => {
-    setLegalInitialDocId('jeu-responsable');
-    setLegalOpen(true);
-  };
+  const openLegalIndex = () => setLegalOpen(true);
 
   const handleDeleteAccount = async () => {
     setDeleteError(null);
@@ -99,7 +90,7 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
   }
 
   if (legalOpen) {
-    return <LegalScreen initialDocId={legalInitialDocId} onBack={() => setLegalOpen(false)} />;
+    return <LegalScreen onBack={() => setLegalOpen(false)} />;
   }
 
   return (
@@ -125,10 +116,6 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
         </Pressable>
 
         <Text style={styles.sectionTitle}>À propos</Text>
-        <Pressable style={styles.linkRow} onPress={openJeuResponsable}>
-          <Text style={styles.linkRowLabel}>Jeu responsable</Text>
-          <Text style={styles.linkRowChevron}>›</Text>
-        </Pressable>
         <Pressable style={styles.linkRow} onPress={openLegalIndex}>
           <Text style={styles.linkRowLabel}>Informations légales</Text>
           <Text style={styles.linkRowChevron}>›</Text>

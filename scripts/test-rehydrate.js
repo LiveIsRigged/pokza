@@ -20,7 +20,7 @@
 //     --outDir scripts/cm --module commonjs --target es2020 --rootDir pokza-app/src --skipLibCheck
 // puis : node scripts/test-rehydrate.js
 
-const { postToSeed, seedHistory } = require('./cm/creator/rehydrate.js');
+const { postToSeed, seedHistory, seedStart, etapesCorrigibles } = require('./cm/creator/rehydrate.js');
 const { buildSeats } = require('./cm/creator/positions.js');
 
 let ko = 0;
@@ -194,6 +194,49 @@ const post = (hand, extra = {}) => ({
   cas('et la mecanique d ante classique reste eteinte', s.context.anteType, 'none');
   cas('pas d etape preflop en bomb pot',
     seedHistory(s).map((x) => x.phase), ['context', 'holeCards', 'street-flop']);
+}
+
+// ── 7. Reprendre a une etape choisie, plutot qu'a la publication ─────────────────────────────────
+// Le createur ne sait AVANCER qu'en reconstruisant : quitter l'etape 1 remplace la liste d'actions
+// par les seules blindes. Ouvrir « a l'etape 1 et derouler » reviendrait donc a retaper la main.
+// D'ou le choix de l'etape AVANT d'entrer, qui se pose sur son instantane.
+{
+  cas('les etapes proposees sur une main complete',
+    etapesCorrigibles(post(main())).map((e) => e.label),
+    ['Préflop', 'Flop', 'Turn', 'Rivière', 'Juste le texte']);
+
+  reset();
+  const plieePreflop = main({
+    board: {},
+    actions: [
+      a('preflop', 's-sb', 'post-sb', 2), a('preflop', 's-bb', 'post-bb', 5),
+      a('preflop', 's-utg', 'fold'), a('preflop', 's-hj', 'fold'), a('preflop', 's-co', 'fold'),
+      a('preflop', 's-btn', 'raise', 15), a('preflop', 's-sb', 'fold'), a('preflop', 's-bb', 'fold'),
+    ],
+  });
+  cas('une main pliee preflop ne propose pas de flop a corriger',
+    etapesCorrigibles(post(plieePreflop)).map((e) => e.label), ['Préflop', 'Juste le texte']);
+
+  const seed = postToSeed(post(main()));
+
+  const parDefaut = seedStart(seed);
+  cas('sans etape demandee, on ouvre sur la publication', parDefaut.phase, 'review');
+  cas('et la main y est entiere', parDefaut.etat.actions.length, seed.actions.length);
+
+  const auTurn = seedStart(seed, 'street-turn');
+  cas('reprendre au turn ouvre bien au turn', auTurn.phase, 'street-turn');
+  cas('le flop est distribue, le turn non',
+    [!!auTurn.etat.board.flop, auTurn.etat.board.turn ?? null], [true, null]);
+  cas('les actions s arretent a la fin du flop',
+    auTurn.etat.actions.map((x) => x.id),
+    ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10', 'a11']);
+  cas('et le « ‹ » peut encore redescendre les etapes d avant',
+    auTurn.history.map((x) => x.phase),
+    ['context', 'holeCards', 'street-preflop', 'street-flop']);
+
+  // Le garde-fou : demander une etape que la main n'a pas jouee ne doit pas ouvrir un ecran vide.
+  cas('une etape non jouee retombe sur la publication',
+    seedStart(postToSeed(post(plieePreflop)), 'street-river').phase, 'review');
 }
 
 console.log(ko === 0 ? '\n🎉 tout passe' : `\n${ko} cas en échec`);

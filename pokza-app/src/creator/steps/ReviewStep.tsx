@@ -42,6 +42,11 @@ interface ReviewStepProps {
    * l'aller-retour réseau publie la main une deuxième fois — et rien côté base ne l'en empêche
    * (vérifié : deux insertions identiques simultanées sont toutes deux acceptées). */
   submitting?: boolean;
+  /**
+   * Reprise d'une main existante (« Corriger la main ») : le geste n'est pas une première
+   * publication, et le bouton doit le dire. Absent = création normale.
+   */
+  republication?: boolean;
 }
 
 export function ReviewStep({
@@ -56,6 +61,7 @@ export function ReviewStep({
   onCreateGroup,
   onOpenGroupPicker,
   submitting,
+  republication = false,
 }: ReviewStepProps) {
   const update = (patch: Partial<ReviewData>) => onChange({ ...value, ...patch });
 
@@ -76,10 +82,14 @@ export function ReviewStep({
 
   return (
     <WizardScreen
-      title="Publier"
+      title={republication ? 'Republier' : 'Publier'}
       subtitle="Derniers détails"
       onNext={onSubmit}
-      nextLabel={submitting ? 'Publication…' : 'Publier la main'}
+      nextLabel={
+        submitting
+          ? (republication ? 'Republication…' : 'Publication…')
+          : (republication ? 'Republier la main' : 'Publier la main')
+      }
       nextDisabled={
         submitting ||
         !value.title.trim() ||

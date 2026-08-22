@@ -18,6 +18,8 @@ import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 import { abbreviateChips, formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
 import { formatRelativeDate } from '../../utils/relativeDate';
 import { wasEdited } from '../../utils/postEdited';
+import { etapesCorrigibles } from '../../creator/rehydrate';
+import type { Phase } from '../../creator/types';
 import { friendEchoLabel } from '../../utils/friendEchoLabel';
 import { BlockIcon, CommentIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, SpadeIcon, TrashIcon } from '../ui/icons';
 
@@ -42,9 +44,10 @@ interface PostCardProps {
    * (👑) que dans la liste des membres du groupe, cf. GroupScreen. */
   isGroupFounder?: boolean;
   onEdit?: () => void;
-  /** Rouvre la main dans le créateur pour en refaire le déroulé, puis la republie (cf. `mode`
-   * « correct » dans App.tsx). Distinct d'`onEdit`, qui ne touche qu'au texte du post. */
-  onCorrect?: () => void;
+  /** Rouvre la main dans le créateur À L'ÉTAPE DEMANDÉE pour en refaire le déroulé, puis la
+   * republie (cf. `mode` « correct » dans App.tsx). Distinct d'`onEdit`, qui ne touche qu'au texte
+   * du post. L'étape est choisie dans la feuille de confirmation, avant d'entrer. */
+  onCorrect?: (depuis: Phase) => void;
   onDelete?: () => void;
   onToggleLike?: () => void;
   onPressAuthor?: () => void;
@@ -198,6 +201,10 @@ function PostCardInner({
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingCorrect, setConfirmingCorrect] = useState(false);
+  // Calculées à l'ouverture de la feuille, pas à chaque rendu de carte : redémonter la main pour
+  // savoir quelles streets elle a jouées coûte trop cher pour un fil de dix cartes.
+  const [etapes, setEtapes] = useState<{ phase: Phase; label: string }[]>([]);
+  const [etapeChoisie, setEtapeChoisie] = useState<Phase>('review');
   const [confirmingBlock, setConfirmingBlock] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
@@ -233,6 +240,17 @@ function PostCardInner({
     commentCount > 0 ? `${commentCount} commentaire${commentCount > 1 ? 's' : ''}` : null,
     voteTotal > 0 ? `${voteTotal} vote${voteTotal > 1 ? 's' : ''}` : null,
   ].filter(Boolean) as string[];
+  // Ce que l'étape choisie va coûter en ressaisie. Reprendre une street efface celles qui suivent
+  // — y compris la sienne, dont l'instantané précède ses propres actions. Une liste sans articles
+  // (« flop, turn, rivière ») plutôt qu'une phrase : « le turn » et « la rivière » n'ont pas le
+  // même genre, et la tournure qui les accorde tous devient illisible.
+  const consequenceEtape = (() => {
+    if (etapeChoisie === 'review') return "Le déroulé n'est pas touché.";
+    const streets = etapes.filter((e) => e.phase !== 'review');
+    const i = streets.findIndex((e) => e.phase === etapeChoisie);
+    if (i < 0) return '';
+    return `À ressaisir : ${streets.slice(i).map((e) => e.label.toLowerCase()).join(', ')}.`;
+  })();
   const correctionWarning =
     pertes.length > 0
       ? `Elle est republiée avec une date neuve, et ${pertes.join(', ')} ne la suivent pas.`
@@ -268,7 +286,20 @@ function PostCardInner({
     ? [
         ...(onEdit ? [{ label: 'Modifier le post', icon: PencilIcon, onPress: onEdit }] : []),
         ...(onCorrect
-          ? [{ label: 'Corriger la main', icon: SpadeIcon, onPress: () => setConfirmingCorrect(true) }]
+          ? [{
+              label: 'Corriger la main',
+              icon: SpadeIcon,
+              onPress: () => {
+                const liste = etapesCorrigibles(post);
+                setEtapes(liste);
+                // Présélection sur la DERNIÈRE street jouée : c'est celle qui préserve le plus de
+                // saisie, puisque reprendre une étape efface toutes les suivantes. Se tromper vers
+                // l'aval se rattrape avec « ‹ » ; se tromper vers l'amont fait retaper la main.
+                const streets = liste.filter((e) => e.phase !== 'review');
+                setEtapeChoisie((streets[streets.length - 1] ?? liste[0]).phase);
+                setConfirmingCorrect(true);
+              },
+            }]
           : []),
         ...(onDelete
           ? [{ label: 'Supprimer la main', icon: TrashIcon, destructive: true, onPress: () => setConfirmingDelete(true) }]
@@ -497,12 +528,31 @@ function PostCardInner({
           title="Corriger cette main ?"
           message={correctionWarning}
           confirmLabel="Corriger"
+          // Rouge seulement quand il y a vraiment quelque chose à perdre — la règle que se donne
+          // `ConfirmSheet` elle-même. Une main que personne n'a touchée ne mérite pas l'alarme.
+          destructive={pertes.length > 0}
           onCancel={() => setConfirmingCorrect(false)}
           onConfirm={() => {
             setConfirmingCorrect(false);
-            onCorrect();
+            onCorrect(etapeChoisie);
           }}
-        />
+        >
+          <View style={styles.etapesRow}>
+            {etapes.map((e) => {
+              const active = e.phase === etapeChoisie;
+              return (
+                <Pressable
+                  key={e.phase}
+                  style={[styles.etapeChip, active && styles.etapeChipActive]}
+                  onPress={() => setEtapeChoisie(e.phase)}
+                >
+                  <Text style={[styles.etapeChipText, active && styles.etapeChipTextActive]}>{e.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {!!consequenceEtape && <Text style={styles.etapeConsequence}>{consequenceEtape}</Text>}
+        </ConfirmSheet>
       )}
       {isOwnPost && (
         <ConfirmSheet
@@ -599,6 +649,37 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '700',
     color: colors.textSecondary,
+  },
+  etapesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  etapeChip: {
+    borderWidth: 1,
+    borderColor: borders.default,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  etapeChipActive: {
+    backgroundColor: colors.action,
+    borderColor: colors.action,
+  },
+  etapeChipText: {
+    ...typography.dateLocation,
+    color: colors.textSecondary,
+  },
+  etapeChipTextActive: {
+    color: '#fff',
+  },
+  etapeConsequence: {
+    ...typography.dateLocation,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
   visibilityBadge: {
     flexShrink: 0,

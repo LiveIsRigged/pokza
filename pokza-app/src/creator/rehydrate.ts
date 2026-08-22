@@ -1,5 +1,5 @@
 import type { Action, Board, Card, Position, Post, Seat, Street } from '../types/poker';
-import type { AnteType, ContextData, ReviewData, Snapshot } from './types';
+import type { AnteType, ContextData, Phase, ReviewData, Snapshot } from './types';
 import { DEFAULT_CONTEXT } from './types';
 
 /**
@@ -193,4 +193,68 @@ export function seedHistory(seed: CreatorSeed): Snapshot[] {
   }
 
   return snaps;
+}
+
+/** Libellé de chaque étape reprenable, tel qu'il s'affiche dans la feuille « Corriger la main ». */
+const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
+  'street-preflop': 'Préflop',
+  'street-flop': 'Flop',
+  'street-turn': 'Turn',
+  'street-river': 'Rivière',
+  review: 'Juste le texte',
+};
+
+/**
+ * Les étapes qu'on peut proposer de reprendre pour CETTE main — celles qu'elle a réellement
+ * jouées. Une main pliée preflop n'a pas de flop à corriger, et le proposer quand même mènerait
+ * à un écran vide.
+ *
+ * `review` ferme toujours la liste : c'est le cas « je ne touche pas au déroulé, seulement au
+ * texte » — le même service que « Modifier le post », mais atteignable sans ressortir du menu.
+ */
+export function etapesCorrigibles(post: Post): { phase: Phase; label: string }[] {
+  const streets = seedHistory(postToSeed(post))
+    .map((s) => s.phase)
+    .filter((p) => p.startsWith('street-'));
+  return [...streets, 'review' as Phase].map((phase) => ({ phase, label: LIBELLE_ETAPE[phase] ?? phase }));
+}
+
+/** L'état exact à poser dans le créateur pour reprendre une main à une étape donnée. */
+export interface SeedStart {
+  phase: Phase;
+  etat: Snapshot;
+  /** Ce qui précède l'étape reprise : le « ‹ » continue de redescendre normalement. */
+  history: Snapshot[];
+}
+
+/**
+ * Ouvre la main à l'étape demandée plutôt qu'à la publication.
+ *
+ * POURQUOI CE N'EST PAS « ouvrir à l'étape 1 et dérouler » : quitter l'étape 1 RECONSTRUIT les
+ * blindes et remplace la liste d'actions par elles seules (cf. `LiveHandCreator`). Avancer efface,
+ * seul le retour arrière restaure. Reprendre à une étape, c'est donc se poser SUR son instantané —
+ * ce que `seedHistory` a déjà calculé — et garder le reste comme historique.
+ *
+ * `depuis` absent ou `review` → la main s'ouvre complète, sur l'étape de publication.
+ */
+export function seedStart(seed: CreatorSeed, depuis?: Phase): SeedStart {
+  const history = seedHistory(seed);
+  const complet: Snapshot = {
+    phase: 'review',
+    context: seed.context,
+    seats: seed.seats,
+    heroCards: seed.heroCards,
+    actions: seed.actions,
+    activeSeatIds: seed.activeSeatIds,
+    board: seed.board,
+    board2: seed.board2,
+    revealedCards: seed.revealedCards,
+  };
+
+  const idx = depuis ? history.findIndex((s) => s.phase === depuis) : -1;
+  // Étape inconnue de cette main (elle ne l'a pas jouée) : on retombe sur la publication plutôt
+  // que d'ouvrir un écran qui n'a pas lieu d'être.
+  if (idx < 0) return { phase: 'review', etat: complet, history };
+
+  return { phase: history[idx].phase, etat: history[idx], history: history.slice(0, idx) };
 }

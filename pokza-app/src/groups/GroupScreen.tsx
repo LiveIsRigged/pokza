@@ -1,5 +1,6 @@
 import React, { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
+import type { Phase } from '../creator/types';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, radius, spacing, tints, typography } from '../theme/theme';
@@ -35,7 +36,7 @@ interface GroupScreenProps {
   currentUserName: string;
   onBack: () => void;
   onEditPost: (postId: string) => void;
-  onCorrectPost: (postId: string) => void;
+  onCorrectPost: (postId: string, depuis: Phase) => void;
   onInviteMembers: (groupId: string) => void;
   /** Ouvre le profil d'un membre ou de l'auteur d'une main — comme le clic sur un auteur dans le feed. */
   onSelectProfile: (profileId: string) => void;
@@ -443,7 +444,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
                   isGroupFounder={post.authorId === group.ownerId}
                   onDelete={() => handleDelete(post.id)}
                   onEdit={() => onEditPost(post.id)}
-                  onCorrect={() => onCorrectPost(post.id)}
+                  onCorrect={(depuis) => onCorrectPost(post.id, depuis)}
                   onToggleLike={() => handleToggleLike(post.id)}
                   onPressAuthor={() => onSelectProfile(post.authorId)}
                   onSelectProfile={onSelectProfile}

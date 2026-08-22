@@ -11,7 +11,7 @@ import { buildSeats, getActingOrder } from './positions';
 import { committedBySeat } from '../engine/handEngine';
 import type { ContextData, Phase, ReviewData, Snapshot } from './types';
 import { defaultContextForPlayer, loadContextPrefs, saveContextPrefs } from './contextPrefs';
-import { seedHistory, type CreatorSeed } from './rehydrate';
+import { seedStart, type CreatorSeed } from './rehydrate';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { GroupPickerScreen } from '../groups/GroupPickerScreen';
 import {
@@ -51,6 +51,12 @@ interface LiveHandCreatorProps {
    * jusqu'à celle qu'on veut refaire. Absent = création normale, à partir d'une table vide.
    */
   initial?: CreatorSeed;
+  /**
+   * Étape sur laquelle s'ouvrir quand `initial` est fourni. Absente → l'étape de publication, main
+   * complète. L'auteur désigne son étape AVANT d'entrer (cf. la feuille « Corriger la main »),
+   * plutôt que d'enchaîner les « ‹ » une fois dedans.
+   */
+  initialPhase?: Phase;
 }
 
 export function LiveHandCreator({
@@ -63,32 +69,36 @@ export function LiveHandCreator({
   groups,
   onCreateGroup,
   initial,
+  initialPhase,
 }: LiveHandCreatorProps) {
   // Table de départ d'après le profil, calculée une fois : sert d'état initial ET de base au
   // chargement des réglages mémorisés, qui la recouvrent (cf. l'effet plus bas).
   const playerDefaults = useRef<ContextData>(defaultContextForPlayer({ formatFavori, varianteFavorite }));
-  const [phase, setPhase] = useState<Phase>(initial ? 'review' : 'context');
-  const [context, setContext] = useState<ContextData>(initial?.context ?? playerDefaults.current);
-  const [seats, setSeats] = useState<Seat[]>(initial?.seats ?? []);
+  // Calculé une seule fois : `seedStart` est pur, mais le recalculer à chaque rendu ne servirait
+  // qu'à jeter le résultat — les états ci-dessous ne lisent leur valeur initiale qu'au montage.
+  const [depart] = useState(() => (initial ? seedStart(initial, initialPhase) : null));
+  const [phase, setPhase] = useState<Phase>(depart ? depart.phase : 'context');
+  const [context, setContext] = useState<ContextData>(depart?.etat.context ?? playerDefaults.current);
+  const [seats, setSeats] = useState<Seat[]>(depart?.etat.seats ?? []);
   // Longueur variable selon la variante (2/4/5) : remplie à l'étape "Tes cartes", et retaillée à la
   // sortie du contexte si la variante a changé (cf. onNext de ContextStep).
-  const [heroCards, setHeroCards] = useState<(Card | undefined)[]>(initial?.heroCards ?? []);
-  const [actions, setActions] = useState<Action[]>(initial?.actions ?? []);
-  const [activeSeatIds, setActiveSeatIds] = useState<string[]>(initial?.activeSeatIds ?? []);
-  const [board, setBoard] = useState<Board>(initial?.board ?? {});
+  const [heroCards, setHeroCards] = useState<(Card | undefined)[]>(depart?.etat.heroCards ?? []);
+  const [actions, setActions] = useState<Action[]>(depart?.etat.actions ?? []);
+  const [activeSeatIds, setActiveSeatIds] = useState<string[]>(depart?.etat.activeSeatIds ?? []);
+  const [board, setBoard] = useState<Board>(depart?.etat.board ?? {});
   // Second board d'un double board bomb pot ; reste vide en un seul board.
-  const [board2, setBoard2] = useState<Board>(initial?.board2 ?? {});
+  const [board2, setBoard2] = useState<Board>(depart?.etat.board2 ?? {});
   const [review, setReview] = useState<ReviewData>(
     initial?.review ?? { title: '', description: '', voteQuestion: '', visibility: 'public' }
   );
   // Cartes montrées par les adversaires à l'abattage (seatId -> deux cartes, éventuellement partielles).
-  const [revealedCards, setRevealedCards] = useState<Record<string, (Card | undefined)[]>>(initial?.revealedCards ?? {});
+  const [revealedCards, setRevealedCards] = useState<Record<string, (Card | undefined)[]>>(depart?.etat.revealedCards ?? {});
   // Réglage global à la main (pas par adversaire, cf. ShowdownStep) : une fois activé, les mains
   // adverses saisies ci-dessus restent visibles dans le replayer même perdantes. Comme
   // `review.visibility`, ce n'est pas dans `Snapshot` — persiste tel quel à travers la navigation
   // arrière/avant plutôt que d'être restauré à une valeur antérieure.
   const [revealShowdown, setRevealShowdown] = useState(initial?.revealShowdown ?? false);
-  const [history, setHistory] = useState<Snapshot[]>(initial ? seedHistory(initial) : []);
+  const [history, setHistory] = useState<Snapshot[]>(depart?.history ?? []);
   // Change à chaque changement de phase, pour forcer un remount propre des écrans de street
   // (sinon revenir en arrière puis ré-avancer réutilise un composant à l'état "terminé").
   const [phaseKey, setPhaseKey] = useState(0);
@@ -605,6 +615,7 @@ export function LiveHandCreator({
           onBack={goBack}
           onSubmit={() => void finalize(actions, board)}
           submitting={submitting}
+          republication={!!initial}
           groups={orderedGroups}
           defaultGroupId={preselectedGroupId}
           onCreateGroup={onCreateGroup}

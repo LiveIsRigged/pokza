@@ -26,6 +26,13 @@ export interface ConfirmSheetProps {
   loading?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  /**
+   * Rare, et volontairement limité : un choix qui CONDITIONNE l'action confirmée, glissé entre le
+   * message et les boutons (cf. « Corriger la main », où l'on désigne l'étape à reprendre avant
+   * d'ouvrir le créateur). Pas un fourre-tout : la feuille reste un texte et deux boutons partout
+   * ailleurs, et c'est ce qui la rend reconnaissable.
+   */
+  children?: React.ReactNode;
 }
 
 /**
@@ -45,6 +52,7 @@ export function ConfirmSheet({
   loading = false,
   onCancel,
   onConfirm,
+  children,
 }: ConfirmSheetProps) {
   const anim = useRef(new Animated.Value(0)).current;
   // Reste monté le temps de l'animation de fermeture (sinon la feuille disparaît d'un coup).
@@ -86,6 +94,7 @@ export function ConfirmSheet({
         </View>
         <Text style={styles.title}>{title}</Text>
         {message && <Text style={styles.message}>{message}</Text>}
+        {children}
         <Pressable
           style={[styles.confirmButton, { backgroundColor: tint }, loading && styles.buttonDisabled]}
           onPress={onConfirm}
