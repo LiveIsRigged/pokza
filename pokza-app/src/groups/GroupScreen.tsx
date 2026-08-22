@@ -8,6 +8,7 @@ import {
   deleteGroup,
   fetchGroup,
   fetchGroupMembers,
+  markGroupSeen,
   removeGroupMember,
   type Group,
   type GroupMember,
@@ -160,6 +161,10 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
         setError(errorMessage(err));
         setLoading(false);
       });
+    // Ouvrir la page suffit à marquer le groupe comme vu. Volontairement hors du `Promise.all` :
+    // si l'appel échoue, la pastille restera simplement affichée — ça ne doit pas empêcher la page
+    // de s'afficher.
+    markGroupSeen(groupId).catch(() => {});
   };
 
   useEffect(() => {

@@ -7,6 +7,7 @@ import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';
 import { NewGroupForm } from './NewGroupForm';
 import { formatRelativeDate } from '../utils/relativeDate';
+import { formatBadgeCount } from '../components/ui/SideMenu';
 
 /**
  * Nombre de groupes à partir duquel le champ de recherche apparaît. Une ligne fait 64 pt et
@@ -128,6 +129,13 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
                 {subtitle(item)}
               </Text>
             </View>
+            {/* Mains publiées ici depuis la dernière visite, les siennes exclues. Même pastille que
+                celles du menu latéral — un seul objet « compteur » dans le produit. */}
+            {item.unseenCount != null && item.unseenCount > 0 && (
+              <View style={styles.unseenBadge}>
+                <Text style={styles.unseenBadgeText}>{formatBadgeCount(item.unseenCount)}</Text>
+              </View>
+            )}
           </Pressable>
         )}
         ListFooterComponent={
@@ -196,8 +204,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: borders.hairline,
   },
+  // `flex: 1` et non `flexShrink: 1` seul : sans quoi le bloc de texte s'arrête à sa largeur de
+  // contenu et la pastille se colle contre lui au lieu de tenir le bout de la ligne.
   groupTexts: {
-    flexShrink: 1,
+    flex: 1,
   },
   groupName: {
     ...typography.authorName,
@@ -207,6 +217,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  // Valeurs reprises telles quelles de `rowBadge` (SideMenu) : les deux pastilles du produit
+  // doivent être le même objet, pas deux dessins voisins.
+  unseenBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: radius.full,
+    paddingHorizontal: 6,
+    backgroundColor: colors.action,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unseenBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   createButton: {
     marginTop: spacing.lg,

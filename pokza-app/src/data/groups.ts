@@ -14,6 +14,15 @@ export interface Group {
   lastPostAt?: string;
   /** Membres acceptés, invitations en attente exclues. Même origine que `lastPostAt`. */
   memberCount?: number;
+  /**
+   * Mains publiées dans ce groupe depuis la dernière visite du joueur, les siennes exclues. Vient
+   * de la RPC `my_groups` (cf. docs/dev/mains-non-vues.sql), qui part de la date d'adhésion tant
+   * qu'on n'y est jamais entré. Se remet à zéro en ouvrant le groupe (`markGroupSeen`).
+   *
+   * Ce compte NE dérive PAS des notifications : le déclencheur `notify_group_posted` n'en écrit
+   * qu'une par groupe et par tranche de deux heures, donc une soirée entière n'en produit qu'une.
+   */
+  unseenCount?: number;
 }
 
 export type GroupMemberStatus = 'pending' | 'accepted';
@@ -49,6 +58,7 @@ function rowToGroup(row: GroupRow): Group {
 interface MyGroupRow extends GroupRow {
   last_post_at: string | null;
   member_count: number | null;
+  unseen_count: number | null;
 }
 
 /**
@@ -71,7 +81,15 @@ export async function fetchMyGroups(): Promise<Group[]> {
     ...rowToGroup(row),
     lastPostAt: row.last_post_at ?? undefined,
     memberCount: row.member_count ?? undefined,
+    unseenCount: row.unseen_count ?? undefined,
   }));
+}
+
+/** Marque le groupe comme vu (RPC `mark_group_seen`) : remet son compteur de mains non vues à zéro.
+ * Appelé à l'ouverture de la page du groupe. */
+export async function markGroupSeen(groupId: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_group_seen', { p_group_id: groupId });
+  if (error) throw error;
 }
 
 export async function fetchGroup(groupId: string): Promise<Group> {

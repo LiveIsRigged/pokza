@@ -1208,6 +1208,9 @@ function AppContent() {
           {
             label: 'Mes groupes privés',
             icon: GroupTableIcon,
+            // Total des mains non vues, tous groupes confondus — même pastille que « Mes
+            // invitations » juste au-dessus.
+            badge: myGroups.reduce((total, group) => total + (group.unseenCount ?? 0), 0),
             onPress: () => {
               setMenuOpen(false);
               setMode('groups');

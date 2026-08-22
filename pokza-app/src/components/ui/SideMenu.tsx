@@ -17,6 +17,16 @@ const PANEL_WIDTH = 288;
 const ROW_ICON_SIZE = 21;
 
 /**
+ * Au-delà, la pastille affiche « 99+ ». Elle fait 20 pt de haut : un nombre à trois chiffres
+ * l'étire au point qu'elle ne se lit plus comme une pastille. Vaut pour toutes les lignes du menu
+ * — invitations comme groupes.
+ */
+export const BADGE_MAX = 99;
+export function formatBadgeCount(count: number): string {
+  return count > BADGE_MAX ? `${BADGE_MAX}+` : String(count);
+}
+
+/**
  * Ouverture du menu en glissant du bord gauche vers le centre. À poser sur le conteneur du feed :
  * `<View {...useMenuEdgeSwipe(open, !menuOpen).panHandlers}>`. Alias du détecteur de bord partagé
  * (cf. `useLeftEdgeSwipe`), que le retour arrière des écrans empilés réutilise à l'identique.
@@ -148,7 +158,7 @@ export function SideMenu({
                 <Text style={styles.rowLabel}>{item.label}</Text>
                 {item.badge != null && item.badge > 0 && (
                   <View style={styles.rowBadge}>
-                    <Text style={styles.rowBadgeText}>{item.badge}</Text>
+                    <Text style={styles.rowBadgeText}>{formatBadgeCount(item.badge)}</Text>
                   </View>
                 )}
               </Pressable>
