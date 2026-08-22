@@ -21,7 +21,7 @@ import { wasEdited } from '../../utils/postEdited';
 import { etapesCorrigibles } from '../../creator/rehydrate';
 import type { Phase } from '../../creator/types';
 import { friendEchoLabel } from '../../utils/friendEchoLabel';
-import { BlockIcon, CommentIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, SpadeIcon, TrashIcon } from '../ui/icons';
+import { BlockIcon, CommentIcon, CopyIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, SpadeIcon, TrashIcon } from '../ui/icons';
 
 const DESCRIPTION_LINES = 3;
 /** Taille commune des trois icônes sous une main (j'aime / commenter / partager) : elles
@@ -48,6 +48,10 @@ interface PostCardProps {
    * republie (cf. `mode` « correct » dans App.tsx). Distinct d'`onEdit`, qui ne touche qu'au texte
    * du post. L'étape est choisie dans la feuille de confirmation, avant d'entrer. */
   onCorrect?: (depuis: Phase) => void;
+  /** Republie une COPIE de la main devant l'audience de son choix. C'est la sortie de secours du
+   * verrou d'audience : une main publiée ne change plus de public, mais son auteur peut toujours
+   * en refaire une neuve ailleurs. L'originale reste où elle est, avec ses commentaires. */
+  onDuplicate?: () => void;
   onDelete?: () => void;
   onToggleLike?: () => void;
   onPressAuthor?: () => void;
@@ -191,6 +195,7 @@ function PostCardInner({
   isGroupFounder,
   onEdit,
   onCorrect,
+  onDuplicate,
   onDelete,
   onToggleLike,
   onPressAuthor,
@@ -277,7 +282,11 @@ function PostCardInner({
   // « Modifier le post » et « Corriger la main » ne font pas la même chose et le disent : le
   // premier ne touche qu'au texte (titre, description, contexte), le second refait le déroulé et
   // republie. L'ancien libellé « Modifier la main » promettait le second en ne faisant que le
-  // premier.
+  // premier. « Dupliquer la main » complète la série : même déroulé, autre public, main neuve.
+  //
+  // Dupliquer n'a PAS de feuille de confirmation, contrairement à corriger et supprimer : il
+  // n'y a rien à perdre — l'originale ne bouge pas et le geste s'arrête sur un formulaire, qu'on
+  // peut quitter sans rien publier. Ce que la copie n'emporte pas se dit dans ce formulaire.
   const menuItems: OverflowMenuItem[] = isOwnPost
     ? [
         ...(onEdit ? [{ label: 'Modifier le post', icon: PencilIcon, onPress: onEdit }] : []),
@@ -297,6 +306,7 @@ function PostCardInner({
               },
             }]
           : []),
+        ...(onDuplicate ? [{ label: 'Dupliquer la main', icon: CopyIcon, onPress: onDuplicate }] : []),
         ...(onDelete
           ? [{ label: 'Supprimer la main', icon: TrashIcon, destructive: true, onPress: () => setConfirmingDelete(true) }]
           : []),

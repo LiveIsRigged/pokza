@@ -226,6 +226,17 @@ export function PencilIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: 
   );
 }
 
+/** Deux feuilles superposées — « Dupliquer la main ». Le glyphe dit qu'il y en aura DEUX : c'est
+ *  la moitié du message, l'originale restant en place là où elle a été publiée. */
+export function CopyIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={8.5} y={3.5} width={12} height={14} rx={2.5} {...line(color)} />
+      <Path d="M15.5 20.5 H6 A2.5 2.5 0 0 1 3.5 18 V7" {...line(color)} />
+    </Svg>
+  );
+}
+
 /** Drapeau — « Signaler » une main ou un joueur. */
 export function FlagIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
   return (

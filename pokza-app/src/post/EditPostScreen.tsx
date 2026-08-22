@@ -32,12 +32,31 @@ export interface PostEdits {
 
 interface EditPostScreenProps {
   post: Post;
+  /**
+   * `edit` modifie la main existante ; `duplicate` en republie une COPIE neuve, sans commentaire,
+   * ni j'aime, ni vote. Le même formulaire sert aux deux parce que la duplication n'a besoin de
+   * rien de plus : choisir la nouvelle audience, et retoucher le texte — « pour mes potes » ne se
+   * raconte pas comme « pour tout le monde ». Passer par le créateur complet aurait rouvert le
+   * déroulé de la main en écriture, qui n'est pas le sujet.
+   */
+  mode?: 'edit' | 'duplicate';
   onSave: (edits: PostEdits) => void;
   onCancel: () => void;
   groups: Group[];
   /** Crée un groupe sans quitter l'écran et renvoie son id — même raison qu'au créateur : partir
    * vers « Mes groupes » démonterait cet écran et jetterait les modifications en cours. */
   onCreateGroup: (name: string) => Promise<string>;
+}
+
+/** Ce que l'auteur lit à la place des chips quand l'audience est verrouillée. On NOMME le groupe
+ *  plutôt que d'écrire « Groupe privé » : savoir devant qui la main est publiée est justement ce
+ *  qui permet de décider s'il vaut le coup de la dupliquer ailleurs. */
+function visibilityLabel(post: Post): string {
+  if (post.visibility === 'group') {
+    return post.groupName ? `Groupe privé « ${post.groupName} »` : 'Groupe privé';
+  }
+  if (post.visibility === 'private') return 'Privée';
+  return 'Publique';
 }
 
 export interface EditPostScreenHandle {
@@ -51,13 +70,16 @@ export interface EditPostScreenHandle {
 }
 
 /**
- * Ne touche qu'au texte/contexte du post (titre, description, vote, lieu, buy-in, niveau,
- * visibilité) — le déroulé de la main (cartes, actions, board) est un fait déjà arrivé, il ne se
- * réécrit pas après publication. D'où un formulaire dédié plutôt que de rouvrir tout le wizard de
- * création, qui contient plein de champs (blindes, sièges...) qui ne devraient plus bouger ici.
+ * Ne touche qu'au texte/contexte du post (titre, description, vote, lieu, buy-in, niveau) — le
+ * déroulé de la main (cartes, actions, board) est un fait déjà arrivé, il ne se réécrit pas après
+ * publication. D'où un formulaire dédié plutôt que de rouvrir tout le wizard de création, qui
+ * contient plein de champs (blindes, sièges...) qui ne devraient plus bouger ici.
+ *
+ * L'AUDIENCE, elle, ne se modifie QUE sur un brouillon (`private`) — ou en mode `duplicate`, qui
+ * fabrique une main neuve. Voir `audienceVerrouillee` plus bas.
  */
 export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScreenProps>(function EditPostScreen(
-  { post, onSave, onCancel, groups, onCreateGroup },
+  { post, mode = 'edit', onSave, onCancel, groups, onCreateGroup },
   ref
 ) {
   const [title, setTitle] = useState(post.title);
@@ -102,6 +124,21 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
   const isTournament = post.hand.gameType === 'tournament';
   const hasVoteQuestion = voteQuestion.trim().length > 0;
 
+  /**
+   * L'audience d'une main publiée ne change plus. Commentaires, j'aime et votes suivent tous la
+   * visibilité du post, relue à chaque lecture : passer un groupe privé en public rendrait publics
+   * des textes écrits devant huit amis et l'opinion que chacun a votée, et dans l'autre sens leur
+   * auteur perdrait l'accès aux siens. Même geste que réécrire le déroulé sous les commentaires
+   * qui le discutent, donc même réponse.
+   *
+   * Un brouillon échappe à la règle : personne d'autre ne l'a jamais vue, donc personne n'a rien
+   * écrit dessous. C'est le seul cas où changer d'audience ne coûte rien à personne.
+   *
+   * Le vrai verrou est en base (trigger `posts_lock_audience`, cf. `docs/dev/audience-verrou.sql`) :
+   * ce qui suit n'est que l'écran qui cesse de proposer un geste refusé.
+   */
+  const audienceVerrouillee = mode === 'edit' && post.visibility !== 'private';
+
   const updateOption = (index: number, text: string) => {
     const next = [...voteOptions];
     next[index] = text;
@@ -130,10 +167,14 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
   return (
     <>
       <WizardScreen
-        title="Modifier le post"
-        subtitle="Le déroulé de la main ne change pas, seulement le texte"
+        title={mode === 'duplicate' ? 'Dupliquer la main' : 'Modifier le post'}
+        subtitle={
+          mode === 'duplicate'
+            ? 'Une nouvelle main, avec le même déroulé et l’audience de ton choix'
+            : 'Le déroulé de la main ne change pas, seulement le texte'
+        }
         onNext={handleSave}
-        nextLabel="Enregistrer"
+        nextLabel={mode === 'duplicate' ? 'Republier' : 'Enregistrer'}
         nextDisabled={!title.trim() || titleTooLong || (visibility === 'group' && !groupId)}
         onBack={onCancel}
       >
@@ -223,27 +264,41 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
           )}
 
           <Text style={styles.label}>Visibilité</Text>
-          <View style={styles.row}>
-            <Chip label="Public" selected={visibility === 'public'} onPress={() => setVisibility('public')} />
-            <Chip label="Privé" selected={visibility === 'private'} onPress={() => setVisibility('private')} />
-            <Chip
-              label="Groupe privé"
-              selected={visibility === 'group'}
-              onPress={() => {
-                setVisibility('group');
-                setGroupId((g) => g ?? preselectedGroupId);
-              }}
-            />
-          </View>
 
-          {visibility === 'group' && (
-            <GroupChoice
-              groups={orderedGroups}
-              selectedId={groupId}
-              onSelect={setGroupId}
-              onCreateGroup={onCreateGroup}
-              onOpenPicker={() => setGroupPickerOpen(true)}
-            />
+          {/* Une PHRASE à la place des chips, et pas des chips grisés ni rien du tout : l'auteur
+              qui cherche ce réglage doit comprendre pourquoi il a disparu — et découvrir la sortie
+              de secours à l'instant précis où il en a besoin. */}
+          {audienceVerrouillee ? (
+            <Text style={styles.audienceVerrou}>
+              {visibilityLabel(post)} — l’audience d’une main publiée ne change plus, pour ne pas
+              déplacer les commentaires devant un autre public que celui devant lequel ils ont été
+              écrits. Pour la republier ailleurs : ⋯ puis « Dupliquer la main ».
+            </Text>
+          ) : (
+            <>
+              <View style={styles.row}>
+                <Chip label="Public" selected={visibility === 'public'} onPress={() => setVisibility('public')} />
+                <Chip label="Privé" selected={visibility === 'private'} onPress={() => setVisibility('private')} />
+                <Chip
+                  label="Groupe privé"
+                  selected={visibility === 'group'}
+                  onPress={() => {
+                    setVisibility('group');
+                    setGroupId((g) => g ?? preselectedGroupId);
+                  }}
+                />
+              </View>
+
+              {visibility === 'group' && (
+                <GroupChoice
+                  groups={orderedGroups}
+                  selectedId={groupId}
+                  onSelect={setGroupId}
+                  onCreateGroup={onCreateGroup}
+                  onOpenPicker={() => setGroupPickerOpen(true)}
+                />
+              )}
+            </>
           )}
         </View>
       </WizardScreen>
@@ -314,5 +369,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  audienceVerrou: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
   },
 });

@@ -38,6 +38,7 @@ interface GroupScreenProps {
   onBack: () => void;
   onEditPost: (postId: string) => void;
   onCorrectPost: (postId: string, depuis: Phase) => void;
+  onDuplicatePost: (postId: string) => void;
   onInviteMembers: (groupId: string) => void;
   /** Ouvre le profil d'un membre ou de l'auteur d'une main — comme le clic sur un auteur dans le feed. */
   onSelectProfile: (profileId: string) => void;
@@ -72,6 +73,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
     onBack,
     onEditPost,
     onCorrectPost,
+    onDuplicatePost,
     onInviteMembers,
     onSelectProfile,
     onCreateHand,
@@ -450,6 +452,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
                   onDelete={() => handleDelete(post.id)}
                   onEdit={() => onEditPost(post.id)}
                   onCorrect={(depuis) => onCorrectPost(post.id, depuis)}
+                  onDuplicate={() => onDuplicatePost(post.id)}
                   onToggleLike={() => handleToggleLike(post.id)}
                   onPressAuthor={() => onSelectProfile(post.authorId)}
                   onSelectProfile={onSelectProfile}

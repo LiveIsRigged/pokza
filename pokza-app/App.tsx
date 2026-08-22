@@ -136,6 +136,7 @@ function AppContent() {
     | 'create'
     | 'edit'
     | 'correct'
+    | 'duplicate'
     | 'profile'
     | 'groups'
     | 'group'
@@ -167,6 +168,10 @@ function AppContent() {
   const [correctReturnMode, setCorrectReturnMode] = useState<'feed' | 'profile' | 'group' | 'post'>('feed');
   // L'étape désignée dans la feuille de confirmation, avant même d'ouvrir le créateur.
   const [correctFromPhase, setCorrectFromPhase] = useState<Phase | undefined>(undefined);
+  // « Dupliquer la main » : même besoin que la correction — le POST ENTIER, parce que la copie
+  // republie `hand`, et une relecture en base quand la main n'est pas dans `posts`.
+  const [duplicatingPost, setDuplicatingPost] = useState<Post | null>(null);
+  const [duplicateReturnMode, setDuplicateReturnMode] = useState<'feed' | 'profile' | 'group' | 'post'>('feed');
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
   // Permet au glissement de bord (`Screen`) de refermer d'abord un panneau local de `GroupScreen`
   // (Modifier le groupe / Liste de membres / Exclure un membre) au lieu de sauter directement à
@@ -384,6 +389,24 @@ function AppContent() {
       setCorrectReturnMode(retour);
       setCorrectFromPhase(depuis);
       setMode('correct');
+    } catch (err) {
+      setPostsError(errorMessage(err));
+    }
+  };
+
+  // Même relecture que `openCorrection`, et pour la même raison : la main peut être affichée depuis
+  // un profil ou un groupe sans être dans `posts`, et une copie a besoin de `hand`.
+  const openDuplication = async (postId: string, retour: 'feed' | 'profile' | 'group' | 'post') => {
+    const local = posts.find((p) => p.id === postId) ?? (editingPostFallback?.id === postId ? editingPostFallback : null);
+    try {
+      const post = local ?? (await fetchPost(postId));
+      if (!post) {
+        setPostsError("Cette main n'est plus disponible.");
+        return;
+      }
+      setDuplicatingPost(post);
+      setDuplicateReturnMode(retour);
+      setMode('duplicate');
     } catch (err) {
       setPostsError(errorMessage(err));
     }
@@ -788,6 +811,67 @@ function AppContent() {
     );
   }
 
+  // « Dupliquer la main » — la sortie de secours du verrou d'audience. L'originale n'est PAS
+  // supprimée : c'est ce qui distingue ce geste de « Corriger la main », qui republie et remplace.
+  // Une main de groupe privé peut ainsi être rejouée en public sans emmener avec elle les
+  // commentaires écrits devant le groupe, qui restent là où ils ont été écrits.
+  if (mode === 'duplicate' && duplicatingPost) {
+    const onBack = () => {
+      setDuplicatingPost(null);
+      setMode(duplicateReturnMode);
+    };
+    const onSwipeBack = () => {
+      if (editPostScreenRef.current?.handleBack()) return;
+      onBack();
+    };
+    const original = duplicatingPost;
+    return (
+      <Screen onBack={onSwipeBack}>
+        <EditPostScreen
+          ref={editPostScreenRef}
+          post={original}
+          mode="duplicate"
+          groups={myGroups}
+          onCreateGroup={createGroupInPlace}
+          onCancel={onBack}
+          onSave={async (edits) => {
+            try {
+              // `hand` vient de l'originale et n'a jamais transité par le formulaire : la copie a
+              // exactement le même déroulé, aucun chemin ne permet de le retoucher au passage.
+              const saved = await createPost(
+                {
+                  authorId: session.user.id,
+                  location: edits.location,
+                  buyIn: edits.buyIn,
+                  level: edits.level,
+                  title: edits.title,
+                  description: edits.description,
+                  hand: original.hand,
+                  voteQuestion: edits.voteQuestion,
+                  voteOptions: edits.voteOptions,
+                  visibility: edits.visibility,
+                  groupId: edits.groupId,
+                },
+                displayName ?? 'Joueur',
+                myAvatarUrl
+              );
+              setPosts((p) => [saved, ...p]);
+              trackEvent('hand_duplicated', { visibility: saved.visibility });
+              setDuplicatingPost(null);
+              // Retour au feed : la copie y est en tête, ce qui montre qu'elle existe VRAIMENT.
+              // Revenir sur la page d'origine afficherait l'ancienne main inchangée, et laisserait
+              // croire que le geste n'a rien fait.
+              setMode('feed');
+            } catch (err) {
+              setPostsError(errorMessage(err));
+            }
+          }}
+        />
+        <StatusBar style="dark" />
+      </Screen>
+    );
+  }
+
   if (mode === 'invitations') {
     const onBack = () => {
       setMode('feed');
@@ -831,6 +915,7 @@ function AppContent() {
             setMode('edit');
           }}
           onCorrectPost={(postId, depuis) => void openCorrection(postId, 'post', depuis)}
+          onDuplicatePost={(postId) => void openDuplication(postId, 'post')}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -864,6 +949,7 @@ function AppContent() {
             setMode('edit');
           }}
           onCorrectPost={(postId, depuis) => void openCorrection(postId, 'profile', depuis)}
+          onDuplicatePost={(postId) => void openDuplication(postId, 'profile')}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -949,6 +1035,7 @@ function AppContent() {
             setMode('edit');
           }}
           onCorrectPost={(postId, depuis) => void openCorrection(postId, 'group', depuis)}
+          onDuplicatePost={(postId) => void openDuplication(postId, 'group')}
           onInviteMembers={(groupId) => {
             setInvitingGroupId(groupId);
             setMode('inviteToGroup');
@@ -1156,6 +1243,7 @@ function AppContent() {
                 setMode('edit');
               }}
               onCorrect={(depuis) => void openCorrection(post.id, 'feed', depuis)}
+              onDuplicate={() => void openDuplication(post.id, 'feed')}
               onToggleLike={() => handleToggleLike(post.id)}
               onPressAuthor={() => {
                 setViewingProfileId(post.authorId);
