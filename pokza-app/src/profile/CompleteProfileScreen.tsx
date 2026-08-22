@@ -6,6 +6,8 @@ import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
 import { countryByCode, flagEmoji } from '../data/countries';
 import { borders, colors, radius } from '../theme/theme';
+import { LegalScreen } from '../legal/LegalScreen';
+import type { LegalDocId } from '../legal/legalContent';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
 interface CompleteProfileScreenProps {
@@ -59,6 +61,12 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
   const [frequenceJeu, setFrequenceJeu] = useState<string | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+  // Consentement au traitement de l'état civil (prénom, nom, date de naissance). Distinct de
+  // l'acceptation des CGU recueillie à l'inscription : le RGPD interdit de grouper un consentement
+  // avec l'acceptation d'un contrat, et il doit être recueilli là où la donnée est saisie — donc
+  // ici, pas sur `AuthScreen`. Voir docs/legal/README.md (retour du juriste, 21/08/2026).
+  const [identityConsent, setIdentityConsent] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDocId | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,10 +77,17 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
     Boolean(country) &&
     Boolean(formatFavori) &&
     Boolean(frequenceJeu) &&
+    identityConsent &&
     !submitting;
 
   const handleSubmit = async () => {
     setError(null);
+    // Doublon volontaire de la garde `canSubmit` : le bouton est déjà désactivé, mais un
+    // consentement ne doit jamais pouvoir être contourné par un chemin d'appel oublié.
+    if (!identityConsent) {
+      setError("Pour valider ton profil, tu dois consentir au traitement de ton prénom, de ton nom et de ta date de naissance.");
+      return;
+    }
     const dateNaissance = parseBirthDate(day, month, year);
     if (!dateNaissance) {
       setError('Date de naissance invalide.');
@@ -92,6 +107,10 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
       p_prenom: prenom.trim(),
       p_nom: nom.trim(),
       p_date_naissance: dateNaissance,
+      // Trace du consentement : la base horodate elle-même (`now()`), on ne lui
+      // envoie que le fait qu'il a été donné. Un horodatage fourni par le client
+      // serait une preuve que le client peut écrire lui-même — donc pas une preuve.
+      p_consentement_identite: identityConsent,
     });
 
     if (rpcError) {
@@ -127,140 +146,165 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Pressable style={styles.backButton} onPress={onBack} hitSlop={8} disabled={submitting}>
-        <Text style={styles.backText}>‹ Retour</Text>
-      </Pressable>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Pressable style={styles.backButton} onPress={onBack} hitSlop={8} disabled={submitting}>
+          <Text style={styles.backText}>‹ Retour</Text>
+        </Pressable>
 
-      <Text style={styles.title}>Complète ton profil</Text>
-      <Text style={styles.subtitle}>Dernière étape avant de rejoindre Pokza</Text>
+        <Text style={styles.title}>Complète ton profil</Text>
+        <Text style={styles.subtitle}>Dernière étape avant de rejoindre Pokza</Text>
 
-      <Text style={styles.label}>Pseudo</Text>
-      <TextInput
-        style={styles.input}
-        value={pseudo}
-        onChangeText={setPseudo}
-        autoCapitalize="none"
-        placeholder="Ton pseudo sur Pokza"
-        maxLength={PSEUDO_MAX_LENGTH}
-      />
-
-      <Text style={styles.label}>Prénom</Text>
-      <TextInput style={styles.input} value={prenom} onChangeText={setPrenom} placeholder="Prénom" />
-
-      <Text style={styles.label}>Nom</Text>
-      <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder="Nom" />
-      <Text style={styles.reassurance}>
-        Ton prénom et ton nom restent privés — ils ne sont jamais affichés publiquement, sauf si tu choisis
-        ci-dessous d'afficher ton nom plutôt que ton pseudo.
-      </Text>
-
-      <Text style={styles.label}>Afficher sur Pokza</Text>
-      <View style={styles.row}>
-        <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
-        <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
-      </View>
-
-      <Text style={styles.label}>Pays</Text>
-      <Pressable style={styles.selector} onPress={() => setCountryPickerOpen(true)}>
-        {country ? (
-          <Text style={styles.selectorValue}>
-            {flagEmoji(country)} {countryByCode(country)?.name ?? country}
-          </Text>
-        ) : (
-          <Text style={styles.selectorPlaceholder}>Choisir un pays</Text>
-        )}
-        <Text style={styles.selectorChevron}>›</Text>
-      </Pressable>
-
-      <Text style={styles.label}>Date de naissance</Text>
-      <View style={styles.dobRow}>
+        <Text style={styles.label}>Pseudo</Text>
         <TextInput
-          style={styles.dobInput}
-          value={day}
-          onChangeText={setDay}
-          placeholder="JJ"
-          keyboardType="number-pad"
-          maxLength={2}
+          style={styles.input}
+          value={pseudo}
+          onChangeText={setPseudo}
+          autoCapitalize="none"
+          placeholder="Ton pseudo sur Pokza"
+          maxLength={PSEUDO_MAX_LENGTH}
         />
-        <TextInput
-          style={styles.dobInput}
-          value={month}
-          onChangeText={setMonth}
-          placeholder="MM"
-          keyboardType="number-pad"
-          maxLength={2}
-        />
-        <TextInput
-          style={[styles.dobInput, styles.dobInputYear]}
-          value={year}
-          onChangeText={setYear}
-          placeholder="AAAA"
-          keyboardType="number-pad"
-          maxLength={4}
-        />
-      </View>
-      <Text style={styles.reassurance}>Ta date de naissance reste privée — elle n'est jamais affichée, quel que soit ton choix ci-dessus.</Text>
 
-      <View style={styles.bioLabelRow}>
-        <Text style={styles.label}>Description (optionnel)</Text>
-        <Text style={styles.bioCounter}>
-          {bio.length}/{BIO_MAX_LENGTH}
+        <Text style={styles.label}>Prénom</Text>
+        <TextInput style={styles.input} value={prenom} onChangeText={setPrenom} placeholder="Prénom" />
+
+        <Text style={styles.label}>Nom</Text>
+        <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder="Nom" />
+        <Text style={styles.reassurance}>
+          Ton prénom et ton nom restent privés — ils ne sont jamais affichés publiquement, sauf si tu choisis
+          ci-dessous d'afficher ton nom plutôt que ton pseudo.
         </Text>
-      </View>
-      <TextInput
-        style={[styles.input, styles.bioInput]}
-        value={bio}
-        onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
-        placeholder="Quelques mots sur toi…"
-        multiline
-        maxLength={BIO_MAX_LENGTH}
-      />
-      <Text style={styles.reassurance}>Affichée sur ton profil. Tu peux la laisser vide et l'écrire plus tard.</Text>
 
-      <Text style={styles.label}>Format favori</Text>
-      <View style={styles.row}>
-        {FORMAT_OPTIONS.map((opt) => (
-          <Chip key={opt.value} label={opt.label} selected={formatFavori === opt.value} onPress={() => setFormatFavori(opt.value)} />
-        ))}
-      </View>
+        <Text style={styles.label}>Afficher sur Pokza</Text>
+        <View style={styles.row}>
+          <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
+          <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
+        </View>
 
-      <Text style={styles.label}>Variante préférée</Text>
-      <View style={styles.row}>
-        {VARIANTE_OPTIONS.map((opt) => (
-          <Chip key={opt.value} label={opt.label} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
-        ))}
-      </View>
-      <Text style={styles.reassurance}>Les mains de cette variante remonteront un peu dans ton fil. Modifiable à tout moment.</Text>
+        <Text style={styles.label}>Pays</Text>
+        <Pressable style={styles.selector} onPress={() => setCountryPickerOpen(true)}>
+          {country ? (
+            <Text style={styles.selectorValue}>
+              {flagEmoji(country)} {countryByCode(country)?.name ?? country}
+            </Text>
+          ) : (
+            <Text style={styles.selectorPlaceholder}>Choisir un pays</Text>
+          )}
+          <Text style={styles.selectorChevron}>›</Text>
+        </Pressable>
 
-      <Text style={styles.label}>À quelle fréquence joues-tu au poker ?</Text>
-      <View style={styles.column}>
-        {FREQUENCE_OPTIONS.map((opt) => (
-          <Chip key={opt.value} label={opt.label} selected={frequenceJeu === opt.value} onPress={() => setFrequenceJeu(opt.value)} />
-        ))}
-      </View>
+        <Text style={styles.label}>Date de naissance</Text>
+        <View style={styles.dobRow}>
+          <TextInput
+            style={styles.dobInput}
+            value={day}
+            onChangeText={setDay}
+            placeholder="JJ"
+            keyboardType="number-pad"
+            maxLength={2}
+          />
+          <TextInput
+            style={styles.dobInput}
+            value={month}
+            onChangeText={setMonth}
+            placeholder="MM"
+            keyboardType="number-pad"
+            maxLength={2}
+          />
+          <TextInput
+            style={[styles.dobInput, styles.dobInputYear]}
+            value={year}
+            onChangeText={setYear}
+            placeholder="AAAA"
+            keyboardType="number-pad"
+            maxLength={4}
+          />
+        </View>
+        <Text style={styles.reassurance}>Ta date de naissance reste privée — elle n'est jamais affichée, quel que soit ton choix ci-dessus.</Text>
 
-      {error && <Text style={styles.error}>{error}</Text>}
+        <Pressable style={styles.consentBox} onPress={() => setIdentityConsent((v) => !v)}>
+          <View style={[styles.checkbox, identityConsent && styles.checkboxChecked]}>
+            {identityConsent && <Text style={styles.checkboxTick}>✓</Text>}
+          </View>
+          <Text style={styles.consentText}>
+            Je consens à ce que Pokza traite mes données personnelles, dont mon prénom, mon nom et ma date de
+            naissance, afin de vérifier ma majorité — voir la{' '}
+            <Text style={styles.consentLink} onPress={() => setLegalDoc('confidentialite')}>
+              politique de confidentialité
+            </Text>
+            .
+          </Text>
+        </Pressable>
 
-      <Pressable style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={!canSubmit}>
-        {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Valider mon profil</Text>}
-      </Pressable>
+        <View style={styles.bioLabelRow}>
+          <Text style={styles.label}>Description (optionnel)</Text>
+          <Text style={styles.bioCounter}>
+            {bio.length}/{BIO_MAX_LENGTH}
+          </Text>
+        </View>
+        <TextInput
+          style={[styles.input, styles.bioInput]}
+          value={bio}
+          onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
+          placeholder="Quelques mots sur toi…"
+          multiline
+          maxLength={BIO_MAX_LENGTH}
+        />
+        <Text style={styles.reassurance}>Affichée sur ton profil. Tu peux la laisser vide et l'écrire plus tard.</Text>
 
-      <CountryPicker
-        visible={countryPickerOpen}
-        selectedCode={country}
-        allowClear={false}
-        onSelect={(code) => {
-          setCountry(code);
-          setCountryPickerOpen(false);
-        }}
-        onClose={() => setCountryPickerOpen(false)}
-      />
-    </ScrollView>
+        <Text style={styles.label}>Format favori</Text>
+        <View style={styles.row}>
+          {FORMAT_OPTIONS.map((opt) => (
+            <Chip key={opt.value} label={opt.label} selected={formatFavori === opt.value} onPress={() => setFormatFavori(opt.value)} />
+          ))}
+        </View>
+
+        <Text style={styles.label}>Variante préférée</Text>
+        <View style={styles.row}>
+          {VARIANTE_OPTIONS.map((opt) => (
+            <Chip key={opt.value} label={opt.label} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
+          ))}
+        </View>
+        <Text style={styles.reassurance}>Les mains de cette variante remonteront un peu dans ton fil. Modifiable à tout moment.</Text>
+
+        <Text style={styles.label}>À quelle fréquence joues-tu au poker ?</Text>
+        <View style={styles.column}>
+          {FREQUENCE_OPTIONS.map((opt) => (
+            <Chip key={opt.value} label={opt.label} selected={frequenceJeu === opt.value} onPress={() => setFrequenceJeu(opt.value)} />
+          ))}
+        </View>
+
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <Pressable style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={!canSubmit}>
+          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Valider mon profil</Text>}
+        </Pressable>
+
+        <CountryPicker
+          visible={countryPickerOpen}
+          selectedCode={country}
+          allowClear={false}
+          onSelect={(code) => {
+            setCountry(code);
+            setCountryPickerOpen(false);
+          }}
+          onClose={() => setCountryPickerOpen(false)}
+        />
+      </ScrollView>
+
+      {legalDoc && (
+        <View style={styles.legalOverlay}>
+          <LegalScreen initialDocId={legalDoc} onBack={() => setLegalDoc(null)} />
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   container: {
     paddingHorizontal: 24,
     paddingTop: 60,
@@ -376,6 +420,60 @@ const styles = StyleSheet.create({
   },
   dobInputYear: {
     width: 84,
+  },
+  // Encadré plutôt qu'une simple ligne : le RGPD veut un consentement « clairement distinguable
+  // des autres questions » (art. 7 §2) — noyé entre la date de naissance et la description, il ne
+  // le serait pas.
+  consentBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: borders.default,
+    borderRadius: radius.md,
+    backgroundColor: '#fff',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: borders.strong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.action,
+    borderColor: colors.action,
+  },
+  checkboxTick: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+  },
+  consentLink: {
+    color: colors.action,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  legalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 20,
   },
   error: {
     color: '#C0392B',

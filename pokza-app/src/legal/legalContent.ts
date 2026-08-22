@@ -43,7 +43,7 @@ const mentions: LegalDoc = {
       body: [
         `Le service Pokza est édité par ${EDITEUR}, personne physique agissant à titre non professionnel (aucune société n'est constituée à ce stade, le service est gratuit et sans but lucratif).`,
         `Contact : ${CONTACT_EMAIL}.`,
-        `Conformément à l'article 6, III, 2° de la loi n° 2004-575 du 21 juin 2004 (LCEN), en tant qu'éditeur non professionnel, l'adresse postale de l'éditeur n'est pas rendue publique ; elle est communiquée à l'hébergeur et peut être obtenue auprès de lui dans les conditions prévues par la loi.`,
+        `Conformément à l'article 1-1, II de la loi n° 2004-575 du 21 juin 2004 (LCEN), en tant qu'éditeur non professionnel, l'adresse postale de l'éditeur n'est pas rendue publique ; elle est communiquée à l'hébergeur et peut être obtenue auprès de lui dans les conditions prévues par la loi.`,
       ],
     },
     {
@@ -87,10 +87,10 @@ const cgu: LegalDoc = {
     {
       heading: '3. Accès et inscription',
       body: [
-        "Le Service est strictement réservé aux personnes âgées d'au moins 18 ans. En créant un compte, tu déclares avoir 18 ans révolus.",
-        "• Un seul compte par personne.",
-        "• Tu fournis des informations exactes et les tiens à jour.",
-        "• Tu es responsable de la confidentialité de ton mot de passe et des activités réalisées depuis ton compte.",
+        "Le Service est strictement réservé aux personnes âgées d'au moins 18 ans. En créant un compte, tu déclares avoir 18 ans révolus. Les règles sont les suivantes :",
+        "• un seul compte par personne ;",
+        "• tu fournis des informations exactes et les tiens à jour ;",
+        "• tu es responsable de la confidentialité de ton mot de passe et des activités réalisées depuis ton compte.",
       ],
     },
     {
@@ -106,13 +106,13 @@ const cgu: LegalDoc = {
         "• la promotion d'opérateurs de jeux d'argent illégaux ;",
         "• les arnaques et escroqueries ;",
         "• tout contenu impliquant des mineurs ou destiné à des mineurs ;",
-        "• plus généralement tout contenu illicite ou contraire aux présentes conditions.",
+        "• plus généralement, tout contenu illicite ou contraire aux présentes conditions.",
       ],
     },
     {
       heading: '5. Modération',
       body: [
-        "La modération est réactive : nous ne surveillons pas les contenus a priori, mais nous agissons promptement lorsqu'un contenu manifestement illicite nous est signalé, conformément à notre statut d'hébergeur (LCEN).",
+        "La modération est réactive : nous ne surveillons pas les contenus a priori, mais nous agissons promptement lorsqu'un contenu manifestement illicite nous est signalé, conformément à notre statut d'hébergeur au sens de la loi pour la confiance dans l'économie numérique (LCEN).",
         "Tu peux signaler un contenu ou un compte via le bouton « Signaler ». Selon la situation, nous pouvons masquer ou retirer un contenu, et avertir, suspendre ou bannir un compte. Ces mesures sont réversibles et l'auteur d'un contenu retiré en est informé.",
         "Tu peux aussi bloquer un autre utilisateur : vous ne verrez plus vos contenus et interactions respectifs.",
       ],
@@ -134,7 +134,7 @@ const cgu: LegalDoc = {
       heading: '8. Disponibilité et responsabilité',
       body: [
         "Le Service est fourni « en l'état », sans garantie de disponibilité continue ni d'absence d'erreur. Pokza peut faire évoluer, suspendre ou interrompre tout ou partie du Service.",
-        "Pokza n'est pas responsable des contenus publiés par les utilisateurs. Dans les limites permises par la loi, la responsabilité de l'éditeur ne saurait être engagée pour les dommages indirects liés à l'utilisation du Service.",
+        "Pokza n'est pas responsable des contenus publiés par les utilisateurs. Dans les limites permises par la loi, la responsabilité de l'hébergeur ne saurait être engagée pour les dommages indirects liés à l'utilisation du Service.",
       ],
     },
     {
@@ -155,7 +155,7 @@ const cgu: LegalDoc = {
       body: [
         "Les présentes conditions sont soumises au droit français.",
         "En cas de différend, nous t'invitons à nous contacter d'abord à " + CONTACT_EMAIL + " pour rechercher une solution amiable.",
-        "À défaut d'accord amiable, les tribunaux français sont compétents dans les conditions prévues par la loi.",
+        "À défaut d'accord amiable, le tribunal judiciaire de Paris est compétent, sous réserve des règles impératives permettant à un consommateur de saisir la juridiction de son lieu de domicile.",
       ],
     },
   ],
@@ -173,36 +173,34 @@ const confidentialite: LegalDoc = {
       ],
     },
     {
-      heading: 'Données que nous traitons',
+      heading: 'Données personnelles et finalités du traitement',
       body: [
-        "• Identification : adresse e-mail et mot de passe (celui-ci est stocké chiffré par notre prestataire d'authentification, jamais en clair).",
-        "• Profil : pseudo, photo de profil, description, pays, préférences de jeu.",
-        "• État civil : prénom, nom et date de naissance — utilisés pour vérifier ta majorité (18 ans) et, selon ton choix, afficher ton nom.",
-        "• Contenus : mains publiées, commentaires, images et GIF, mentions « j'aime », votes et sondages.",
-        "• Relations : amis, demandes d'amis, groupes privés.",
-        "• Notifications liées à ton activité.",
-        "• Données d'usage et techniques : interactions dans l'app, journaux, adresse IP, identifiants techniques — via notre outil de mesure d'audience.",
+        "• Identification : adresse e-mail et mot de passe (celui-ci est stocké chiffré par notre prestataire d'authentification) ;",
+        "• Profil : pseudo, photo de profil, description, pays, préférences de jeu ;",
+        "• État civil : prénom, nom et date de naissance — utilisés pour vérifier ta majorité (18 ans) et, selon ton choix, afficher ton nom ;",
+        "• Données d'usage et techniques : interactions dans l'app mesurées par notre outil d'audience, journaux techniques, adresse IP et identifiants techniques de ton navigateur ou de ton appareil.",
+        "Ces données d'usage et techniques sont traitées pour veiller à la maintenance du Service, à sa modération et à la sécurité des utilisateurs.",
+        "Ton adresse IP est une donnée personnelle à part entière : indépendamment de la mesure d'audience, elle est enregistrée dans les journaux techniques et transmise aux services de vérification anti-robots (Cloudflare) et d'affichage des GIF (GIPHY) décrits plus bas.",
       ],
     },
     {
-      heading: 'Pourquoi et sur quelle base',
+      heading: 'Bases légales du traitement de données personnelles',
       body: [
-        "• Fournir le Service et gérer ton compte — exécution du contrat.",
-        "• Vérifier ta majorité (18 ans) — obligation légale et intérêt légitime.",
-        "• Assurer la sécurité, prévenir les abus et modérer les contenus — obligation légale (hébergeur) et intérêt légitime.",
-        "• Mesurer l'audience et améliorer le Service — intérêt légitime, ou ton consentement lorsque la loi l'exige.",
-        "• T'envoyer les e-mails nécessaires au compte (confirmation, réinitialisation, notifications importantes) — exécution du contrat.",
+        "• Adresse e-mail et mot de passe : exécution du contrat ;",
+        "• Pseudo et photo de profil : exécution du contrat ;",
+        "• Prénom, nom et date de naissance : consentement ;",
+        "• Adresse IP, identifiants techniques : exécution du contrat.",
       ],
     },
     {
       heading: 'Qui a accès à tes données',
       body: [
         "Nous ne vendons pas tes données. Elles sont traitées par des prestataires (sous-traitants) agissant pour notre compte :",
-        "• Supabase (hébergement, base de données, authentification, stockage) — infrastructure AWS, Union européenne (Francfort).",
-        "• PostHog (mesure d'audience), hébergé dans l'Union européenne (eu.posthog.com).",
-        "• Resend (envoi des e-mails du service), établi aux États-Unis — transfert encadré par les clauses contractuelles types.",
-        "• GIPHY (fourniture des GIF) : lorsque tu affiches un GIF, une requête est faite vers GIPHY, ce qui peut transmettre ton adresse IP à ce service.",
-        "• Cloudflare (protection du formulaire de connexion et d'inscription contre les créations de comptes automatisées, service Turnstile), établi aux États-Unis — transfert encadré par les clauses contractuelles types. Lors de cette vérification, ton adresse IP et des signaux techniques de ton navigateur sont transmis à ce service.",
+        "• Supabase (hébergement, base de données, authentification, stockage) — infrastructure AWS, Union européenne (Francfort) ;",
+        "• PostHog (mesure d'audience), hébergé dans l'Union européenne (eu.posthog.com) ;",
+        "• Resend (envoi des e-mails liés au fonctionnement du Service), établi aux États-Unis — transfert encadré par les clauses contractuelles types ;",
+        "• GIPHY (fourniture des GIF) : lorsque tu affiches un GIF, une requête est faite vers GIPHY, ce qui peut transmettre ton adresse IP à ce service ;",
+        "• Cloudflare (protection du formulaire de connexion et d'inscription contre les créations de comptes automatisées, service Turnstile), établi aux États-Unis — transfert encadré par les clauses contractuelles types. Lors de cette vérification, ton adresse IP et les signaux techniques de ton navigateur sont transmis à ce service.",
       ],
     },
     {
@@ -214,9 +212,9 @@ const confidentialite: LegalDoc = {
     {
       heading: 'Durées de conservation',
       body: [
-        "• Compte et contenus : conservés tant que ton compte existe ; supprimés lorsque tu supprimes ton compte.",
-        "• Signalements : supprimés 12 mois après leur traitement.",
-        "• Contenus retirés par la modération : supprimés définitivement 30 jours après leur retrait.",
+        "• Données personnelles du compte : conservées tant que ton compte existe ; supprimées lorsque tu supprimes ton compte ;",
+        "• Signalements : supprimés 12 mois après leur traitement ;",
+        "• Contenus retirés par la modération : supprimés définitivement 30 jours après leur retrait ;",
         "• Journaux techniques (connexion, sécurité) : conservés au maximum 12 mois.",
       ],
     },
