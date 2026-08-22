@@ -269,11 +269,16 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
               qui cherche ce réglage doit comprendre pourquoi il a disparu — et découvrir la sortie
               de secours à l'instant précis où il en a besoin. */}
           {audienceVerrouillee ? (
-            <Text style={styles.audienceVerrou}>
-              {visibilityLabel(post)} — l’audience d’une main publiée ne change plus, pour ne pas
-              déplacer les commentaires devant un autre public que celui devant lequel ils ont été
-              écrits. Pour la republier ailleurs : ⋯ puis « Dupliquer la main ».
-            </Text>
+            <>
+              {/* La valeur d'abord, sur sa propre ligne : la section s'appelle « Visibilité », elle
+                  doit d'abord répondre à « laquelle ? » avant d'expliquer pourquoi elle est figée. */}
+              <Text style={styles.audienceValeur}>{visibilityLabel(post)}</Text>
+              <Text style={styles.audienceVerrou}>
+                Sauf main privée, la visibilité d’une main n’est pas modifiable, pour respecter la
+                confidentialité de ceux qui ont réagi. Tu peux en revanche la republier ailleurs :
+                ⋯ puis « Dupliquer la main ».
+              </Text>
+            </>
           ) : (
             <>
               <View style={styles.row}>
@@ -369,6 +374,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  audienceValeur: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 6,
   },
   audienceVerrou: {
     fontSize: 14,
