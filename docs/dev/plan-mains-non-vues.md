@@ -1,5 +1,22 @@
 # Plan — « mains non vues » par groupe privé
 
+> **EXÉCUTÉ le 2026-08-22 — commit `7462601`. Ne pas rejouer.**
+>
+> Les quatre étapes sont faites, la migration est passée sur DEV **et** PROD, et le calcul a été
+> vérifié deux fois : par impersonation SQL sur DEV (1 attendu, 1 obtenu, 0 après visite), puis en
+> conditions réelles en PROD avec un second compte.
+>
+> Ce qui reste ouvert, et pourquoi :
+> - **Le plafond « 99+ » n'a jamais tourné** — il faudrait 100 mains non vues dans un même groupe.
+>   Il est en place dans `SideMenu` (donc « Mes invitations » en profite aussi), validé par lecture
+>   du code seulement.
+> - **Le total du menu = somme des lignes** n'a pas été contrôlé explicitement.
+>
+> Piège rencontré, qui a coûté trois allers-retours : sur DEV, tirer un profil au hasard tombe sur
+> un compte **banni**, et la policy RESTRICTIVE `posts moderation and blocks` masque alors ses mains.
+> Le compteur semblait faux alors que c'était le banc d'essai. Tout script de vérification doit
+> filtrer `private.is_banned` et `private.is_blocked_pair`.
+
 Document de passation, écrit le 2026-08-22 pour être exécuté par une autre session.
 Il est autonome : tout ce qu'il faut savoir est ici.
 
