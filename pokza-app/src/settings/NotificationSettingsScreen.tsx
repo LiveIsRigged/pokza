@@ -11,7 +11,8 @@ const FAMILY_ROWS: { key: keyof NotificationPrefs; label: string }[] = [
   { key: 'comments', label: 'Commentaires et réponses' },
   { key: 'friends', label: 'Amis (demandes et acceptations)' },
   { key: 'groups', label: 'Groupes (invitations et acceptations)' },
-  { key: 'posted', label: 'Mains partagées (amis et groupes)' },
+  { key: 'posted', label: 'Mains de mes amis' },
+  { key: 'posted_groups', label: 'Mains de mes groupes' },
 ];
 
 interface NotificationSettingsScreenProps {

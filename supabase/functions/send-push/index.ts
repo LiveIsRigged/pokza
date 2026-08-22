@@ -106,12 +106,14 @@ function urlFor(n: NotificationRecord): string {
   return '/';
 }
 
-type PrefFamily = 'likes' | 'comments' | 'friends' | 'groups' | 'posted';
+type PrefFamily = 'likes' | 'comments' | 'friends' | 'groups' | 'posted' | 'posted_groups';
 
 /** Famille des Réglages > Notifications à laquelle appartient chaque type — miroir de
  * `notificationPrefs.ts` côté app. `null` = modération, jamais désactivable. `friends`/`groups` ne
- * couvrent que le social (demande, invitation, acceptation) ; les mains postées par un ami ou dans
- * un groupe ont leur propre interrupteur (`posted`), demandé séparément le 16/08. */
+ * couvrent que le social (demande, invitation, acceptation) ; les mains postées ont leurs propres
+ * interrupteurs, demandés séparément le 16/08 puis scindés en deux le 22/08 — `posted` pour les
+ * mains d'un ami, `posted_groups` pour celles d'un groupe privé, afin de pouvoir faire taire l'un
+ * sans perdre l'autre. */
 function familyFor(type: NotificationType): PrefFamily | null {
   switch (type) {
     case 'post_like':
@@ -127,8 +129,9 @@ function familyFor(type: NotificationType): PrefFamily | null {
     case 'group_accept':
       return 'groups';
     case 'friend_posted':
-    case 'group_posted':
       return 'posted';
+    case 'group_posted':
+      return 'posted_groups';
     case 'report_resolved':
     case 'content_removed':
     case 'account_sanctioned':
