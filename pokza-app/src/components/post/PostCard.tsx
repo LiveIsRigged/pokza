@@ -18,7 +18,7 @@ import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 import { abbreviateChips, formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
 import { formatRelativeDate } from '../../utils/relativeDate';
 import { wasEdited } from '../../utils/postEdited';
-import { getOrCreateShareToken, hasShareLink } from '../../data/shares';
+import { getOrCreateShareToken } from '../../data/shares';
 import { etapesCorrigibles } from '../../creator/rehydrate';
 import type { Phase } from '../../creator/types';
 import { friendEchoLabel } from '../../utils/friendEchoLabel';
@@ -212,7 +212,6 @@ function PostCardInner({
   onSelectProfile,
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [confirmingShare, setConfirmingShare] = useState(false);
   const [confirmingCorrect, setConfirmingCorrect] = useState(false);
   // Calculées à l'ouverture de la feuille, pas à chaque rendu de carte : redémonter la main pour
   // savoir quelles streets elle a jouées coûte trop cher pour un fil de dix cartes.
@@ -286,26 +285,20 @@ function PostCardInner({
   };
 
   /**
-   * Une main publique part directement. Une main privée ou de groupe demande d'abord une
-   * confirmation — mais UNE SEULE FOIS, à la création du lien : une fois qu'il existe, repartager
-   * n'expose rien de plus, et redemander à chaque fois ferait passer l'avertissement pour une
-   * formalité qu'on apprend à balayer.
+   * Aucune confirmation, quelle que soit la visibilité de la main (décision de Victor, 23/08) :
+   * appuyer sur Partager est déjà un geste délibéré, et la feuille de partage du système qui suit
+   * en est une seconde — on y choisit un destinataire avant d'envoyer. Une feuille d'avertissement
+   * de plus faisait trois écrans pour un partage, et surtout elle serait revenue POUR CHAQUE MAIN,
+   * jamais une seule fois : le premier dessin le laissait croire, il était faux.
+   *
+   * Une main publique part par son identifiant, une main privée ou de groupe par son jeton.
    */
   const handleShare = async () => {
     if (post.visibility === 'public') {
       await envoyer(`${POKZA_WEB_ORIGIN}/post/${post.id}`);
       return;
     }
-    try {
-      if (await hasShareLink(post.id)) {
-        await creerLienEtEnvoyer();
-        return;
-      }
-    } catch {
-      // Relecture impossible (réseau) : on demande la confirmation plutôt que de partager en
-      // silence. Le pire cas est un avertissement de trop, jamais un lien créé sans le dire.
-    }
-    setConfirmingShare(true);
+    await creerLienEtEnvoyer();
   };
 
   const handleBlockAuthor = async () => {
@@ -607,28 +600,6 @@ function PostCardInner({
           </View>
           {!!consequenceEtape && <Text style={styles.etapeConsequence}>{consequenceEtape}</Text>}
         </ConfirmSheet>
-      )}
-      {/* Dit la vérité, et rien qu'elle : le lien ne se retire pas, et surtout il se transmet.
-          On ne peut pas empêcher un destinataire de le faire suivre — le secret est dans l'URL, il
-          n'y a pas de compte pour distinguer qui regarde. Promettre autre chose serait mentir.
-          `destructive={false}` : partager sa propre main n'est pas une perte, c'est un choix. */}
-      {isOwnPost && (
-        <ConfirmSheet
-          visible={confirmingShare}
-          icon={ShareIcon}
-          title="Créer un lien vers cette main ?"
-          message={
-            "Toute personne qui aura ce lien pourra voir la main, même sans compte Pokza, et pourra " +
-            "le transmettre. Ton pseudo, les commentaires et les j'aime n'apparaissent pas."
-          }
-          confirmLabel="Créer le lien"
-          destructive={false}
-          onCancel={() => setConfirmingShare(false)}
-          onConfirm={() => {
-            setConfirmingShare(false);
-            void creerLienEtEnvoyer();
-          }}
-        />
       )}
       {isOwnPost && (
         <ConfirmSheet

@@ -34,10 +34,3 @@ export async function getOrCreateShareToken(postId: string, authorId: string): P
   if (again.data?.token) return again.data.token as string;
   throw created.error ?? new Error("Le lien de partage n'a pas pu être créé.");
 }
-
-/** Le lien existe-t-il déjà ? Sert à n'avertir qu'à la PREMIÈRE création : une fois le lien créé,
- *  repartager n'expose rien de nouveau et n'a donc pas à être reconfirmé. */
-export async function hasShareLink(postId: string): Promise<boolean> {
-  const { data } = await supabase.from('post_shares').select('post_id').eq('post_id', postId).maybeSingle();
-  return Boolean(data);
-}

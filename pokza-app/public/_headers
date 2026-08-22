@@ -4,10 +4,11 @@
 # réponses. Il n'y a pas de script Worker dans ce projet (cf. wrangler.jsonc) : c'est donc le
 # seul endroit où poser des en-têtes.
 #
-# ⚠️ À VÉRIFIER APRÈS LE PREMIER DÉPLOIEMENT : que Cloudflare prend bien ce fichier en compte.
+# ✅ VÉRIFIÉ EN LIGNE LE 2026-08-23 : Cloudflare applique bien ce fichier. La CSP, `nosniff`,
+# `X-Frame-Options`, `Permissions-Policy` et `Referrer-Policy` sortent tous sur les réponses de
+# pokza.app, et la règle par chemin `/s/*` plus bas ne sort QUE sur ce chemin. Pas de Worker à
+# écrire. Pour le revérifier après un changement d'hébergement :
 #   curl -sI https://pokza.app | grep -i "content-security-policy\|x-content-type"
-# S'il ne renvoie rien, c'est que la prise en charge de `_headers` n'est pas active sur ce type
-# de déploiement, et il faudra passer par un petit script Worker à la place.
 
 /*
   # ── Protections sans risque de casse ──────────────────────────────────────────────────
