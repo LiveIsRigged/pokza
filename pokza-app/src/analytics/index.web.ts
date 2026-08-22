@@ -52,21 +52,24 @@ export function initAnalytics(): void {
     capture_dead_clicks: false,
     capture_heatmaps: false,
     capture_exceptions: false,
+    // Aucun appel à `identify` n'est fait nulle part : ce réglage garantit donc qu'AUCUN profil
+    // individuel n'est jamais créé. C'est la condition de l'exemption de consentement.
     person_profiles: 'identified_only',
-    persistence: 'localStorage',
+    // Cookie plutôt que localStorage, pour une raison de droit et non de technique : la CNIL
+    // plafonne la durée de vie d'un traceur à 13 mois, et le localStorage ne sait pas expirer —
+    // l'identifiant y serait resté indéfiniment. 395 jours = 13 mois.
+    persistence: 'cookie',
+    cookie_expiration: 395,
     cross_subdomain_cookie: false,
   });
   ready = true;
 }
 
-/** Lie les événements suivants à l'utilisateur connecté (son id Supabase, pas d'e-mail/pseudo). */
-export function identifyUser(userId: string): void {
-  if (!ready) {
-    if (TRACE) console.info('[analytics] identify', userId);
-    return;
-  }
-  posthog.identify(userId);
-}
+// `identifyUser` a ete RETIRE le 22/08/2026, deliberement. Il envoyait l'identifiant Supabase du
+// compte a PostHog, ce qui rendait les evenements rattachables nominativement et faisait tomber
+// l'exemption de consentement (cf. docs/legal/README.md). Le reintroduire impose un bandeau de
+// consentement avant toute initialisation de PostHog — ce n'est pas une ligne a remettre a la
+// legere.
 
 export function trackEvent(event: AnalyticsEvent, props?: AnalyticsProps): void {
   if (!ready) {

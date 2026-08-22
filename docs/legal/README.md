@@ -62,31 +62,26 @@ l'app (menu → « Informations légales »).
 - [x] **Entité Supabase** — TRANCHÉ le 21/08/2026 : on garde **celle du DPA** (Supabase Pte. Ltd,
       Singapour). Le juriste : « celle du DPA ça doit être bon, après y'a un moment où tu peux pas
       faire beaucoup plus que te fier à leurs informations. » Aucun changement de texte.
-- [ ] **CONDITION cookies (bloquant technique)** : la section « exemptée de consentement » n'est vraie
-      QUE si PostHog est effectivement configuré ainsi : mesure d'audience seule, IP anonymisée, pas
-      de suivi inter-sites, pas de recoupement, durée de vie ≤ 13 mois, pas de partage à des tiers.
-      Si l'une de ces conditions n'est pas remplie → il FAUT un bandeau de consentement.
-      **PostHog est désormais intégré** (`pokza-app/src/analytics/index.web.ts`, web seulement) et le
-      code coupe déjà autocapture, session replay, heatmaps, sondages, web vitals et cookies
-      inter-sous-domaines. **Restent à confirmer dans le dashboard PostHog** (hors code) :
-      l'anonymisation d'IP et la rétention ≤ 13 mois. Le juriste a rendu ce point porteur le
-      21/08 (voir son point 4 plus bas) : sans anonymisation d'IP, l'exemption tombe.
-- [x] **Téléphone hébergeur** — TRANCHÉ le 21/08/2026 : **laissé absent**. Supabase ne publie pas
-      de numéro ; le juriste : « laisse absent si tu trouves vraiment rien ». Aucun changement de
-      texte. À reprendre seulement si Supabase venait à en publier un.
-- [x] **Relecture juriste ami** : 1er passage + ses réponses aux 5 questions reçus et intégrés le
-      21/08/2026 (voir plus bas). La case à cocher de consentement est codée, la trace en base est
-      posée et mesurée sur DEV et PROD.
-- [x] **2ᵉ passage juriste** — FAIT le 21/08/2026. Ses 4 réponses (entité Supabase, téléphone
-      hébergeur, réserve consommateur, base légale de l'IP) n'ont demandé **aucun changement de
-      texte**. La question de l'âge qu'il a rouverte a été tranchée en interne, voir plus bas.
-- [x] **`consentement-identite-cloture.sql`** — **FAIT le 22/08/2026 sur DEV et sur PROD**, les deux
-      contrôles renvoient bien deux lignes (`ACTIVE` en `boolean`, `NEUTRALISEE`). L'ancienne
-      signature n'est pas supprimée mais vidée : elle échoue avec un message en français demandant
-      de rouvrir l'application, parce qu'un client servi depuis un cache périmé l'appelle encore et
-      qu'on ne peut plus corriger l'affichage de son bundle. Plus aucun profil ne peut être créé
-      sans consentement ni trace. Suppression définitive possible plus tard, commande dans le
-      `comment on function`.
+- [x] **CONDITION cookies** — TRAITÉE le 22/08/2026, en mesurant les propriétés d'un vrai évènement
+      PostHog et non en lisant les réglages. Trois écarts trouvés, trois corrigés :
+      1. **GeoIP** ajoutait `Latitude` / `Longitude` (plus précis que la ville, que la CNIL n'admet
+         pas pour une mesure exemptée). Transformation **mise en pause** dans PostHog — pause et non
+         suppression, pour pouvoir revenir à une répartition par pays si besoin. Vérifié : un
+         évènement postérieur ne porte plus ni coordonnées, ni pays, ni `$ip`.
+      2. **`identifyUser` envoyait l'identifiant Supabase du compte**, donc la clé primaire de
+         `profiles`. Chaque évènement était rattachable nominativement à un compte : les mentions
+         « données anonymisées » et « absence de recoupement avec d'autres traitements » de la
+         politique étaient fausses, et l'exemption tombait. **Fonction retirée** des deux
+         implémentations et de son appel dans `App.tsx`. La réintroduire impose un bandeau de
+         consentement — c'est écrit dans le fichier.
+      3. **`persistence: 'localStorage'`** ne sait pas expirer, alors que la CNIL plafonne la durée
+         de vie d'un traceur à 13 mois. Passé en `cookie` avec `cookie_expiration: 395`.
+      Le réglage projet « Discard client IP data » est actif (celui d'organisation ne compte pas :
+      il ne s'applique qu'aux projets futurs, sa propre description le dit).
+      **Reste à déployer** — les points 2 et 3 sont du code non poussé.
+      La rétention des évènements n'est pas réglable sur ce plan PostHog ; les deux écrans trouvés
+      concernaient les logs (14 j) et les enregistrements de session (30 j, sans objet puisque
+      `disable_session_recording` est actif).
 - [ ] **Test de bout en bout de l'inscription, en PROD, avant l'ouverture aux testeurs.**
       `CompleteProfileScreen` porte du code neuf jamais vu à l'écran : case de consentement,
       encadré, surcouche vers la politique de confidentialité, blocage du bouton. C'est le premier

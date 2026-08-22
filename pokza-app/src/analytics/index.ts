@@ -7,6 +7,5 @@ import type { AnalyticsEvent, AnalyticsProps } from './events';
  * identiques entre les deux fichiers.
  */
 export function initAnalytics(): void {}
-export function identifyUser(_userId: string): void {}
 export function trackEvent(_event: AnalyticsEvent, _props?: AnalyticsProps): void {}
 export function resetAnalytics(): void {}

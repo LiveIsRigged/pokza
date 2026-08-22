@@ -66,7 +66,7 @@ import { AdminReportDetailScreen } from './src/admin/AdminReportDetailScreen';
 import { AdminUserScreen } from './src/admin/AdminUserScreen';
 import { AdminAuditScreen } from './src/admin/AdminAuditScreen';
 import { clearDeepLinkFromUrl, readInitialDeepLink } from './src/navigation/deepLink';
-import { initAnalytics, identifyUser, resetAnalytics, trackEvent } from './src/analytics';
+import { initAnalytics, resetAnalytics, trackEvent } from './src/analytics';
 
 export default function App() {
   // `SafeAreaProvider` mesure les zones sûres (encoche / Dynamic Island / barre système) et les
@@ -280,9 +280,19 @@ function AppContent() {
     // lui-même reste déclenché par le bouton « Activer les notifications »).
     registerPushServiceWorker();
   }, []);
+  // La mesure d'audience n'identifie PLUS l'utilisateur. On envoyait auparavant
+  // `identifyUser(session.user.id)` — l'identifiant Supabase du compte, donc la clé primaire de
+  // `profiles`. Chaque évènement portait ainsi de quoi le rattacher nominativement à un compte, ce
+  // qui rendait fausses deux affirmations de la politique de confidentialité (« données
+  // anonymisées », « absence de recoupement avec d'autres traitements ») et faisait tomber
+  // l'exemption de consentement de la CNIL. Constaté le 22/08/2026 en lisant les propriétés d'un
+  // vrai évènement dans PostHog, pas le code.
+  //
+  // Il reste `resetAnalytics()` à la déconnexion : PostHog garde un identifiant aléatoire, et on
+  // veut qu'il change quand on quitte un compte — sinon deux personnes sur le même appareil
+  // partageraient le même. Ne PAS réintroduire d'identification sans bandeau de consentement.
   useEffect(() => {
-    if (session?.user?.id) identifyUser(session.user.id);
-    else resetAnalytics();
+    if (!session?.user?.id) resetAnalytics();
   }, [session?.user?.id]);
 
   useEffect(() => {
