@@ -3,9 +3,10 @@
 // à l'inscription (consentement). Rédigés pour un éditeur PERSONNE PHYSIQUE, à
 // titre non professionnel, service gratuit (pas de société / SIRET à ce stade).
 //
-// ⚠️ BROUILLON : à faire relire par un juriste avant l'ouverture publique.
-//    Les 〔…〕 sont des champs à confirmer/compléter — voir docs/legal/README.md.
-//    Passer LEGAL_DRAFT à false une fois la relecture faite (retire le bandeau).
+// Relus par un juriste en deux passes les 21 et 22/08/2026, corrections intégrées : le bandeau
+// « version provisoire » est retiré depuis (LEGAL_DRAFT = false). Toute modification de fond
+// désormais faite ici doit repasser par lui — voir docs/legal/README.md pour l'historique des
+// arbitrages et ce qui reste ouvert.
 // ============================================================================
 
 export type LegalDocId = 'mentions' | 'cgu' | 'confidentialite' | 'jeu-responsable';
@@ -24,8 +25,8 @@ export interface LegalDoc {
   sections: LegalSection[];
 }
 
-export const LEGAL_DRAFT = true;
-export const LEGAL_UPDATED = '〔date de mise en ligne à définir〕';
+export const LEGAL_DRAFT = false;
+export const LEGAL_UPDATED = '22 août 2026';
 
 // ── Coordonnées éditeur (à confirmer) ────────────────────────────────────────
 const EDITEUR = 'Victor Hoogstoël';

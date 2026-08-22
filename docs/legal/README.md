@@ -1,9 +1,15 @@
-# Textes légaux Pokza — état & à compléter
+# Textes légaux Pokza — état & historique
 
-**Statut : BROUILLON.** À faire relire par un juriste avant l'ouverture publique.
-Tant que ce n'est pas relu, un bandeau « Version provisoire, en cours de relecture juridique »
-s'affiche dans l'app. Pour le retirer : passer `LEGAL_DRAFT` à `false` dans
-`pokza-app/src/legal/legalContent.ts`.
+**Statut : EN VIGUEUR depuis le 22 août 2026.** Relus par le juriste en deux passes les 21 et
+22/08/2026, corrections intégrées, `LEGAL_DRAFT = false` et le bandeau « version provisoire » est
+retiré de l'app.
+
+Ce fichier n'est plus une liste de choses à faire mais l'historique des arbitrages : pourquoi
+chaque formulation est ce qu'elle est, ce qui a été tranché avec le juriste, ce qui a été tranché
+sans lui, et ce qui rouvrirait le dossier. À lire avant de toucher au moindre mot de
+`pokza-app/src/legal/legalContent.ts` — plusieurs phrases qui semblent anodines sont le résultat
+d'un aller-retour, et deux d'entre elles décrivent une configuration technique précise qui doit
+rester vraie (mesure d'audience et adresse IP).
 
 ## Où vit le contenu (source de vérité unique)
 
@@ -56,7 +62,7 @@ l'app (menu → « Informations légales »).
       **exempté de consentement** (voir conditions ci-dessous).
 
 ### Reste à faire
-- [ ] **Date de mise en ligne** (`LEGAL_UPDATED`) : à figer le jour du passage `LEGAL_DRAFT=false`
+- [x] **Date de mise en ligne** (`LEGAL_UPDATED`) : figée au **22 août 2026**. (Consigne d'origine :
       (= jour de publication, avant le 25 août). Ce n'est PAS la date de mise en ligne du service, mais
       la date d'entrée en vigueur de cette version des textes.
 - [x] **Entité Supabase** — TRANCHÉ le 21/08/2026 : on garde **celle du DPA** (Supabase Pte. Ltd,
@@ -82,7 +88,7 @@ l'app (menu → « Informations légales »).
       La rétention des évènements n'est pas réglable sur ce plan PostHog ; les deux écrans trouvés
       concernaient les logs (14 j) et les enregistrements de session (30 j, sans objet puisque
       `disable_session_recording` est actif).
-- [ ] **Test de bout en bout de l'inscription, en PROD, avant l'ouverture aux testeurs.**
+- [x] **Test de bout en bout de l'inscription, en PROD** — VALIDÉ par Victor le 22/08/2026.
       `CompleteProfileScreen` porte du code neuf jamais vu à l'écran : case de consentement,
       encadré, surcouche vers la politique de confidentialité, blocage du bouton. C'est le premier
       écran que tous les testeurs verront.
@@ -93,7 +99,7 @@ l'app (menu → « Informations légales »).
       ouvrir `https://pokza.app/?r=1` dans Safari, puis réinstaller le raccourci.
       Sans conséquence pour les testeurs de demain, qui n'ont jamais ouvert l'app et n'ont donc
       aucun cache — mais à savoir pour quiconque y aurait déjà jeté un œil.
-- [ ] **`LEGAL_DRAFT = false`** — le geste final, une fois tout ce qui précède clos.
+- [x] **`LEGAL_DRAFT = false`** — FAIT le 22/08/2026, avec `LEGAL_UPDATED = '22 août 2026'`.
 
 ## Notes pour le juriste
 - **Médiation de la consommation** : volontairement NON mentionnée. Le service est gratuit et
