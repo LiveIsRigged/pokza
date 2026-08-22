@@ -74,3 +74,14 @@
   # n'en a pas besoin : le build ne produit aucun script inline (vérifié dans dist/index.html),
   # ce qui rend cette politique réellement protectrice contre l'injection de code.
   Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://eu-assets.i.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.giphy.com; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.i.posthog.com https://eu-assets.i.posthog.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# ── Liens de partage : hors des moteurs de recherche ──────────────────────────────────────
+# `/s/:token` ouvre une main que son auteur a rendue partageable SANS la rendre publique. On ne
+# peut pas empêcher un destinataire de faire suivre le lien — le secret est dans l'URL, et il n'y
+# a pas de compte pour distinguer qui regarde. Mais « un pote l'a fait suivre à trois copains » et
+# « ma main sort dans les résultats Google » ne sont pas du même ordre : le second se ferme ici.
+#
+# Un lien collé un jour sur un forum ou un Discord indexable serait sinon exploré et conservé.
+# `/post/:id`, lui, n'est PAS couvert : une main publique a le droit d'être trouvée.
+/s/*
+  X-Robots-Tag: noindex, nofollow

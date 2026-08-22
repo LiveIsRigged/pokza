@@ -18,6 +18,7 @@ import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 import { abbreviateChips, formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
 import { formatRelativeDate } from '../../utils/relativeDate';
 import { wasEdited } from '../../utils/postEdited';
+import { getOrCreateShareToken, hasShareLink } from '../../data/shares';
 import { etapesCorrigibles } from '../../creator/rehydrate';
 import type { Phase } from '../../creator/types';
 import { friendEchoLabel } from '../../utils/friendEchoLabel';
@@ -170,8 +171,14 @@ function formatContextLine(post: Post, { withLocation = true }: { withLocation?:
   return parts.join(' · ');
 }
 
-function buildShareContent(post: Post): { title: string; message: string; url: string } {
-  const url = `${POKZA_WEB_ORIGIN}/post/${post.id}`;
+/**
+ * Deux portes vers la même page publique. Une main PUBLIQUE s'ouvre par son identifiant
+ * (`/post/:id`) : elle l'est pour tout le monde, il n'y a rien à protéger. Une main privée ou de
+ * groupe s'ouvre par un JETON (`/s/:token`) que son auteur a explicitement créé — sans quoi son
+ * identifiant suffirait à la lire, et l'UUID de chaque main deviendrait le seul secret protégeant
+ * toutes les mains non publiques de l'app.
+ */
+function buildShareContent(post: Post, url: string): { title: string; message: string; url: string } {
   return { title: post.title, message: `${post.title} — ${formatContextLine(post)}`, url };
 }
 
@@ -205,6 +212,7 @@ function PostCardInner({
   onSelectProfile,
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingShare, setConfirmingShare] = useState(false);
   const [confirmingCorrect, setConfirmingCorrect] = useState(false);
   // Calculées à l'ouverture de la feuille, pas à chaque rendu de carte : redémonter la main pour
   // savoir quelles streets elle a jouées coûte trop cher pour un fil de dix cartes.
@@ -257,11 +265,47 @@ function PostCardInner({
     "Corriger une main, c'est la republier : elle repart à zéro dans le fil. " +
     'Les anciens j\'aime, commentaires et votes seront perdus.';
 
-  const handleShare = async () => {
-    const outcome = await shareOrCopy(buildShareContent(post));
+  const envoyer = async (url: string) => {
+    const outcome = await shareOrCopy(buildShareContent(post, url));
     if (outcome === 'copied') setShareFeedback('Lien copié dans le presse-papiers !');
     else if (outcome === 'unavailable') setShareFeedback("Le partage n'est pas disponible ici.");
     if (outcome === 'copied' || outcome === 'unavailable') setTimeout(() => setShareFeedback(null), 2500);
+  };
+
+  const creerLienEtEnvoyer = async () => {
+    try {
+      // `currentUserId` et non `post.authorId` : c'est exactement ce que vérifie la policy
+      // (`created_by = auth.uid()`). Les deux sont égaux ici, mais autant écrire la même chose
+      // des deux côtés — le jour où ils divergeraient, la base refuserait sans qu'on comprenne.
+      const token = await getOrCreateShareToken(post.id, currentUserId);
+      await envoyer(`${POKZA_WEB_ORIGIN}/s/${token}`);
+    } catch (err) {
+      setShareFeedback(errorMessage(err));
+      setTimeout(() => setShareFeedback(null), 3500);
+    }
+  };
+
+  /**
+   * Une main publique part directement. Une main privée ou de groupe demande d'abord une
+   * confirmation — mais UNE SEULE FOIS, à la création du lien : une fois qu'il existe, repartager
+   * n'expose rien de plus, et redemander à chaque fois ferait passer l'avertissement pour une
+   * formalité qu'on apprend à balayer.
+   */
+  const handleShare = async () => {
+    if (post.visibility === 'public') {
+      await envoyer(`${POKZA_WEB_ORIGIN}/post/${post.id}`);
+      return;
+    }
+    try {
+      if (await hasShareLink(post.id)) {
+        await creerLienEtEnvoyer();
+        return;
+      }
+    } catch {
+      // Relecture impossible (réseau) : on demande la confirmation plutôt que de partager en
+      // silence. Le pire cas est un avertissement de trop, jamais un lien créé sans le dire.
+    }
+    setConfirmingShare(true);
   };
 
   const handleBlockAuthor = async () => {
@@ -488,9 +532,16 @@ function PostCardInner({
           <CommentIcon size={ENGAGEMENT_ICON_SIZE} color={colors.textSecondary} />
           <Text style={styles.engagementCount}>{commentCount}</Text>
         </Pressable>
-        <Pressable style={styles.engagementItem} onPress={handleShare}>
-          <ShareIcon size={ENGAGEMENT_ICON_SIZE} color={colors.textSecondary} />
-        </Pressable>
+        {/* Partager n'est proposé QUE là où il mène quelque part : une main publique pour tout le
+            monde, une main non publique pour son seul auteur. Un membre ne peut pas fabriquer de
+            lien vers la main d'un autre — c'est refusé en base, et un bouton qui échoue se lirait
+            comme un bug. Avant, ce bouton était offert sur toutes les mains et produisait un lien
+            mort (« cette main n'est pas disponible publiquement »). */}
+        {(post.visibility === 'public' || isOwnPost) && (
+          <Pressable style={styles.engagementItem} onPress={handleShare}>
+            <ShareIcon size={ENGAGEMENT_ICON_SIZE} color={colors.textSecondary} />
+          </Pressable>
+        )}
       </View>
 
       {shareFeedback && <Text style={styles.shareFeedback}>{shareFeedback}</Text>}
@@ -556,6 +607,28 @@ function PostCardInner({
           </View>
           {!!consequenceEtape && <Text style={styles.etapeConsequence}>{consequenceEtape}</Text>}
         </ConfirmSheet>
+      )}
+      {/* Dit la vérité, et rien qu'elle : le lien ne se retire pas, et surtout il se transmet.
+          On ne peut pas empêcher un destinataire de le faire suivre — le secret est dans l'URL, il
+          n'y a pas de compte pour distinguer qui regarde. Promettre autre chose serait mentir.
+          `destructive={false}` : partager sa propre main n'est pas une perte, c'est un choix. */}
+      {isOwnPost && (
+        <ConfirmSheet
+          visible={confirmingShare}
+          icon={ShareIcon}
+          title="Créer un lien vers cette main ?"
+          message={
+            "Toute personne qui aura ce lien pourra voir la main, même sans compte Pokza, et pourra " +
+            "le transmettre. Ton pseudo, les commentaires et les j'aime n'apparaissent pas."
+          }
+          confirmLabel="Créer le lien"
+          destructive={false}
+          onCancel={() => setConfirmingShare(false)}
+          onConfirm={() => {
+            setConfirmingShare(false);
+            void creerLienEtEnvoyer();
+          }}
+        />
       )}
       {isOwnPost && (
         <ConfirmSheet

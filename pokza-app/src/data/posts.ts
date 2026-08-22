@@ -219,6 +219,31 @@ export async function fetchPublicPost(postId: string): Promise<PublicPost | null
   };
 }
 
+/**
+ * Même main, même sept champs que `fetchPublicPost` — mais ouverte par un JETON et non par
+ * l'identifiant de la main. C'est ce qui permet de partager une main privée ou de groupe sans
+ * ouvrir la lecture de `posts` : sans jeton créé par l'auteur, rien n'est atteignable.
+ *
+ * Passe par une fonction `security definer` côté base (`post_by_share_token`) : un visiteur
+ * anonyme n'a, et ne doit avoir, aucun droit de lecture sur `posts`.
+ */
+export async function fetchSharedPost(token: string): Promise<PublicPost | null> {
+  const { data, error } = await supabase.rpc('post_by_share_token', { p_token: token });
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | undefined | null;
+  if (!row) return null;
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    description: (row.description as string | null) ?? undefined,
+    location: (row.location as string | null) ?? undefined,
+    buyIn: (row.buy_in as string | null) ?? undefined,
+    level: (row.level as string | null) ?? undefined,
+    createdAt: row.created_at as string,
+    hand: row.hand as Hand,
+  };
+}
+
 interface NewPostInput {
   authorId: string;
   location?: string;

@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 /** Une intention de navigation extraite d'un lien ouvert de l'extérieur (partage, QR, invitation). */
 export type DeepLinkRoute =
   | { type: 'invite'; userId: string }
-  | { type: 'post'; postId: string };
+  | { type: 'post'; postId: string }
+  | { type: 'share'; token: string };
 
 /**
  * Origine web réelle sur laquelle bâtir les liens partagés : en dev c'est `http://localhost:8081`,
@@ -21,8 +22,10 @@ export function webOrigin(): string {
 
 /**
  * Traduit le chemin de l'URL courante (web uniquement) en intention de navigation. Formats gérés :
- * `/invite/:userId` (ouvrir le profil de la personne pour l'ajouter) et `/post/:postId` (ouvrir la
- * main partagée). Renvoie `null` sur tout autre chemin, ou sur mobile natif.
+ * `/invite/:userId` (ouvrir le profil de la personne pour l'ajouter), `/post/:postId` (une main
+ * PUBLIQUE, lisible par son seul identifiant) et `/s/:token` (une main qui ne l'est pas, ouverte
+ * par un jeton que son auteur a explicitement créé). Renvoie `null` sur tout autre chemin, ou sur
+ * mobile natif.
  */
 /**
  * Un lien ouvert de l'extérieur est la SEULE donnée de l'app qui vienne d'un inconnu : n'importe
@@ -38,6 +41,10 @@ export function webOrigin(): string {
  * ferme la question à la source, pour tous les usages présents et futurs de cette valeur.
  */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Jeton de partage : 16 octets en hexadécimal, tels que la base les fabrique. Même discipline que
+ *  pour les UUID — la valeur vient d'un inconnu, elle est vérifiée à la frontière et nulle part
+ *  ailleurs. Ce qui n'a pas cette forme ne part même pas vers la base. */
+const SHARE_TOKEN = /^[0-9a-f]{32}$/i;
 
 export function readInitialDeepLink(): DeepLinkRoute | null {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
@@ -51,6 +58,11 @@ export function readInitialDeepLink(): DeepLinkRoute | null {
   if (postMatch) {
     const postId = decodeURIComponent(postMatch[1]);
     return UUID.test(postId) ? { type: 'post', postId } : null;
+  }
+  const shareMatch = path.match(/^\/s\/([^/]+)\/?$/);
+  if (shareMatch) {
+    const token = decodeURIComponent(shareMatch[1]);
+    return SHARE_TOKEN.test(token) ? { type: 'share', token } : null;
   }
   return null;
 }

@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { Pressable } from '../components/ui/Pressable';
 import { HandReplayer } from '../components/replayer/HandReplayer';
 import { PokzaLogo } from '../components/ui/authIcons';
-import { fetchPublicPost, type PublicPost } from '../data/posts';
+import { fetchPublicPost, fetchSharedPost, type PublicPost } from '../data/posts';
 import { colors, radius, typography } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 
@@ -14,6 +14,11 @@ import { errorMessage } from '../utils/errorMessage';
  * et le visiteur ne voit NI le pseudo de l'auteur, NI les commentaires, NI les likes, NI les votes.
  * Juste la main et son déroulé.
  *
+ * Depuis le 23/08 cet écran sert AUSSI les mains non publiques, ouvertes par un jeton que leur
+ * auteur a explicitement créé (`/s/:token`, cf. `docs/dev/partage-lien.sql`). Volontairement le
+ * MÊME écran, et donc les mêmes sept champs : la porte change, ce qu'on montre ne change pas. Une
+ * main privée partagée n'en révèle pas davantage qu'une main publique.
+ *
  * D'où un écran dédié plutôt qu'un `PostCard` amputé : la carte du feed est construite autour d'un
  * auteur et d'une barre sociale. La réutiliser aurait voulu dire inventer un faux auteur et
  * désactiver des morceaux un par un — chaque ajout ultérieur au `PostCard` risquant alors de
@@ -21,12 +26,19 @@ import { errorMessage } from '../utils/errorMessage';
  * n'existe pas.
  */
 interface Props {
-  postId: string;
+  /** Main PUBLIQUE, ouverte par son identifiant. */
+  postId?: string;
+  /** Main NON publique, ouverte par le jeton que son auteur a créé (cf. `docs/dev/partage-lien.sql`).
+   *  Exactement les mêmes champs à l'écran : la porte change, pas ce qu'on voit. */
+  shareToken?: string;
   /** Amène à l'écran de connexion. L'URL n'est pas nettoyée : après inscription, la main s'ouvre. */
   onJoin: () => void;
+  /** Vrai quand la personne est DÉJÀ connectée — elle suit son propre lien, ou celui d'un ami.
+   *  Lui proposer « Crée un compte » n'aurait aucun sens, et elle se retrouverait sans issue. */
+  dejaConnecte?: boolean;
 }
 
-export function PublicPostScreen({ postId, onJoin }: Props) {
+export function PublicPostScreen({ postId, shareToken, onJoin, dejaConnecte }: Props) {
   const [post, setPost] = useState<PublicPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +46,7 @@ export function PublicPostScreen({ postId, onJoin }: Props) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchPublicPost(postId)
+    (shareToken ? fetchSharedPost(shareToken) : postId ? fetchPublicPost(postId) : Promise.resolve(null))
       .then((data) => {
         if (cancelled) return;
         setPost(data);
@@ -49,7 +61,7 @@ export function PublicPostScreen({ postId, onJoin }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [postId]);
+  }, [postId, shareToken]);
 
   const contexte = [post?.location, post?.buyIn, post?.level].filter(Boolean).join(' · ');
 
@@ -82,16 +94,30 @@ export function PublicPostScreen({ postId, onJoin }: Props) {
       )}
 
       <View style={styles.invitation}>
-        <Text style={styles.invitationTitre}>Partage tes mains sur Pokza</Text>
-        <Text style={styles.invitationTexte}>
-          Crée un compte pour commenter cette main, voter sur la décision, et publier les tiennes.
-        </Text>
-        <Pressable style={styles.bouton} onPress={onJoin}>
-          <Text style={styles.boutonTexte}>Créer un compte</Text>
-        </Pressable>
-        <Pressable onPress={onJoin} hitSlop={8}>
-          <Text style={styles.lien}>J'ai déjà un compte</Text>
-        </Pressable>
+        {dejaConnecte ? (
+          <>
+            <Text style={styles.invitationTitre}>Tu es déjà sur Pokza</Text>
+            <Text style={styles.invitationTexte}>
+              Cette page est ce que verront les personnes à qui tu envoies le lien.
+            </Text>
+            <Pressable style={styles.bouton} onPress={onJoin}>
+              <Text style={styles.boutonTexte}>Retour à Pokza</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={styles.invitationTitre}>Partage tes mains sur Pokza</Text>
+            <Text style={styles.invitationTexte}>
+              Crée un compte pour commenter cette main, voter sur la décision, et publier les tiennes.
+            </Text>
+            <Pressable style={styles.bouton} onPress={onJoin}>
+              <Text style={styles.boutonTexte}>Créer un compte</Text>
+            </Pressable>
+            <Pressable onPress={onJoin} hitSlop={8}>
+              <Text style={styles.lien}>J'ai déjà un compte</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </ScrollView>
   );

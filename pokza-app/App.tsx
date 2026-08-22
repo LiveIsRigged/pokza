@@ -513,6 +513,13 @@ function AppContent() {
     const route = readInitialDeepLink();
     return route?.type === 'post' ? route.postId : null;
   });
+  // Lien `/s/:token` : une main que son auteur a explicitement rendue partageable. Lu au montage
+  // comme ci-dessus, et pour la même raison. Modifiable, lui, parce qu'un visiteur DÉJÀ connecté
+  // doit pouvoir refermer cette page et retrouver son app.
+  const [shareToken, setShareToken] = useState(() => {
+    const route = readInitialDeepLink();
+    return route?.type === 'share' ? route.token : null;
+  });
   // Passe outre l'aperçu public quand le visiteur clique « Créer un compte » — sans quoi il
   // resterait bloqué sur la main, l'URL n'ayant pas changé.
   const [veutSeConnecter, setVeutSeConnecter] = useState(false);
@@ -533,6 +540,9 @@ function AppContent() {
         setViewingPostComments(false);
         setMode('post');
       }
+      // `share` n'est pas traité ici : la page de partage s'affiche avant même la garde de
+      // session, plus bas. Un membre connecté qui suit un lien de partage n'a d'ailleurs aucune
+      // raison de pouvoir ouvrir la main dans l'app — il n'y a peut-être pas accès.
       clearDeepLinkFromUrl();
     }
     setDeepLinkHandled(true);
@@ -593,6 +603,30 @@ function AppContent() {
 
   if (!fontsLoaded || loading) {
     return <View style={styles.container} />;
+  }
+
+  // Lien de partage : la MÊME page pour tout le monde, connecté ou non. C'est voulu — le jeton
+  // ouvre une main qui n'est pas publique, donc une main que le visiteur, même membre de Pokza,
+  // n'a en général pas le droit de voir dans l'app. Lui montrer autre chose selon qu'il est
+  // connecté supposerait un accès qu'il n'a pas.
+  if (shareToken && !veutSeConnecter) {
+    return (
+      <View style={styles.container}>
+        <PublicPostScreen
+          shareToken={shareToken}
+          dejaConnecte={Boolean(session)}
+          onJoin={() => {
+            if (session) {
+              clearDeepLinkFromUrl();
+              setShareToken(null);
+            } else {
+              setVeutSeConnecter(true);
+            }
+          }}
+        />
+        <StatusBar style="dark" />
+      </View>
+    );
   }
 
   if (!session) {
