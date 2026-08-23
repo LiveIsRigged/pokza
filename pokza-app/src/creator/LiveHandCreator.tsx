@@ -46,6 +46,14 @@ interface LiveHandCreatorProps {
   /** Crée un groupe sans quitter le créateur, et renvoie son id (cf. ReviewStep). */
   onCreateGroup: (name: string) => Promise<string>;
   /**
+   * Groupe d'où l'on vient (bouton « + Créer une main » d'une page de groupe privé) : la main
+   * s'ouvre alors avec « Groupe privé » et ce groupe déjà choisis, au lieu de « Public ». Rien
+   * n'est figé pour autant — l'étape de publication montre la puce sélectionnée et l'auteur peut
+   * en changer, ce qui compte d'autant plus que l'audience d'une main publiée ne bouge plus
+   * ensuite (elle ne se corrige qu'en la republiant, les membres ayant déjà été notifiés).
+   */
+  destinationGroupId?: string;
+  /**
    * Reprise d'une main déjà publiée (« Corriger la main »). Fourni, le créateur s'ouvre DIRECTEMENT
    * sur l'étape de publication, tout étant déjà saisi, et le « ‹ » redescend étape par étape
    * jusqu'à celle qu'on veut refaire. Absent = création normale, à partir d'une table vide.
@@ -68,6 +76,7 @@ export function LiveHandCreator({
   onCancel,
   groups,
   onCreateGroup,
+  destinationGroupId,
   initial,
   initialPhase,
 }: LiveHandCreatorProps) {
@@ -88,8 +97,13 @@ export function LiveHandCreator({
   const [board, setBoard] = useState<Board>(depart?.etat.board ?? {});
   // Second board d'un double board bomb pot ; reste vide en un seul board.
   const [board2, setBoard2] = useState<Board>(depart?.etat.board2 ?? {});
+  // Une reprise (`initial`) garde sa propre destination ; sinon on part du groupe d'où l'on vient,
+  // et à défaut de « Public ».
   const [review, setReview] = useState<ReviewData>(
-    initial?.review ?? { title: '', description: '', voteQuestion: '', visibility: 'public' }
+    initial?.review ??
+      (destinationGroupId
+        ? { title: '', description: '', voteQuestion: '', visibility: 'group', groupId: destinationGroupId }
+        : { title: '', description: '', voteQuestion: '', visibility: 'public' })
   );
   // Cartes montrées par les adversaires à l'abattage (seatId -> deux cartes, éventuellement partielles).
   const [revealedCards, setRevealedCards] = useState<Record<string, (Card | undefined)[]>>(depart?.etat.revealedCards ?? {});
@@ -144,7 +158,10 @@ export function LiveHandCreator({
   }, []);
 
   const orderedGroups = useMemo(() => orderGroupsByLastUsed(groups, lastUsedGroupIds), [groups, lastUsedGroupIds]);
-  const preselectedGroupId = defaultGroupId(orderedGroups, lastUsedGroupIds);
+  // Sert de repli quand l'auteur repasse sur la puce « Groupe privé » après l'avoir quittée : le
+  // groupe d'où l'on vient l'emporte alors sur le dernier groupe utilisé, sinon un aller-retour
+  // Public → Groupe privé changerait silencieusement de destination.
+  const preselectedGroupId = destinationGroupId ?? defaultGroupId(orderedGroups, lastUsedGroupIds);
 
   // Cartes prises par le hero et le board (sert de base d'exclusion aux sélecteurs).
   const baseUsedCards: Card[] = [

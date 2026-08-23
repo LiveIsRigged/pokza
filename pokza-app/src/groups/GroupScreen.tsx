@@ -431,15 +431,20 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
             </View>
 
             <Text style={styles.sectionTitle}>Mains du groupe privé</Text>
+            {/* Affiché que le groupe ait des mains ou non, et toujours au même endroit : rien ne
+                se déplace quand la première main arrive. Réservé jusqu'ici à l'état vide, ce
+                bouton n'était de toute façon pas un raccourci — il ouvrait un créateur qui
+                repartait sur « Public » puis sur le dernier groupe utilisé, donc publier dans CE
+                groupe-ci coûtait autant de gestes qu'en partant du feed. C'est `onCreateHand` qui
+                emporte désormais le groupe jusqu'à l'étape de publication (cf. `destinationGroupId`
+                dans `LiveHandCreator`). */}
+            {onCreateHand && (
+              <Pressable style={styles.createHandButton} onPress={onCreateHand}>
+                <Text style={styles.createHandButtonText}>+ Créer une main</Text>
+              </Pressable>
+            )}
             {posts.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
-                {onCreateHand && (
-                  <Pressable style={styles.emptyButton} onPress={onCreateHand}>
-                    <Text style={styles.emptyButtonText}>+ Créer une main</Text>
-                  </Pressable>
-                )}
-              </View>
+              <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
             ) : (
               posts.map((post) => (
                 <PostCard
@@ -549,20 +554,21 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     paddingHorizontal: 4,
   },
-  // Même bouton d'amorce que sur un profil vide et sous la liste des groupes privés.
-  emptyState: {
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  emptyButton: {
+  // Pastille étroite et centrée, exactement celle de l'ancien état vide : sur la page d'un groupe,
+  // ce bouton doit rester discret. Une version pleine largeur (essayée) prend le pas sur les mains
+  // elles-mêmes, qui sont ce qu'on vient lire — le bouton pleine largeur reste au feed, où il est
+  // l'action principale de l'écran.
+  createHandButton: {
+    alignSelf: 'center',
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
     backgroundColor: colors.action,
     borderRadius: radius.full,
     paddingVertical: 12,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
   },
-  emptyButtonText: {
+  createHandButtonText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,

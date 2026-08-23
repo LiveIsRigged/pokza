@@ -187,6 +187,10 @@ function AppContent() {
   // Une `ref` et non un état : ça ne change rien à l'affichage, seulement la destination du retour.
   const groupsCreatedInCreator = useRef<Set<string>>(new Set());
   const [showPublishedNotice, setShowPublishedNotice] = useState(false);
+  // Groupe privé d'où le créateur a été ouvert (bouton « + Créer une main » de sa page). Il fait
+  // deux choses : il présélectionne la destination de la main, et il commande le retour — abandon
+  // comme publication ramènent sur la page du groupe, pas sur le feed, qu'on n'avait pas demandé.
+  const [createFromGroupId, setCreateFromGroupId] = useState<string | null>(null);
   const [invitingGroupId, setInvitingGroupId] = useState<string | null>(null);
   // Back-office admin : signalement/compte en cours d'examen, + clé pour rafraîchir la file au retour.
   const [adminReportId, setAdminReportId] = useState<string | null>(null);
@@ -696,6 +700,16 @@ function AppContent() {
     return groupId;
   };
 
+  /**
+   * Seule porte d'entrée du créateur de main. `groupId` = ouverture depuis la page d'un groupe
+   * privé. Y passer même sans groupe est indispensable : sans la remise à zéro, une main lancée
+   * depuis le feed hériterait de la destination d'une création précédente.
+   */
+  const openCreator = (groupId?: string) => {
+    setCreateFromGroupId(groupId ?? null);
+    setMode('create');
+  };
+
   if (mode === 'create') {
     return (
       <View style={styles.container}>
@@ -705,6 +719,7 @@ function AppContent() {
           formatFavori={myFormatFavori}
           varianteFavorite={myVarianteFavorite}
           groups={myGroups}
+          destinationGroupId={createFromGroupId ?? undefined}
           // Le groupe créé ici est retenu à part : c'est lui qui détourne l'atterrissage après
           // publication vers la page du groupe (cf. `onCreated`).
           onCreateGroup={async (name) => {
@@ -716,7 +731,15 @@ function AppContent() {
             // Main abandonnée : le groupe créé reste, mais il ne doit plus détourner l'atterrissage
             // d'une publication ultérieure — d'ici là il aura peut-être des membres.
             groupsCreatedInCreator.current.clear();
-            setMode('feed');
+            // Venu d'un groupe privé, on y retourne : abandonner une main n'est pas une raison de
+            // se retrouver sur le feed, un écran qu'on n'avait jamais demandé à quitter.
+            if (createFromGroupId) {
+              setViewingGroupId(createFromGroupId);
+              setCreateFromGroupId(null);
+              setMode('group');
+            } else {
+              setMode('feed');
+            }
           }}
           onCreated={async (draftPost) => {
             try {
@@ -739,15 +762,20 @@ function AppContent() {
               );
               setPosts((p) => [saved, ...p]);
               trackEvent('hand_created', { variant: saved.hand.variant, game_type: saved.hand.gameType });
-              // Main publiée dans un groupe créé à l'instant : on ouvre le groupe au lieu du feed.
-              // C'est le seul endroit où le bouton « Inviter » est à portée, et le seul moment où
-              // l'auteur a une raison d'y penser. Dans tous les autres cas, retour au feed.
-              const landsInNewGroup =
-                saved.visibility === 'group' && !!saved.groupId && groupsCreatedInCreator.current.has(saved.groupId);
+              const dansUnGroupe = saved.visibility === 'group' && !!saved.groupId;
+              // Groupe créé à l'instant : il n'a qu'un membre, son auteur. On ouvre sa page — seul
+              // endroit où « Inviter » est à portée, et seul moment où l'auteur a une raison d'y
+              // penser — avec le bandeau qui le dit. Ne concerne pas un groupe qu'on avait déjà.
+              const groupeNeuf = dansUnGroupe && groupsCreatedInCreator.current.has(saved.groupId!);
+              // Venu de la page d'un groupe : on y retourne, la main y est. Si l'auteur a changé de
+              // groupe à la dernière étape, c'est celui de la main qui gagne, pour la même raison.
+              // Basculé sur Public ou Privé, retour au feed comme partout ailleurs.
+              const retourAuGroupe = dansUnGroupe && (groupeNeuf || !!createFromGroupId);
               groupsCreatedInCreator.current.clear();
-              if (landsInNewGroup) {
+              setCreateFromGroupId(null);
+              if (retourAuGroupe) {
                 setViewingGroupId(saved.groupId!);
-                setShowPublishedNotice(true);
+                if (groupeNeuf) setShowPublishedNotice(true);
                 setMode('group');
               } else {
                 setMode('feed');
@@ -998,7 +1026,7 @@ function AppContent() {
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
           onProfileChanged={refetchProfile}
-          onCreateHand={() => setMode('create')}
+          onCreateHand={() => openCreator()}
           onBack={onBack}
           onEditPost={(postId) => void openEdition(postId, 'profile')}
           onCorrectPost={(postId, depuis) => void openCorrection(postId, 'profile', depuis)}
@@ -1080,7 +1108,7 @@ function AppContent() {
           currentUserId={session.user.id}
           currentUserName={displayName ?? 'Joueur'}
           showPublishedNotice={showPublishedNotice}
-          onCreateHand={() => setMode('create')}
+          onCreateHand={() => openCreator(viewingGroupId)}
           onBack={onBack}
           onEditPost={(postId) => void openEdition(postId, 'group')}
           onCorrectPost={(postId, depuis) => void openCorrection(postId, 'group', depuis)}
@@ -1258,7 +1286,7 @@ function AppContent() {
       <FeedHeader
         compact={headerCompact}
         onOpenMenu={() => setMenuOpen(true)}
-        onCreate={() => setMode('create')}
+        onCreate={() => openCreator()}
         onSearch={() => setSearchOpen(true)}
         onNotifications={() => setNotificationsOpen(true)}
         unreadCount={unreadNotificationCount}
