@@ -83,8 +83,10 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
 
         <Text style={styles.label}>Afficher sur Pokza</Text>
         <View style={styles.row}>
-          <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
+          {/* Même ordre qu'à l'inscription (`CompleteProfileScreen`) : le nom d'abord. Deux écrans
+              qui proposent le même choix dans un ordre différent se lisent mal. */}
           <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
+          <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
         </View>
 
         <Text style={styles.label}>Pays</Text>

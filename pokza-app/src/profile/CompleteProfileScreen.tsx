@@ -50,7 +50,11 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
   const [prenom, setPrenom] = useState('');
   const [nom, setNom] = useState('');
   const [bio, setBio] = useState('');
-  const [displayPreference, setDisplayPreference] = useState<'pseudo' | 'nom'>('pseudo');
+  // Défaut « nom » et non « pseudo » (décision de Victor, 23/08) : Pokza se veut un réseau de
+  // joueurs qui se connaissent, pas d'avatars anonymes. Le choix reste offert juste en dessous, et
+  // la base garde `'pseudo'` comme valeur par défaut de colonne — c'est bien l'app qui envoie
+  // explicitement `p_display_preference`, donc rien à migrer.
+  const [displayPreference, setDisplayPreference] = useState<'pseudo' | 'nom'>('nom');
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
@@ -171,14 +175,15 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
         <Text style={styles.label}>Nom</Text>
         <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder="Nom" />
         <Text style={styles.reassurance}>
-          Ton prénom et ton nom restent privés — ils ne sont jamais affichés publiquement, sauf si tu choisis
-          ci-dessous d'afficher ton nom plutôt que ton pseudo.
+          Ton prénom et ton nom apparaissent sur Pokza, c'est le choix proposé ci-dessous. Si tu préfères ton
+          pseudo, ils redeviennent entièrement privés : personne ne les voit, et ta date de naissance ne
+          s'affiche dans aucun cas.
         </Text>
 
         <Text style={styles.label}>Afficher sur Pokza</Text>
         <View style={styles.row}>
-          <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
           <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
+          <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
         </View>
 
         <Text style={styles.label}>Pays</Text>
