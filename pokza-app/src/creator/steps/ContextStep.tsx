@@ -164,11 +164,17 @@ const CASH_BLIND_PRESETS: [number, number][] = [
   [5, 10],
 ];
 
+// TROIS raccourcis en tournoi, pas quatre comme en cash : les libellés abrégés (« 50k/100k »)
+// sont bien plus larges que « 5/10 », et à quatre la rangée faisait 350,8 px — elle passait donc à
+// la ligne sur tout écran de moins de 390 pt (iPhone SE 2/3, 8, 13 mini), et ne tenait sur un
+// iPhone 13/14 qu'à 3 px près. À trois, elle fait 253,1 px : une seule ligne partout, jusqu'au
+// 320 pt. C'est « 50k/100k » qui a été retiré (décision de Victor, 23/08) — le plus large et le
+// moins souvent utile ; ces blindes-là se saisissent à la main dans les deux champs juste en
+// dessous, comme n'importe quelle valeur hors raccourci.
 const TOURNAMENT_BLIND_PRESETS: [number, number][] = [
   [100, 200],
   [500, 1000],
   [5000, 10000],
-  [50000, 100000],
 ];
 
 // Un stack de départ se raisonne en "nombre de BB" plutôt qu'en valeur absolue : le stack effectif
