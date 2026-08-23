@@ -1,12 +1,12 @@
 import { supabase } from '../lib/supabase';
 
 /**
- * Une personne qui a voté, et ce qu'elle a choisi. Même forme que `Liker` (pseudo + avatar), avec
- * l'option en plus : c'est elle qui sert à regrouper la liste par réponse.
+ * Une personne qui a voté, et ce qu'elle a choisi. Même forme que `Liker` (nom d'affichage +
+ * avatar), avec l'option en plus : c'est elle qui sert à regrouper la liste par réponse.
  */
 export interface Voter {
   id: string;
-  pseudo: string;
+  displayName: string;
   avatarUrl?: string;
   option: string;
 }
@@ -35,7 +35,7 @@ export async function fetchVoters(postId: string): Promise<Voter[]> {
 
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, pseudo, avatar_url')
+    .select('id, display_name, avatar_url')
     .in('id', userIds);
   if (profilesError) throw profilesError;
 
@@ -48,7 +48,7 @@ export async function fetchVoters(postId: string): Promise<Voter[]> {
     return [
       {
         id: row.user_id as string,
-        pseudo: p.pseudo as string,
+        displayName: p.display_name as string,
         avatarUrl: (p.avatar_url as string) ?? undefined,
         option: row.option as string,
       },

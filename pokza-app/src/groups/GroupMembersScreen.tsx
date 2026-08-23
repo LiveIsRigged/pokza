@@ -49,9 +49,9 @@ export function GroupMembersScreen({
         {members.map((m) => (
           <View key={m.userId} style={styles.memberRow}>
             <Pressable style={styles.memberInfo} onPress={() => onSelectProfile(m.userId)}>
-              <Avatar url={m.avatarUrl} name={m.pseudo} size={36} />
+              <Avatar url={m.avatarUrl} name={m.displayName} size={36} />
               <Text style={styles.memberPseudo}>
-                {m.pseudo}
+                {m.displayName}
                 {m.userId === ownerId && ' 👑'}
               </Text>
               {m.status === 'pending' && <Text style={styles.memberPending}>en attente</Text>}
@@ -71,7 +71,7 @@ export function GroupMembersScreen({
       <ConfirmSheet
         visible={excludingMember != null}
         icon={PersonIcon}
-        title={`Retirer ${excludingMember?.pseudo ?? 'ce membre'} du groupe ?`}
+        title={`Retirer ${excludingMember?.displayName ?? 'ce membre'} du groupe ?`}
         message="Il ne verra plus les mains partagées ici, et pourra être réinvité plus tard."
         confirmLabel="Retirer"
         onCancel={() => setExcludingMember(null)}

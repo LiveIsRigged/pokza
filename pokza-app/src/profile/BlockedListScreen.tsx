@@ -85,8 +85,8 @@ export function BlockedListScreen({ currentUserId, onBack, onSelectProfile }: Bl
                 onPress={() => onSelectProfile?.(u.id)}
                 disabled={!onSelectProfile}
               >
-                <Avatar url={u.avatarUrl} name={u.pseudo} size={40} />
-                <Text style={styles.pseudo}>{u.pseudo}</Text>
+                <Avatar url={u.avatarUrl} name={u.displayName} size={40} />
+                <Text style={styles.pseudo}>{u.displayName}</Text>
               </Pressable>
               <Pressable
                 style={styles.unblockButton}

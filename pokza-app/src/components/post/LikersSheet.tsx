@@ -88,8 +88,8 @@ export function LikersSheet({ visible, onClose, source, onSelectProfile }: Liker
                   onPress={() => onSelectProfile?.(liker.id)}
                   disabled={!onSelectProfile}
                 >
-                  <Avatar url={liker.avatarUrl} name={liker.pseudo} size={36} />
-                  <Text style={styles.pseudo}>{liker.pseudo}</Text>
+                  <Avatar url={liker.avatarUrl} name={liker.displayName} size={36} />
+                  <Text style={styles.pseudo}>{liker.displayName}</Text>
                 </Pressable>
               ))
             )}

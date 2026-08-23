@@ -3,15 +3,29 @@ import { removeAvatar } from './avatars';
 import { assertWritten, refusedMessage } from './writeGuard';
 import { resetAnalytics } from '../analytics';
 
+/**
+ * Une personne, telle qu'elle s'affiche dans une liste.
+ *
+ * **Pas de `pseudo` ici, et c'est délibéré.** Quelqu'un qui a choisi d'afficher son nom s'appelle
+ * Bob Durant sur Pokza : le montrer sous un pseudo que personne ne lui connaît ne renseigne
+ * personne. Et à l'inverse, le pseudo de quelqu'un qui l'a choisi ne doit jamais être doublé de son
+ * nom. `display_name` répond aux deux cas à la fois — c'est le seul nom qu'un écran a le droit
+ * d'afficher. Ne pas rajouter `pseudo` ici : son absence est ce qui fait que le compilateur
+ * signalerait un écran qui recommencerait (les rares endroits qui ont besoin du pseudo lui-même —
+ * modifier le sien, le back-office — le tiennent de `ProfileDetails` ou de `data/admin.ts`).
+ */
 export interface ProfileSummary {
   id: string;
-  pseudo: string;
+  /** « Prénom Nom » pour qui a choisi de montrer son nom, sinon le pseudo. Colonne
+   * `profiles.display_name`, tenue à jour par déclencheur (cf. `docs/dev/recherche-par-nom.sql`) —
+   * elle dit toujours la même chose que `get_display_name()`, qui alimente le feed. */
+  displayName: string;
   avatarUrl?: string;
 }
 
 export interface ProfileDetails extends ProfileSummary {
-  /** Pseudo ou "prénom nom" selon la préférence choisie (cf. `get_display_name`). */
-  displayName: string;
+  /** Le profil est le SEUL écran qui manipule le pseudo brut : on y modifie le sien. */
+  pseudo: string;
   displayPreference: 'pseudo' | 'nom';
   formatFavori: string;
   /** Variante préférée ('nlhe' | 'plo' | 'plo5') — fait remonter ces mains dans le feed. */
@@ -25,37 +39,71 @@ export interface ProfileDetails extends ProfileSummary {
   createdAt: string;
 }
 
-/** Recherche par pseudo — seule colonne de `profiles` conçue pour être publique et cherchable
- * (prénom/nom/date de naissance restent dans `profiles_private`, jamais exposés ici). */
+/**
+ * Recherche par pseudo OU par nom affiché.
+ *
+ * Chercher le nom de quelqu'un qui l'a gardé privé reste impossible, et ce n'est pas un effet de
+ * bord : `display_name` ne contient le prénom et le nom que si la personne a choisi de les
+ * afficher — sinon elle contient son pseudo (cf. `docs/dev/recherche-par-nom.sql`). Prénom et nom
+ * eux-mêmes n'ont jamais quitté `profiles_private`, lisible par son seul propriétaire.
+ *
+ * Requête client ordinaire, donc soumise aux policies de `profiles` comme n'importe quelle autre
+ * lecture — c'est précisément ce qu'on a cherché en stockant le nom plutôt qu'en écrivant une
+ * fonction `security definer`, qui aurait dû réappliquer à la main bannissements et blocages.
+ */
 export async function searchProfiles(query: string): Promise<ProfileSummary[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
+  // La grammaire de filtre de PostgREST donne un sens à la virgule et aux parenthèses : « Jean,
+  // Paul » couperait le `or` en deux conditions bancales. On passe donc chaque valeur entre
+  // guillemets, en échappant l'antislash et le guillemet, seuls caractères spéciaux à l'intérieur.
+  const motif = `%${trimmed.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}%`;
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, pseudo, avatar_url')
-    .ilike('pseudo', `%${trimmed}%`)
-    .order('pseudo')
+    .select('id, display_name, avatar_url')
+    .or(`pseudo.ilike."${motif}",display_name.ilike."${motif}"`)
+    .order('display_name')
     .limit(20);
   if (error) throw error;
-  return data.map((row) => ({ id: row.id, pseudo: row.pseudo, avatarUrl: row.avatar_url ?? undefined }));
+  // On CHERCHE sur le pseudo sans le RAMENER : quelqu'un peut être trouvé par un pseudo qu'un ami
+  // connaît encore, et s'afficher malgré tout sous le nom qu'il a choisi de porter.
+  return data.map((row) => ({
+    id: row.id,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url ?? undefined,
+  }));
+}
+
+/**
+ * Nom d'affichage de plusieurs profils d'un coup, par id.
+ *
+ * Sert aux listes qui viennent d'une fonction `security definer` (amis en commun, suggestions
+ * d'amis) : ces fonctions ne renvoient que le pseudo, et les réécrire pour ajouter une colonne
+ * signifierait republier un corps SQL dont je n'ai pas la version réellement en base. Une requête
+ * de plus sur dix lignes coûte moins cher qu'un `create or replace` à l'aveugle.
+ */
+export async function fetchDisplayNames(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase.from('profiles').select('id, display_name').in('id', ids);
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.id as string, row.display_name as string]));
 }
 
 export async function fetchProfile(id: string): Promise<ProfileDetails> {
-  const [{ data: row, error: rowError }, { data: displayName, error: nameError }] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id, pseudo, avatar_url, display_preference, format_favori, variante_favorite, frequence_jeu, bio, country, created_at')
-      .eq('id', id)
-      .single(),
-    supabase.rpc('get_display_name', { profile_id: id }),
-  ]);
+  // Une seule requête depuis que `display_name` est une colonne : l'appel à `get_display_name()`
+  // qui l'accompagnait n'a plus lieu d'être, la colonne dit exactement la même chose (le script de
+  // migration le vérifie ligne à ligne) et arrive dans le même aller-retour.
+  const { data: row, error: rowError } = await supabase
+    .from('profiles')
+    .select('id, pseudo, display_name, avatar_url, display_preference, format_favori, variante_favorite, frequence_jeu, bio, country, created_at')
+    .eq('id', id)
+    .single();
   if (rowError) throw rowError;
-  if (nameError) throw nameError;
   return {
     id: row.id,
     pseudo: row.pseudo,
     avatarUrl: row.avatar_url ?? undefined,
-    displayName: displayName ?? row.pseudo,
+    displayName: row.display_name,
     displayPreference: row.display_preference,
     formatFavori: row.format_favori,
     varianteFavorite: row.variante_favorite ?? 'nlhe',

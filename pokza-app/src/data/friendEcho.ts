@@ -31,7 +31,7 @@ export async function attachFriendEchoes(posts: Post[], viewerId: string): Promi
     const friends = await fetchFriends(viewerId);
     if (friends.length === 0) return posts;
 
-    const pseudoById = new Map(friends.map((friend) => [friend.id, friend.pseudo]));
+    const nomById = new Map(friends.map((friend) => [friend.id, friend.displayName]));
     const friendIds = friends.map((friend) => friend.id);
     const candidateIds = candidates.map((post) => post.id);
 
@@ -69,7 +69,7 @@ export async function attachFriendEchoes(posts: Post[], viewerId: string): Promi
       createdAt: row.created_at as string,
     }));
 
-    const kept = pickFriendEchoes(candidateIds, likeRows, commentRows, pseudoById);
+    const kept = pickFriendEchoes(candidateIds, likeRows, commentRows, nomById);
     if (kept.size === 0) return posts;
     return posts.map((post) => {
       const echo = kept.get(post.id);

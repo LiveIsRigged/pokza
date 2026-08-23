@@ -29,7 +29,7 @@ export type GroupMemberStatus = 'pending' | 'accepted';
 
 export interface GroupMember {
   userId: string;
-  pseudo: string;
+  displayName: string;
   avatarUrl?: string;
   status: GroupMemberStatus;
   invitedBy: string;
@@ -134,14 +134,14 @@ export async function fetchGroupMembers(groupId: string): Promise<GroupMember[]>
   const userIds = rows.map((r) => r.user_id);
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, pseudo, avatar_url')
+    .select('id, display_name, avatar_url')
     .in('id', userIds);
   if (profilesError) throw profilesError;
 
   const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
   return rows.map((row) => ({
     userId: row.user_id,
-    pseudo: byId.get(row.user_id)?.pseudo ?? '?',
+    displayName: byId.get(row.user_id)?.display_name ?? '?',
     avatarUrl: byId.get(row.user_id)?.avatar_url ?? undefined,
     status: row.status as GroupMemberStatus,
     invitedBy: row.invited_by,

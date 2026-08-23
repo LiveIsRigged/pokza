@@ -23,7 +23,7 @@ interface SearchScreenProps {
   inviteMode?: boolean;
   onInvite?: (profileId: string) => void;
   /** En mode invitation, on affiche d'emblée la liste d'amis (moins ceux déjà dans le groupe) tant
-   * que rien n'est tapé — inviter un ami ne devrait pas obliger à retaper son pseudo. */
+   * que rien n'est tapé — inviter un ami ne devrait pas obliger à retaper son nom. */
   currentUserId?: string;
   excludeGroupId?: string;
 }
@@ -86,7 +86,7 @@ export function SearchScreen({
         setInvitableFriends(
           friends
             .filter((f) => !memberIds.has(f.id))
-            .map((f) => ({ id: f.id, pseudo: f.pseudo, avatarUrl: f.avatarUrl }))
+            .map((f) => ({ id: f.id, displayName: f.displayName, avatarUrl: f.avatarUrl }))
         );
       })
       .catch((err) => {
@@ -111,7 +111,7 @@ export function SearchScreen({
       style={style}
       value={query}
       onChangeText={setQuery}
-      placeholder="Rechercher un pseudo…"
+      placeholder="Rechercher un utilisateur…"
       autoCapitalize="none"
       autoFocus
     />
@@ -134,10 +134,10 @@ export function SearchScreen({
               ? invitableFriends === null
                 ? 'Chargement…'
                 : friendCount === 0
-                ? "Tu n'as pas encore d'amis sur Pokza. Recherche un pseudo pour inviter quelqu'un."
-                : "Tous tes amis sont déjà dans le groupe. Recherche un pseudo pour inviter quelqu'un d'autre."
+                ? "Tu n'as pas encore d'amis sur Pokza. Recherche quelqu'un pour l'inviter."
+                : "Tous tes amis sont déjà dans le groupe. Recherche quelqu'un d'autre pour l'inviter."
               : query.trim().length > 0
-              ? 'Aucun pseudo ne correspond.'
+              ? 'Personne ne correspond.'
               : ''}
           </Text>
         ) : (
@@ -148,8 +148,11 @@ export function SearchScreen({
               onPress={inviteMode ? undefined : () => onSelectProfile(profile.id)}
             >
               <View style={styles.resultInfo}>
-                <Avatar url={profile.avatarUrl} name={profile.pseudo} size={40} />
-                <Text style={styles.pseudo}>{profile.pseudo}</Text>
+                {/* `displayName` et lui seul, ici comme dans toutes les listes de l'app : le
+                    pseudo de quelqu'un qui a choisi d'afficher son nom ne veut rien dire pour
+                    personne. Cf. `ProfileSummary`, qui ne porte volontairement pas de `pseudo`. */}
+                <Avatar url={profile.avatarUrl} name={profile.displayName} size={40} />
+                <Text style={styles.pseudo}>{profile.displayName}</Text>
               </View>
               {inviteMode && (
                 <Pressable style={styles.inviteButton} onPress={() => handleInvite(profile.id)} hitSlop={8}>

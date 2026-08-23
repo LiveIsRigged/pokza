@@ -58,8 +58,8 @@ export function FriendsListScreen({ userId, onBack, onSelectProfile }: FriendsLi
         ) : (
           friends.map((friend) => (
             <Pressable key={friend.id} style={styles.friendRow} onPress={() => onSelectProfile(friend.id)}>
-              <Avatar url={friend.avatarUrl} name={friend.pseudo} size={40} />
-              <Text style={styles.friendPseudo}>{friend.pseudo}</Text>
+              <Avatar url={friend.avatarUrl} name={friend.displayName} size={40} />
+              <Text style={styles.friendPseudo}>{friend.displayName}</Text>
             </Pressable>
           ))
         )}

@@ -1,13 +1,14 @@
 import { supabase } from '../lib/supabase';
 
 /**
- * Une personne qui a aimé une main ou un commentaire. Le pseudo plutôt que le nom d'affichage
- * complet : c'est ce qu'affichent déjà toutes les autres listes de personnes de l'app (amis,
- * recherche, membres d'un groupe, comptes bloqués), et ça tient en une seule requête.
+ * Une personne qui a aimé une main ou un commentaire. Le nom d'affichage, jamais le pseudo — même
+ * règle que partout ailleurs, cf. `ProfileSummary`. (Ce fichier disait auparavant l'inverse, à une
+ * époque où toutes les listes montraient le pseudo ; la colonne `display_name` a rendu le nom
+ * disponible sans requête supplémentaire, et la règle a été retournée le 23/08.)
  */
 export interface Liker {
   id: string;
-  pseudo: string;
+  displayName: string;
   avatarUrl?: string;
 }
 
@@ -41,7 +42,7 @@ async function fetchLikers(
 
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, pseudo, avatar_url')
+    .select('id, display_name, avatar_url')
     .in('id', userIds);
   if (profilesError) throw profilesError;
 
@@ -50,7 +51,7 @@ async function fetchLikers(
   // plus récent en haut), pas celui, arbitraire, dans lequel la base rend les profils.
   return userIds.flatMap((id) => {
     const p = profileById.get(id);
-    return p ? [{ id, pseudo: p.pseudo as string, avatarUrl: (p.avatar_url as string) ?? undefined }] : [];
+    return p ? [{ id, displayName: p.display_name as string, avatarUrl: (p.avatar_url as string) ?? undefined }] : [];
   });
 }
 

@@ -51,14 +51,14 @@ function mutualFriendCountLabel(count: number): string {
   return `${count} ami${count > 1 ? 's' : ''} en commun`;
 }
 
-function mutualFriendsLabel(pseudos: string[]): string {
-  const prefix = pseudos.length === 1 ? 'Ami en commun' : 'Amis en commun';
-  if (pseudos.length <= 3) {
-    const allButLast = pseudos.slice(0, -1).join(', ');
-    return `${prefix} : ${allButLast}${allButLast ? ' et ' : ''}${pseudos[pseudos.length - 1]}`;
+function mutualFriendsLabel(noms: string[]): string {
+  const prefix = noms.length === 1 ? 'Ami en commun' : 'Amis en commun';
+  if (noms.length <= 3) {
+    const allButLast = noms.slice(0, -1).join(', ');
+    return `${prefix} : ${allButLast}${allButLast ? ' et ' : ''}${noms[noms.length - 1]}`;
   }
-  const shown = pseudos.slice(0, 2);
-  return `${prefix} : ${shown.join(', ')} et ${pseudos.length - 2} de plus`;
+  const shown = noms.slice(0, 2);
+  return `${prefix} : ${shown.join(', ')} et ${noms.length - 2} de plus`;
 }
 
 interface ProfileScreenProps {
@@ -562,12 +562,12 @@ export function ProfileScreen({
                         key={f.id}
                         style={[styles.mutualAvatarWrap, { marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }]}
                       >
-                        <Avatar url={f.avatarUrl} name={f.pseudo} size={22} />
+                        <Avatar url={f.avatarUrl} name={f.displayName} size={22} />
                       </View>
                     ))}
                   </View>
                   <Text style={styles.mutualFriendsText}>
-                    {mutualFriendsLabel(mutualFriends.map((f) => f.pseudo))}
+                    {mutualFriendsLabel(mutualFriends.map((f) => f.displayName))}
                   </Text>
                 </View>
               )}
@@ -583,8 +583,8 @@ export function ProfileScreen({
                       onPress={() => onSelectProfile?.(req.senderId)}
                       disabled={!onSelectProfile}
                     >
-                      <Avatar url={req.senderAvatarUrl} name={req.senderPseudo} size={34} />
-                      <Text style={styles.pendingPseudo}>{req.senderPseudo}</Text>
+                      <Avatar url={req.senderAvatarUrl} name={req.senderDisplayName} size={34} />
+                      <Text style={styles.pendingPseudo}>{req.senderDisplayName}</Text>
                     </Pressable>
                     <View style={styles.pendingActions}>
                       <Pressable

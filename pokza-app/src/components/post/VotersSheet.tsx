@@ -92,8 +92,8 @@ export function VotersSheet({ visible, onClose, postId, options, onSelectProfile
                           onPress={() => onSelectProfile?.(voter.id)}
                           disabled={!onSelectProfile}
                         >
-                          <Avatar url={voter.avatarUrl} name={voter.pseudo} size={36} />
-                          <Text style={styles.pseudo}>{voter.pseudo}</Text>
+                          <Avatar url={voter.avatarUrl} name={voter.displayName} size={36} />
+                          <Text style={styles.pseudo}>{voter.displayName}</Text>
                         </Pressable>
                       ))
                     )}

@@ -402,7 +402,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
                         onPress={() => onSelectProfile(m.userId)}
                         style={[styles.stackAvatar, i > 0 && styles.stackAvatarOverlap, { zIndex: shown.length - i }]}
                       >
-                        <Avatar url={m.avatarUrl} name={m.pseudo} size={34} />
+                        <Avatar url={m.avatarUrl} name={m.displayName} size={34} />
                       </Pressable>
                     ))}
                     {extra > 0 && (

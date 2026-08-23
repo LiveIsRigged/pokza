@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
+import { fetchDisplayNames } from './profiles';
 
 export type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends';
 
@@ -74,7 +75,8 @@ export async function deleteFriendRelation(userId: string, otherUserId: string):
 
 export interface Friend {
   id: string;
-  pseudo: string;
+  /** Seul nom affichable, cf. `ProfileSummary` — pas de `pseudo` ici, volontairement. */
+  displayName: string;
   avatarUrl?: string;
 }
 
@@ -93,14 +95,14 @@ export async function fetchFriends(userId: string): Promise<Friend[]> {
   const friendIds = rows.map((r) => (r.sender_id === userId ? r.receiver_id : r.sender_id));
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, pseudo, avatar_url')
+    .select('id, display_name, avatar_url')
     .in('id', friendIds);
   if (profilesError) throw profilesError;
 
   const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
   return friendIds.map((id) => ({
     id,
-    pseudo: byId.get(id)?.pseudo ?? '?',
+    displayName: byId.get(id)?.display_name ?? '?',
     avatarUrl: byId.get(id)?.avatar_url ?? undefined,
   }));
 }
@@ -116,7 +118,7 @@ export async function fetchFriendCount(profileId: string): Promise<number> {
 
 export interface MutualFriendPreview {
   id: string;
-  pseudo: string;
+  displayName: string;
   avatarUrl?: string;
 }
 
@@ -129,9 +131,14 @@ export interface MutualFriendPreview {
 export async function fetchMutualFriendsPreview(otherUserId: string, limit = 10): Promise<MutualFriendPreview[]> {
   const { data, error } = await supabase.rpc('mutual_friends_preview', { p_other: otherUserId, p_limit: limit });
   if (error) throw error;
-  return (data ?? []).map((row: { id: string; pseudo: string; avatar_url: string | null }) => ({
+  const rows = (data ?? []) as { id: string; pseudo: string; avatar_url: string | null }[];
+  // La fonction ne renvoie que le pseudo ; le nom d'affichage se relit à côté (cf.
+  // `fetchDisplayNames`). Repli sur le pseudo si le profil ne revient pas : mieux vaut un nom
+  // imparfait qu'une ligne vide.
+  const noms = await fetchDisplayNames(rows.map((r) => r.id));
+  return rows.map((row) => ({
     id: row.id,
-    pseudo: row.pseudo,
+    displayName: noms.get(row.id) ?? row.pseudo,
     avatarUrl: row.avatar_url ?? undefined,
   }));
 }
@@ -147,7 +154,7 @@ export async function fetchMutualFriendCount(otherUserId: string): Promise<numbe
 
 export interface SuggestedFriend {
   id: string;
-  pseudo: string;
+  displayName: string;
   avatarUrl?: string;
   mutualCount: number;
 }
@@ -158,19 +165,19 @@ export interface SuggestedFriend {
 export async function fetchSuggestedFriends(limit = 10): Promise<SuggestedFriend[]> {
   const { data, error } = await supabase.rpc('suggested_friends', { p_limit: limit });
   if (error) throw error;
-  return (data ?? []).map(
-    (row: { id: string; pseudo: string; avatar_url: string | null; mutual_count: number }) => ({
-      id: row.id,
-      pseudo: row.pseudo,
-      avatarUrl: row.avatar_url ?? undefined,
-      mutualCount: row.mutual_count,
-    })
-  );
+  const rows = (data ?? []) as { id: string; pseudo: string; avatar_url: string | null; mutual_count: number }[];
+  const noms = await fetchDisplayNames(rows.map((r) => r.id));
+  return rows.map((row) => ({
+    id: row.id,
+    displayName: noms.get(row.id) ?? row.pseudo,
+    avatarUrl: row.avatar_url ?? undefined,
+    mutualCount: row.mutual_count,
+  }));
 }
 
 export interface PendingRequest {
   senderId: string;
-  senderPseudo: string;
+  senderDisplayName: string;
   senderAvatarUrl?: string;
   createdAt: string;
 }
@@ -188,14 +195,14 @@ export async function fetchPendingRequests(userId: string): Promise<PendingReque
   const senderIds = rows.map((r) => r.sender_id);
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, pseudo, avatar_url')
+    .select('id, display_name, avatar_url')
     .in('id', senderIds);
   if (profilesError) throw profilesError;
 
   const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
   return rows.map((row) => ({
     senderId: row.sender_id,
-    senderPseudo: byId.get(row.sender_id)?.pseudo ?? '?',
+    senderDisplayName: byId.get(row.sender_id)?.display_name ?? '?',
     senderAvatarUrl: byId.get(row.sender_id)?.avatar_url ?? undefined,
     createdAt: row.created_at,
   }));

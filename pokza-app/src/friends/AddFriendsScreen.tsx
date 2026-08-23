@@ -68,7 +68,7 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
           </View>
           <Text style={styles.explainer}>
             Fais scanner ce code par un ami qui a Pokza ouvert pour l'ajouter instantanément — pas besoin de
-            chercher son pseudo.
+            le chercher.
           </Text>
           <Pressable style={styles.actionButton} onPress={handleShareInvite}>
             <Text style={styles.actionButtonText}>Partager mon lien d'invitation</Text>
@@ -153,8 +153,8 @@ function SuggestionsTab({
           {pending.map((req) => (
             <View key={req.senderId} style={styles.suggestionRow}>
               <Pressable style={styles.pendingInfo} onPress={() => onSelectProfile(req.senderId)}>
-                <Avatar url={req.senderAvatarUrl} name={req.senderPseudo} size={40} />
-                <Text style={styles.suggestionPseudo}>{req.senderPseudo}</Text>
+                <Avatar url={req.senderAvatarUrl} name={req.senderDisplayName} size={40} />
+                <Text style={styles.suggestionPseudo}>{req.senderDisplayName}</Text>
               </Pressable>
               <View style={styles.pendingActions}>
                 <Pressable
@@ -188,9 +188,9 @@ function SuggestionsTab({
       ) : (
         suggestions.map((s) => (
           <Pressable key={s.id} style={styles.suggestionRow} onPress={() => onSelectProfile(s.id)}>
-            <Avatar url={s.avatarUrl} name={s.pseudo} size={40} />
+            <Avatar url={s.avatarUrl} name={s.displayName} size={40} />
             <View style={styles.suggestionInfo}>
-              <Text style={styles.suggestionPseudo}>{s.pseudo}</Text>
+              <Text style={styles.suggestionPseudo}>{s.displayName}</Text>
               <Text style={styles.suggestionMutual}>
                 {s.mutualCount} {s.mutualCount > 1 ? 'amis en commun' : 'ami en commun'}
               </Text>

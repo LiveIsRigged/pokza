@@ -176,7 +176,11 @@ Deno.serve(async (req) => {
 
     // Résolution des libellés en service_role (contourne la RLS).
     const [{ data: actor }, post, group] = await Promise.all([
-      admin.from('profiles').select('pseudo').eq('id', n.actor_id).maybeSingle(),
+      // `display_name` et non `pseudo` : c'est le seul nom sous lequel une personne apparaît dans
+      // l'app depuis le 23/08, et une notification qui annonce un pseudo que le destinataire n'a
+      // jamais vu ne lui apprend rien. La colonne vaut déjà le pseudo pour qui a choisi de
+      // l'afficher (cf. `docs/dev/recherche-par-nom.sql`) : un seul champ couvre les deux cas.
+      admin.from('profiles').select('display_name').eq('id', n.actor_id).maybeSingle(),
       n.post_id
         ? admin.from('posts').select('location').eq('id', n.post_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -185,7 +189,7 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null }),
     ]);
 
-    const actorName = actor?.pseudo ?? 'Quelqu’un';
+    const actorName = actor?.display_name ?? 'Quelqu’un';
     const body = bodyFor(n.type, actorName, post?.data?.location ?? null, group?.data?.name ?? null);
     const message = JSON.stringify({
       title: 'Pokza',

@@ -41,7 +41,7 @@ export async function isBlockedByMe(blockerId: string, blockedId: string): Promi
 
 export interface BlockedUser {
   id: string;
-  pseudo: string;
+  displayName: string;
   avatarUrl?: string;
   blockedAt: string;
 }
@@ -49,7 +49,7 @@ export interface BlockedUser {
 /**
  * Liste des comptes que J'AI bloqués (pour l'écran « Comptes bloqués »). Le profil d'une personne
  * bloquée reste lisible — seuls ses posts/commentaires/demandes d'ami sont masqués par la RLS — donc
- * on peut afficher son pseudo et son avatar pour permettre de la débloquer.
+ * on peut afficher son nom et son avatar pour permettre de la débloquer.
  */
 export async function fetchBlockedUsers(blockerId: string): Promise<BlockedUser[]> {
   const { data: rows, error } = await supabase
@@ -63,14 +63,14 @@ export async function fetchBlockedUsers(blockerId: string): Promise<BlockedUser[
   const blockedIds = rows.map((r) => r.blocked_id);
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, pseudo, avatar_url')
+    .select('id, display_name, avatar_url')
     .in('id', blockedIds);
   if (profilesError) throw profilesError;
 
   const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
   return rows.map((row) => ({
     id: row.blocked_id,
-    pseudo: byId.get(row.blocked_id)?.pseudo ?? '?',
+    displayName: byId.get(row.blocked_id)?.display_name ?? '?',
     avatarUrl: byId.get(row.blocked_id)?.avatar_url ?? undefined,
     blockedAt: row.created_at,
   }));

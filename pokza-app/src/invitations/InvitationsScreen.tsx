@@ -144,9 +144,9 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
               visibleFriendRequests.map((req) => (
                 <View key={req.senderId} style={styles.row}>
                   <Pressable style={styles.rowInfo} onPress={() => onSelectProfile(req.senderId)}>
-                    <Avatar url={req.senderAvatarUrl} name={req.senderPseudo} size={36} />
+                    <Avatar url={req.senderAvatarUrl} name={req.senderDisplayName} size={36} />
                     <Text style={styles.rowLabel} numberOfLines={1}>
-                      {req.senderPseudo}
+                      {req.senderDisplayName}
                     </Text>
                   </Pressable>
                   <View style={styles.actions}>
