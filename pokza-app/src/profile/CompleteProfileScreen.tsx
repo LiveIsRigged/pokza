@@ -149,6 +149,22 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
     onComplete();
   };
 
+  // Le nom sous lequel les autres le verront, MONTRÉ plutôt qu'expliqué (décision de Victor,
+  // 23/08/2026). Il remplace une phrase de 36 mots sur la vie privée, qui arrivait au pire moment
+  // — juste après avoir réclamé un état civil — et dont un tiers faisait doublon avec la ligne
+  // sous la date de naissance. Ce que la phrase disait, cet aperçu le démontre.
+  // Reproduit la règle de la colonne `display_name` (cf. docs/dev/recherche-par-nom.sql) : prénom
+  // + nom quand la préférence est « nom », le pseudo sinon. Si les deux calculs devaient diverger,
+  // c'est ici qu'il faudrait corriger — la base fait foi.
+  // Vide tant que le champ correspondant n'est pas rempli : « Tu apparaîtras comme . » serait pire
+  // que pas de ligne du tout, et l'écran s'ouvre justement sur des champs vides.
+  const apercuNomAffiche =
+    displayPreference === 'nom'
+      ? prenom.trim() && nom.trim()
+        ? `${prenom.trim()} ${nom.trim()}`
+        : ''
+      : pseudo.trim();
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -174,17 +190,17 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
 
         <Text style={styles.label}>Nom</Text>
         <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder="Nom" />
-        <Text style={styles.reassurance}>
-          Ton prénom et ton nom apparaissent sur Pokza, c'est le choix proposé ci-dessous. Si tu préfères ton
-          pseudo, ils redeviennent entièrement privés : personne ne les voit, et ta date de naissance ne
-          s'affiche dans aucun cas.
-        </Text>
 
         <Text style={styles.label}>Afficher sur Pokza</Text>
         <View style={styles.row}>
           <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
           <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
         </View>
+        {apercuNomAffiche ? (
+          <Text style={styles.reassurance}>
+            Tu apparaîtras comme <Text style={styles.reassuranceFort}>{apercuNomAffiche}</Text>.
+          </Text>
+        ) : null}
 
         <Text style={styles.label}>Pays</Text>
         <Pressable style={styles.selector} onPress={() => setCountryPickerOpen(true)}>
@@ -362,6 +378,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 6,
     lineHeight: 17,
+  },
+  // Le nom lui-même ressort du gris de la ligne : c'est la seule information de l'aperçu, le reste
+  // n'est que la phrase qui la porte.
+  reassuranceFort: {
+    color: colors.textPrimary,
+    fontWeight: '700',
   },
   selector: {
     flexDirection: 'row',
