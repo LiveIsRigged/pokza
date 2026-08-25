@@ -1,33 +1,12 @@
--- Page Stats réservée aux admins
--- ================================
--- Le client ne peut PAS lire auth.users (PostgREST n'expose que public) : les stats passent donc par
--- une fonction SECURITY DEFINER qui vérifie d'abord que l'appelant est admin. Le gating est imposé en
--- base, pas seulement dans l'app.
--- Éditeur SQL : https://supabase.com/dashboard/project/blfoycuvvyxaxftzuidf/sql/new
+-- Correctif « Actifs » / « Jamais revenus » — get_admin_stats()
+-- =============================================================
+-- Ne touche QUE les 4 tuiles d'activite. Tout le reste du tableau de bord est repris a
+-- l'identique de la fonction deployee (recuperee via pg_get_functiondef, pas depuis le dump
+-- du repo, qui divergeait sur search_path).
+-- Aucun changement d'app ni de schema : effet immediat au prochain chargement de la page Stats.
+-- Editeur SQL PROD : https://supabase.com/dashboard/project/blfoycuvvyxaxftzuidf/sql/new
+-- Editeur SQL DEV  : https://supabase.com/dashboard/project/ahdikgckctvduuestzrh/sql/new
 
--- ── 1. Table des admins ──────────────────────────────────────────────────────────────────────────
--- Sécurité : RLS active, SEULE une politique de LECTURE de sa propre ligne. Aucune politique
--- d'écriture + aucun GRANT insert/update/delete → impossible de se promouvoir admin via l'API.
-create table if not exists public.admins (
-  user_id    uuid primary key references auth.users(id) on delete cascade,
-  created_at timestamptz not null default now()
-);
-
-alter table public.admins enable row level security;
-
-drop policy if exists "read own admin row" on public.admins;
-create policy "read own admin row" on public.admins
-  for select using (user_id = auth.uid());
-
-revoke all on public.admins from anon, authenticated;
-grant select on public.admins to authenticated;
-
--- Sacre le fondateur (pseudo unique → cible sans ambiguïté). Idempotent.
-insert into public.admins (user_id)
-select id from public.profiles where pseudo = 'pokza_founder'
-on conflict (user_id) do nothing;
-
--- ── 2. Fonction de stats (SECURITY DEFINER, gate admin) ──────────────────────────────────────────
 create or replace function public.get_admin_stats()
 returns jsonb
 language plpgsql
