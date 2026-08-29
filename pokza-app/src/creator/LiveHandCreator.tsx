@@ -10,7 +10,7 @@ import { StreetCorrectionStep } from './steps/StreetCorrectionStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { appliquerContexteAuxSieges, buildSeats, getActingOrder } from './positions';
 import { committedBySeat } from '../engine/handEngine';
-import { champsInvalidants, contrainteTapisEffectif, contraintesTapis } from './invalidation';
+import { champsInvalidants } from './invalidation';
 import type { ContextData, Phase, ReviewData, Snapshot } from './types';
 import { defaultContextForPlayer, loadContextPrefs, saveContextPrefs } from './contextPrefs';
 import { seedStart, type CreatorSeed } from './rehydrate';
@@ -380,18 +380,6 @@ export function LiveHandCreator({
       initial.revealShowdown !== revealShowdown
     : false;
 
-  // Contraintes de tapis, lues sur le déroulé réel (cf. `invalidation.ts`) : un siège ne peut pas
-  // descendre sous ce qu'il a engagé, et un siège parti à tapis est figé dans les deux sens.
-  const contraintesParPosition = (() => {
-    if (!enCorrection || seats.length === 0) return undefined;
-    const { plancher, verrouilles } = contraintesTapis(seats, actions);
-    const parPosition: Record<string, { min: number; verrouille: boolean }> = {};
-    for (const seat of seats) {
-      parPosition[seat.position] = { min: plancher[seat.id] ?? 0, verrouille: verrouilles.has(seat.id) };
-    }
-    return { parPosition, effectif: contrainteTapisEffectif(seats, actions, context) };
-  })();
-
   /**
    * Publier sans repasser par les étapes suivantes. N'existe QUE sur l'étape d'entrée d'une
    * correction et seulement si rien d'invalidant n'a bougé : il n'y a alors littéralement rien à
@@ -472,7 +460,6 @@ export function LiveHandCreator({
           onBack={goBack}
           nextLabel={libelleBouton(invalidants.length > 0)}
           nextBloque={aLEntree && !contexteModifie}
-          contraintes={contraintesParPosition}
           footerNote={
             !aLEntree
               ? null

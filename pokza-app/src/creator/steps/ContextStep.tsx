@@ -205,15 +205,6 @@ interface ContextStepProps {
   footerNote?: string | null;
   /** Empêche de valider une correction qui ne change rien — elle coûterait ses réactions pour rien. */
   nextBloque?: boolean;
-  /**
-   * Bornes des tapis, calculées sur le déroulé déjà saisi (cf. `invalidation.ts`). Absentes en
-   * création, où il n'y a pas encore d'actions à contredire. Indexées par POSITION et non par
-   * identifiant de siège : c'est ainsi que le formulaire raisonne.
-   */
-  contraintes?: {
-    parPosition: Record<string, { min: number; verrouille: boolean }>;
-    effectif: { min: number; verrouille: boolean };
-  };
 }
 
 export function ContextStep({
@@ -226,7 +217,6 @@ export function ContextStep({
   nextLabel,
   footerNote,
   nextBloque,
-  contraintes,
 }: ContextStepProps) {
   const availablePositions = POSITION_SETS[value.numPlayers] ?? POSITION_SETS[6];
   const heroValid = availablePositions.includes(value.heroPosition);
@@ -279,24 +269,6 @@ export function ContextStep({
     onChange(next);
   };
 
-  // Un tapis ne peut pas descendre sous ce que son siège a DÉJÀ engagé — sa propre mise
-  // deviendrait illégale. On ne corrige pas la saisie en direct (taper « 2 » vers « 200 » serait
-  // ramené de force) : on refuse de continuer, en disant lequel et combien.
-  const erreurTapis = (() => {
-    if (!contraintes) return null;
-    for (const pos of availablePositions) {
-      const c = contraintes.parPosition[pos];
-      const saisi = value.seatStacks?.[pos];
-      if (!c || !saisi || saisi <= 0) continue;
-      if (saisi < c.min) return `${pos} a déjà engagé ${c.min} : son tapis ne peut pas être plus petit.`;
-    }
-    const eff = contraintes.effectif;
-    if (!eff.verrouille && value.effectiveStack < eff.min) {
-      return `Le tapis effectif ne peut pas descendre sous ${eff.min}, déjà engagé.`;
-    }
-    return null;
-  })();
-
   return (
     <WizardScreen
       title="La table"
@@ -309,10 +281,9 @@ export function ContextStep({
         !value.bb ||
         !value.effectiveStack ||
         blindsInvalid ||
-        Boolean(nextBloque) ||
-        Boolean(erreurTapis)
+        Boolean(nextBloque)
       }
-      footerNote={erreurTapis ?? footerNote}
+      footerNote={footerNote}
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
@@ -600,16 +571,15 @@ export function ContextStep({
                   update(isHero ? { heroName: t } : { opponentNames: { ...value.opponentNames, [pos]: t } })
                 }
               />
-              {/* Siège parti à tapis : son tapis EST son engagement. Le baisser rendrait sa mise
-                  illégale, l'augmenter le sortirait du tapis — il aurait alors dû parler aux
-                  streets suivantes, où le déroulé enregistré est muet pour lui. Figé dans les deux
-                  sens, donc, et seulement pendant une correction (cf. `contraintes`). */}
+              {/* Le tapis d'un siège parti à tapis reste MODIFIABLE, et descendre sous l'engagé
+                  aussi : on n'interdit rien, on annonce le prix (les mises seront à ressaisir) et
+                  l'auteur tranche. Bloquer la saisie revenait à lui refuser une correction
+                  légitime au nom d'un déroulé qu'il s'apprêtait justement à refaire. */}
               <OptionalDecimalTextInput
                 style={[styles.input, styles.playerStackInput]}
                 placeholder={formatChipInput(value.effectiveStack, value.gameType)}
                 value={value.seatStacks?.[pos]}
                 gameType={value.gameType}
-                editable={!contraintes?.parPosition[pos]?.verrouille}
                 onChangeValue={(stack) => update({ seatStacks: { ...value.seatStacks, [pos]: stack } })}
               />
             </View>

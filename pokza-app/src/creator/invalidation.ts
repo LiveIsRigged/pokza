@@ -80,29 +80,42 @@ function siegesAuTapisEffectif(seats: Seat[], ctx: ContextData): Seat[] {
  * leurs bornes (cf. `contraintesTapis`), ce que le formulaire empêche de saisir. La vérification
  * reste ici en dernier rempart, pour qu'une valeur venue d'ailleurs ne passe jamais en silence.
  */
+export function champsStructurelsModifies(avant: ContextData, apres: ContextData): string[] {
+  const labels: string[] = [];
+  for (const { cle, label } of CHAMPS_STRUCTURELS) {
+    if (avant[cle] !== apres[cle] && !labels.includes(label)) labels.push(label);
+  }
+  return labels;
+}
+
 export function champsInvalidants(
   avant: ContextData,
   apres: ContextData,
   seats: Seat[],
   actions: Action[]
 ): string[] {
-  const labels: string[] = [];
-  for (const { cle, label } of CHAMPS_STRUCTURELS) {
-    if (avant[cle] !== apres[cle] && !labels.includes(label)) labels.push(label);
-  }
+  const structurels = champsStructurelsModifies(avant, apres);
+  // ⚠️ SI LA STRUCTURE A DÉJÀ BOUGÉ, ON NE REGARDE PAS LES TAPIS. Leurs bornes se lisent sur des
+  // actions qui vont de toute façon être ressaisies : les opposer alors n'a aucun sens. C'était le
+  // cas signalé par Victor — passer en 2/5 avec 500 de tapis se faisait refuser « le tapis effectif
+  // ne peut pas descendre sous 685, déjà engagé », alors que ces 685 appartenaient à un déroulé
+  // condamné.
+  if (structurels.length > 0) return structurels;
 
   const { plancher, verrouilles } = contraintesTapis(seats, actions);
   const tapisDe = (s: Seat, ctx: ContextData) => ctx.seatStacks?.[s.position] || ctx.effectiveStack;
-  const tapisCasse = seats.some((s) => {
-    const av = tapisDe(s, avant);
-    const ap = tapisDe(s, apres);
-    if (av === ap) return false;
-    if (verrouilles.has(s.id)) return true;
-    return ap < (plancher[s.id] ?? 0);
-  });
-  if (tapisCasse) labels.push('les tapis');
-
-  return labels;
+  return seats
+    .filter((s) => {
+      const av = tapisDe(s, avant);
+      const ap = tapisDe(s, apres);
+      if (av === ap) return false;
+      // Un siège parti à tapis : son tapis EST son engagement, le toucher réécrit sa dernière mise
+      // dans un sens ou le sort du tapis dans l'autre. Descendre sous l'engagé rendrait la mise
+      // illégale. Dans les deux cas on ne bloque plus et on ne réécrit rien en douce : on annonce
+      // que les mises seront à ressaisir, et c'est l'auteur qui décide.
+      return verrouilles.has(s.id) || ap < (plancher[s.id] ?? 0);
+    })
+    .map((s) => `le tapis de ${s.position}`);
 }
 
 /** Le tapis effectif est-il verrouillé, et à quel minimum ? `null` = libre. */
