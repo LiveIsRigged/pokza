@@ -26,6 +26,7 @@ const {
   montantBoutonPropose,
   montantsChaineProposes,
   cascadeChaine,
+  recalerStraddle,
 } = require('./cm/creator/straddle.js');
 const { straddleSeatLabel, chainStraddleCount } = require('./cm/engine/handEngine.js');
 const { postToSeed } = require('./cm/creator/rehydrate.js');
@@ -125,10 +126,11 @@ cas('Longueur de chaîne, Double sans bouton', longueurChaine(ctx({ straddleCoun
 
 console.log('\n── 3. Le montant proposé au bouton ──');
 
-// 2x la BB quand la chaîne est vide, 2x le dernier straddle de la chaîne sinon.
-cas('Simple + bouton → 2x la BB', montantBoutonPropose(ctx({ straddleCount: 1, straddleAmounts: [8], bb: 4 })), 8);
-cas('Double + bouton → 2x le straddle UTG', montantBoutonPropose(ctx({ straddleCount: 2, straddleAmounts: [8, 16] })), 16);
-cas('Triple + bouton → 2x le double straddle', montantBoutonPropose(ctx({ straddleCount: 3, straddleAmounts: [8, 16, 32] })), 32);
+// 2x le dernier straddle de la chaîne QUI LE PRÉCÈDE (donc raccourcie d'un cran), 2x la BB si elle
+// est vide.
+cas('Chaîne vide → 2x la BB', montantBoutonPropose([], 4), 8);
+cas('Chaîne [8] → 16', montantBoutonPropose([8], 4), 16);
+cas('Chaîne [8, 16] → 32', montantBoutonPropose([8, 16], 4), 32);
 
 console.log('\n── 3 bis. Montants proposés et cascade ──');
 
@@ -149,6 +151,91 @@ cas(
   'Une chaîne saisie à la main se poste telle quelle',
   resume(straddlesAPoster(ctx({ straddleCount: 3, straddleAmounts: [10, 30, 100] }))),
   ['UTG@10', 'HJ@30', 'CO@100']
+);
+
+console.log('\n── 3 ter. Le recalage, seul juge de la cohérence ──');
+
+// `recalerStraddle` applique les trois règles après CHAQUE changement du formulaire. On lui donne
+// l'avant et l'après, il rend les trois réglages corrigés.
+const recale = (avant, apres) => {
+  const a = ctx(avant);
+  return recalerStraddle(a, ctx({ ...avant, ...apres }));
+};
+
+// LE RETOUR DE VICTOR : le bouton suit la cascade comme le reste. Corriger l'UTG réaligne tout ce
+// qui vient après lui, le bouton compris — il EST le dernier straddle.
+cas(
+  'Corriger la chaîne repropose le bouton',
+  recale(
+    { straddleCount: 2, straddleAmounts: [8], straddleBouton: true, straddleBoutonMontant: 16 },
+    { straddleAmounts: cascadeChaine([8], 0, 10) }
+  ),
+  { straddleBouton: true, straddleAmounts: [10], straddleBoutonMontant: 20 }
+);
+cas(
+  'Chaîne de 2 : la cascade descend jusqu\'au bouton',
+  recale(
+    { straddleCount: 3, straddleAmounts: [8, 16], straddleBouton: true, straddleBoutonMontant: 32 },
+    { straddleAmounts: cascadeChaine([8, 16], 0, 10) }
+  ),
+  { straddleBouton: true, straddleAmounts: [10, 20], straddleBoutonMontant: 40 }
+);
+// Modifier le bouton lui-même ne déclenche rien : la chaîne n'a pas bougé.
+cas(
+  'Modifier le bouton seul le fige',
+  recale(
+    { straddleCount: 2, straddleAmounts: [8], straddleBouton: true, straddleBoutonMontant: 16 },
+    { straddleBoutonMontant: 50 }
+  ),
+  { straddleBouton: true, straddleAmounts: [8], straddleBoutonMontant: 50 }
+);
+// ...jusqu'au prochain changement de la chaîne, qui le réaligne. C'est le prix assumé.
+cas(
+  'Et la chaîne le défige au coup d\'après',
+  recale(
+    { straddleCount: 2, straddleAmounts: [8], straddleBouton: true, straddleBoutonMontant: 50 },
+    { straddleAmounts: [10] }
+  ),
+  { straddleBouton: true, straddleAmounts: [10], straddleBoutonMontant: 20 }
+);
+// Changer le nombre déplace le bouton d'un rang : son ancien montant ne veut plus rien dire.
+cas(
+  'Triple → Double repropose le bouton',
+  recale(
+    { straddleCount: 3, straddleAmounts: [8, 16], straddleBouton: true, straddleBoutonMontant: 32 },
+    { straddleCount: 2 }
+  ),
+  { straddleBouton: true, straddleAmounts: [8], straddleBoutonMontant: 16 }
+);
+// Allumer l'interrupteur prend le dernier maillon à la chaîne et repropose depuis ce qui reste.
+cas(
+  'Allumer le bouton raccourcit la chaîne et propose',
+  recale({ straddleCount: 2, straddleAmounts: [8, 16] }, { straddleBouton: true }),
+  { straddleBouton: true, straddleAmounts: [8], straddleBoutonMontant: 16 }
+);
+cas(
+  'L\'éteindre rend son maillon à la chaîne',
+  recale({ straddleCount: 2, straddleAmounts: [8], straddleBouton: true, straddleBoutonMontant: 16 }, { straddleBouton: false }),
+  { straddleBouton: false, straddleAmounts: [8, 16], straddleBoutonMontant: 16 }
+);
+// Une table trop courte éteint le bouton POUR DE BON, et la chaîne reprend son maillon.
+cas(
+  'Passer à 4 joueurs en Triple éteint le bouton',
+  recale(
+    { straddleCount: 3, straddleAmounts: [8, 16], straddleBouton: true, straddleBoutonMontant: 32 },
+    { numPlayers: 4 }
+  ),
+  { straddleBouton: false, straddleAmounts: [8, 16, 32], straddleBoutonMontant: 32 }
+);
+// Un changement étranger au straddle ne doit RIEN toucher — sans quoi corriger une main déclarerait
+// le straddle modifié pour un lieu ou un tapis.
+cas(
+  'Un changement sans rapport ne bouge rien',
+  recale(
+    { straddleCount: 2, straddleAmounts: [8], straddleBouton: true, straddleBoutonMontant: 50 },
+    { numPlayers: 9 }
+  ),
+  { straddleBouton: true, straddleAmounts: [8], straddleBoutonMontant: 50 }
 );
 
 console.log('\n── 4. Les libellés de siège ──');

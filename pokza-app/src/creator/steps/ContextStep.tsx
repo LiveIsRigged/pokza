@@ -11,8 +11,7 @@ import {
   boutonPossible,
   cascadeChaine,
   longueurChaine,
-  montantBoutonPropose,
-  montantsChaineProposes,
+  recalerStraddle,
   straddleBoutonActif,
 } from '../straddle';
 import { TOURNAMENT_DEFAULTS, type ContextData } from '../types';
@@ -291,28 +290,10 @@ export function ContextStep({
       const positions = POSITION_SETS[max] ?? POSITION_SETS[6];
       if (!positions.includes(next.heroPosition)) next.heroPosition = positions[0];
     }
-    // Le BTN straddle n'a pas sa place sur toutes les tables ni pour tous les nombres de straddles
-    // (cf. `boutonPossible`). Changer l'un ou l'autre peut donc le rendre impossible : on l'éteint
-    // dans l'état plutôt que de le laisser coché sous un interrupteur qui vient de disparaître.
-    if (next.straddleBouton && !boutonPossible(next.numPlayers, next.straddleCount)) {
-      next.straddleBouton = false;
-    }
-    // La chaîne s'allonge ou raccourcit selon le nombre de straddles, le bouton et la table. Recaler
-    // ses montants ICI plutôt qu'à chacun de ces trois endroits évite le cas où la liste et les
-    // lignes affichées ne parlent plus du même nombre de straddles — une ligne sans montant, et un
-    // straddle qui ne se poste pas alors que la chip dit qu'il existe.
-    const chaine = longueurChaine(next);
-    if (next.straddleAmounts.length !== chaine) {
-      next.straddleAmounts = montantsChaineProposes(next.straddleAmounts, chaine, next.bb);
-    }
-    // Changer le NOMBRE de straddles déplace le bouton d'un cran dans la chaîne : le montant qu'on
-    // lui avait proposé pour l'ancien rang ne veut plus rien dire (passer de Triple à Double lui
-    // laissait 32 là où 16 s'impose). On le repropose, comme la chaîne juste au-dessus. Modifier un
-    // montant de la chaîne, en revanche, n'y touche pas : un straddle au bouton dépend de la maison,
-    // c'est le seul des quatre qui n'est pas mécaniquement le double du précédent.
-    if (next.straddleCount !== value.straddleCount && straddleBoutonActif(next)) {
-      next.straddleBoutonMontant = montantBoutonPropose(next);
-    }
+    // Le straddle a ses propres règles de cohérence — le bouton qui n'a plus sa place, la longueur
+    // de la chaîne, le montant du bouton qui suit ce qui le précède. Elles vivent toutes dans
+    // `recalerStraddle`, pour qu'un seul endroit en réponde et qu'elles soient vérifiables.
+    Object.assign(next, recalerStraddle(value, next));
     onChange(next);
   };
 
@@ -524,11 +505,7 @@ export function ContextStep({
                           onValueChange={(on) =>
                             update(
                               on
-                                ? {
-                                    straddleBouton: true,
-                                    straddleBoutonMontant:
-                                      value.straddleBoutonMontant || montantBoutonPropose(value),
-                                  }
+                                ? { straddleBouton: true }
                                 : { straddleBouton: false }
                             )
                           }

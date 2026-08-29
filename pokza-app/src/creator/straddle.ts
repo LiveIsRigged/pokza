@@ -105,18 +105,12 @@ export function straddlesAPoster(ctx: ReglageStraddle): StraddleAPoster[] {
 }
 
 /**
- * Le montant proposé au bouton quand on allume l'interrupteur : 2x le dernier straddle de la
- * chaîne, ou 2x la BB quand la chaîne est vide (tranché avec Victor le 29/08).
- *
- * Proposé UNE FOIS, à l'activation, et libre ensuite. Contrairement à la chaîne, il ne suit pas la
- * cascade : le montant d'un straddle au bouton dépend de la maison, c'est le seul des quatre qui
- * n'est pas mécaniquement le double du précédent.
+ * Le montant proposé au bouton : 2x le dernier straddle de la chaîne qui le précède, ou 2x la BB
+ * quand cette chaîne est vide (tranché avec Victor le 29/08).
  */
-export function montantBoutonPropose(ctx: ReglageStraddle & { bb: number }): number {
-  // Le bouton prend la place du dernier maillon : la chaîne qui le précède est donc plus courte
-  // d'un cran, et c'est SON dernier montant qu'on double.
-  const dernierDeLaChaine = ctx.straddleAmounts[ctx.straddleCount - 2] ?? 0;
-  return dernierDeLaChaine > 0 ? dernierDeLaChaine * 2 : ctx.bb * 2;
+export function montantBoutonPropose(chaine: number[], bb: number): number {
+  const dernier = chaine[chaine.length - 1] ?? 0;
+  return dernier > 0 ? dernier * 2 : bb * 2;
 }
 
 /**
@@ -145,4 +139,51 @@ export function cascadeChaine(montants: number[], index: number, valeur: number)
   suite.push(valeur);
   for (let i = index + 1; i < montants.length; i++) suite.push(suite[i - 1] * 2);
   return suite;
+}
+
+/** Les trois réglages que `recalerStraddle` peut avoir à corriger. */
+export interface RecalageStraddle {
+  straddleBouton: boolean;
+  straddleAmounts: number[];
+  straddleBoutonMontant: number;
+}
+
+/**
+ * Recale les réglages de straddle après un changement QUELCONQUE du formulaire — trois règles, dans
+ * cet ordre, et un seul endroit qui les applique :
+ *
+ * 1. **Le bouton s'éteint pour de bon** s'il n'a plus sa place sur cette table (cf.
+ *    `boutonPossible`). Le laisser coché sous un interrupteur qui vient de disparaître donnerait un
+ *    réglage actif que rien n'affiche.
+ * 2. **La chaîne est recalée sur sa longueur**, qui dépend du nombre de straddles, du bouton ET de
+ *    la table. La recalculer à chacun de ces trois endroits laissait une ligne sans montant, et un
+ *    straddle qui ne se postait pas alors que la chip disait qu'il existait.
+ * 3. **Le montant du bouton se repropose dès que la chaîne bouge**, en longueur comme en montants.
+ *    Le bouton est le DERNIER straddle : tout ce qui le précède le réaligne, exactement comme un
+ *    maillon réaligne ceux d'après (cf. `cascadeChaine`). Seul le modifier lui-même le fige, et
+ *    jusqu'au prochain changement de la chaîne — ce qu'on assume : l'app ne sait pas distinguer un
+ *    montant qu'elle a proposé d'un montant saisi, et arbitrer autrement aurait donné deux règles
+ *    contradictoires selon le geste (retour de Victor, 29/08).
+ */
+export function recalerStraddle(
+  avant: ReglageStraddle,
+  apres: ReglageStraddle & { bb: number }
+): RecalageStraddle {
+  const recale = { ...apres };
+  if (recale.straddleBouton && !boutonPossible(recale.numPlayers, recale.straddleCount)) {
+    recale.straddleBouton = false;
+  }
+  const chaine = longueurChaine(recale);
+  if (recale.straddleAmounts.length !== chaine) {
+    recale.straddleAmounts = montantsChaineProposes(recale.straddleAmounts, chaine, apres.bb);
+  }
+  const chaineABouge = JSON.stringify(avant.straddleAmounts) !== JSON.stringify(recale.straddleAmounts);
+  if (chaineABouge && straddleBoutonActif(recale)) {
+    recale.straddleBoutonMontant = montantBoutonPropose(recale.straddleAmounts, apres.bb);
+  }
+  return {
+    straddleBouton: recale.straddleBouton,
+    straddleAmounts: recale.straddleAmounts,
+    straddleBoutonMontant: recale.straddleBoutonMontant,
+  };
 }
