@@ -363,6 +363,7 @@ export function LiveHandCreator({
   // montant de la bombe et il n'y a pas de petite blinde : même convention que `finalize`.
   const tableProps = {
     gameType: context.gameType,
+    currency: context.currency,
     variant: context.variant,
     sb: context.bombPot ? 0 : context.sb,
     bb: context.bombPot ? context.bombAnte : context.bb,

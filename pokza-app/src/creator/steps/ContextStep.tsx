@@ -713,6 +713,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  // Mêmes bordure, rayon et gouttières que `input` — et surtout PAS de fond : les champs de ce
+  // formulaire laissent voir le parchemin. Un fond blanc, recopié d'un autre écran, faisait ressortir
+  // la devise comme si elle était le champ important de l'étape.
   selector: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -722,7 +725,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#fff',
   },
   selectorValue: {
     fontSize: 16,
