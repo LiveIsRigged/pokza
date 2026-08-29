@@ -79,6 +79,7 @@ function OptionalDecimalTextInput({
   style,
   placeholder,
   gameType,
+  editable,
 }: {
   value: number | undefined;
   onChangeValue: (n: number | undefined) => void;
@@ -86,6 +87,7 @@ function OptionalDecimalTextInput({
   placeholder?: string;
   /** Sert au format abrégé rendu à la sortie du champ ; absent = pas d'abréviation. */
   gameType?: ContextData['gameType'];
+  editable?: boolean;
 }) {
   const [text, setText] = useState(value != null ? String(value) : '');
 
@@ -101,6 +103,7 @@ function OptionalDecimalTextInput({
       style={style}
       keyboardType="decimal-pad"
       placeholder={placeholder}
+      editable={editable}
       value={text}
       onChangeText={(t) => {
         setText(t);
@@ -196,9 +199,35 @@ interface ContextStepProps {
   onBack?: () => void;
   step?: number;
   totalSteps?: number;
+  /** Correction en cours : « Valider » publie directement, « Continuer » fait ressaisir la suite. */
+  nextLabel?: string;
+  /** La phrase collée au bouton, qui annonce ce que le changement en cours va coûter. */
+  footerNote?: string | null;
+  /** Empêche de valider une correction qui ne change rien — elle coûterait ses réactions pour rien. */
+  nextBloque?: boolean;
+  /**
+   * Bornes des tapis, calculées sur le déroulé déjà saisi (cf. `invalidation.ts`). Absentes en
+   * création, où il n'y a pas encore d'actions à contredire. Indexées par POSITION et non par
+   * identifiant de siège : c'est ainsi que le formulaire raisonne.
+   */
+  contraintes?: {
+    parPosition: Record<string, { min: number; verrouille: boolean }>;
+    effectif: { min: number; verrouille: boolean };
+  };
 }
 
-export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps }: ContextStepProps) {
+export function ContextStep({
+  value,
+  onChange,
+  onNext,
+  onBack,
+  step,
+  totalSteps,
+  nextLabel,
+  footerNote,
+  nextBloque,
+  contraintes,
+}: ContextStepProps) {
   const availablePositions = POSITION_SETS[value.numPlayers] ?? POSITION_SETS[6];
   const heroValid = availablePositions.includes(value.heroPosition);
   // La grosse blinde ne peut pas être plus PETITE que la petite : SB 100 / BB 5 n'a aucun sens.
@@ -250,12 +279,40 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
     onChange(next);
   };
 
+  // Un tapis ne peut pas descendre sous ce que son siège a DÉJÀ engagé — sa propre mise
+  // deviendrait illégale. On ne corrige pas la saisie en direct (taper « 2 » vers « 200 » serait
+  // ramené de force) : on refuse de continuer, en disant lequel et combien.
+  const erreurTapis = (() => {
+    if (!contraintes) return null;
+    for (const pos of availablePositions) {
+      const c = contraintes.parPosition[pos];
+      const saisi = value.seatStacks?.[pos];
+      if (!c || !saisi || saisi <= 0) continue;
+      if (saisi < c.min) return `${pos} a déjà engagé ${c.min} : son tapis ne peut pas être plus petit.`;
+    }
+    const eff = contraintes.effectif;
+    if (!eff.verrouille && value.effectiveStack < eff.min) {
+      return `Le tapis effectif ne peut pas descendre sous ${eff.min}, déjà engagé.`;
+    }
+    return null;
+  })();
+
   return (
     <WizardScreen
       title="La table"
       subtitle="Contexte de la main"
       onNext={onNext}
-      nextDisabled={!heroValid || !value.sb || !value.bb || !value.effectiveStack || blindsInvalid}
+      nextLabel={nextLabel}
+      nextDisabled={
+        !heroValid ||
+        !value.sb ||
+        !value.bb ||
+        !value.effectiveStack ||
+        blindsInvalid ||
+        Boolean(nextBloque) ||
+        Boolean(erreurTapis)
+      }
+      footerNote={erreurTapis ?? footerNote}
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
@@ -543,11 +600,16 @@ export function ContextStep({ value, onChange, onNext, onBack, step, totalSteps 
                   update(isHero ? { heroName: t } : { opponentNames: { ...value.opponentNames, [pos]: t } })
                 }
               />
+              {/* Siège parti à tapis : son tapis EST son engagement. Le baisser rendrait sa mise
+                  illégale, l'augmenter le sortirait du tapis — il aurait alors dû parler aux
+                  streets suivantes, où le déroulé enregistré est muet pour lui. Figé dans les deux
+                  sens, donc, et seulement pendant une correction (cf. `contraintes`). */}
               <OptionalDecimalTextInput
                 style={[styles.input, styles.playerStackInput]}
                 placeholder={formatChipInput(value.effectiveStack, value.gameType)}
                 value={value.seatStacks?.[pos]}
                 gameType={value.gameType}
+                editable={!contraintes?.parPosition[pos]?.verrouille}
                 onChangeValue={(stack) => update({ seatStacks: { ...value.seatStacks, [pos]: stack } })}
               />
             </View>

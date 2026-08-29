@@ -13,9 +13,26 @@ interface HoleCardsStepProps {
   onBack: () => void;
   step?: number;
   totalSteps?: number;
+  /** Correction en cours : « Valider » publie directement au lieu de continuer l'assistant. */
+  nextLabel?: string;
+  /** La phrase collée au bouton, qui annonce ce que le changement en cours va coûter. */
+  footerNote?: string | null;
+  /** Empêche de valider une correction qui ne change rien — elle coûterait ses réactions pour rien. */
+  nextBloque?: boolean;
 }
 
-export function HoleCardsStep({ count, cards, onChange, onNext, onBack, step, totalSteps }: HoleCardsStepProps) {
+export function HoleCardsStep({
+  count,
+  cards,
+  onChange,
+  onNext,
+  onBack,
+  step,
+  totalSteps,
+  nextLabel,
+  footerNote,
+  nextBloque,
+}: HoleCardsStepProps) {
   const chosenCount = cards.filter(Boolean).length;
   const canContinue = chosenCount === count;
 
@@ -24,8 +41,10 @@ export function HoleCardsStep({ count, cards, onChange, onNext, onBack, step, to
       title="Tes cartes"
       subtitle={`Choisis tes ${count} cartes`}
       onNext={onNext}
+      nextLabel={nextLabel}
+      footerNote={footerNote}
       onBack={onBack}
-      nextDisabled={!canContinue}
+      nextDisabled={!canContinue || Boolean(nextBloque)}
       step={step}
       totalSteps={totalSteps}
     >

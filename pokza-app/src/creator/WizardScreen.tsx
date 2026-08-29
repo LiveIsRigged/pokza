@@ -16,6 +16,13 @@ interface WizardScreenProps {
   totalSteps?: number;
   /** Permet à l'étape d'accéder au ScrollView (ex. faire défiler jusqu'à une section dépliée). */
   scrollRef?: React.RefObject<ScrollView | null>;
+  /**
+   * Une phrase collée au bouton, qui dit la conséquence de ce qu'on vient de faire — utilisée par
+   * la correction d'une main, où le bouton change de sens selon les champs modifiés (« Valider »
+   * publie, « Continuer » fait ressaisir la suite). Elle est là pour que ce basculement soit
+   * ANNONCÉ et non subi : un bouton qui change de rôle sous le doigt, sans un mot, fait mal taper.
+   */
+  footerNote?: string | null;
 }
 
 export function WizardScreen({
@@ -29,6 +36,7 @@ export function WizardScreen({
   step,
   totalSteps,
   scrollRef,
+  footerNote,
 }: WizardScreenProps) {
   // Retour au glissement bord-gauche → droite, double du bouton ‹ Retour (étape précédente, ou
   // sortie du créateur à la première étape). Inerte quand l'étape n'a pas de retour.
@@ -59,6 +67,7 @@ export function WizardScreen({
       >
         {children}
       </ScrollView>
+      {footerNote ? <Text style={styles.footerNote}>{footerNote}</Text> : null}
       {onNext && (
         <Pressable
           onPress={onNext}
@@ -111,6 +120,12 @@ const styles = StyleSheet.create({
   },
   contentInner: {
     flexGrow: 1,
+  },
+  footerNote: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   nextButton: {
     backgroundColor: colors.action,

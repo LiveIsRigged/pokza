@@ -31,6 +31,12 @@ interface ShowdownStepProps {
   onChangeRevealShowdown: (value: boolean) => void;
   onNext: () => void;
   onBack: () => void;
+  /** Correction en cours : « Valider » publie directement au lieu de continuer l'assistant. */
+  nextLabel?: string;
+  /** La phrase collée au bouton, qui annonce ce que le changement en cours va coûter. */
+  footerNote?: string | null;
+  /** Empêche de valider une correction qui ne change rien — elle coûterait ses réactions pour rien. */
+  nextBloque?: boolean;
 }
 
 function seatLabel(seat: Seat, seats: Seat[], actions: Action[]): string {
@@ -49,6 +55,9 @@ export function ShowdownStep({
   onChangeRevealShowdown,
   onNext,
   onBack,
+  nextLabel,
+  footerNote,
+  nextBloque,
 }: ShowdownStepProps) {
   const [selectedId, setSelectedId] = useState<string>(villains[0]?.id ?? '');
 
@@ -67,7 +76,9 @@ export function ShowdownStep({
       title="Abattage"
       subtitle="Cartes montrées par les adversaires (optionnel)"
       onNext={onNext}
-      nextLabel="Continuer"
+      nextLabel={nextLabel ?? 'Continuer'}
+      nextDisabled={Boolean(nextBloque)}
+      footerNote={footerNote}
       onBack={onBack}
     >
       <Text style={styles.label}>Révéler les mains à l'abattage</Text>

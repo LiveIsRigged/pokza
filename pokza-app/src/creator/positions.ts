@@ -1,4 +1,5 @@
 import type { Position, Seat, Street } from '../types/poker';
+import type { ContextData } from './types';
 
 export const CANON_ORDER: Position[] = ['UTG', 'UTG1', 'UTG2', 'UTG3', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
 
@@ -80,4 +81,28 @@ export function getActingOrderAfter(seats: Seat[], street: Street, afterSeatId: 
   const idx = full.findIndex((s) => s.id === afterSeatId);
   if (idx === -1) return full;
   return [...full.slice(idx + 1), ...full.slice(0, idx + 1)];
+}
+
+
+/**
+ * Reporte sur des sièges DÉJÀ CONSTRUITS les seuls champs du contexte qui ne changent pas la
+ * structure de la main : les noms et les tapis. Contrairement à `buildSeats`, qui refabrique les
+ * sièges de zéro, celle-ci préserve leurs identifiants, leurs positions et leurs cartes — donc
+ * toutes les actions qui les référencent.
+ *
+ * C'est ce qui permet de corriger un nom ou un tapis sans ressaisir le déroulé : les noms vivent à
+ * deux endroits (dans les sièges, que la publication utilise, et dans le contexte, d'où
+ * `buildSeats` les reconstruit), et sans ce report l'un des deux mentirait à l'autre.
+ */
+export function appliquerContexteAuxSieges(seats: Seat[], ctx: ContextData): Seat[] {
+  return seats.map((seat) => {
+    const nom = (seat.isHero ? ctx.heroName : ctx.opponentNames?.[seat.position])?.trim();
+    const tapis = ctx.seatStacks?.[seat.position];
+    const { playerName, ...reste } = seat;
+    return {
+      ...reste,
+      startingStack: tapis && tapis > 0 ? tapis : ctx.effectiveStack,
+      ...(nom ? { playerName: nom } : {}),
+    };
+  });
 }

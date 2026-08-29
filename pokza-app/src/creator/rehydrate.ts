@@ -195,36 +195,72 @@ export function seedHistory(seed: CreatorSeed): Snapshot[] {
   return snaps;
 }
 
-/** Libellé de chaque étape reprenable, tel qu'il s'affiche dans la feuille « Corriger la main ». */
+/**
+ * Libellé de chaque étape reprenable, tel qu'il s'affiche dans la feuille « Corriger la main ».
+ *
+ * Ces libellés nomment CE QU'ON VIENT CHANGER, pas le numéro de l'étape du créateur : un testeur
+ * qui cherchait à cacher la main de son adversaire jusqu'à l'abattage n'a pas trouvé où le faire,
+ * parce qu'il aurait fallu deviner que ce réglage vit dans l'étape « abattage ». D'où « Les cartes
+ * de vilain » plutôt que « Abattage », et « La table » plutôt que « Contexte ».
+ *
+ * Les quatre streets reprennent mot pour mot les titres du créateur (`STREET_TITLES` dans
+ * `StreetStep`) — « River » et non « Rivière », qui était le seul écart entre les deux écrans.
+ */
 const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
+  context: 'La table',
+  holeCards: 'Tes cartes',
   'street-preflop': 'Préflop',
   'street-flop': 'Flop',
   'street-turn': 'Turn',
-  'street-river': 'Rivière',
+  'street-river': 'River',
+  showdown: 'Les cartes de vilain',
   review: 'Juste le texte',
 };
 
 /**
  * Les étapes qu'on peut proposer de reprendre pour CETTE main — celles qu'elle a réellement
  * jouées. Une main pliée preflop n'a pas de flop à corriger, et le proposer quand même mènerait
- * à un écran vide.
+ * à un écran vide ; une main sans adversaire à la fin n'a pas d'abattage.
+ *
+ * On propose TOUTE la pile de `seedHistory`, et plus seulement les streets. Les trois étapes
+ * qu'on écartait — la table, les cartes du héros, l'abattage — avaient pourtant déjà leur
+ * instantané, et le « ‹ » y descendait déjà depuis une street reprise : elles étaient donc
+ * atteignables à la main, mais introuvables. Ce filtre était la seule chose qui les cachait.
+ *
+ * ⚠️ Leur coût de reprise n'est PAS le même, et l'appelant doit le dire (cf. `consequenceEtape`
+ * dans `PostCard`) : l'instantané de l'abattage porte l'état complet, y revenir n'efface rien,
+ * tandis que ceux de la table et des cartes du héros précèdent toutes les actions — tout le
+ * déroulé est alors à ressaisir.
  *
  * `review` ferme toujours la liste : c'est le cas « je ne touche pas au déroulé, seulement au
  * texte » — le même service que « Modifier le post », mais atteignable sans ressortir du menu.
  */
 export function etapesCorrigibles(post: Post): { phase: Phase; label: string }[] {
-  const streets = seedHistory(postToSeed(post))
-    .map((s) => s.phase)
-    .filter((p) => p.startsWith('street-'));
-  return [...streets, 'review' as Phase].map((phase) => ({ phase, label: LIBELLE_ETAPE[phase] ?? phase }));
+  const jouees = seedHistory(postToSeed(post)).map((s) => s.phase);
+  return [...jouees, 'review' as Phase].map((phase) => ({ phase, label: LIBELLE_ETAPE[phase] ?? phase }));
 }
 
 /** L'état exact à poser dans le créateur pour reprendre une main à une étape donnée. */
 export interface SeedStart {
   phase: Phase;
+  /**
+   * L'état COMPLET de la main — plus l'instantané de l'étape.
+   *
+   * ⚠️ C'EST LE CŒUR DU MODÈLE : entrer dans une étape n'efface plus rien. Le prix se décide à la
+   * SORTIE, d'après ce que l'auteur a réellement changé (cf. `invalidation.ts`) : une carte ou un
+   * nom ne coûtent rien, une blinde ou une mise font ressaisir la suite. Avant, l'entrée seule
+   * effaçait — ce qui obligeait à annoncer un prix dans la feuille avant de savoir ce que l'auteur
+   * viendrait faire, et donc à menacer celui qui venait juste corriger un nom.
+   */
   etat: Snapshot;
   /** Ce qui précède l'étape reprise : le « ‹ » continue de redescendre normalement. */
   history: Snapshot[];
+  /**
+   * L'état AU DÉBUT de l'étape reprise, c'est-à-dire sans ce que cette étape produit. C'est là
+   * qu'on retombe quand l'auteur choisit explicitement de refaire — jamais automatiquement.
+   * `null` sur une étape qui n'en a pas (publication).
+   */
+  instantane: Snapshot | null;
 }
 
 /**
@@ -236,6 +272,10 @@ export interface SeedStart {
  * ce que `seedHistory` a déjà calculé — et garder le reste comme historique.
  *
  * `depuis` absent ou `review` → la main s'ouvre complète, sur l'étape de publication.
+ *
+ * ⚠️ CE QUI A CHANGÉ : on se pose désormais sur l'état COMPLET, et non plus sur l'instantané de
+ * l'étape. Celui-ci est renvoyé à part (`instantane`) et n'est appliqué que si l'auteur demande
+ * explicitement à refaire. Entrer pour regarder, ou pour corriger une carte, ne coûte plus rien.
  */
 export function seedStart(seed: CreatorSeed, depuis?: Phase): SeedStart {
   const history = seedHistory(seed);
@@ -254,7 +294,12 @@ export function seedStart(seed: CreatorSeed, depuis?: Phase): SeedStart {
   const idx = depuis ? history.findIndex((s) => s.phase === depuis) : -1;
   // Étape inconnue de cette main (elle ne l'a pas jouée) : on retombe sur la publication plutôt
   // que d'ouvrir un écran qui n'a pas lieu d'être.
-  if (idx < 0) return { phase: 'review', etat: complet, history };
+  if (idx < 0) return { phase: 'review', etat: complet, history, instantane: null };
 
-  return { phase: history[idx].phase, etat: history[idx], history: history.slice(0, idx) };
+  return {
+    phase: history[idx].phase,
+    etat: { ...complet, phase: history[idx].phase },
+    history: history.slice(0, idx),
+    instantane: history[idx],
+  };
 }

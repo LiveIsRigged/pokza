@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Action, Board, Card, Hand, Post, Seat } from '../types/poker';
+import type { Action, Board, Card, Hand, Post, Seat, Street } from '../types/poker';
 import { holeCardCount } from '../types/poker';
 import type { Group } from '../data/groups';
 import { ContextStep } from './steps/ContextStep';
 import { HoleCardsStep } from './steps/HoleCardsStep';
 import { StreetStep } from './steps/StreetStep';
 import { ShowdownStep } from './steps/ShowdownStep';
+import { StreetCorrectionStep } from './steps/StreetCorrectionStep';
 import { ReviewStep } from './steps/ReviewStep';
-import { buildSeats, getActingOrder } from './positions';
+import { appliquerContexteAuxSieges, buildSeats, getActingOrder } from './positions';
 import { committedBySeat } from '../engine/handEngine';
+import { champsInvalidants, contrainteTapisEffectif, contraintesTapis } from './invalidation';
 import type { ContextData, Phase, ReviewData, Snapshot } from './types';
 import { defaultContextForPlayer, loadContextPrefs, saveContextPrefs } from './contextPrefs';
 import { seedStart, type CreatorSeed } from './rehydrate';
@@ -87,6 +89,22 @@ export function LiveHandCreator({
   // qu'à jeter le résultat — les états ci-dessous ne lisent leur valeur initiale qu'au montage.
   const [depart] = useState(() => (initial ? seedStart(initial, initialPhase) : null));
   const [phase, setPhase] = useState<Phase>(depart ? depart.phase : 'context');
+  /**
+   * CORRECTION D'UNE MAIN PUBLIÉE : le prix se paie à la SORTIE d'une étape, pas à son entrée.
+   *
+   * `depart.etat` porte désormais la main COMPLÈTE (cf. `seedStart`), donc rien n'est perdu tant
+   * que l'auteur n'a rien changé d'invalidant. L'étape par laquelle il est entré est la seule à
+   * pouvoir publier directement — partout ailleurs, il est reparti dans l'assistant normal et a
+   * donc forcément touché à la structure.
+   */
+  const enCorrection = Boolean(initial);
+  const phaseDEntree = depart?.phase ?? null;
+  /**
+   * L'auteur a demandé à refaire les mises de la street où il était entré : on lui rend
+   * l'enregistreur normal sur l'état tronqué. Il n'est donc plus « à l'entrée », alors même que la
+   * phase n'a pas bougé — c'est le seul cas où les deux se dissocient.
+   */
+  const [refaitLesMises, setRefaitLesMises] = useState(false);
   const [context, setContext] = useState<ContextData>(depart?.etat.context ?? playerDefaults.current);
   const [seats, setSeats] = useState<Seat[]>(depart?.etat.seats ?? []);
   // Longueur variable selon la variante (2/4/5) : remplie à l'étape "Tes cartes", et retaillée à la
@@ -248,39 +266,54 @@ export function LiveHandCreator({
   // acceptées. Le garde-fou ne peut donc être que côté client.
   const [submitting, setSubmitting] = useState(false);
 
-  const finalize = async (finalActions: Action[], finalBoard: Board) => {
+  /**
+   * Publie. Les surcharges servent à la correction sans ressaisie : quand l'auteur ne touche qu'à
+   * des champs non invalidants, l'étape publie DIRECTEMENT au lieu de le faire défiler à travers
+   * des écrans qu'il n'a aucune raison de revoir. Les valeurs modifiées ne sont pas encore dans
+   * l'état React au moment de l'appel — d'où le passage explicite plutôt qu'une lecture d'état.
+   */
+  const finalize = async (
+    finalActions: Action[],
+    finalBoard: Board,
+    surcharge: Partial<Pick<Snapshot, 'context' | 'seats' | 'heroCards' | 'board2' | 'revealedCards'>> = {}
+  ) => {
+    const ctx = surcharge.context ?? context;
+    const sts = surcharge.seats ?? seats;
+    const hc = surcharge.heroCards ?? heroCards;
+    const b2 = surcharge.board2 ?? board2;
+    const rc = surcharge.revealedCards ?? revealedCards;
     if (submitting) return;
     // Un adversaire n'est "connu" (et donc départageable/inclus dans l'équité) que si TOUTES ses
     // cartes ont été saisies — une main Omaha partielle (< count cartes) n'est pas évaluable, on la
     // traite alors comme mucked, exactement comme au Hold'em où il fallait les 2 cartes.
-    const cardCount = holeCardCount(context.variant);
-    const seatsWithCards = seats.map((s) => {
-      if (s.isHero) return { ...s, holeCards: heroCards.filter(Boolean) as Card[] };
-      const rc = (revealedCards[s.id] ?? []).filter(Boolean) as Card[];
-      if (rc.length === cardCount) return { ...s, holeCards: rc };
+    const cardCount = holeCardCount(ctx.variant);
+    const seatsWithCards = sts.map((s) => {
+      if (s.isHero) return { ...s, holeCards: hc.filter(Boolean) as Card[] };
+      const cartesMontrees = (rc[s.id] ?? []).filter(Boolean) as Card[];
+      if (cartesMontrees.length === cardCount) return { ...s, holeCards: cartesMontrees };
       return s;
     });
     const hand: Hand = {
       id: `hand-${Date.now()}`,
-      variant: context.variant,
-      gameType: context.gameType,
+      variant: ctx.variant,
+      gameType: ctx.gameType,
       // Bomb pot : pas de blindes. On garde `bb` = montant de l'ante comme unité d'affichage (le
       // bomb pot se raisonne en nombre d'antes), et `sb` à 0.
-      blinds: context.bombPot
-        ? { sb: 0, bb: context.bombAnte }
+      blinds: ctx.bombPot
+        ? { sb: 0, bb: ctx.bombAnte }
         : {
-            sb: context.sb,
-            bb: context.bb,
-            ante: context.anteType === 'bb' ? context.bb : context.anteType === 'per-player' ? context.ante : undefined,
+            sb: ctx.sb,
+            bb: ctx.bb,
+            ante: ctx.anteType === 'bb' ? ctx.bb : ctx.anteType === 'per-player' ? ctx.ante : undefined,
           },
-      effectiveStack: context.effectiveStack,
+      effectiveStack: ctx.effectiveStack,
       visibility: review.visibility,
       seats: seatsWithCards,
       board: finalBoard,
       // Double board (bomb pot uniquement) : le second board n'est posé que si l'option est active.
-      board2: context.bombPot && context.doubleBoard ? board2 : undefined,
+      board2: ctx.bombPot && ctx.doubleBoard ? b2 : undefined,
       actions: finalActions,
-      bombPot: context.bombPot || undefined,
+      bombPot: ctx.bombPot || undefined,
       revealShowdown,
     };
     const post: Post = {
@@ -288,9 +321,9 @@ export function LiveHandCreator({
       authorId,
       authorName,
       createdAt: new Date().toISOString(),
-      location: context.location,
-      buyIn: context.buyIn,
-      level: context.level,
+      location: ctx.location,
+      buyIn: ctx.buyIn,
+      level: ctx.level,
       title: review.title,
       description: review.description?.trim() || undefined,
       voteQuestion: review.voteQuestion || undefined,
@@ -334,7 +367,80 @@ export function LiveHandCreator({
   const totalSteps = totalStepsFor(context.bombPot);
   const step = phaseStepMap(context.bombPot)[phase];
 
+  // ── Correction : ce que l'auteur a changé, et ce que ça coûte ────────────────────────────────
+  const aLEntree = enCorrection && phase === phaseDEntree && !refaitLesMises;
+  // Les champs de contexte qui, modifiés, rendent le déroulé incohérent. Vide = publication directe.
+  const invalidants = initial ? champsInvalidants(initial.context, context, seats, actions) : [];
+  const contexteModifie = initial ? JSON.stringify(initial.context) !== JSON.stringify(context) : false;
+  const cartesHeroModifiees = initial
+    ? JSON.stringify(initial.heroCards.filter(Boolean)) !== JSON.stringify(heroCards.filter(Boolean))
+    : false;
+  const abattageModifie = initial
+    ? JSON.stringify(initial.revealedCards) !== JSON.stringify(revealedCards) ||
+      initial.revealShowdown !== revealShowdown
+    : false;
+
+  // Contraintes de tapis, lues sur le déroulé réel (cf. `invalidation.ts`) : un siège ne peut pas
+  // descendre sous ce qu'il a engagé, et un siège parti à tapis est figé dans les deux sens.
+  const contraintesParPosition = (() => {
+    if (!enCorrection || seats.length === 0) return undefined;
+    const { plancher, verrouilles } = contraintesTapis(seats, actions);
+    const parPosition: Record<string, { min: number; verrouille: boolean }> = {};
+    for (const seat of seats) {
+      parPosition[seat.position] = { min: plancher[seat.id] ?? 0, verrouille: verrouilles.has(seat.id) };
+    }
+    return { parPosition, effectif: contrainteTapisEffectif(seats, actions, context) };
+  })();
+
+  /**
+   * Publier sans repasser par les étapes suivantes. N'existe QUE sur l'étape d'entrée d'une
+   * correction et seulement si rien d'invalidant n'a bougé : il n'y a alors littéralement rien à
+   * ressaisir, et faire défiler des écrans préremplis serait de la friction sans contrepartie.
+   */
+  const publierDirectement = (surcharge: Parameters<typeof finalize>[2] = {}) =>
+    void finalize(actions, board, surcharge);
+
+  /** « les blindes, l'ante et le straddle » — le « et » final, sinon la phrase sonne comme une liste. */
+  const enumerer = (l: string[]) =>
+    l.length <= 1 ? l[0] ?? '' : `${l.slice(0, -1).join(', ')} et ${l[l.length - 1]}`;
+
+  /** Le libellé du bouton sur l'étape d'entrée d'une correction. Ailleurs, l'assistant normal. */
+  const libelleBouton = (invalide: boolean) => (aLEntree ? (invalide ? 'Continuer' : 'Valider') : undefined);
+  const RIEN_A_RESSAISIR = "Rien d'autre ne sera à ressaisir.";
+
   const renderStep = () => {
+  // Une street REPRISE ne s'ouvre pas sur l'enregistreur : entrer ne doit rien effacer. On y
+  // corrige les cartes, et refaire les mises est un geste explicite (cf. `StreetCorrectionStep`).
+  if (aLEntree && phase.startsWith('street-') && depart?.instantane) {
+    const street = phase.replace('street-', '') as Street;
+    return (
+      <StreetCorrectionStep
+        street={street}
+        seats={seats}
+        actions={actions}
+        gameType={context.gameType}
+        bb={context.bombPot ? context.bombAnte : context.bb}
+        board={board}
+        board2={board2}
+        onBack={goBack}
+        onValider={(b, b2) => void finalize(actions, b, { board2: b2 })}
+        onRefaireLesMises={() => {
+          const inst = depart.instantane!;
+          setContext(inst.context);
+          setSeats(inst.seats);
+          setHeroCards(inst.heroCards);
+          setActions(inst.actions);
+          setActiveSeatIds(inst.activeSeatIds);
+          setBoard(inst.board);
+          setBoard2(inst.board2);
+          setRevealedCards(inst.revealedCards);
+          setRefaitLesMises(true);
+          setPhaseKey((k) => k + 1);
+        }}
+      />
+    );
+  }
+
   switch (phase) {
     case 'showdown':
       return (
@@ -349,7 +455,10 @@ export function LiveHandCreator({
           revealShowdown={revealShowdown}
           onChangeRevealShowdown={setRevealShowdown}
           onBack={goBack}
-          onNext={() => pushSnapshotAndGo('review')}
+          nextLabel={libelleBouton(false)}
+          nextBloque={aLEntree && !abattageModifie}
+          footerNote={aLEntree ? RIEN_A_RESSAISIR : null}
+          onNext={() => (aLEntree ? publierDirectement({ revealedCards }) : pushSnapshotAndGo('review'))}
         />
       );
 
@@ -361,7 +470,25 @@ export function LiveHandCreator({
           step={step}
           totalSteps={totalSteps}
           onBack={goBack}
+          nextLabel={libelleBouton(invalidants.length > 0)}
+          nextBloque={aLEntree && !contexteModifie}
+          contraintes={contraintesParPosition}
+          footerNote={
+            !aLEntree
+              ? null
+              : invalidants.length > 0
+                ? `Changer ${enumerer(invalidants)} fait ressaisir tout le déroulé.`
+                : RIEN_A_RESSAISIR
+          }
           onNext={() => {
+            // Correction sans rien d'invalidant : on publie tel quel. Les noms et les tapis sont
+            // reportés sur les sièges EXISTANTS — leurs identifiants ne bougent pas, donc aucune
+            // action ne perd sa référence, contrairement à `buildSeats` qui les refabrique.
+            if (aLEntree && invalidants.length === 0) {
+              void saveContextPrefs(context);
+              publierDirectement({ context, seats: appliquerContexteAuxSieges(seats, context) });
+              return;
+            }
             // Mémorise les réglages de table pour accélérer la prochaine création (fire-and-forget :
             // un échec d'écriture ne doit pas bloquer la création en cours).
             void saveContextPrefs(context);
@@ -459,8 +586,17 @@ export function LiveHandCreator({
           step={step}
           totalSteps={totalSteps}
           onBack={goBack}
+          // Tes cartes ne peuvent jamais invalider quoi que ce soit : aucune action ne les
+          // référence. En correction, cette étape publie donc toujours directement.
+          nextLabel={libelleBouton(false)}
+          nextBloque={aLEntree && !cartesHeroModifiees}
+          footerNote={aLEntree ? RIEN_A_RESSAISIR : null}
           // Bomb pot : pas de preflop, on enchaîne direct sur le flop (les antes sont déjà postés).
-          onNext={() => pushSnapshotAndGo(context.bombPot ? 'street-flop' : 'street-preflop')}
+          onNext={() =>
+            aLEntree
+              ? publierDirectement({ heroCards })
+              : pushSnapshotAndGo(context.bombPot ? 'street-flop' : 'street-preflop')
+          }
         />
       );
 

@@ -249,17 +249,20 @@ function PostCardInner({
   // comptait les pertes (« et 14 j'aime, 3 commentaires ne la suivent pas ») : elle disparaissait
   // donc au moment précis où l'on découvre la fonction, sur une main neuve — c'est-à-dire quand il
   // fallait justement apprendre la règle. Ici on énonce la mécanique, pas l'inventaire.
-  // Ce que l'étape choisie va coûter en ressaisie. Reprendre une street efface celles qui suivent
-  // — y compris la sienne, dont l'instantané précède ses propres actions. Une liste sans articles
-  // (« flop, turn, rivière ») plutôt qu'une phrase : « le turn » et « la rivière » n'ont pas le
-  // même genre, et la tournure qui les accorde tous devient illisible.
-  const consequenceEtape = (() => {
-    if (etapeChoisie === 'review') return "Le déroulé n'est pas touché.";
-    const streets = etapes.filter((e) => e.phase !== 'review');
-    const i = streets.findIndex((e) => e.phase === etapeChoisie);
-    if (i < 0) return '';
-    return `À ressaisir : ${streets.slice(i).map((e) => e.label.toLowerCase()).join(', ')}.`;
-  })();
+  /**
+   * LA FEUILLE N'ANNONCE PLUS DE PRIX, parce qu'elle ne peut pas le connaître : il dépend de ce que
+   * l'auteur va changer une fois entré, pas de la porte qu'il choisit (cf. `seedStart` et
+   * `invalidation.ts`). Elle énonce donc la RÈGLE, et l'étape annoncera la conséquence réelle au
+   * moment où elle devient certaine, juste au-dessus du bouton.
+   *
+   * L'ancienne version affichait « À ressaisir : flop, turn, river » avant même d'entrer. C'était
+   * exact pour qui venait refaire une mise, et faux pour qui venait corriger un nom — or les deux
+   * champs vivent dans la même étape, parfois sur la même ligne du formulaire. Elle décourageait
+   * donc précisément les corrections qui ne coûtaient rien.
+   */
+  const consequenceEtape =
+    "Une carte, un nom ou le texte ne coûtent rien. Une mise ou un réglage de table font ressaisir la suite.";
+
   const correctionWarning =
     "Corriger une main, c'est la republier : elle repart à zéro dans le fil. " +
     'Les anciens j\'aime, commentaires et votes seront perdus.';
