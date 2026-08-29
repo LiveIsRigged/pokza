@@ -19,7 +19,14 @@
 //     --outDir scripts/cm --module commonjs --target es2020 --rootDir pokza-app/src --skipLibCheck
 // puis : node scripts/test-straddle-btn.js
 
-const { straddlesAPoster, boutonPossible, longueurChaine, montantBoutonPropose } = require('./cm/creator/straddle.js');
+const {
+  straddlesAPoster,
+  boutonPossible,
+  longueurChaine,
+  montantBoutonPropose,
+  montantsChaineProposes,
+  cascadeChaine,
+} = require('./cm/creator/straddle.js');
 const { straddleSeatLabel, chainStraddleCount } = require('./cm/engine/handEngine.js');
 const { postToSeed } = require('./cm/creator/rehydrate.js');
 const { buildSeats, getActingOrder, getActingOrderAfter } = require('./cm/creator/positions.js');
@@ -37,7 +44,7 @@ const ctx = (patch) => ({
   bombPot: false,
   numPlayers: 6,
   straddleCount: 0,
-  straddleAmount: 0,
+  straddleAmounts: [],
   straddleBouton: false,
   straddleBoutonMontant: 0,
   bb: 4,
@@ -51,46 +58,46 @@ console.log('\n── 1. Qui poste quoi (table de 6, blindes 2/4) ──');
 cas('Aucun straddle', resume(straddlesAPoster(ctx({ straddleCount: 0 }))), []);
 cas(
   'Simple sans bouton → UTG seul',
-  resume(straddlesAPoster(ctx({ straddleCount: 1, straddleAmount: 8 }))),
+  resume(straddlesAPoster(ctx({ straddleCount: 1, straddleAmounts: [8] }))),
   ['UTG@8']
 );
 cas(
   'Simple AVEC bouton → le bouton seul, la chaîne est vide',
-  resume(straddlesAPoster(ctx({ straddleCount: 1, straddleAmount: 8, straddleBouton: true, straddleBoutonMontant: 8 }))),
+  resume(straddlesAPoster(ctx({ straddleCount: 1, straddleAmounts: [], straddleBouton: true, straddleBoutonMontant: 8 }))),
   ['BTN*8']
 );
 cas(
   'Double sans bouton → UTG puis HJ, montant doublé',
-  resume(straddlesAPoster(ctx({ straddleCount: 2, straddleAmount: 8 }))),
+  resume(straddlesAPoster(ctx({ straddleCount: 2, straddleAmounts: [8, 16] }))),
   ['UTG@8', 'HJ@16']
 );
 // L'EXEMPLE DE VICTOR : 2/4, straddle UTG 8, straddle BTN 16.
 cas(
   "Double AVEC bouton → UTG puis le bouton (l'exemple 2/4 · UTG 8 · BTN 16)",
-  resume(straddlesAPoster(ctx({ straddleCount: 2, straddleAmount: 8, straddleBouton: true, straddleBoutonMontant: 16 }))),
+  resume(straddlesAPoster(ctx({ straddleCount: 2, straddleAmounts: [8], straddleBouton: true, straddleBoutonMontant: 16 }))),
   ['UTG@8', 'BTN*16']
 );
 cas(
   'Triple sans bouton → UTG, HJ, CO',
-  resume(straddlesAPoster(ctx({ straddleCount: 3, straddleAmount: 8 }))),
+  resume(straddlesAPoster(ctx({ straddleCount: 3, straddleAmounts: [8, 16, 32] }))),
   ['UTG@8', 'HJ@16', 'CO@32']
 );
 cas(
   'Triple AVEC bouton → UTG, HJ, puis le bouton (toujours TROIS straddles)',
-  resume(straddlesAPoster(ctx({ straddleCount: 3, straddleAmount: 8, straddleBouton: true, straddleBoutonMontant: 32 }))),
+  resume(straddlesAPoster(ctx({ straddleCount: 3, straddleAmounts: [8, 16], straddleBouton: true, straddleBoutonMontant: 32 }))),
   ['UTG@8', 'HJ@16', 'BTN*32']
 );
 // Le bouton est posté EN DERNIER : c'est ce qui fait que la parole reprend après lui, donc à la SB.
 cas(
   'Le straddle du bouton est toujours le dernier posté',
-  straddlesAPoster(ctx({ straddleCount: 3, straddleAmount: 8, straddleBouton: true, straddleBoutonMontant: 32 })).at(-1).bouton,
+  straddlesAPoster(ctx({ straddleCount: 3, straddleAmounts: [8, 16], straddleBouton: true, straddleBoutonMontant: 32 })).at(-1).bouton,
   true
 );
-cas('Pas de straddle en tournoi', resume(straddlesAPoster(ctx({ gameType: 'tournament', straddleCount: 2, straddleAmount: 8 }))), []);
-cas('Pas de straddle en bomb pot', resume(straddlesAPoster(ctx({ bombPot: true, straddleCount: 2, straddleAmount: 8 }))), []);
+cas('Pas de straddle en tournoi', resume(straddlesAPoster(ctx({ gameType: 'tournament', straddleCount: 2, straddleAmounts: [8, 16] }))), []);
+cas('Pas de straddle en bomb pot', resume(straddlesAPoster(ctx({ bombPot: true, straddleCount: 2, straddleAmounts: [8, 16] }))), []);
 cas(
   'Un montant à 0 ne poste rien',
-  resume(straddlesAPoster(ctx({ straddleCount: 1, straddleAmount: 0, straddleBouton: true, straddleBoutonMontant: 0 }))),
+  resume(straddlesAPoster(ctx({ straddleCount: 1, straddleAmounts: [0], straddleBouton: true, straddleBoutonMontant: 0 }))),
   []
 );
 
@@ -110,7 +117,7 @@ cas('9 joueurs : tout', [1, 2, 3].map((n) => boutonPossible(9, n)), [true, true,
 // bancale (le formulaire, lui, décoche pour de bon — cf. `update` dans ContextStep).
 cas(
   'Coché sur une table où c\'est impossible → chaîne entière',
-  resume(straddlesAPoster(ctx({ numPlayers: 4, straddleCount: 2, straddleAmount: 8, straddleBouton: true, straddleBoutonMontant: 16 }))),
+  resume(straddlesAPoster(ctx({ numPlayers: 4, straddleCount: 2, straddleAmounts: [8, 16], straddleBouton: true, straddleBoutonMontant: 16 }))),
   ['CO@8', 'BTN@16']
 );
 cas('Longueur de chaîne, Double + bouton', longueurChaine(ctx({ straddleCount: 2, straddleBouton: true })), 1);
@@ -119,9 +126,30 @@ cas('Longueur de chaîne, Double sans bouton', longueurChaine(ctx({ straddleCoun
 console.log('\n── 3. Le montant proposé au bouton ──');
 
 // 2x la BB quand la chaîne est vide, 2x le dernier straddle de la chaîne sinon.
-cas('Simple + bouton → 2x la BB', montantBoutonPropose(ctx({ straddleCount: 1, bb: 4 })), 8);
-cas('Double + bouton → 2x le straddle UTG', montantBoutonPropose(ctx({ straddleCount: 2, straddleAmount: 8 })), 16);
-cas('Triple + bouton → 2x le double straddle', montantBoutonPropose(ctx({ straddleCount: 3, straddleAmount: 8 })), 32);
+cas('Simple + bouton → 2x la BB', montantBoutonPropose(ctx({ straddleCount: 1, straddleAmounts: [8], bb: 4 })), 8);
+cas('Double + bouton → 2x le straddle UTG', montantBoutonPropose(ctx({ straddleCount: 2, straddleAmounts: [8, 16] })), 16);
+cas('Triple + bouton → 2x le double straddle', montantBoutonPropose(ctx({ straddleCount: 3, straddleAmounts: [8, 16, 32] })), 32);
+
+console.log('\n── 3 bis. Montants proposés et cascade ──');
+
+// Choisir un nombre de straddles complète les manquants par doublement, et garde les saisis.
+cas('Chaîne vide → doublement depuis 2x la BB', montantsChaineProposes([], 3, 4), [8, 16, 32]);
+cas('Un montant déjà saisi est gardé, la suite se déduit', montantsChaineProposes([10], 3, 4), [10, 20, 40]);
+cas('Raccourcir la chaîne tronque', montantsChaineProposes([8, 16, 32], 1, 4), [8]);
+cas('Chaîne à zéro', montantsChaineProposes([8, 16], 0, 4), []);
+
+// Modifier un montant redescend le doublement sur les SUIVANTS, jamais sur les précédents — même
+// geste que la SB qui repose la BB au double, juste au-dessus dans le formulaire.
+cas('Corriger le premier réaligne la suite', cascadeChaine([8, 16, 32], 0, 10), [10, 20, 40]);
+cas('Corriger celui du milieu laisse le premier', cascadeChaine([8, 16, 32], 1, 30), [8, 30, 60]);
+cas('Corriger le dernier ne touche à rien d\'autre', cascadeChaine([8, 16, 32], 2, 50), [8, 16, 50]);
+
+// Chaque straddle porte son propre montant : une chaîne qui ne double pas doit se poster telle quelle.
+cas(
+  'Une chaîne saisie à la main se poste telle quelle',
+  resume(straddlesAPoster(ctx({ straddleCount: 3, straddleAmounts: [10, 30, 100] }))),
+  ['UTG@10', 'HJ@30', 'CO@100']
+);
 
 console.log('\n── 4. Les libellés de siège ──');
 
@@ -192,7 +220,7 @@ const post = (hand) => ({ id: 'p1', authorId: 'u1', authorName: 'V', createdAt: 
 
 const relu = postToSeed(post(handAvecBouton)).context;
 cas('straddleCount compte TOUS les straddles', relu.straddleCount, 2);
-cas('straddleAmount ne lit que la chaîne', relu.straddleAmount, 8);
+cas('les montants relus ne sont que ceux de la chaîne', relu.straddleAmounts, [8]);
 cas('straddleBouton retrouvé', relu.straddleBouton, true);
 cas('Montant du bouton retrouvé', relu.straddleBoutonMontant, 16);
 // Et le réglage relu doit reposter EXACTEMENT les mêmes straddles, sinon corriger une main la
@@ -218,8 +246,8 @@ const handChainePure = {
 const reluChaine = postToSeed(post(handChainePure)).context;
 cas(
   'Main d\'avant le BTN straddle : chaîne pure, bouton éteint',
-  [reluChaine.straddleCount, reluChaine.straddleAmount, reluChaine.straddleBouton],
-  [2, 8, false]
+  [reluChaine.straddleCount, reluChaine.straddleAmounts, reluChaine.straddleBouton],
+  [2, [8, 16], false]
 );
 cas(
   'Reposter une chaîne pure redonne la chaîne',

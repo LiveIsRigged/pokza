@@ -23,7 +23,7 @@ import type { ContextData } from './types';
 /** Le sous-ensemble du contexte dont dépend le straddle — rien d'autre n'entre dans la décision. */
 export type ReglageStraddle = Pick<
   ContextData,
-  'gameType' | 'bombPot' | 'numPlayers' | 'straddleCount' | 'straddleAmount' | 'straddleBouton' | 'straddleBoutonMontant'
+  'gameType' | 'bombPot' | 'numPlayers' | 'straddleCount' | 'straddleAmounts' | 'straddleBouton' | 'straddleBoutonMontant'
 >;
 
 export interface StraddleAPoster {
@@ -95,7 +95,7 @@ export function straddlesAPoster(ctx: ReglageStraddle): StraddleAPoster[] {
   const slots: StraddleAPoster[] = [];
   for (let i = 0; i < longueurChaine(ctx); i++) {
     const position = ordre[i];
-    const montant = ctx.straddleAmount * 2 ** i;
+    const montant = ctx.straddleAmounts[i] ?? 0;
     if (position && montant > 0) slots.push({ position, montant, bouton: false });
   }
   if (straddleBoutonActif(ctx) && ctx.straddleBoutonMontant > 0) {
@@ -106,11 +106,43 @@ export function straddlesAPoster(ctx: ReglageStraddle): StraddleAPoster[] {
 
 /**
  * Le montant proposé au bouton quand on allume l'interrupteur : 2x le dernier straddle de la
- * chaîne, ou 2x la BB quand la chaîne est vide (tranché avec Victor le 29/08). Une valeur
- * proposée, jamais imposée — le champ reste libre ensuite, comme celui de la chaîne.
+ * chaîne, ou 2x la BB quand la chaîne est vide (tranché avec Victor le 29/08).
+ *
+ * Proposé UNE FOIS, à l'activation, et libre ensuite. Contrairement à la chaîne, il ne suit pas la
+ * cascade : le montant d'un straddle au bouton dépend de la maison, c'est le seul des quatre qui
+ * n'est pas mécaniquement le double du précédent.
  */
 export function montantBoutonPropose(ctx: ReglageStraddle & { bb: number }): number {
-  const chaine = ctx.straddleCount - 1;
-  if (chaine > 0 && ctx.straddleAmount > 0) return ctx.straddleAmount * 2 ** chaine;
-  return ctx.bb * 2;
+  // Le bouton prend la place du dernier maillon : la chaîne qui le précède est donc plus courte
+  // d'un cran, et c'est SON dernier montant qu'on double.
+  const dernierDeLaChaine = ctx.straddleAmounts[ctx.straddleCount - 2] ?? 0;
+  return dernierDeLaChaine > 0 ? dernierDeLaChaine * 2 : ctx.bb * 2;
+}
+
+/**
+ * Les montants de la chaîne pour `longueur` straddles : on garde ceux déjà saisis et on complète
+ * les manquants par doublement, en repartant de 2x la BB si rien n'existe encore.
+ */
+export function montantsChaineProposes(existants: number[], longueur: number, bb: number): number[] {
+  const montants: number[] = [];
+  for (let i = 0; i < longueur; i++) {
+    const dejaLa = existants[i];
+    if (dejaLa && dejaLa > 0) montants.push(dejaLa);
+    else montants.push(i === 0 ? bb * 2 : montants[i - 1] * 2);
+  }
+  return montants;
+}
+
+/**
+ * Modifier un montant de la chaîne REDESCEND le doublement sur les suivants, et ne touche pas aux
+ * précédents. Un joueur qui corrige son straddle de base n'a donc pas à retaper les autres —
+ * même geste que la SB qui repose la BB au double, juste au-dessus dans le formulaire. Ce que ça
+ * coûte est assumé : une valeur saisie à la main plus bas dans la chaîne est réécrite si l'on
+ * remonte en changer une au-dessus.
+ */
+export function cascadeChaine(montants: number[], index: number, valeur: number): number[] {
+  const suite = montants.slice(0, index);
+  suite.push(valeur);
+  for (let i = index + 1; i < montants.length; i++) suite.push(suite[i - 1] * 2);
+  return suite;
 }

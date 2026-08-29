@@ -17,6 +17,7 @@
 //
 // Compiler d'abord (le `tsc` local, pas `npx tsc` — cf. mémoire projet) :
 //   pokza-app/node_modules/.bin/tsc pokza-app/src/creator/rehydrate.ts pokza-app/src/creator/positions.ts \
+//     pokza-app/src/creator/straddle.ts pokza-app/src/engine/handEngine.ts \
 //     --outDir scripts/cm --module commonjs --target es2020 --rootDir pokza-app/src --skipLibCheck
 // puis : node scripts/test-rehydrate.js
 
@@ -128,7 +129,9 @@ const post = (hand, extra = {}) => ({
   });
   const s = postToSeed(post(avecStraddle));
   cas('deux straddles comptes', s.context.straddleCount, 2);
-  cas('le montant retenu est celui du PREMIER, pas du double', s.context.straddleAmount, 10);
+  // Depuis que chaque straddle porte son propre montant, on les relit tels quels dans l ordre de
+  // postage plutot que d en rededuire un montant de base double.
+  cas('chaque straddle garde son montant', s.context.straddleAmounts, [10, 20]);
 }
 
 // ── 4. La pile d'historique ──────────────────────────────────────────────────────────────────────

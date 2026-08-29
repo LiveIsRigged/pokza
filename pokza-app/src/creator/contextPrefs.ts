@@ -28,7 +28,7 @@ interface ContextPrefs {
   anteType: AnteType;
   ante: number;
   straddleCount: 0 | 1 | 2 | 3;
-  straddleAmount: number;
+  straddleAmounts: number[];
   straddleBouton: boolean;
   straddleBoutonMontant: number;
 }
@@ -53,7 +53,7 @@ export async function saveContextPrefs(context: ContextData): Promise<void> {
     anteType: context.anteType,
     ante: context.ante,
     straddleCount: context.straddleCount,
-    straddleAmount: context.straddleAmount,
+    straddleAmounts: context.straddleAmounts,
     straddleBouton: context.straddleBouton,
     straddleBoutonMontant: context.straddleBoutonMontant,
   };
@@ -131,7 +131,15 @@ export async function loadContextPrefs(base: ContextData = DEFAULT_CONTEXT): Pro
   if (isNum(p.ante)) merged.ante = p.ante;
   if (p.straddleCount === 0 || p.straddleCount === 1 || p.straddleCount === 2 || p.straddleCount === 3)
     merged.straddleCount = p.straddleCount;
-  if (isNum(p.straddleAmount)) merged.straddleAmount = p.straddleAmount;
+  if (Array.isArray(p.straddleAmounts) && p.straddleAmounts.every(isNum))
+    merged.straddleAmounts = p.straddleAmounts;
+  // Préférences écrites avant que les straddles ne portent chacun leur montant : un seul nombre y
+  // valait toute la chaîne, par doublement. On le rouvre plutôt que de perdre le réglage habituel.
+  else if (isNum((p as { straddleAmount?: unknown }).straddleAmount))
+    merged.straddleAmounts = Array.from(
+      { length: merged.straddleCount },
+      (_, i) => (p as { straddleAmount: number }).straddleAmount * 2 ** i
+    );
   if (typeof p.straddleBouton === 'boolean') merged.straddleBouton = p.straddleBouton;
   if (isNum(p.straddleBoutonMontant)) merged.straddleBoutonMontant = p.straddleBoutonMontant;
   return merged;

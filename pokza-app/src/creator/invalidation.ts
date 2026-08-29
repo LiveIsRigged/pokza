@@ -27,7 +27,7 @@ const CHAMPS_STRUCTURELS: { cle: keyof ContextData; label: string }[] = [
   { cle: 'anteType', label: "l'ante" },
   { cle: 'ante', label: "l'ante" },
   { cle: 'straddleCount', label: 'le straddle' },
-  { cle: 'straddleAmount', label: 'le straddle' },
+  { cle: 'straddleAmounts', label: 'le straddle' },
   { cle: 'straddleBouton', label: 'le straddle' },
   { cle: 'straddleBoutonMontant', label: 'le straddle' },
   { cle: 'numPlayers', label: 'le nombre de joueurs' },
@@ -82,10 +82,17 @@ function siegesAuTapisEffectif(seats: Seat[], ctx: ContextData): Seat[] {
  * leurs bornes (cf. `contraintesTapis`), ce que le formulaire empêche de saisir. La vérification
  * reste ici en dernier rempart, pour qu'une valeur venue d'ailleurs ne passe jamais en silence.
  */
+/** Comparaison par VALEUR : `straddleAmounts` est un tableau, et deux tableaux identiques ne sont
+ * jamais `===`. Sans ça, rouvrir une main aurait suffi à déclarer le straddle modifié. */
+function memeValeur(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) return JSON.stringify(a) === JSON.stringify(b);
+  return a === b;
+}
+
 export function champsStructurelsModifies(avant: ContextData, apres: ContextData): string[] {
   const labels: string[] = [];
   for (const { cle, label } of CHAMPS_STRUCTURELS) {
-    if (avant[cle] !== apres[cle] && !labels.includes(label)) labels.push(label);
+    if (!memeValeur(avant[cle], apres[cle]) && !labels.includes(label)) labels.push(label);
   }
   return labels;
 }

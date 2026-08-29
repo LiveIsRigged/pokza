@@ -66,11 +66,11 @@ export function postToSeed(post: Post): CreatorSeed {
   const straddlesChaine = straddles.filter((a) => rangDe(a) < chaine);
   const straddleDuBouton = straddles.find((a) => rangDe(a) >= chaine);
 
-  // Les straddles successifs valent 2x, 4x… le premier : c'est donc le PLUS PETIT montant posté
-  // de la chaîne qui est le « montant du straddle » au sens de l'étape 1.
-  const straddleAmount = straddlesChaine.length > 0
-    ? Math.min(...straddlesChaine.map((a) => a.amount ?? 0))
-    : DEFAULT_CONTEXT.straddleAmount;
+  // Chaque straddle de la chaîne porte son propre montant depuis qu'ils sont modifiables un par un :
+  // on les relit tels quels, dans l'ordre de postage, plutôt que d'en redéduire un montant de base.
+  const straddleAmounts = [...straddlesChaine]
+    .sort((a, b) => a.order - b.order)
+    .map((a) => a.amount ?? 0);
   // `straddleCount` compte TOUS les straddles de la main, celui du bouton compris : c'est le sens
   // de la chip « Simple / Double / Triple », et il est inchangé pour les mains d'avant le BTN
   // straddle, qui n'ont jamais que leur chaîne.
@@ -107,7 +107,7 @@ export function postToSeed(post: Post): CreatorSeed {
     anteType,
     ante,
     straddleCount,
-    straddleAmount,
+    straddleAmounts,
     straddleBouton,
     straddleBoutonMontant,
   };

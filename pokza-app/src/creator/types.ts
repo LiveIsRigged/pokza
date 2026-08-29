@@ -40,10 +40,11 @@ export interface ContextData {
    * `straddleBouton` est vrai, qui passe alors au bouton (cf. `straddlesAPoster`). « Double », ce
    * sont donc toujours deux straddles : UTG + UTG1, ou UTG + bouton. */
   straddleCount: 0 | 1 | 2 | 3;
-  /** Montant du premier straddle de la chaîne (par défaut 2x la BB) — le suivant vaut 2x ce
-   * montant, celui d'après 4x. Sans objet quand la chaîne est vide (`straddleCount` à 1 avec
-   * `straddleBouton`) : le seul straddle est alors celui du bouton. */
-  straddleAmount: number;
+  /** Montant de CHAQUE straddle de la chaîne, dans l'ordre de postage (index 0 = le premier
+   * parleur). Proposés par doublement quand on choisit le nombre de straddles, puis librement
+   * modifiables un par un. Vide quand la chaîne l'est (`straddleCount` à 1 avec `straddleBouton`) :
+   * le seul straddle est alors celui du bouton. */
+  straddleAmounts: number[];
   /** Le dernier straddle est posté par le BOUTON au lieu du siège suivant de la chaîne. L'action
    * s'ouvre alors à la SB et le bouton parle en dernier — c'est tout ce que le "BTN straddle"
    * change au déroulé. */
@@ -92,7 +93,7 @@ export const DEFAULT_CONTEXT: ContextData = {
   anteType: 'none',
   ante: 0,
   straddleCount: 0,
-  straddleAmount: 0,
+  straddleAmounts: [],
   straddleBouton: false,
   straddleBoutonMontant: 0,
 };
