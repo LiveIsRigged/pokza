@@ -7,6 +7,7 @@ import { Chip } from '../Chip';
 import { WizardScreen } from '../WizardScreen';
 import { POSITION_SETS } from '../positions';
 import { straddleAwarePositionLabel } from '../../engine/handEngine';
+import { boutonPossible, longueurChaine, montantBoutonPropose, straddleBoutonActif } from '../straddle';
 import { TOURNAMENT_DEFAULTS, type ContextData } from '../types';
 import {
   BUY_IN_MAX_LENGTH,
@@ -231,20 +232,43 @@ export function ContextStep({
   const [bbFocused, setBbFocused] = useState(false);
   const showBlindsError = blindsInvalid && !bbFocused;
 
+  // La CHAÎNE de straddles consécutifs, qui est plus courte d'un cran quand le bouton straddle :
+  // c'est lui qui prend alors la place du dernier maillon (cf. `straddle.ts`).
+  const chaineStraddle = longueurChaine(value);
+  const boutonStraddle = straddleBoutonActif(value);
+
   // Même résultat que `straddleSeatLabel` dans handEngine.ts (straddle + décalage UTG/UTG1/UTG2),
   // calculé ici uniquement à partir du rang dans `availablePositions` puisqu'aucune action
   // n'existe encore à cette étape du formulaire.
-  const straddleCount = value.gameType === 'cash' ? value.straddleCount : 0;
   const straddleLabelForPosition = (pos: Position): string =>
-    straddleAwarePositionLabel(availablePositions, availablePositions.indexOf(pos), straddleCount);
+    boutonStraddle && pos === 'BTN'
+      ? 'BTN straddle'
+      : straddleAwarePositionLabel(availablePositions, availablePositions.indexOf(pos), chaineStraddle);
 
-  // Pour le sélecteur "Ta position" uniquement : le(s) straddleur(s) passent en dernier plutôt
-  // qu'en premier — plus logique visuellement, un straddle est perçu comme un "ajout" plutôt que
-  // la position de référence. Ordre d'action réel (`availablePositions`) inchangé partout ailleurs.
+  // Pour le sélecteur "Ta position" uniquement : le(s) straddleur(s) de la chaîne passent en
+  // dernier plutôt qu'en premier — plus logique visuellement, un straddle est perçu comme un
+  // "ajout" plutôt que la position de référence. Le bouton, lui, ne bouge pas : il est déjà à sa
+  // place. Ordre d'action réel (`availablePositions`) inchangé partout ailleurs.
   const positionChipOrder =
-    straddleCount > 0
-      ? [...availablePositions.slice(straddleCount), ...availablePositions.slice(0, straddleCount)]
+    chaineStraddle > 0
+      ? [...availablePositions.slice(chaineStraddle), ...availablePositions.slice(0, chaineStraddle)]
       : availablePositions;
+
+  // La phrase qui énumère les mises forcées volontaires, dans l'ordre où elles sont postées. Elle
+  // reprend les libellés que porteront réellement les sièges, pour qu'on lise ici exactement ce
+  // qu'on verra sur la table.
+  const resumeStraddle = (): string => {
+    const parts: { nom: string; montant: string }[] = [];
+    for (let i = 0; i < chaineStraddle; i++) {
+      parts.push({
+        nom: straddleLabelForPosition(availablePositions[i]),
+        montant: formatBlind(value.straddleAmount * 2 ** i),
+      });
+    }
+    if (boutonStraddle) parts.push({ nom: 'BTN straddle', montant: formatBlind(value.straddleBoutonMontant) });
+    if (parts.length === 1) return `${parts[0].nom} : ${parts[0].montant}`;
+    return parts.map((p) => `${p.nom} ${p.montant}`).join(', ');
+  };
 
   // Plafond de joueurs imposé par le jeu de 52 cartes : chaque joueur prend `holeCardCount` cartes,
   // le(s) board(s) en prennent 5 (ou 10 en double board), donc joueurs × cartes + board ≤ 52.
@@ -265,6 +289,12 @@ export function ContextStep({
       next.numPlayers = max;
       const positions = POSITION_SETS[max] ?? POSITION_SETS[6];
       if (!positions.includes(next.heroPosition)) next.heroPosition = positions[0];
+    }
+    // Le BTN straddle n'a pas sa place sur toutes les tables ni pour tous les nombres de straddles
+    // (cf. `boutonPossible`). Changer l'un ou l'autre peut donc le rendre impossible : on l'éteint
+    // dans l'état plutôt que de le laisser coché sous un interrupteur qui vient de disparaître.
+    if (next.straddleBouton && !boutonPossible(next.numPlayers, next.straddleCount)) {
+      next.straddleBouton = false;
     }
     onChange(next);
   };
@@ -449,20 +479,55 @@ export function ContextStep({
                 </View>
                 {value.straddleCount > 0 && (
                   <>
-                    <DecimalTextInput
-                      style={styles.input}
-                      placeholder="Montant du 1er straddle"
-                      value={value.straddleAmount}
-                      gameType={value.gameType}
-                      onChangeValue={(straddleAmount) => update({ straddleAmount })}
-                    />
-                    <Text style={styles.helperText}>
-                      {value.straddleCount === 1 && `Straddle : ${formatBlind(value.straddleAmount)}`}
-                      {value.straddleCount === 2 &&
-                        `Straddle ${formatBlind(value.straddleAmount)}, double straddle ${formatBlind(value.straddleAmount * 2)}`}
-                      {value.straddleCount === 3 &&
-                        `Straddle ${formatBlind(value.straddleAmount)}, double ${formatBlind(value.straddleAmount * 2)}, triple ${formatBlind(value.straddleAmount * 4)}`}
-                    </Text>
+                    {/* Le champ de la chaîne disparaît quand le bouton lui a pris son unique
+                        maillon (« Simple » + bouton) : il ne resterait rien à y saisir. */}
+                    {chaineStraddle > 0 && (
+                      <DecimalTextInput
+                        style={styles.input}
+                        placeholder="Montant du 1er straddle"
+                        value={value.straddleAmount}
+                        gameType={value.gameType}
+                        onChangeValue={(straddleAmount) => update({ straddleAmount })}
+                      />
+                    )}
+                    {/* Le BTN straddle est une variation du straddle, pas un réglage de plus : il
+                        n'a donc pas de section à lui et tient sur une seule ligne, dans le registre
+                        le plus discret du formulaire (12 px gris, comme "Niveau de blindes"). Il
+                        prend la place du DERNIER straddle plutôt que de s'y ajouter — « Double » +
+                        bouton, ce sont deux straddles, un à l'UTG et un au bouton. */}
+                    {boutonPossible(value.numPlayers, value.straddleCount) && (
+                      <View style={styles.inlineFieldRow}>
+                        <Text style={styles.inlineFieldLabel}>BTN straddle</Text>
+                        <Switch
+                          value={boutonStraddle}
+                          onValueChange={(on) =>
+                            update(
+                              on
+                                ? {
+                                    straddleBouton: true,
+                                    straddleBoutonMontant:
+                                      value.straddleBoutonMontant || montantBoutonPropose(value),
+                                  }
+                                : { straddleBouton: false }
+                            )
+                          }
+                          trackColor={{ false: tints.switchTrack, true: colors.action }}
+                          thumbColor="#fff"
+                          ios_backgroundColor={tints.switchTrack}
+                          {...({ activeThumbColor: '#fff' } as object)}
+                        />
+                        {boutonStraddle && (
+                          <DecimalTextInput
+                            style={[styles.input, styles.straddleBoutonField]}
+                            placeholder="Montant"
+                            value={value.straddleBoutonMontant}
+                            gameType={value.gameType}
+                            onChangeValue={(straddleBoutonMontant) => update({ straddleBoutonMontant })}
+                          />
+                        )}
+                      </View>
+                    )}
+                    <Text style={styles.helperText}>{resumeStraddle()}</Text>
                   </>
                 )}
               </>
@@ -700,6 +765,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  // Assez large pour un montant à quatre chiffres, et pas plus : le champ du bouton reste
+  // visiblement secondaire à côté de celui de la chaîne, qui prend toute la largeur.
+  straddleBoutonField: {
+    width: 96,
+    // `styles.input` porte `flex: 1` (deux champs sur une rangée, cf. SB/BB) : sans le neutraliser,
+    // la base flexible l'emporte sur la largeur et le champ s'étale sur toute la ligne.
+    flexGrow: 0,
+    flexBasis: 'auto',
+    marginBottom: 0,
+    paddingVertical: 8,
+    textAlign: 'center',
   },
   levelInputField: {
     width: 56,

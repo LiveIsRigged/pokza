@@ -29,6 +29,8 @@ interface ContextPrefs {
   ante: number;
   straddleCount: 0 | 1 | 2 | 3;
   straddleAmount: number;
+  straddleBouton: boolean;
+  straddleBoutonMontant: number;
 }
 
 const GAME_TYPES: GameType[] = ['cash', 'tournament'];
@@ -52,6 +54,8 @@ export async function saveContextPrefs(context: ContextData): Promise<void> {
     ante: context.ante,
     straddleCount: context.straddleCount,
     straddleAmount: context.straddleAmount,
+    straddleBouton: context.straddleBouton,
+    straddleBoutonMontant: context.straddleBoutonMontant,
   };
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(prefs));
@@ -128,5 +132,7 @@ export async function loadContextPrefs(base: ContextData = DEFAULT_CONTEXT): Pro
   if (p.straddleCount === 0 || p.straddleCount === 1 || p.straddleCount === 2 || p.straddleCount === 3)
     merged.straddleCount = p.straddleCount;
   if (isNum(p.straddleAmount)) merged.straddleAmount = p.straddleAmount;
+  if (typeof p.straddleBouton === 'boolean') merged.straddleBouton = p.straddleBouton;
+  if (isNum(p.straddleBoutonMontant)) merged.straddleBoutonMontant = p.straddleBoutonMontant;
   return merged;
 }

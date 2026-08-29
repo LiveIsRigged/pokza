@@ -8,7 +8,8 @@ import { StreetStep } from './steps/StreetStep';
 import { ShowdownStep } from './steps/ShowdownStep';
 import { StreetCorrectionStep } from './steps/StreetCorrectionStep';
 import { ReviewStep } from './steps/ReviewStep';
-import { appliquerContexteAuxSieges, buildSeats, getActingOrder } from './positions';
+import { appliquerContexteAuxSieges, buildSeats } from './positions';
+import { straddlesAPoster } from './straddle';
 import { committedBySeat } from '../engine/handEngine';
 import { champsInvalidants } from './invalidation';
 import type { ContextData, Phase, ReviewData, Snapshot } from './types';
@@ -539,14 +540,14 @@ export function LiveHandCreator({
             // Straddle(s) (cash game) : les joueurs successifs après la BB postent chacun un
             // montant volontaire qui double à chaque fois (simple, double, triple), devenant le
             // niveau à suivre. Le dernier straddleur agira en dernier (comme la BB en temps
-            // normal), l'action reprenant après lui.
-            if (context.gameType === 'cash' && context.straddleCount > 0 && context.straddleAmount > 0) {
-              const straddleOrder = getActingOrder(builtSeats, 'preflop');
-              for (let i = 0; i < context.straddleCount; i++) {
-                const straddlerSeat = straddleOrder[i];
-                if (!straddlerSeat) break;
-                poster(`straddle-${i + 1}`, straddlerSeat.id, 'post-straddle', context.straddleAmount * 2 ** i);
-              }
+            // normal), l'action reprenant après lui — c'est ce qui fait qu'un BTN straddle, posté
+            // en dernier, ouvre la parole à la SB sans qu'aucun code d'ordre ne le sache.
+            // Qui poste quoi est décidé par `straddlesAPoster` (cf. `straddle.ts`), pour que le
+            // formulaire, la relecture d'une main publiée et ce postage-ci ne puissent pas diverger.
+            for (const straddle of straddlesAPoster(context)) {
+              const straddlerSeat = builtSeats.find((s) => s.position === straddle.position);
+              if (!straddlerSeat) continue;
+              poster(`straddle-${straddle.position.toLowerCase()}`, straddlerSeat.id, 'post-straddle', straddle.montant);
             }
             }
 
@@ -589,7 +590,14 @@ export function LiveHandCreator({
 
     case 'street-preflop': {
       const straddleActions = actions.filter((a) => a.type === 'post-straddle').sort((a, b) => a.order - b.order);
+      // Le DERNIER posté ouvre la parole après lui : c'est le bouton quand il straddle, sinon le
+      // dernier maillon de la chaîne. Le montant à suivre, lui, est le PLUS HAUT et non le dernier :
+      // rien n'oblige un BTN straddle saisi à la main à dépasser celui de l'UTG, et un niveau de
+      // mise ne redescend jamais.
       const lastStraddle = straddleActions[straddleActions.length - 1];
+      const straddleLePlusHaut = straddleActions.length > 0
+        ? Math.max(...straddleActions.map((a) => a.amount ?? 0))
+        : undefined;
       // Les contributions de départ se lisent sur les mises RÉELLEMENT postées, et non sur les
       // montants nominaux du contexte : une blinde est plafonnée au tapis (cf. `poster` plus haut),
       // et repartir de `context.bb` créditerait la grosse blinde d'une mise qu'elle n'a pas pu
@@ -614,7 +622,7 @@ export function LiveHandCreator({
           // payer entièrement : au poker, un joueur à tapis pour moins que la blinde n'abaisse pas
           // le niveau de mise pour les autres. C'est pour ça que ce montant peut légitimement être
           // supérieur à la contribution réelle de la BB juste au-dessus.
-          initialBetAmount={lastStraddle ? lastStraddle.amount : context.bb}
+          initialBetAmount={straddleLePlusHaut ?? context.bb}
           initialContributions={initialContributions}
           priorCommitted={priorCommittedFor('preflop')}
           anteCommitted={committedBySeat(actions.filter((a) => a.type === 'post-ante'))}

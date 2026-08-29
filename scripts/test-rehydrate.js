@@ -201,9 +201,13 @@ const post = (hand, extra = {}) => ({
 // par les seules blindes. Ouvrir « a l'etape 1 et derouler » reviendrait donc a retaper la main.
 // D'ou le choix de l'etape AVANT d'entrer, qui se pose sur son instantane.
 {
+  // Depuis le chantier « corriger toutes les etapes », la feuille propose TOUTES les etapes jouees
+  // et non plus les seules streets — et « Juste le texte » a disparu, redondant avec « Modifier le
+  // post ». Le prix d'une correction ne se paie plus a l'entree mais a la SORTIE, selon ce qui a
+  // reellement change (cf. `invalidation.ts`).
   cas('les etapes proposees sur une main complete',
     etapesCorrigibles(post(main())).map((e) => e.label),
-    ['Préflop', 'Flop', 'Turn', 'Rivière', 'Juste le texte']);
+    ['La table', 'Tes cartes', 'Préflop', 'Flop', 'Turn', 'River', 'Les cartes de vilain']);
 
   reset();
   const plieePreflop = main({
@@ -215,7 +219,7 @@ const post = (hand, extra = {}) => ({
     ],
   });
   cas('une main pliee preflop ne propose pas de flop a corriger',
-    etapesCorrigibles(post(plieePreflop)).map((e) => e.label), ['Préflop', 'Juste le texte']);
+    etapesCorrigibles(post(plieePreflop)).map((e) => e.label), ['La table', 'Tes cartes', 'Préflop']);
 
   const seed = postToSeed(post(main()));
 
@@ -225,10 +229,15 @@ const post = (hand, extra = {}) => ({
 
   const auTurn = seedStart(seed, 'street-turn');
   cas('reprendre au turn ouvre bien au turn', auTurn.phase, 'street-turn');
-  cas('le flop est distribue, le turn non',
-    [!!auTurn.etat.board.flop, auTurn.etat.board.turn ?? null], [true, null]);
-  cas('les actions s arretent a la fin du flop',
-    auTurn.etat.actions.map((x) => x.id),
+  // DEUX ETATS, ET C'EST LE CŒUR DE LA CORRECTION PAR ETAPE. `etat` porte la main ENTIERE : c'est
+  // ce qui permet de retoucher la carte du turn et de publier sans ressaisir la river. L'instantane
+  // de l'etape, lui, porte l'etat tel qu'il etait AVANT ce que l'etape produit — c'est lui qu'on
+  // reprend quand le changement invalide la suite.
+  cas('la main ouverte au turn reste entiere', auTurn.etat.actions.length, seed.actions.length);
+  cas('mais l instantane du turn s arrete a la fin du flop',
+    [!!auTurn.instantane.board.flop, auTurn.instantane.board.turn ?? null], [true, null]);
+  cas('et ses actions aussi',
+    auTurn.instantane.actions.map((x) => x.id),
     ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10', 'a11']);
   cas('et le « ‹ » peut encore redescendre les etapes d avant',
     auTurn.history.map((x) => x.phase),

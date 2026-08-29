@@ -35,11 +35,22 @@ export interface ContextData {
   anteType: AnteType;
   /** Montant de l'ante (par joueur, ou pour la BB si anteType === 'bb') */
   ante: number;
-  /** Nombre de straddles consécutifs (cash game uniquement), postés par les joueurs successifs
-   * après la BB : 0 = aucun, 1 = simple, 2 = double, 3 = triple. */
+  /** Nombre TOTAL de straddles de la main (cash game uniquement) : 0 = aucun, 1 = simple, 2 =
+   * double, 3 = triple. Postés par les joueurs successifs après la BB — sauf le DERNIER quand
+   * `straddleBouton` est vrai, qui passe alors au bouton (cf. `straddlesAPoster`). « Double », ce
+   * sont donc toujours deux straddles : UTG + UTG1, ou UTG + bouton. */
   straddleCount: 0 | 1 | 2 | 3;
-  /** Montant du premier straddle (par défaut 2x la BB) — le double vaut 2x ce montant, le triple 4x. */
+  /** Montant du premier straddle de la chaîne (par défaut 2x la BB) — le suivant vaut 2x ce
+   * montant, celui d'après 4x. Sans objet quand la chaîne est vide (`straddleCount` à 1 avec
+   * `straddleBouton`) : le seul straddle est alors celui du bouton. */
   straddleAmount: number;
+  /** Le dernier straddle est posté par le BOUTON au lieu du siège suivant de la chaîne. L'action
+   * s'ouvre alors à la SB et le bouton parle en dernier — c'est tout ce que le "BTN straddle"
+   * change au déroulé. */
+  straddleBouton: boolean;
+  /** Montant du straddle du bouton (ignoré si `straddleBouton` est faux). Libre, et proposé à 2x
+   * le dernier straddle de la chaîne — 2x la BB quand il n'y en a pas. */
+  straddleBoutonMontant: number;
 }
 
 // Réexporté depuis la source unique des limites, pour ne pas casser les imports existants.
@@ -82,6 +93,8 @@ export const DEFAULT_CONTEXT: ContextData = {
   ante: 0,
   straddleCount: 0,
   straddleAmount: 0,
+  straddleBouton: false,
+  straddleBoutonMontant: 0,
 };
 
 /**

@@ -422,14 +422,41 @@ function straddleRankLabel(rank: number): string {
 // ne bougent eux jamais, quel que soit le straddle.
 const UTG_FAMILY: Position[] = ['UTG', 'UTG1', 'UTG2', 'UTG3'];
 
+/** Le bouton qui straddle reste le bouton — il ne prend pas un nom de la famille "Straddle". */
+const BUTTON_STRADDLE_LABEL = 'BTN straddle';
+
+/**
+ * Combien de straddles forment la CHAÎNE, c'est-à-dire le préfixe de l'ordre d'action préflop dont
+ * chaque siège a posté un straddle.
+ *
+ * ⚠️ CE N'EST PAS LE NOMBRE DE STRADDLES DE LA MAIN. Le straddle du bouton tombe hors de ce
+ * préfixe (le formulaire garantit qu'un siège au moins l'en sépare, cf. `boutonPossible`) et n'a
+ * donc rien à y faire : le compter décalerait d'un cran les noms UTG de tous les sièges
+ * intermédiaires — un HJ deviendrait UTG parce que le bouton a straddlé à l'autre bout de la table.
+ *
+ * `seats` DOIT être la liste complète des sièges dans l'ordre d'action préflop.
+ */
+export function chainStraddleCount(seats: Seat[], actions: Action[]): number {
+  const straddlers = new Set(
+    actions.filter((a) => a.type === 'post-straddle').map((a) => a.seatId)
+  );
+  let n = 0;
+  while (n < seats.length && straddlers.has(seats[n].id)) n++;
+  return n;
+}
+
 /**
  * Libellé de position pour le rang `rank` (0 = premier parleur naturel, avant tout straddle) d'une
- * table dont l'ordre d'action préflop est `orderedPositions`, compte tenu de `straddleCount`
- * straddles consécutifs :
- * - les `straddleCount` premiers rangs deviennent "Straddle"/"Double straddle"/"Triple straddle"
+ * table dont l'ordre d'action préflop est `orderedPositions`, compte tenu d'une CHAÎNE de
+ * `chainCount` straddles consécutifs :
+ * - les `chainCount` premiers rangs deviennent "Straddle"/"Double straddle"/"Triple straddle"
  *   (ils postent une mise forcée, ils NE parlent PLUS en premier) ;
  * - les rangs UTG/UTG1/UTG2 restants reprennent un nom en repartant de UTG ;
  * - les autres (LJ/HJ/CO/BTN/SB/BB) gardent leur nom d'origine.
+ *
+ * ⚠️ `chainCount` est la longueur de la CHAÎNE, pas le nombre de straddles de la main : un straddle
+ * au bouton n'en fait pas partie et se nomme à part (cf. `straddleSeatLabel`).
+ *
  * Partagé entre `straddleSeatLabel` ci-dessous (une fois les actions connues, cf. replayer/
  * `StreetStep`/`ShowdownStep`) et `ContextStep.tsx` (qui doit afficher le même résultat AVANT que
  * les actions n'existent, à partir du seul rang dans l'ordre d'action préflop).
@@ -437,11 +464,11 @@ const UTG_FAMILY: Position[] = ['UTG', 'UTG1', 'UTG2', 'UTG3'];
 export function straddleAwarePositionLabel(
   orderedPositions: Position[],
   rank: number,
-  straddleCount: number
+  chainCount: number
 ): string {
-  if (straddleCount > 0 && rank < straddleCount) return straddleRankLabel(rank);
+  if (chainCount > 0 && rank < chainCount) return straddleRankLabel(rank);
   const utgFamilyCount = orderedPositions.filter((p) => UTG_FAMILY.includes(p)).length;
-  if (straddleCount > 0 && rank < utgFamilyCount) return UTG_FAMILY[rank - straddleCount];
+  if (chainCount > 0 && rank < utgFamilyCount) return UTG_FAMILY[rank - chainCount];
   return orderedPositions[rank];
 }
 
@@ -455,11 +482,15 @@ export function straddleAwarePositionLabel(
 export function straddleSeatLabel(seats: Seat[], actions: Action[], seatId: string): string | null {
   const rank = seats.findIndex((s) => s.id === seatId);
   if (rank === -1) return null;
-  const straddleCount = actions.filter((a) => a.type === 'post-straddle').length;
+  const chainCount = chainStraddleCount(seats, actions);
+  // Straddleur hors de la chaîne : c'est le straddle du bouton, et il n'y en a qu'un.
+  if (rank >= chainCount && actions.some((a) => a.type === 'post-straddle' && a.seatId === seatId)) {
+    return BUTTON_STRADDLE_LABEL;
+  }
   return straddleAwarePositionLabel(
     seats.map((s) => s.position),
     rank,
-    straddleCount
+    chainCount
   );
 }
 

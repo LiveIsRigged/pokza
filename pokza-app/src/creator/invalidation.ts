@@ -28,6 +28,8 @@ const CHAMPS_STRUCTURELS: { cle: keyof ContextData; label: string }[] = [
   { cle: 'ante', label: "l'ante" },
   { cle: 'straddleCount', label: 'le straddle' },
   { cle: 'straddleAmount', label: 'le straddle' },
+  { cle: 'straddleBouton', label: 'le straddle' },
+  { cle: 'straddleBoutonMontant', label: 'le straddle' },
   { cle: 'numPlayers', label: 'le nombre de joueurs' },
   { cle: 'heroPosition', label: 'ta position' },
 ];

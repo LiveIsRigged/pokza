@@ -1,6 +1,7 @@
 import type { Action, Board, Card, Position, Post, Seat, Street } from '../types/poker';
 import type { AnteType, ContextData, Phase, ReviewData, Snapshot } from './types';
 import { DEFAULT_CONTEXT } from './types';
+import { chainStraddleCount } from '../engine/handEngine';
 
 /**
  * Tout ce dont `LiveHandCreator` a besoin pour repartir d'une main déjà publiée, dans la forme
@@ -33,7 +34,9 @@ export interface CreatorSeed {
  *     le monde. Un seul `post-ante` = « BB ante » ; plusieurs = un ante par joueur. Se tromper
  *     changerait le pot de départ à la republication.
  *   • Le straddle : il ne vit que dans les actions (`post-straddle`), jamais dans `blinds`. Son
- *     nombre et son montant se relèvent donc là, et nulle part ailleurs.
+ *     nombre et son montant se relèvent donc là, et nulle part ailleurs. Et depuis le BTN straddle,
+ *     il faut en plus dire lequel des straddles est celui du bouton — ce que la POSITION du siège
+ *     dans l'ordre d'action suffit à trancher.
  */
 export function postToSeed(post: Post): CreatorSeed {
   const hand = post.hand;
@@ -53,12 +56,27 @@ export function postToSeed(post: Post): CreatorSeed {
     ante = anteType === 'per-player' ? (antes[0].amount ?? 0) : 0;
   }
 
+  // Séparer la CHAÎNE du straddle du bouton, sans quoi une main « UTG 8 + BTN 16 » se relirait
+  // comme un double straddle à 8 posté par l'UTG et son voisin : mauvais sièges, mauvais montants.
+  // La chaîne est le préfixe de l'ordre d'action préflop qui a straddlé (cf. `chainStraddleCount`),
+  // et le straddle du bouton est le seul à en sortir — le formulaire garantit qu'un siège au moins
+  // les sépare (cf. `boutonPossible`), c'est ce qui rend cette lecture possible.
+  const chaine = chainStraddleCount(hand.seats, hand.actions);
+  const rangDe = (a: Action) => hand.seats.findIndex((s) => s.id === a.seatId);
+  const straddlesChaine = straddles.filter((a) => rangDe(a) < chaine);
+  const straddleDuBouton = straddles.find((a) => rangDe(a) >= chaine);
+
   // Les straddles successifs valent 2x, 4x… le premier : c'est donc le PLUS PETIT montant posté
-  // qui est le « montant du straddle » au sens de l'étape 1.
-  const straddleAmount = straddles.length > 0
-    ? Math.min(...straddles.map((a) => a.amount ?? 0))
+  // de la chaîne qui est le « montant du straddle » au sens de l'étape 1.
+  const straddleAmount = straddlesChaine.length > 0
+    ? Math.min(...straddlesChaine.map((a) => a.amount ?? 0))
     : DEFAULT_CONTEXT.straddleAmount;
+  // `straddleCount` compte TOUS les straddles de la main, celui du bouton compris : c'est le sens
+  // de la chip « Simple / Double / Triple », et il est inchangé pour les mains d'avant le BTN
+  // straddle, qui n'ont jamais que leur chaîne.
   const straddleCount = Math.min(straddles.length, 3) as 0 | 1 | 2 | 3;
+  const straddleBouton = Boolean(straddleDuBouton);
+  const straddleBoutonMontant = straddleDuBouton?.amount ?? DEFAULT_CONTEXT.straddleBoutonMontant;
 
   const opponentNames: Partial<Record<Position, string>> = {};
   const seatStacks: Partial<Record<Position, number>> = {};
@@ -90,6 +108,8 @@ export function postToSeed(post: Post): CreatorSeed {
     ante,
     straddleCount,
     straddleAmount,
+    straddleBouton,
+    straddleBoutonMontant,
   };
 
   // Cartes des adversaires montrées à l'abattage : celles du hero passent par `heroCards`, pas par
