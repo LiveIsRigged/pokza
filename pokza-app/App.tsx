@@ -888,10 +888,16 @@ function AppContent() {
             setPosts((p) => [saved, ...p.filter((x) => x.id !== ancien.id)]);
             trackEvent('hand_corrected', { variant: saved.hand.variant, game_type: saved.hand.gameType });
             setCorrectingPost(null);
-            // Retour au feed et pas à l'écran d'origine : la main corrigée a un nouvel id, donc la
-            // page de l'ancienne n'existe plus, et la liste d'un profil ou d'un groupe déjà chargée
-            // montrerait encore la version supprimée.
-            setMode('feed');
+            // RETOUR À L'ÉCRAN D'ORIGINE. Le créateur remplace tout l'arbre (chaque mode sort par un
+            // `return` plus haut), donc la page de profil ou de groupe a été DÉMONTÉE en entrant
+            // ici : y revenir la remonte et relance son `fetchPosts`. La crainte d'une liste périmée
+            // qui montrerait encore la version supprimée, qui justifiait le retour au feed, ne
+            // s'appliquait donc pas — et le feed était un atterrissage que personne n'avait demandé.
+            //
+            // Seule exception, la page d'UNE main : la corrigée porte un nouvel identifiant, celle
+            // d'origine n'existe plus. On y renvoie donc vers la nouvelle, qui est la même main.
+            if (correctReturnMode === 'post') setViewingPostId(saved.id);
+            setMode(correctReturnMode);
           }}
           onCancel={onBack}
         />
