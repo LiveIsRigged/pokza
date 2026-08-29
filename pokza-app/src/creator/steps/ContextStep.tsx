@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
+import { Pressable } from '../../components/ui/Pressable';
+import { CurrencyPicker } from '../../components/ui/CurrencyPicker';
+import { devise } from '../../utils/currency';
 import type { Position } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
 import { borders, colors, tints } from '../../theme/theme';
@@ -236,6 +239,7 @@ export function ContextStep({
   // à reprocher une erreur que personne n'a encore commise. Le bouton Continuer, lui, reste bloqué
   // dès la frappe : la valeur est fausse tant qu'elle l'est, qu'on le dise ou non.
   const [bbFocused, setBbFocused] = useState(false);
+  const [deviseOuverte, setDeviseOuverte] = useState(false);
   const showBlindsError = blindsInvalid && !bbFocused;
 
   // La CHAÎNE de straddles consécutifs, qui est plus courte d'un cran quand le bouton straddle :
@@ -648,6 +652,32 @@ export function ContextStep({
           onChangeText={(t) => update({ location: t })}
         />
 
+        {/* LA DEVISE EST TOUT EN BAS, sous le lieu, et pas à côté des blindes : elle décrit OÙ on a
+            joué, comme le lieu, le buy-in et le niveau — pas la mécanique du coup. Elle se retient
+            d'une main à l'autre comme les blindes, donc celui qui ne quitte jamais son club la règle
+            une fois et ne la revoit plus. Absente en tournoi : les jetons n'y sont pas de l'argent
+            réel, et rien ne les habille. */}
+        {value.gameType === 'cash' && (
+          <>
+            <Text style={styles.label}>Devise</Text>
+            <Pressable style={styles.selector} onPress={() => setDeviseOuverte(true)}>
+              <Text style={styles.selectorValue}>
+                {devise(value.currency).sigle}  {devise(value.currency).nom}
+              </Text>
+              <Text style={styles.selectorChevron}>›</Text>
+            </Pressable>
+            <CurrencyPicker
+              visible={deviseOuverte}
+              selectedCode={value.currency}
+              onSelect={(currency) => {
+                update({ currency });
+                setDeviseOuverte(false);
+              }}
+              onClose={() => setDeviseOuverte(false)}
+            />
+          </>
+        )}
+
         {value.gameType === 'tournament' && (
           <>
             <Text style={styles.label}>Buy-in (optionnel)</Text>
@@ -682,6 +712,25 @@ const styles = StyleSheet.create({
   inlineInputs: {
     flexDirection: 'row',
     gap: 8,
+  },
+  selector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: borders.default,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  selectorValue: {
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  selectorChevron: {
+    fontSize: 20,
+    color: colors.textSecondary,
   },
   input: {
     borderWidth: 1,

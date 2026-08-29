@@ -6,6 +6,7 @@ import { borders, colors, radius } from '../../theme/theme';
 import { describeAction } from '../../engine/handEngine';
 import { MultiCardPicker } from '../MultiCardPicker';
 import { WizardScreen } from '../WizardScreen';
+import type { CodeDevise } from '../../utils/currency';
 
 const TITRES: Record<Street, string> = {
   preflop: 'Préflop',
@@ -37,6 +38,8 @@ interface StreetCorrectionStepProps {
   seats: Seat[];
   actions: Action[];
   gameType: GameType;
+  /** Devise de la main (cf. `DEVISES`) ; absente = euro. Sans effet en tournoi. */
+  currency?: CodeDevise;
   bb: number;
   board: Board;
   board2: Board;
@@ -79,6 +82,7 @@ export function StreetCorrectionStep({
   seats,
   actions,
   gameType,
+  currency,
   bb,
   board,
   board2,
@@ -93,7 +97,7 @@ export function StreetCorrectionStep({
 
   const mises = actions.filter((a) => a.street === street && !a.type.startsWith('post-'));
   const prises = cartesPrisesAilleurs(board, board2, seats, street);
-  const contexteLibelle = { seats, actions, gameType, blinds: { sb: 0, bb } };
+  const contexteLibelle = { seats, actions, gameType, currency, blinds: { sb: 0, bb } };
 
   const complet =
     cartes.filter(Boolean).length === initiales.length && cartes2.filter(Boolean).length === initiales2.length;

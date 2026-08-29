@@ -9,6 +9,7 @@ import {
   boardVerticalOffset,
 } from '../../engine/layout';
 import { CardView } from './CardView';
+import type { CodeDevise } from '../../utils/currency';
 
 interface SeatViewProps {
   seat: Seat;
@@ -54,6 +55,8 @@ interface SeatViewProps {
    * glisser les jetons déjà posés au pot jusqu'au vainqueur, en plus de la pastille "Pot X". */
   winnerSeatPos?: { x: number; y: number } | null;
   gameType?: GameType;
+  /** Devise de la main (cf. `DEVISES`) ; absente = euro. Sans effet en tournoi. */
+  currency?: CodeDevise;
   /** Grosse blinde de la main — sert à convertir les montants affichés quand `useBB` est activé. */
   bb: number;
   /** Préférence globale au feed (cf. `useDisplayUnit`) : montants en BB plutôt qu'en jetons bruts. */
@@ -97,7 +100,16 @@ const CHIP_STACK_WIDTH = CHIP_TOKEN_SIZE + 6;
 const CHIP_STACK_HEIGHT = CHIP_TOKEN_SIZE + (MAX_VISIBLE_CHIPS - 1) * CHIP_STACK_OFFSET;
 // Encombrement total du bloc mise (pile de jetons + montant en dessous) : sert au placement radial
 // (demi-hauteur = distance à laisser devant le siège) et au centrage du conteneur.
-const CHIP_BLOCK_W = 28;
+// La LARGEUR ne sert qu'à centrer le bloc sur son point de dépose : elle n'entre dans aucun calcul
+// de placement (seule la hauteur y sert). Elle décide en revanche d'une chose que sa valeur d'origine
+// — 28 px, la largeur du jeton dessiné au-dessus — ne prévoyait pas : c'est la largeur à laquelle le
+// MONTANT se coupe. À 10 px gras, 28 px ne tiennent que quatre caractères ; « CHF 1500 », qui offre
+// une espace où couper, s'y écrivait « CHF » au-dessus de « 1500 ». Les montants sans espace, eux,
+// ne se coupaient pas mais débordaient — « 1500€ » (33 px) le fait déjà, sur du feutre vide, donc
+// sans que ça se voie. 56 px tiennent le plus long montant réaliste de toutes les devises, sigle
+// compris (« CHF 2500 » ≈ 44 px), et restent sous les 49 px de dégagement d'un siège latéral en
+// 9-max — mesuré le 30/08/2026.
+const CHIP_BLOCK_W = 56;
 const CHIP_BLOCK_H = CHIP_STACK_HEIGHT + 2 + 12;
 
 interface ChipToken {
@@ -134,6 +146,7 @@ function chipStackFor(amount: number, gameType: GameType): ChipToken[] {
 function BetChipPopIn({
   amount,
   gameType,
+  currency,
   showAmount,
   bb,
   useBB,
@@ -141,6 +154,7 @@ function BetChipPopIn({
 }: {
   amount: number;
   gameType: GameType;
+  currency?: CodeDevise;
   showAmount: boolean;
   bb: number;
   useBB: boolean;
@@ -170,7 +184,7 @@ function BetChipPopIn({
       <Animated.View style={[styles.compactChip, { opacity, transform: [{ scale }] }]}>
         <View style={[styles.compactDot, { backgroundColor: chipStack[0].color }]} />
         {showAmount && (
-          <Text style={styles.compactAmount}>{formatChipAmount(amount, gameType, { bb, useBB })}</Text>
+          <Text style={styles.compactAmount}>{formatChipAmount(amount, gameType, { bb, useBB }, currency)}</Text>
         )}
       </Animated.View>
     );
@@ -200,7 +214,7 @@ function BetChipPopIn({
         ))}
       </View>
       {showAmount && (
-        <Text style={styles.chipAmount}>{formatChipAmount(amount, gameType, { bb, useBB })}</Text>
+        <Text style={styles.chipAmount}>{formatChipAmount(amount, gameType, { bb, useBB }, currency)}</Text>
       )}
     </Animated.View>
   );
@@ -224,6 +238,7 @@ export function SeatView({
   equityPending,
   winnerSeatPos = null,
   gameType = 'cash',
+  currency,
   bb,
   useBB = false,
   straddleLabel = null,
@@ -450,7 +465,7 @@ export function SeatView({
   const displayName = seat.isHero
     ? seat.playerName ?? 'Hero'
     : seat.playerName ?? straddleLabel ?? seat.position;
-  const stackText = formatChipAmount(Math.max(stackRemaining, 0), gameType, { bb, useBB });
+  const stackText = formatChipAmount(Math.max(stackRemaining, 0), gameType, { bb, useBB }, currency);
 
   return (
     <View style={[styles.wrapper, { left: x, top: y }]} pointerEvents="none">
@@ -587,6 +602,7 @@ export function SeatView({
             key={displayBet}
             amount={displayBet}
             gameType={gameType}
+            currency={currency}
             showAmount={Boolean(currentBet)}
             bb={bb}
             useBB={useBB}

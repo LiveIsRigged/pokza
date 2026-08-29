@@ -209,6 +209,7 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               winnerShares={winnerShares}
               unresolved={step >= totalSteps && state.winningSeatIds.length === 0}
               gameType={hand.gameType}
+              currency={hand.currency}
               tableWidth={size.width}
               verticalOffset={boardVerticalOffset()}
               bb={hand.blinds.bb}
@@ -274,6 +275,7 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               equityPending={equityEnCours}
               winnerSeatPos={nearestWinnerPos(x, y)}
               gameType={hand.gameType}
+              currency={hand.currency}
               bb={hand.blinds.bb}
               useBB={useBB}
               straddleLabel={straddleSeatLabel(hand.seats, hand.actions, seat.id)}

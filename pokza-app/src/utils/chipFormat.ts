@@ -1,4 +1,5 @@
 import type { GameType } from '../types/poker';
+import { devise, habillerMontant } from './currency';
 
 /** Grosse blinde de la main, pour convertir un montant en BB quand `useBB` est activé. */
 export interface BBDisplayOptions {
@@ -6,14 +7,11 @@ export interface BBDisplayOptions {
   useBB: boolean;
 }
 
-// Devise unique pour l'instant (pas encore de sélecteur) : centralisée ici pour qu'un futur choix
-// de devise n'ait qu'un seul endroit à toucher.
-const CASH_CURRENCY_SYMBOL = '€';
-
-/** Suffixe de devise à accoler à une dénomination de blindes ("2/5" → "2/5€") : la devise en cash,
- * rien en tournoi (les jetons ne sont pas de l'argent réel). */
-export function cashCurrencySuffix(gameType: GameType): string {
-  return gameType === 'cash' ? CASH_CURRENCY_SYMBOL : '';
+/** Habille une dénomination de blindes déjà composée ("2/5" → "2/5€", "$2/5", "25/50 Kč") : la
+ * devise en cash, rien en tournoi (les jetons ne sont pas de l'argent réel). Le sigle se pose une
+ * seule fois autour de la dénomination entière, pas sur chacun de ses nombres. */
+export function habillerDenomination(stakes: string, gameType: GameType, codeDevise?: string): string {
+  return gameType === 'cash' ? habillerMontant(stakes, devise(codeDevise)) : stakes;
 }
 
 /**
@@ -43,19 +41,30 @@ export function abbreviateChips(n: number): string {
   return `${String(parseFloat(value.toFixed(2))).replace('.', ',')}${suffix}`;
 }
 
-// En cash game, un montant est de l'argent réel : on lui accole la devise ("10" → "10€"), sauf en
-// BB (déjà une unité explicite, pas besoin de devise en plus). En tournoi, les jetons ne sont pas
-// de l'argent réel — pas de devise — mais dépassent vite 4-5 chiffres : au-delà de 1000, on abrège
-// (cf. `abbreviateChips`).
+// En cash game, un montant est de l'argent réel : on lui accole la devise ("10" → "10€", "$10"),
+// sauf en BB (déjà une unité explicite, pas besoin de devise en plus). En tournoi, les jetons ne
+// sont pas de l'argent réel — pas de devise — mais dépassent vite 4-5 chiffres : au-delà de 1000,
+// on abrège (cf. `abbreviateChips`).
+// L'argent réel ne s'abrège PAS, à une exception près : les devises dont les montants ordinaires
+// sont à six chiffres ou plus (cf. `Devise.abrege`). Un tapis de 100BB vaut 4 000 000 en dong ; le
+// laisser en entier remplirait chaque siège de sept chiffres pour rien.
 // `bbOptions` bascule TOUT montant (stack, mise, pot) en nombre de grosses blindes à la place —
 // préférence globale au feed (cf. `useDisplayUnit`), indépendante des formats ci-dessus.
-export function formatChipAmount(n: number, gameType: GameType, bbOptions?: BBDisplayOptions): string {
+export function formatChipAmount(
+  n: number,
+  gameType: GameType,
+  bbOptions?: BBDisplayOptions,
+  codeDevise?: string
+): string {
   const amount = gameType === 'cash' ? roundMoney(n) : n;
   if (bbOptions?.useBB && bbOptions.bb > 0) {
     const bbValue = parseFloat((amount / bbOptions.bb).toFixed(1));
     return `${bbValue} bb`;
   }
-  if (gameType === 'cash') return `${amount}${CASH_CURRENCY_SYMBOL}`;
+  if (gameType === 'cash') {
+    const d = devise(codeDevise);
+    return habillerMontant(d.abrege ? abbreviateChips(amount) : String(amount), d);
+  }
   return abbreviateChips(amount);
 }
 

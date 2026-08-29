@@ -3,10 +3,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { GameType } from '../../types/poker';
 import { colors, radius, typography } from '../../theme/theme';
 import { formatChipAmount } from '../../utils/chipFormat';
+import type { CodeDevise } from '../../utils/currency';
 
 interface ChipsViewProps {
   amount: number;
   gameType?: GameType;
+  /** Devise de la main (cf. `DEVISES`) ; absente = euro. Sans effet en tournoi. */
+  currency?: CodeDevise;
   isWinning?: boolean;
   bb: number;
   useBB?: boolean;
@@ -14,11 +17,11 @@ interface ChipsViewProps {
 
 // Le pot est une simple pastille lisible plutôt qu'un tas de jetons illustré : plus premier,
 // plus compact, et surtout garanti de ne jamais chevaucher le siège au-dessus (cf. layout.ts).
-export function ChipsView({ amount, gameType = 'cash', isWinning = false, bb, useBB = false }: ChipsViewProps) {
+export function ChipsView({ amount, gameType = 'cash', currency, isWinning = false, bb, useBB = false }: ChipsViewProps) {
   return (
     <View style={[styles.pill, isWinning && styles.pillWinning]}>
       <Text style={[typography.potAmount, styles.amount, isWinning && styles.amountWinning]}>
-        Pot {formatChipAmount(amount, gameType, { bb, useBB })}
+        Pot {formatChipAmount(amount, gameType, { bb, useBB }, currency)}
       </Text>
     </View>
   );

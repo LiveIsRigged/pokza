@@ -1,3 +1,5 @@
+import type { CodeDevise } from '../utils/currency';
+
 // Modèle de données central du replayer.
 // Doit pouvoir être alimenté à la fois par le formulaire live (saisie manuelle)
 // et par le parser online (extraction depuis une hand history texte).
@@ -95,6 +97,11 @@ export interface Hand {
    * en preflop (un par siège) et aucune blinde. Ce drapeau ne sert qu'à l'affichage (libellé) — le
    * moteur reconstitue tout à partir des actions. Absent/false = main classique. */
   bombPot?: boolean;
+  /** Devise dans laquelle les montants de cette main sont écrits (cf. `DEVISES`). ABSENTE sur toute
+   * main publiée avant l'arrivée du sélecteur : elle se lit alors comme l'euro (cf. `devise`), ce
+   * qui les laisse s'afficher exactement comme avant, sans migration. Ignorée en tournoi, où les
+   * jetons ne sont pas de l'argent réel. */
+  currency?: CodeDevise;
   /** Contrôle QUAND les mains adverses saisies à l'abattage deviennent visibles dans le replayer.
    * Activé : cachées pendant tout le coup, révélées seulement à l'abattage (gagnant ou perdant).
    * Désactivé (défaut) : visibles dès le début du replay, comme Hero. Sans effet sur un adversaire

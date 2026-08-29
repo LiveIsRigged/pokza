@@ -9,6 +9,7 @@ import { MultiCardPicker } from '../MultiCardPicker';
 import { formatChipAmount, roundMoney } from '../../utils/chipFormat';
 import { nextBetAbove, roundBet, type BetRoundingContext } from '../../utils/betRounding';
 import { straddleSeatLabel } from '../../engine/handEngine';
+import type { CodeDevise } from '../../utils/currency';
 
 const STREET_TITLES: Record<Street, string> = {
   preflop: 'Préflop',
@@ -95,6 +96,8 @@ interface StreetStepProps {
    * exact au lieu d'être arrondi. */
   variant?: Variant;
   gameType?: GameType;
+  /** Devise de la main (cf. `DEVISES`) ; absente = euro. Sans effet en tournoi. */
+  currency?: CodeDevise;
   /** Main jouée en bomb pot : les raccourcis « check/fold rapide jusqu'à » restent proposés à chaque
    * street (checker/folder en cascade est courant au flop d'un bomb pot). Hors bomb pot, ils ne sont
    * gardés qu'au préflop (fold général jusqu'à une position) et retirés en postflop. */
@@ -137,6 +140,7 @@ export function StreetStep({
   sb = 0,
   variant = 'nlhe',
   gameType = 'cash',
+  currency,
   bombPot = false,
   onBack,
   onComplete,
@@ -175,7 +179,7 @@ export function StreetStep({
   const [history, setHistory] = useState<Snapshot[]>([]);
 
   const boardComplete = boardCards.every(Boolean) && boardCards2.every(Boolean);
-  const fmt = (n: number) => formatChipAmount(n, gameType);
+  const fmt = (n: number) => formatChipAmount(n, gameType, undefined, currency);
 
   // Pot total en direct : ce qui a été misé sur les streets précédentes (déjà réglé) + l'ante de
   // cette street si elle vient d'être postée (préflop uniquement, cf. anteCommitted) + ce qui a été

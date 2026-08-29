@@ -315,6 +315,9 @@ export function LiveHandCreator({
       board2: ctx.bombPot && ctx.doubleBoard ? b2 : undefined,
       actions: finalActions,
       bombPot: ctx.bombPot || undefined,
+      // Cash game seulement : en tournoi les jetons ne sont pas de l'argent réel, et rien ne les
+      // habille. La main reste alors sans devise, et se relit comme telle.
+      currency: ctx.gameType === 'cash' ? ctx.currency : undefined,
       revealShowdown,
     };
     const post: Post = {
@@ -408,6 +411,7 @@ export function LiveHandCreator({
         seats={seats}
         actions={actions}
         gameType={context.gameType}
+        currency={context.currency}
         bb={context.bombPot ? context.bombAnte : context.bb}
         board={board}
         board2={board2}

@@ -1,4 +1,5 @@
 import type { Action, Board, Card, GameType, Position, Seat, Variant, Visibility } from '../types/poker';
+import { DEVISE_PAR_DEFAUT, type CodeDevise } from '../utils/currency';
 
 export type AnteType = 'none' | 'bb' | 'per-player';
 
@@ -52,6 +53,13 @@ export interface ContextData {
   /** Montant du straddle du bouton (ignoré si `straddleBouton` est faux). Libre, et proposé à 2x
    * le dernier straddle de la chaîne — 2x la BB quand il n'y en a pas. */
   straddleBoutonMontant: number;
+  /** Devise des montants de la main (cf. `DEVISES`). Cash game uniquement — en tournoi les jetons ne
+   * sont pas de l'argent réel, et le formulaire n'en propose pas. Jamais vide : elle vaut l'euro
+   * tant que rien n'a été choisi, et se mémorise d'une main à l'autre comme les blindes.
+   * Volontairement ABSENTE de `CHAMPS_STRUCTURELS` : aucune action ne référence une devise, donc en
+   * changer ne peut rendre aucune mise illégale. Ce sont les montants qui sont structurels, pas
+   * l'unité dans laquelle on les écrit — corriger la devise d'une main publiée ne coûte rien. */
+  currency: CodeDevise;
 }
 
 // Réexporté depuis la source unique des limites, pour ne pas casser les imports existants.
@@ -96,6 +104,7 @@ export const DEFAULT_CONTEXT: ContextData = {
   straddleAmounts: [],
   straddleBouton: false,
   straddleBoutonMontant: 0,
+  currency: DEVISE_PAR_DEFAUT,
 };
 
 /**

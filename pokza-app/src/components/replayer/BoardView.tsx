@@ -5,6 +5,7 @@ import { colors } from '../../theme/theme';
 import { boardCardSize } from '../../engine/layout';
 import { CardView } from './CardView';
 import { ChipsView } from './ChipsView';
+import type { CodeDevise } from '../../utils/currency';
 
 interface BoardViewProps {
   cards: Card[];
@@ -18,6 +19,8 @@ interface BoardViewProps {
    * un board partagé (0,25 chacun). */
   winnerShares: { x: number; y: number; amount: number }[];
   gameType?: GameType;
+  /** Devise de la main (cf. `DEVISES`) ; absente = euro. Sans effet en tournoi. */
+  currency?: CodeDevise;
   /** Largeur de la table : sert à dimensionner les cartes pour qu'elles ne débordent jamais sur les sièges. */
   tableWidth?: number;
   /** Main terminée sans vainqueur déterminable (Hero couché et cartes adverses non saisies) : la
@@ -38,12 +41,14 @@ const CARD_GAP = 4;
 function PotShare({
   amount,
   gameType,
+  currency,
   bb,
   useBB,
   target,
 }: {
   amount: number;
   gameType: GameType;
+  currency?: CodeDevise;
   bb: number;
   useBB: boolean;
   target: { x: number; y: number };
@@ -65,7 +70,7 @@ function PotShare({
 
   return (
     <Animated.View style={[styles.potShareWrapper, { transform: [{ translateX }, { translateY }], opacity }]}>
-      <ChipsView amount={amount} gameType={gameType} isWinning bb={bb} useBB={useBB} />
+      <ChipsView amount={amount} gameType={gameType} currency={currency} isWinning bb={bb} useBB={useBB} />
     </Animated.View>
   );
 }
@@ -100,6 +105,7 @@ export function BoardView({
   winnerShares,
   unresolved = false,
   gameType = 'cash',
+  currency,
   tableWidth = 0,
   verticalOffset = 0,
   bb,
@@ -115,13 +121,14 @@ export function BoardView({
     <View style={[styles.wrapper, { transform: [{ translateY: verticalOffset }] }]} pointerEvents="none">
       <View style={styles.chipsFloat}>
         {winnerShares.length === 0 ? (
-          <ChipsView amount={pot} gameType={gameType} isWinning={false} bb={bb} useBB={useBB} />
+          <ChipsView amount={pot} gameType={gameType} currency={currency} isWinning={false} bb={bb} useBB={useBB} />
         ) : (
           winnerShares.map((share, i) => (
             <PotShare
               key={i}
               amount={share.amount}
               gameType={gameType}
+              currency={currency}
               bb={bb}
               useBB={useBB}
               target={{ x: share.x, y: share.y }}

@@ -500,7 +500,7 @@ export function straddleSeatLabel(seats: Seat[], actions: Action[], seatId: stri
  * en revanche un écran qui n'a que des morceaux de main sous la main (la correction d'une street,
  * par exemple) peut décrire ses actions sans avoir à en fabriquer une de toutes pièces.
  */
-export type ContexteDeLibelle = Pick<Hand, 'seats' | 'actions' | 'gameType' | 'blinds'>;
+export type ContexteDeLibelle = Pick<Hand, 'seats' | 'actions' | 'gameType' | 'blinds' | 'currency'>;
 
 function seatLabel(hand: ContexteDeLibelle, seatId: string): string {
   const seat = hand.seats.find((s) => s.id === seatId);
@@ -649,7 +649,7 @@ export function describeAction(
   const who = seatLabel(hand, action.seatId);
   const amount =
     action.amount != null
-      ? formatChipAmount(action.amount, hand.gameType, { bb: hand.blinds.bb, useBB })
+      ? formatChipAmount(action.amount, hand.gameType, { bb: hand.blinds.bb, useBB }, hand.currency)
       : undefined;
   let base: string;
   switch (action.type) {

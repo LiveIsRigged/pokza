@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_CONTEXT, TOURNAMENT_DEFAULTS, type ContextData, type AnteType } from './types';
 import { gameTypeForFormat } from '../profile/profileOptions';
 import type { GameType, Position, Variant } from '../types/poker';
+import { DEVISES, type CodeDevise } from '../utils/currency';
 
 const KEY = 'pokza.creator.contextPrefs.v1';
 
@@ -9,8 +10,8 @@ const KEY = 'pokza.creator.contextPrefs.v1';
  * Mémorisation des derniers réglages de table, d'une création de main à l'autre, pour accélérer la
  * saisie. On ne garde que les paramètres « de setup » que l'utilisateur retape à l'identique la
  * plupart du temps (sa partie habituelle) : variante, type de partie, blindes, ante, straddle, stack
- * effectif, nombre de joueurs (+ sa position, indissociable du nombre de joueurs), le lieu et le
- * nom que le joueur se donne — un pseudo ne change pas d'une main à l'autre.
+ * effectif, nombre de joueurs (+ sa position, indissociable du nombre de joueurs), la devise, le
+ * lieu et le nom que le joueur se donne — un pseudo ne change pas d'une main à l'autre.
  *
  * On ne mémorise volontairement PAS le mode bomb pot / double board (on repart en jeu classique par
  * défaut), ni les détails propres à une main donnée (noms/stacks adverses, buy-in, niveau).
@@ -31,6 +32,7 @@ interface ContextPrefs {
   straddleAmounts: number[];
   straddleBouton: boolean;
   straddleBoutonMontant: number;
+  currency: CodeDevise;
 }
 
 const GAME_TYPES: GameType[] = ['cash', 'tournament'];
@@ -56,6 +58,7 @@ export async function saveContextPrefs(context: ContextData): Promise<void> {
     straddleAmounts: context.straddleAmounts,
     straddleBouton: context.straddleBouton,
     straddleBoutonMontant: context.straddleBoutonMontant,
+    currency: context.currency,
   };
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(prefs));
@@ -142,5 +145,6 @@ export async function loadContextPrefs(base: ContextData = DEFAULT_CONTEXT): Pro
     );
   if (typeof p.straddleBouton === 'boolean') merged.straddleBouton = p.straddleBouton;
   if (isNum(p.straddleBoutonMontant)) merged.straddleBoutonMontant = p.straddleBoutonMontant;
+  if (p.currency && DEVISES.some((d) => d.code === p.currency)) merged.currency = p.currency;
   return merged;
 }

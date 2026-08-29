@@ -2,6 +2,7 @@ import type { Action, Board, Card, Position, Post, Seat, Street } from '../types
 import type { AnteType, ContextData, Phase, ReviewData, Snapshot } from './types';
 import { DEFAULT_CONTEXT } from './types';
 import { chainStraddleCount } from '../engine/handEngine';
+import { devise } from '../utils/currency';
 
 /**
  * Tout ce dont `LiveHandCreator` a besoin pour repartir d'une main déjà publiée, dans la forme
@@ -106,6 +107,10 @@ export function postToSeed(post: Post): CreatorSeed {
     ...(Object.keys(seatStacks).length > 0 ? { seatStacks } : {}),
     anteType,
     ante,
+    // Une main d'avant le sélecteur n'a pas de devise : elle se relit en euro, comme elle
+    // s'affiche (cf. `devise`). C'est le troisième et dernier endroit qui garantit qu'aucune main
+    // ne peut se retrouver sans devise.
+    currency: devise(hand.currency).code,
     straddleCount,
     straddleAmounts,
     straddleBouton,

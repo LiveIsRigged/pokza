@@ -15,7 +15,8 @@ import { ReportModal } from '../moderation/ReportModal';
 import { blockUser } from '../../data/blocks';
 import { errorMessage } from '../../utils/errorMessage';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
-import { abbreviateChips, formatChipAmount, cashCurrencySuffix } from '../../utils/chipFormat';
+import { abbreviateChips, formatChipAmount, habillerDenomination } from '../../utils/chipFormat';
+import { devise } from '../../utils/currency';
 import { formatRelativeDate } from '../../utils/relativeDate';
 import { wasEdited } from '../../utils/postEdited';
 import { getOrCreateShareToken } from '../../data/shares';
@@ -147,7 +148,7 @@ function formatContextLine(post: Post, { withLocation = true }: { withLocation?:
   const variantPrefix = VARIANT_LABEL[hand.variant] ? `${VARIANT_LABEL[hand.variant]} ` : '';
   if (hand.bombPot) {
     // Bomb pot : pas de blindes — le montant de l'ante (stocké comme `bb`, cf. finalize) suffit.
-    parts.push(`${variantPrefix}bomb pot ${formatChipAmount(hand.blinds.bb, hand.gameType)}`);
+    parts.push(`${variantPrefix}bomb pot ${formatChipAmount(hand.blinds.bb, hand.gameType, undefined, hand.currency)}`);
   } else {
     // Un straddle (simple/double/triple) change le niveau de mise à suivre au-delà de la BB : la
     // dénomination doit le refléter ("5/10/25"), comme on écrirait "1/2/5" pour une table straddlée.
@@ -156,13 +157,17 @@ function formatContextLine(post: Post, { withLocation = true }: { withLocation?:
       .sort((a, b) => a.order - b.order)
       .map((a) => a.amount ?? 0);
     // Blindes de tournoi abrégées comme partout ailleurs ("15M/30M", pas "15000000/30000000") —
-    // c'est déjà ce qu'affiche l'écran de création juste avant de publier. La devise se pose une
-    // seule fois en fin de dénomination ("2/5€"), d'où le format à la main plutôt que
-    // `formatChipAmount`, qui l'accolerait à chaque montant. Le cash game reste inchangé.
-    const formatStake = (n: number) => (hand.gameType === 'tournament' ? abbreviateChips(n) : String(n));
-    const stakes =
-      [hand.blinds.sb, hand.blinds.bb, ...straddleAmounts].map(formatStake).join('/') +
-      cashCurrencySuffix(hand.gameType);
+    // c'est déjà ce qu'affiche l'écran de création juste avant de publier, et de même pour les
+    // devises à grosse dénomination ("20k/40k₫"). La devise se pose une seule fois AUTOUR de la
+    // dénomination entière ("2/5€", "$2/5"), d'où le format à la main plutôt que `formatChipAmount`,
+    // qui l'accolerait à chacun de ses nombres.
+    const abregeable = hand.gameType === 'tournament' || devise(hand.currency).abrege;
+    const formatStake = (n: number) => (abregeable ? abbreviateChips(n) : String(n));
+    const stakes = habillerDenomination(
+      [hand.blinds.sb, hand.blinds.bb, ...straddleAmounts].map(formatStake).join('/'),
+      hand.gameType,
+      hand.currency
+    );
     parts.push(`${variantPrefix}${stakes}`);
   }
   if (withLocation && post.location) parts.push(post.location);
