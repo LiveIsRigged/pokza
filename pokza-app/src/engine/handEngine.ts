@@ -463,8 +463,22 @@ export function straddleSeatLabel(seats: Seat[], actions: Action[], seatId: stri
   );
 }
 
-function seatLabel(hand: Hand, seatId: string): string {
+/**
+ * Ce dont un libellé d'action a réellement besoin — un sous-ensemble structurel de `Hand`, et non
+ * `Hand` elle-même. Un `Hand` complet le satisfait, donc tous les appels existants sont inchangés ;
+ * en revanche un écran qui n'a que des morceaux de main sous la main (la correction d'une street,
+ * par exemple) peut décrire ses actions sans avoir à en fabriquer une de toutes pièces.
+ */
+export type ContexteDeLibelle = Pick<Hand, 'seats' | 'actions' | 'gameType' | 'blinds'>;
+
+function seatLabel(hand: ContexteDeLibelle, seatId: string): string {
   const seat = hand.seats.find((s) => s.id === seatId);
+  // Le héros porte son nom s'il s'en est donné un, sinon « Hero » — jamais sa position, exactement
+  // comme son badge de siège (cf. `SeatView`) et comme le promet `buildSeats` (« absent ou vide, il
+  // reste Hero PARTOUT »). La bulle d'action était le seul endroit à ne pas tenir ce contrat : elle
+  // annonçait « CO mise 50 » là où la table affichait « Hero », et le narrateur de la main y
+  // redevenait un joueur parmi d'autres.
+  if (seat?.isHero) return seat.playerName ?? 'Hero';
   return seat?.playerName ?? straddleSeatLabel(hand.seats, hand.actions, seatId) ?? seat?.position ?? '';
 }
 
@@ -595,7 +609,12 @@ export function determineWinner(hand: Hand): string[] {
  * `useBB` : affiche le montant en grosses blindes plutôt qu'en jetons bruts (préférence globale
  * au feed, cf. `useDisplayUnit`).
  */
-export function describeAction(hand: Hand, action: Action, isAllIn = false, useBB = false): string {
+export function describeAction(
+  hand: ContexteDeLibelle,
+  action: Action,
+  isAllIn = false,
+  useBB = false
+): string {
   const who = seatLabel(hand, action.seatId);
   const amount =
     action.amount != null
@@ -616,8 +635,10 @@ export function describeAction(hand: Hand, action: Action, isAllIn = false, useB
       const seat = hand.seats.find((s) => s.id === action.seatId);
       const label = straddleSeatLabel(hand.seats, hand.actions, action.seatId)!.toLowerCase();
       // Sans nom de joueur personnalisé, `who` EST déjà ce label ("Straddle"/"Double straddle"/...,
-      // cf. `seatLabel`) : le répéter donnerait "Straddle straddle (10€)".
-      base = seat?.playerName ? `${who} ${label} (${amount})` : `${who} poste (${amount})`;
+      // cf. `seatLabel`) : le répéter donnerait "Straddle straddle (10€)". Le héros fait exception —
+      // il s'appelle toujours "Hero", jamais "Straddle" — et garde donc son verbe.
+      const whoEstDejaLeLabel = !seat?.isHero && !seat?.playerName;
+      base = whoEstDejaLeLabel ? `${who} poste (${amount})` : `${who} ${label} (${amount})`;
       break;
     }
     case 'fold':
