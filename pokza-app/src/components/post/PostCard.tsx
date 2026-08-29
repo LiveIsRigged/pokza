@@ -337,11 +337,12 @@ function PostCardInner({
               onPress: () => {
                 const liste = etapesCorrigibles(post);
                 setEtapes(liste);
-                // Présélection sur la DERNIÈRE street jouée : c'est celle qui préserve le plus de
-                // saisie, puisque reprendre une étape efface toutes les suivantes. Se tromper vers
-                // l'aval se rattrape avec « ‹ » ; se tromper vers l'amont fait retaper la main.
-                const streets = liste.filter((e) => e.phase !== 'review');
-                setEtapeChoisie((streets[streets.length - 1] ?? liste[0]).phase);
+                // Présélection sur la DERNIÈRE étape jouée. L'ancienne raison — « c'est elle qui
+                // préserve le plus de saisie, puisque reprendre une étape efface les suivantes » —
+                // n'a plus cours : entrer n'efface plus rien, le prix se paie à la sortie. Elle
+                // reste le choix le moins surprenant, celui qui atterrit au plus près de la
+                // publication, et se tromper ne coûte plus qu'un « ‹ ».
+                setEtapeChoisie(liste[liste.length - 1].phase);
                 setConfirmingCorrect(true);
               },
             }]

@@ -214,7 +214,6 @@ const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
   'street-turn': 'Turn',
   'street-river': 'River',
   showdown: 'Les cartes de vilain',
-  review: 'Juste le texte',
 };
 
 /**
@@ -227,17 +226,16 @@ const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
  * instantané, et le « ‹ » y descendait déjà depuis une street reprise : elles étaient donc
  * atteignables à la main, mais introuvables. Ce filtre était la seule chose qui les cachait.
  *
- * ⚠️ Leur coût de reprise n'est PAS le même, et l'appelant doit le dire (cf. `consequenceEtape`
- * dans `PostCard`) : l'instantané de l'abattage porte l'état complet, y revenir n'efface rien,
- * tandis que ceux de la table et des cartes du héros précèdent toutes les actions — tout le
- * déroulé est alors à ressaisir.
- *
- * `review` ferme toujours la liste : c'est le cas « je ne touche pas au déroulé, seulement au
- * texte » — le même service que « Modifier le post », mais atteignable sans ressortir du menu.
+ * ⚠️ `review` N'EST PLUS PROPOSÉE. Elle l'était comme « je ne touche qu'au texte », pour éviter de
+ * ressortir du menu — sauf qu'elle y arrivait par REPUBLICATION, donc en perdant les j'aime, les
+ * commentaires et les votes, là où « Modifier le post » fait exactement la même modification par un
+ * `update` en place qui ne perd rien. C'était donc l'entrée la plus chère de la feuille pour le
+ * service le plus faible : un piège, pas un raccourci. Elle reste évidemment la phase de
+ * PUBLICATION à la fin de toute correction — c'est l'entrée qui disparaît, pas l'étape.
  */
 export function etapesCorrigibles(post: Post): { phase: Phase; label: string }[] {
   const jouees = seedHistory(postToSeed(post)).map((s) => s.phase);
-  return [...jouees, 'review' as Phase].map((phase) => ({ phase, label: LIBELLE_ETAPE[phase] ?? phase }));
+  return jouees.map((phase) => ({ phase, label: LIBELLE_ETAPE[phase] ?? phase }));
 }
 
 /** L'état exact à poser dans le créateur pour reprendre une main à une étape donnée. */
