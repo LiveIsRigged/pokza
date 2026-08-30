@@ -102,6 +102,19 @@ export interface Hand {
    * qui les laisse s'afficher exactement comme avant, sans migration. Ignorée en tournoi, où les
    * jetons ne sont pas de l'argent réel. */
   currency?: CodeDevise;
+  /** Main ARRÊTÉE par son auteur avant sa fin naturelle, sur la décision de ce siège : « Hero
+   * check, vilain mise 300 » et le récit s'interrompt là, pour qu'on donne son avis sans savoir
+   * ce que Hero a fait. Absente = main finie normalement (fold général ou abattage).
+   *
+   * ⚠️ CETTE MARQUE NE SE DEVINE PAS, ELLE S'ÉCRIT. Sans elle, `determinePotAwards` lit un joueur
+   * non couché dont les cartes n'ont pas été saisies comme mucké — donc perdant. C'est juste pour
+   * une main finie, et faux ici : une main arrêtée à la river, board complet, ferait de Hero le
+   * vainqueur d'un pot qu'il a peut-être jeté.
+   *
+   * Le siège n'est pas qu'une décoration : c'est lui que la dernière image du replayer désigne
+   * (« À Hero de jouer »), et il n'y en a jamais aucun ou plusieurs — l'assistant ne propose
+   * d'arrêter que lorsqu'un siège précis est en train de parler. */
+  stoppedAtSeatId?: string;
   /** Contrôle QUAND les mains adverses saisies à l'abattage deviennent visibles dans le replayer.
    * Activé : cachées pendant tout le coup, révélées seulement à l'abattage (gagnant ou perdant).
    * Désactivé (défaut) : visibles dès le début du replay, comme Hero. Sans effet sur un adversaire

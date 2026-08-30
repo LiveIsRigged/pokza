@@ -374,7 +374,19 @@ export function computeHandState(hand: Hand, step: number): HandState {
   // hors du chemin de rendu (cf. `runEquityInSlices`).
   let equities: Record<string, number> | null = null;
   let equityPending: EquitySituation | null = null;
-  if (!hand.board2 && winningSeatIds.length === 0 && board.length < 5 && step >= hand.actions.length) {
+  //
+  // Une main ARRÊTÉE en est exclue, et c'est un garde-fou de fond, pas une optimisation : afficher
+  // « Hero 62 % » sous une main qui demande « je paye ou pas ? », ce serait répondre à la question
+  // à la place des lecteurs. En pratique les cartes du vilain ne sont jamais saisies sur une main
+  // arrêtée (l'écran d'abattage est sauté), donc le calcul ne partait pas — mais rien dans le type
+  // ne l'empêche, et une correction pourrait un jour l'y remettre.
+  if (
+    !hand.board2 &&
+    !hand.stoppedAtSeatId &&
+    winningSeatIds.length === 0 &&
+    board.length < 5 &&
+    step >= hand.actions.length
+  ) {
     const contenders = hand.seats.filter((s) => !foldedSeatIds.has(s.id));
     if (contenders.length >= 2 && contenders.every((s) => s.holeCards)) {
       const situation: EquitySituation = {
@@ -502,7 +514,10 @@ export function straddleSeatLabel(seats: Seat[], actions: Action[], seatId: stri
  */
 export type ContexteDeLibelle = Pick<Hand, 'seats' | 'actions' | 'gameType' | 'blinds' | 'currency'>;
 
-function seatLabel(hand: ContexteDeLibelle, seatId: string): string {
+/** Le nom sous lequel ce siège s'affiche : son nom de joueur, sinon « Hero », sinon son libellé de
+ * position (straddle compris). Exporté parce que la dernière image d'une main arrêtée doit nommer
+ * le siège en attente avec EXACTEMENT le mot qui figure sur son badge. */
+export function seatLabel(hand: ContexteDeLibelle, seatId: string): string {
   const seat = hand.seats.find((s) => s.id === seatId);
   // Le héros porte son nom s'il s'en est donné un, sinon « Hero » — jamais sa position, exactement
   // comme son badge de siège (cf. `SeatView`) et comme le promet `buildSeats` (« absent ou vide, il
@@ -539,6 +554,15 @@ function completeBoard(board: Board | undefined): Card[] | null {
  * pas comme rendant la main indéterminable. Renvoie un tableau vide si rien n'est déterminable.
  */
 export function determinePotAwards(hand: Hand): PotAward[] {
+  // ⚠️ AVANT TOUT LE RESTE. Une main arrêtée par son auteur (cf. `Hand.stoppedAtSeatId`) n'a pas de
+  // vainqueur, et surtout pas celui que le reste de cette fonction désignerait : elle traite un
+  // joueur non couché sans cartes saisies comme mucké, donc perdant. Sur une main arrêtée à la
+  // river — board complet, cartes de Hero connues, celles du vilain jamais demandées — Hero se
+  // retrouvait seul « contendant » et raflait tout le pot, jetons qui glissent vers lui compris.
+  // Coupée plus tôt le board est incomplet et la fonction renonçait d'elle-même : le piège ne se
+  // serait donc vu qu'à la river, et seulement là.
+  if (hand.stoppedAtSeatId) return [];
+
   const foldedSeatIds = new Set<string>();
   for (const action of hand.actions) {
     if (action.type === 'fold') foldedSeatIds.add(action.seatId);

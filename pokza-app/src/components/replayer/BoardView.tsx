@@ -23,10 +23,13 @@ interface BoardViewProps {
   currency?: CodeDevise;
   /** Largeur de la table : sert à dimensionner les cartes pour qu'elles ne débordent jamais sur les sièges. */
   tableWidth?: number;
-  /** Main terminée sans vainqueur déterminable (Hero couché et cartes adverses non saisies) : la
-   *  relecture s'arrêtait alors sur un pot figé au centre, sans rien dire — ce qui ressemble à un
-   *  chargement bloqué plutôt qu'à un état normal. */
-  unresolved?: boolean;
+  /** Ce que dit la pastille de fin quand la relecture s'achève sans vainqueur — sans elle, le pot
+   *  restait figé au centre sans un mot, ce qui ressemble à un chargement bloqué plutôt qu'à un
+   *  état normal. Deux fins tombent dans ce cas et ne disent pas la même chose : la main est allée
+   *  à son terme mais personne n'a montré, ou son auteur l'a arrêtée avant. Le texte est donc
+   *  calculé par `HandReplayer`, qui a la main sous les yeux ; ici on ne fait que l'afficher.
+   *  `null`/absent = la relecture n'est pas dans cet état. */
+  unresolvedNote?: string | null;
   /** Décalage vertical (cf. `boardVerticalOffset`) pour recentrer le bloc board+pot entre BB et Hero. */
   verticalOffset?: number;
   bb: number;
@@ -103,7 +106,7 @@ export function BoardView({
   cards2,
   pot,
   winnerShares,
-  unresolved = false,
+  unresolvedNote,
   gameType = 'cash',
   currency,
   tableWidth = 0,
@@ -142,9 +145,9 @@ export function BoardView({
         <BoardRow cards={cards2!} cardWidth={cardWidth} cardHeight={cardHeight} style={styles.secondBoard} />
       )}
 
-      {unresolved && (
+      {unresolvedNote && (
         <View style={styles.noteFloat}>
-          <Text style={styles.noteText}>Mains non révélées</Text>
+          <Text style={styles.noteText}>{unresolvedNote}</Text>
         </View>
       )}
     </View>

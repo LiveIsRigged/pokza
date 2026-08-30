@@ -144,4 +144,10 @@ export interface Snapshot {
   board: Board;
   board2: Board;
   revealedCards: Record<string, (Card | undefined)[]>;
+  /** Siège sur la décision duquel l'auteur a arrêté la main (cf. `Hand.stoppedAtSeatId`), ou `null`
+   * si elle suit son cours. Fait partie de l'instantané pour une seule raison, mais elle est
+   * décisive : revenir en arrière depuis la publication doit RENDRE la main à son déroulé normal.
+   * Sans ça, un auteur qui s'arrête, se ravise, puis joue la main jusqu'au bout publierait quand
+   * même une main marquée comme arrêtée. */
+  stoppedAtSeatId: string | null;
 }

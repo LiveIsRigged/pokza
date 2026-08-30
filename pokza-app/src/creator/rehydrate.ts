@@ -19,6 +19,9 @@ export interface CreatorSeed {
   board2: Board;
   revealedCards: Record<string, (Card | undefined)[]>;
   revealShowdown: boolean;
+  /** Siège sur lequel la main a été arrêtée, ou `null` si elle est allée à son terme (cf.
+   * `Hand.stoppedAtSeatId`). */
+  stoppedAtSeatId: string | null;
   review: ReviewData;
 }
 
@@ -138,6 +141,7 @@ export function postToSeed(post: Post): CreatorSeed {
     board2: hand.board2 ?? {},
     revealedCards,
     revealShowdown: !!hand.revealShowdown,
+    stoppedAtSeatId: hand.stoppedAtSeatId ?? null,
     review: {
       title: post.title,
       description: post.description,
@@ -175,12 +179,16 @@ export function seedHistory(seed: CreatorSeed): Snapshot[] {
     return allIds.filter((id) => !couches.has(id));
   };
 
-  const table = { context, seats, heroCards, board2: {} as Board, revealedCards: {} };
+  // `stoppedAtSeatId: null` partout, y compris pour une main arrêtée : un instantané est l'état
+  // PENDANT son étape, et à ce moment-là la main suit encore son cours. C'est précisément ce qui
+  // fait qu'un auteur qui revient sur une street retrouve une main normale, libre de se terminer.
+  const table = { context, seats, heroCards, board2: {} as Board, revealedCards: {},
+                  stoppedAtSeatId: null };
   const snaps: Snapshot[] = [
     // L'étape 1 précède la construction des sièges : elle n'en a aucun, et re-la quitter les
     // reconstruit à l'identique (les identifiants sont déterministes, cf. `buildSeats`).
     { phase: 'context', context, seats: [], heroCards: [], actions: [], activeSeatIds: [],
-      board: {}, board2: {}, revealedCards: {} },
+      board: {}, board2: {}, revealedCards: {}, stoppedAtSeatId: null },
     { ...table, phase: 'holeCards', actions: posts, activeSeatIds: allIds, board: {} },
   ];
 
@@ -211,10 +219,15 @@ export function seedHistory(seed: CreatorSeed): Snapshot[] {
   }
 
   // L'abattage n'a eu lieu que s'il restait un adversaire à la fin — même condition que `finishHand`.
+  //
+  // Une main ARRÊTÉE n'en a jamais, même s'il reste des adversaires debout : le coup ne s'est pas
+  // rendu jusque-là, personne n'a montré. Sans cette exclusion, la feuille « Corriger cette main »
+  // proposerait « L'abattage » sur une main qui n'en a pas joué — une ligne qui ouvre un écran
+  // vide, et qui ferait par-dessus le marché saisir des cartes que personne n'a vues.
   const restants = encoreEnJeu(actions);
-  if (seats.some((s) => !s.isHero && restants.includes(s.id))) {
+  if (!seed.stoppedAtSeatId && seats.some((s) => !s.isHero && restants.includes(s.id))) {
     snaps.push({ context, seats, heroCards, phase: 'showdown', actions, activeSeatIds: restants,
-                 board, board2, revealedCards });
+                 board, board2, revealedCards, stoppedAtSeatId: null });
   }
 
   return snaps;
@@ -316,6 +329,7 @@ export function seedStart(seed: CreatorSeed, depuis?: Phase): SeedStart {
     board: seed.board,
     board2: seed.board2,
     revealedCards: seed.revealedCards,
+    stoppedAtSeatId: seed.stoppedAtSeatId,
   };
 
   const idx = depuis ? history.findIndex((s) => s.phase === depuis) : -1;

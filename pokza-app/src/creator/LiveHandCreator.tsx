@@ -116,6 +116,14 @@ export function LiveHandCreator({
   const [board, setBoard] = useState<Board>(depart?.etat.board ?? {});
   // Second board d'un double board bomb pot ; reste vide en un seul board.
   const [board2, setBoard2] = useState<Board>(depart?.etat.board2 ?? {});
+  /**
+   * Siège sur la décision duquel l'auteur a arrêté la main, ou `null` si elle va jusqu'à sa fin
+   * naturelle (cf. `Hand.stoppedAtSeatId`). Posé par `arreterLaMain`, et par lui SEUL : toute autre
+   * avancée dans l'assistant le remet à `null` (cf. `pushSnapshotAndGo`).
+   */
+  const [stoppedAtSeatId, setStoppedAtSeatId] = useState<string | null>(
+    depart?.etat.stoppedAtSeatId ?? null
+  );
   // Une reprise (`initial`) garde sa propre destination ; sinon on part du groupe d'où l'on vient,
   // et à défaut de « Public ».
   const [review, setReview] = useState<ReviewData>(
@@ -208,7 +216,8 @@ export function LiveHandCreator({
   const pushSnapshotAndGo = (nextPhase: Phase, patch: Partial<Omit<Snapshot, 'phase'>> = {}) => {
     setHistory((h) => [
       ...h,
-      { phase, context, seats, heroCards, actions, activeSeatIds, board, board2, revealedCards },
+      { phase, context, seats, heroCards, actions, activeSeatIds, board, board2, revealedCards,
+        stoppedAtSeatId },
     ]);
     if (patch.context !== undefined) setContext(patch.context);
     if (patch.seats !== undefined) setSeats(patch.seats);
@@ -218,6 +227,12 @@ export function LiveHandCreator({
     if (patch.board !== undefined) setBoard(patch.board);
     if (patch.board2 !== undefined) setBoard2(patch.board2);
     if (patch.revealedCards !== undefined) setRevealedCards(patch.revealedCards);
+    // ⚠️ SEUL CHAMP QUI NE SE CONSERVE PAS QUAND LE PATCH EST MUET : absent du patch veut dire
+    // `null`, pas « inchangé ». Avancer dans l'assistant, c'est toujours reprendre le cours normal
+    // de la main — la seule façon de l'arrêter est de le demander (cf. `arreterLaMain`). Sans cette
+    // asymétrie, un auteur qui s'arrête, revient sur ses pas et rejoue la street jusqu'au bout
+    // publierait une main marquée comme arrêtée alors qu'elle a désormais une fin.
+    setStoppedAtSeatId(patch.stoppedAtSeatId ?? null);
     setPhase(nextPhase);
     setPhaseKey((k) => k + 1);
   };
@@ -228,6 +243,23 @@ export function LiveHandCreator({
     const currentSeats = patch.seats ?? seats;
     const hasVillain = currentSeats.some((s) => !s.isHero && remaining.includes(s.id));
     pushSnapshotAndGo(hasVillain ? 'showdown' : 'review', patch);
+  };
+
+  /**
+   * L'auteur arrête la main sur la décision de `seatId`, au lieu de la raconter jusqu'au bout.
+   *
+   * DEUX DIFFÉRENCES AVEC `finishHand`, ET ELLES SE TIENNENT :
+   *   • on va DROIT à la publication, jamais par l'abattage — une main arrêtée n'en a pas, par
+   *     construction : personne n'a montré ses cartes puisque le coup n'est pas allé au bout ;
+   *   • on pose la marque, qui est ce qui empêchera le moteur de désigner un vainqueur
+   *     (cf. `determinePotAwards`, où elle est lue avant tout le reste).
+   *
+   * Le compteur d'étapes saute alors, « 3/7 » puis « 7/7 ». C'est déjà ce que fait une main où tout
+   * le monde se couche préflop : la carte des étapes est fixe et ne prétend pas décrire ce qui a
+   * réellement été joué.
+   */
+  const arreterLaMain = (patch: Partial<Omit<Snapshot, 'phase'>>, seatId: string) => {
+    pushSnapshotAndGo('review', { ...patch, stoppedAtSeatId: seatId });
   };
 
   // Le joueur a-t-il investi quelque chose ? L'étape 1 peut à elle seule contenir le type de partie,
@@ -256,6 +288,7 @@ export function LiveHandCreator({
     setBoard(prev.board);
     setBoard2(prev.board2);
     setRevealedCards(prev.revealedCards);
+    setStoppedAtSeatId(prev.stoppedAtSeatId);
     setPhase(prev.phase);
     setPhaseKey((k) => k + 1);
   };
@@ -318,6 +351,10 @@ export function LiveHandCreator({
       // Cash game seulement : en tournoi les jetons ne sont pas de l'argent réel, et rien ne les
       // habille. La main reste alors sans devise, et se relit comme telle.
       currency: ctx.gameType === 'cash' ? ctx.currency : undefined,
+      // Main arrêtée par son auteur : la marque part avec elle, et c'est elle seule qui dira au
+      // moteur de ne désigner aucun vainqueur. `undefined` sur une main finie normalement, pour
+      // qu'elle s'écrive exactement comme avant (rien de nouveau dans le jsonb publié).
+      stoppedAtSeatId: stoppedAtSeatId ?? undefined,
       revealShowdown,
     };
     const post: Post = {
@@ -428,6 +465,9 @@ export function LiveHandCreator({
           setBoard(inst.board);
           setBoard2(inst.board2);
           setRevealedCards(inst.revealedCards);
+          // L'instantané d'une street est toujours « main en cours » : refaire ses mises rend donc
+          // la main à son déroulé normal, libre de se terminer autrement (ou de s'arrêter ailleurs).
+          setStoppedAtSeatId(inst.stoppedAtSeatId);
           setRefaitLesMises(true);
           setPhaseKey((k) => k + 1);
         }}
@@ -643,6 +683,12 @@ export function LiveHandCreator({
           onHandEndsEarly={(_board, _board2, newActions, remaining) => {
             finishHand({ actions: [...actions, ...newActions], activeSeatIds: remaining, board: {} });
           }}
+          onStop={(_board, _board2, newActions, remaining, siege) => {
+            arreterLaMain(
+              { actions: [...actions, ...newActions], activeSeatIds: remaining, board: {} },
+              siege
+            );
+          }}
         />
       );
     }
@@ -681,6 +727,17 @@ export function LiveHandCreator({
               activeSeatIds: remaining,
             });
           }}
+          onStop={(boardCards, board2Cards, newActions, remaining, siege) => {
+            arreterLaMain(
+              {
+                board: { ...board, flop: boardCards as [Card, Card, Card] },
+                board2: { ...board2, flop: board2Cards as [Card, Card, Card] },
+                actions: [...actions, ...newActions],
+                activeSeatIds: remaining,
+              },
+              siege
+            );
+          }}
         />
       );
 
@@ -718,6 +775,17 @@ export function LiveHandCreator({
               activeSeatIds: remaining,
             });
           }}
+          onStop={(boardCards, board2Cards, newActions, remaining, siege) => {
+            arreterLaMain(
+              {
+                board: { ...board, turn: boardCards[0] },
+                board2: { ...board2, turn: board2Cards[0] },
+                actions: [...actions, ...newActions],
+                activeSeatIds: remaining,
+              },
+              siege
+            );
+          }}
         />
       );
 
@@ -754,6 +822,17 @@ export function LiveHandCreator({
               actions: [...actions, ...newActions],
               activeSeatIds: remaining,
             });
+          }}
+          onStop={(boardCards, board2Cards, newActions, remaining, siege) => {
+            arreterLaMain(
+              {
+                board: { ...board, river: boardCards[0] },
+                board2: { ...board2, river: board2Cards[0] },
+                actions: [...actions, ...newActions],
+                activeSeatIds: remaining,
+              },
+              siege
+            );
           }}
         />
       );

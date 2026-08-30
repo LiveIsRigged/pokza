@@ -110,6 +110,19 @@ interface StreetStepProps {
     actions: Action[],
     remainingActiveSeatIds: string[]
   ) => void;
+  /**
+   * L'auteur arrête la main ici, sur la décision de `stoppedSeatId` — celui qui était en train de
+   * parler. Mêmes arguments qu'`onHandEndsEarly` (la street est remontée telle qu'elle a été
+   * saisie), plus ce siège : la différence n'est pas dans les données mais dans ce qu'elles
+   * veulent dire, une main sans fin plutôt qu'une main finie.
+   */
+  onStop: (
+    boardCards: Card[],
+    board2Cards: Card[],
+    actions: Action[],
+    remainingActiveSeatIds: string[],
+    stoppedSeatId: string
+  ) => void;
   step?: number;
   totalSteps?: number;
 }
@@ -145,6 +158,7 @@ export function StreetStep({
   onBack,
   onComplete,
   onHandEndsEarly,
+  onStop,
   step,
   totalSteps,
 }: StreetStepProps) {
@@ -314,6 +328,26 @@ export function StreetStep({
 
   const finalBoard = () => boardCards.filter(Boolean) as Card[];
   const finalBoard2 = () => boardCards2.filter(Boolean) as Card[];
+
+  /**
+   * « Arrêter la main ici » — la sortie de l'auteur qui ne veut pas dire ce qu'il a fait.
+   *
+   * SES DEUX CONDITIONS SONT EXACTEMENT CELLES DE LA BARRE D'ACTION, et ce n'est pas une
+   * coïncidence : on n'arrête une main que là où quelqu'un a une décision à prendre.
+   *   • `boardComplete` — sans les cartes de la street, « arrêter sur le flop » produirait une main
+   *     arrêtée à la fin du préflop, ce que l'auteur ne demande pas.
+   *   • `currentSeat` — quand tous les joueurs restants sont à tapis, l'écran affiche à la place
+   *     « Les joueurs restants sont à tapis » et son propre bouton « Continuer » : plus personne
+   *     n'a de décision à taire. Les deux boutons ne peuvent donc jamais coexister à l'écran.
+   *
+   * Le préflop AVANT toute action reste ouvert (décision de Victor, 30/08/2026) : la main publiée
+   * ne contient alors que ses blindes, et c'est une vraie question — « je suis au bouton avec AK,
+   * je fais quoi ? ».
+   *
+   * Pas de confirmation : un tap malheureux coûte de ressaisir les actions de cette street, très
+   * exactement ce que coûte un « ‹ Retour » mal visé, en haut du même écran, qui n'en demande pas.
+   */
+  const arretPossible = boardComplete && Boolean(currentSeat);
 
   const pushHistory = () => {
     setHistory((h) => [...h, { queue, active, betAmount, contributions, recorded, orderCounter }]);
@@ -505,6 +539,14 @@ export function StreetStep({
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
+      footerLink={
+        arretPossible
+          ? {
+              label: 'Arrêter la main ici',
+              onPress: () => onStop(finalBoard(), finalBoard2(), recorded, active, currentSeatId),
+            }
+          : undefined
+      }
     >
       {boardCount > 0 && (
         <View style={styles.boardSection}>

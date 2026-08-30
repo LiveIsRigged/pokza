@@ -7,6 +7,7 @@ import {
   describeAction,
   expeditedFoldEventIndices,
   initialReplayStep,
+  seatLabel,
   straddleSeatLabel,
   totalReplaySteps,
   type EquitySituation,
@@ -141,6 +142,18 @@ export function HandReplayer({ hand }: HandReplayerProps) {
       ? describeAction(hand, state.lastEvent.action, lastActionIsAllIn, useBB)
       : null;
 
+  /**
+   * MAIN ARRÊTÉE PAR SON AUTEUR (cf. `Hand.stoppedAtSeatId`) : ce que montre la toute dernière image.
+   *
+   * Le pot ne bouge pas — `determinePotAwards` renonce en amont, donc `winningSeatIds` est vide et
+   * rien ne glisse vers personne. Restent deux choses à dire, et elles se répondent : la pastille
+   * nomme le joueur qui devait parler, et le halo quitte celui qui vient de miser pour se poser sur
+   * lui. Le lecteur voit alors la situation exacte : la mise posée devant l'adversaire, et le siège
+   * à qui la parole revient — la question, en somme.
+   */
+  const siegeEnAttente = step >= totalSteps ? hand.stoppedAtSeatId ?? null : null;
+  const nomEnAttente = siegeEnAttente ? seatLabel(hand, siegeEnAttente) : '';
+
   // Coordonnées ABSOLUES (repère table) de CHAQUE siège gagnant — plusieurs en cas de split pot.
   // Décalées de quelques pixels vers le centre de la table (au lieu du point d'ancrage exact du
   // siège, qui est aussi celui de son bloc cartes+badge) : sans ce nudge, la pastille de pot qui
@@ -207,7 +220,18 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               cards2={hand.board2 ? state.board2 : undefined}
               pot={state.potTotal}
               winnerShares={winnerShares}
-              unresolved={step >= totalSteps && state.winningSeatIds.length === 0}
+              unresolvedNote={
+                step >= totalSteps && state.winningSeatIds.length === 0
+                  ? // Un siège introuvable ne devrait jamais arriver (l'assistant n'écrit la marque
+                    // qu'avec le siège qui parlait), mais mieux vaut une phrase juste qu'un « À  de
+                    // jouer » si une main venait un jour d'ailleurs.
+                    siegeEnAttente
+                    ? nomEnAttente
+                      ? `À ${nomEnAttente} de jouer`
+                      : "La main s'arrête ici"
+                    : 'Mains non révélées'
+                  : null
+              }
               gameType={hand.gameType}
               currency={hand.currency}
               tableWidth={size.width}
@@ -247,7 +271,11 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               showCardBacks={showCardBacks}
               stackRemaining={state.stacks[seat.id] ?? seat.startingStack}
               currentBet={state.streetContribution[seat.id]}
-              isActive={state.lastAction?.seatId === seat.id && !state.foldedSeatIds.has(seat.id)}
+              isActive={
+                siegeEnAttente
+                  ? seat.id === siegeEnAttente
+                  : state.lastAction?.seatId === seat.id && !state.foldedSeatIds.has(seat.id)
+              }
               // Même condition que la bulle d'action : `state.lastAction` survit aux events qui ne
               // sont pas des actions (révélation d'une street, retournement des mains), le libellé
               // se rallumerait donc à contretemps sans le garde `currentEventIsAction`.

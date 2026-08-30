@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, typography } from '../theme/theme';
+import { borders, colors, typography } from '../theme/theme';
 import { useLeftEdgeSwipe } from '../navigation/edgeSwipe';
 
 interface WizardScreenProps {
@@ -23,6 +23,17 @@ interface WizardScreenProps {
    * ANNONCÉ et non subi : un bouton qui change de rôle sous le doigt, sans un mot, fait mal taper.
    */
   footerNote?: string | null;
+  /**
+   * Une sortie SECONDAIRE, sous le bouton principal : un lien texte, pas une pastille. Sert aux
+   * écrans de street, qui n'ont justement pas de bouton principal (leur sortie normale, c'est
+   * d'enregistrer les actions jusqu'à ce que la street se termine d'elle-même) et dont
+   * l'emplacement du bas est donc vide — c'est là que se pose « Arrêter la main ici ».
+   *
+   * Volontairement un lien et non une pastille : la pastille orange veut dire « la suite normale de
+   * l'assistant », et une sortie de secours n'en est pas une. Elle deviendrait alors l'élément le
+   * plus lourd de l'écran, juste sous des boutons d'action qui, eux, sont le vrai sujet.
+   */
+  footerLink?: { label: string; onPress: () => void };
 }
 
 export function WizardScreen({
@@ -37,6 +48,7 @@ export function WizardScreen({
   totalSteps,
   scrollRef,
   footerNote,
+  footerLink,
 }: WizardScreenProps) {
   // Retour au glissement bord-gauche → droite, double du bouton ‹ Retour (étape précédente, ou
   // sortie du créateur à la première étape). Inerte quand l'étape n'a pas de retour.
@@ -75,6 +87,11 @@ export function WizardScreen({
           style={[styles.nextButton, nextDisabled && styles.nextButtonDisabled]}
         >
           <Text style={styles.nextText}>{nextLabel}</Text>
+        </Pressable>
+      )}
+      {footerLink && (
+        <Pressable onPress={footerLink.onPress} style={styles.footerLink}>
+          <Text style={styles.footerLinkText}>{footerLink.label}</Text>
         </Pressable>
       )}
     </View>
@@ -141,5 +158,27 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
+  },
+  footerLink: {
+    // Le filet sépare le lien du dernier élément du contenu qui défile — sur une street courte, la
+    // rangée de boutons d'action finit juste au-dessus.
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: borders.hairline,
+    // 20 et non 12 : sur une street dont le contenu remplit l'écran, la rangée d'actions finit
+    // juste au-dessus, et mesuré à 12 il ne restait que 12 px entre la pastille « Tapis » et le
+    // filet. Deux cibles voisines dont l'une change d'écran, c'est trop peu.
+    marginTop: 20,
+    // 16 + 14 autour d'une ligne de 15 px : la cible fait un peu moins de 50 px de haut, et la
+    // marge du dessus l'écarte encore des pastilles d'action.
+    paddingTop: 16,
+    paddingBottom: 14,
+    alignItems: 'center',
+  },
+  footerLinkText: {
+    // Même écriture que « ‹ Retour » en haut de l'écran : c'est le vocabulaire de l'app pour une
+    // sortie qui n'est pas une action de poker.
+    color: colors.action,
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
