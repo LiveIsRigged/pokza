@@ -7,9 +7,16 @@ interface ActionCalloutProps {
   stepKey: number;
   /** Bulle en rouge plutôt qu'en navy — utilisé pour signaler un tapis (all-in). */
   danger?: boolean;
+  /**
+   * La bulle reste affichée au lieu de s'effacer au bout d'1,4 s. Une bulle ordinaire annonce un
+   * ÉVÉNEMENT DE PASSAGE — « Hero mise 50 » n'a pas à rester à l'écran une fois le cran suivant
+   * joué. La dernière image d'une main arrêtée n'est pas de cet ordre : elle est la conclusion du
+   * récit, la question posée au lecteur, et s'évanouir la laisserait devant une table muette.
+   */
+  persistent?: boolean;
 }
 
-export function ActionCallout({ text, stepKey, danger = false }: ActionCalloutProps) {
+export function ActionCallout({ text, stepKey, danger = false, persistent = false }: ActionCalloutProps) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(6)).current;
 
@@ -23,11 +30,12 @@ export function ActionCallout({ text, stepKey, danger = false }: ActionCalloutPr
     }
     opacity.setValue(1);
     translateY.setValue(0);
+    if (persistent) return;
     const timeout = setTimeout(() => {
       Animated.timing(opacity, { toValue: 0, duration: 500, useNativeDriver: true }).start();
     }, 1400);
     return () => clearTimeout(timeout);
-  }, [stepKey, text, opacity, translateY]);
+  }, [stepKey, text, persistent, opacity, translateY]);
 
   return (
     <View style={styles.slot}>

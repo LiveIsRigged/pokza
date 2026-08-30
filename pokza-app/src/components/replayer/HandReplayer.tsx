@@ -146,13 +146,27 @@ export function HandReplayer({ hand }: HandReplayerProps) {
    * MAIN ARRÊTÉE PAR SON AUTEUR (cf. `Hand.stoppedAtSeatId`) : ce que montre la toute dernière image.
    *
    * Le pot ne bouge pas — `determinePotAwards` renonce en amont, donc `winningSeatIds` est vide et
-   * rien ne glisse vers personne. Restent deux choses à dire, et elles se répondent : la pastille
-   * nomme le joueur qui devait parler, et le halo quitte celui qui vient de miser pour se poser sur
-   * lui. Le lecteur voit alors la situation exacte : la mise posée devant l'adversaire, et le siège
-   * à qui la parole revient — la question, en somme.
+   * rien ne glisse vers personne. Restent deux choses à dire, et elles se répondent : la BULLE
+   * D'ACTION nomme le joueur qui devait parler, et le halo quitte celui qui vient de miser pour se
+   * poser sur lui. Le lecteur voit alors la situation exacte : la mise posée devant l'adversaire,
+   * et le siège à qui la parole revient — la question, en somme.
+   *
+   * La bulle plutôt qu'une note sous le board (décision de Victor) : c'est là que le replayer dit
+   * ce qui vient de se passer, et une main qui s'arrête est le dernier de ces événements. Elle y
+   * reste affichée (`persistent`), au lieu de s'effacer comme une action de passage.
+   *
+   * Le rouge du tapis ne peut pas la teindre : `lastActionIsAllIn` exige que le step courant SOIT
+   * une action, ce que l'event final n'est pas.
    */
   const siegeEnAttente = step >= totalSteps ? hand.stoppedAtSeatId ?? null : null;
+  // Un siège introuvable ne devrait jamais arriver (l'assistant n'écrit la marque qu'avec le siège
+  // qui parlait), mais mieux vaut une phrase juste qu'un « À  de jouer » si une main venait d'ailleurs.
   const nomEnAttente = siegeEnAttente ? seatLabel(hand, siegeEnAttente) : '';
+  const texteArret = siegeEnAttente
+    ? nomEnAttente
+      ? `À ${nomEnAttente} de jouer`
+      : "La main s'arrête ici"
+    : null;
 
   // Coordonnées ABSOLUES (repère table) de CHAQUE siège gagnant — plusieurs en cas de split pot.
   // Décalées de quelques pixels vers le centre de la table (au lieu du point d'ancrage exact du
@@ -220,16 +234,13 @@ export function HandReplayer({ hand }: HandReplayerProps) {
               cards2={hand.board2 ? state.board2 : undefined}
               pot={state.potTotal}
               winnerShares={winnerShares}
+              // Le board ne parle plus que de L'AUTRE fin sans vainqueur : la main est allée à
+              // son terme et personne n'a montré. `!texteArret` est indispensable — sans lui, une
+              // main arrêtée retomberait ici et s'annoncerait « Mains non révélées », ce qui n'est
+              // pas ce qu'elle raconte.
               unresolvedNote={
-                step >= totalSteps && state.winningSeatIds.length === 0
-                  ? // Un siège introuvable ne devrait jamais arriver (l'assistant n'écrit la marque
-                    // qu'avec le siège qui parlait), mais mieux vaut une phrase juste qu'un « À  de
-                    // jouer » si une main venait un jour d'ailleurs.
-                    siegeEnAttente
-                    ? nomEnAttente
-                      ? `À ${nomEnAttente} de jouer`
-                      : "La main s'arrête ici"
-                    : 'Mains non révélées'
+                step >= totalSteps && state.winningSeatIds.length === 0 && !texteArret
+                  ? 'Mains non révélées'
                   : null
               }
               gameType={hand.gameType}
@@ -324,7 +335,12 @@ export function HandReplayer({ hand }: HandReplayerProps) {
       */}
       <View style={styles.calloutRow}>
         <View style={styles.calloutSpacer} />
-        <ActionCallout text={actionText} stepKey={step} danger={lastActionIsAllIn} />
+        <ActionCallout
+          text={texteArret ?? actionText}
+          stepKey={step}
+          danger={lastActionIsAllIn}
+          persistent={Boolean(texteArret)}
+        />
         <UnitToggle useBB={useBB} onToggle={toggleUseBB} />
       </View>
 
