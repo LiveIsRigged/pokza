@@ -223,13 +223,17 @@ export function seedHistory(seed: CreatorSeed): Snapshot[] {
 /**
  * Libellé de chaque étape reprenable, tel qu'il s'affiche dans la feuille « Corriger la main ».
  *
- * Ces libellés nomment CE QU'ON VIENT CHANGER, pas le numéro de l'étape du créateur : un testeur
- * qui cherchait à cacher la main de son adversaire jusqu'à l'abattage n'a pas trouvé où le faire,
- * parce qu'il aurait fallu deviner que ce réglage vit dans l'étape « abattage ». D'où « Les cartes
- * de vilain » plutôt que « Abattage », et « La table » plutôt que « Contexte ».
+ * ⚠️ CHAQUE LIBELLÉ EST CELUI DE L'ÉCRAN D'ARRIVÉE, mot pour mot. Une ligne de feuille et le titre
+ * qu'elle ouvre doivent porter le même nom, sinon on ne sait plus qu'on est arrivé — c'est pour ça
+ * que « River » ne devient pas « Rivière ». Renommer une étape du créateur, c'est donc renommer sa
+ * ligne ici, et l'inverse.
  *
- * Les quatre streets reprennent mot pour mot les titres du créateur (`STREET_TITLES` dans
- * `StreetStep`) — « River » et non « Rivière », qui était le seul écart entre les deux écrans.
+ * L'abattage a longtemps fait exception, sous le nom « Les cartes de vilain » : un testeur qui
+ * cherchait à cacher la main de son adversaire jusqu'à l'abattage ne l'avait pas trouvée, faute de
+ * deviner que ce réglage vit là. Nommer la ligne par son contenu réparait ça — au prix du seul
+ * écart restant entre les deux écrans. Décision de Victor le 30/08/2026 : les deux s'appellent
+ * « L'abattage », et c'est le sous-titre de l'écran d'arrivée (« Cartes montrées par les
+ * adversaires ») qui porte l'explication — une ligne de feuille n'a qu'un mot, lui en a deux.
  */
 const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
   context: 'La table',
@@ -238,7 +242,7 @@ const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
   'street-flop': 'Flop',
   'street-turn': 'Turn',
   'street-river': 'River',
-  showdown: 'Les cartes de vilain',
+  showdown: "L'abattage",
 };
 
 /**

@@ -255,19 +255,29 @@ function PostCardInner({
   // donc au moment précis où l'on découvre la fonction, sur une main neuve — c'est-à-dire quand il
   // fallait justement apprendre la règle. Ici on énonce la mécanique, pas l'inventaire.
   /**
-   * LA FEUILLE N'ANNONCE PLUS DE PRIX, parce qu'elle ne peut pas le connaître : il dépend de ce que
-   * l'auteur va changer une fois entré, pas de la porte qu'il choisit (cf. `seedStart` et
-   * `invalidation.ts`). Elle énonce donc la RÈGLE, et l'étape annoncera la conséquence réelle au
-   * moment où elle devient certaine, juste au-dessus du bouton.
+   * ⚠️ LA FEUILLE N'ANNONCE RIEN SUR LE PRIX DE LA SAISIE, ET C'EST DÉFINITIF. Ne pas y remettre de
+   * phrase : trois versions y ont échoué, chacune à sa manière.
    *
-   * L'ancienne version affichait « À ressaisir : flop, turn, river » avant même d'entrer. C'était
-   * exact pour qui venait refaire une mise, et faux pour qui venait corriger un nom — or les deux
-   * champs vivent dans la même étape, parfois sur la même ligne du formulaire. Elle décourageait
-   * donc précisément les corrections qui ne coûtaient rien.
+   * D'abord « À ressaisir : flop, turn, river », affiché avant même d'entrer. Exact pour qui venait
+   * refaire une mise, faux pour qui venait corriger un nom — or les deux champs vivent dans la même
+   * étape, parfois sur la même ligne du formulaire. Elle décourageait donc précisément les
+   * corrections qui ne coûtent rien.
+   *
+   * Puis l'énoncé de la RÈGLE (« une carte ou un nom ne coûtent rien, une mise fait ressaisir la
+   * suite »). Deux défauts, et le second est fatal. Elle se lisait juste sous « les j'aime seront
+   * perdus », si bien que les deux prix — le social, toujours payé, et celui de la saisie, variable —
+   * se confondaient en un seul. Et surtout : toute règle assez courte pour tenir sur cette ligne ment
+   * par omission (les blindes et les mises, oui, mais aussi le nombre de joueurs, la position,
+   * l'ante, le straddle, le type de partie, la variante et les tapis engagés), tandis que toute règle
+   * exacte devient une abstraction que personne ne relie à ce qu'il s'apprête à toucher.
+   *
+   * LA RAISON DE FOND : la feuille ne PEUT pas connaître ce prix. Il dépend de ce que l'auteur va
+   * changer une fois entré, pas de la porte qu'il choisit (cf. `seedStart` et `invalidation.ts`).
+   * Elle sert à choisir une porte ; le prix s'annonce derrière, collé au bouton, quand il est
+   * certain et nominatif (« Rien d'autre ne sera à ressaisir. » / « Changer les blindes et ta
+   * position fait ressaisir tout le déroulé. », cf. `LiveHandCreator`). Et rien ne peut se perdre
+   * dans l'intervalle : entrer dans une étape n'efface plus rien.
    */
-  const consequenceEtape =
-    "Une carte, un nom ou le texte ne coûtent rien. Une mise ou un réglage de table font ressaisir la suite.";
-
   const correctionWarning =
     "Corriger une main, c'est la republier : elle repart à zéro dans le fil. " +
     'Les anciens j\'aime, commentaires et votes seront perdus.';
@@ -607,7 +617,6 @@ function PostCardInner({
               );
             })}
           </View>
-          {!!consequenceEtape && <Text style={styles.etapeConsequence}>{consequenceEtape}</Text>}
         </ConfirmSheet>
       )}
       {isOwnPost && (
@@ -730,12 +739,6 @@ const styles = StyleSheet.create({
   },
   etapeChipTextActive: {
     color: '#fff',
-  },
-  etapeConsequence: {
-    ...typography.dateLocation,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
   },
   visibilityBadge: {
     flexShrink: 0,

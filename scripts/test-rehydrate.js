@@ -210,7 +210,7 @@ const post = (hand, extra = {}) => ({
   // reellement change (cf. `invalidation.ts`).
   cas('les etapes proposees sur une main complete',
     etapesCorrigibles(post(main())).map((e) => e.label),
-    ['La table', 'Tes cartes', 'Préflop', 'Flop', 'Turn', 'River', 'Les cartes de vilain']);
+    ['La table', 'Tes cartes', 'Préflop', 'Flop', 'Turn', 'River', "L'abattage"]);
 
   reset();
   const plieePreflop = main({

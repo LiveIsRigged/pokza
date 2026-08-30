@@ -73,7 +73,7 @@ export function ShowdownStep({
 
   return (
     <WizardScreen
-      title="Abattage"
+      title="L'abattage"
       subtitle="Cartes montrées par les adversaires (optionnel)"
       onNext={onNext}
       nextLabel={nextLabel ?? 'Continuer'}
