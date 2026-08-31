@@ -20,22 +20,202 @@ export interface SeatCoordinate {
   y: number;
 }
 
-// Géométrie du contenu d'un siège (cartes + badge), partagée entre le layout des sièges et le
-// placement des mises : SOURCE UNIQUE, pour ne jamais désynchroniser ces constantes entre deux
-// fichiers (c'était la cause de plusieurs bugs précédents — un chiffre changé d'un côté, oublié
-// de l'autre).
-export const SEAT_CARDS_HEIGHT = 46;
-export const SEAT_CARDS_GAP = 4;
-export const SEAT_BADGE_HEIGHT = 30;
-// Distance, depuis l'ancre du siège (le point x,y renvoyé par layoutSeats), jusqu'au bord de son
-// contenu le plus proche du centre de la table : le bas du badge pour un siège du haut, le haut
-// des cartes pour un siège du bas (cf. SeatView, où l'ancre correspond à translateY:-39 dans un
-// bloc cartes(46)+gap(4)+badge(30) = 80 de haut).
-const SEAT_ANCHOR_OFFSET = 39;
-export const SEAT_INNER_EDGE_TOP_HALF = SEAT_CARDS_HEIGHT + SEAT_CARDS_GAP + SEAT_BADGE_HEIGHT - SEAT_ANCHOR_OFFSET;
-export const SEAT_INNER_EDGE_BOTTOM_HALF = SEAT_ANCHOR_OFFSET;
+/**
+ * LE GABARIT : la taille de ce que la table dessine.
+ * ──────────────────────────────────────────────────
+ * Deux tables coexistent désormais. Celle du FEED est une vitrine : elle a toute la largeur d'un
+ * post et n'a rien d'autre à partager son écran. Celle de l'ATELIER (le créateur de main) vit
+ * au-dessus d'une rangée de boutons, d'un sélecteur de cartes et d'un formulaire — elle n'a pas
+ * la place d'être belle, elle doit être juste.
+ *
+ * Trois réductions, décidées avec Victor le 30/08/2026 après mesure de chaque levier séparément.
+ * La leçon de cette mesure vaut d'être gardée : **aucun levier ne fait rien tout seul**. Réduire
+ * les cartes des adversaires, à soi seul, ne rend que 13 px sur les 414 du plancher ; le board
+ * seul en rend zéro. C'est la combinaison des trois qui fait tomber le plancher à 356.
+ *
+ *   1. les cartes des ADVERSAIRES passent à 24×32 — ce sont des dos, il n'y a rien à y lire ;
+ *      celles de Hero ne bougent pas, ce sont les seules qui disent quelque chose ;
+ *   2. le board plafonne à 26 px de large au lieu de 34 — pas une taille nouvelle : `boardCardSize`
+ *      la produit déjà sur une table de 324 px de large, et sa borne basse est 18 ;
+ *   3. le bloc de mise perd 4 px de haut (un cran de la pile de jetons), pas son montant.
+ *
+ * Ce qui NE change pas dans l'atelier : la largeur du bloc de mise (c'est elle qui décide où le
+ * montant se coupe, cf. `CHIP_BLOCK_W` dans SeatView), et le badge nom+stack.
+ */
+export interface Gabarit {
+  /** Cartes fermées d'un adversaire (dos, ou main révélée) — variantes à 2 cartes uniquement. */
+  carteVilain: { width: number; height: number };
+  /** Cartes fermées de Hero. Jamais réduites. */
+  carteHero: { width: number; height: number };
+  /** Hauteur supposée du badge nom + stack. */
+  badgeHeight: number;
+  /** Plafond de la largeur d'une carte de board (la formule reste proportionnelle à la table). */
+  boardCardMax: number;
+  /** Hauteur du bloc « pile de jetons + montant » posé devant un siège. */
+  chipBlockHeight: number;
+  /** Taille d'un jeton dessiné et nombre de jetons empilés visibles. */
+  chipTokenSize: number;
+  chipsVisibles: number;
+  /**
+   * Le halo « à toi de parler » est-il APPUYÉ (fond plein sous le badge) plutôt qu'un simple trait ?
+   * Vrai dans l'atelier seulement : le créateur n'a plus la phrase « À X de jouer » (retirée le
+   * 30/08), donc le halo est le SEUL signal de qui doit parler — un trait doré de 1,5 px suffit
+   * quand il double une phrase, moins quand il est seul, et encore moins à dix joueurs.
+   */
+  haloAppuye?: boolean;
+}
 
-const CARD_MARGIN = 39;
+export const SEAT_CARDS_GAP = 4;
+
+export const GABARIT_FEED: Gabarit = {
+  carteVilain: { width: 34, height: 46 },
+  carteHero: { width: 34, height: 46 },
+  badgeHeight: 30,
+  boardCardMax: 34,
+  chipBlockHeight: 29,
+  chipTokenSize: 11,
+  chipsVisibles: 3,
+};
+
+export const GABARIT_ATELIER: Gabarit = {
+  carteVilain: { width: 24, height: 32 },
+  carteHero: { width: 34, height: 46 },
+  badgeHeight: 30,
+  boardCardMax: 26,
+  chipBlockHeight: 25,
+  chipTokenSize: 9,
+  chipsVisibles: 2,
+  haloAppuye: true,
+};
+
+/**
+ * LE DOUBLE BOARD D'UN BOMB POT, où tout est dessiné plus petit.
+ * ─────────────────────────────────────────────────────────────
+ * Deux rangées de board au lieu d'une, c'est 41 px de plus au centre de la table — et le centre est
+ * précisément l'endroit où les jetons de mise viennent buter. Mesuré : à six joueurs, garder les
+ * cartes de l'atelier ferait passer le plancher de 342 à 460 px. Une table pareille ne laisserait
+ * plus rien au sélecteur ni aux champs.
+ *
+ * On paye donc en taille plutôt qu'en hauteur, pour CE FORMAT SEULEMENT (décision de Victor,
+ * 31/08/2026) : cartes du board à 18 (le minimum absolu de `boardCardSize`) et un cran de jeton en
+ * moins dans les piles. Il reste malgré tout +45 px au pire — mesuré, pas estimé : la seconde
+ * rangée ne peut pas être gratuite.
+ *
+ * ⚠️ RÉDUIRE LES CARTES DES ADVERSAIRES N'ACHÈTE PAS DE BOARD — mesuré le 31/08 après que Victor
+ * a proposé l'échange. Descendre les vilains de 24×32 à 18×24, une réduction énorme, ne rend que
+ * 14 px au six-max, tandis que remonter le board de 18 à 20 en coûte 20. La contrainte n'est pas
+ * la taille des sièges mais le trajet des jetons vers le centre. Les cartes des adversaires
+ * gardent donc leur taille d'atelier : une déviation visuelle de moins, pour 5 px.
+ */
+export const GABARIT_ATELIER_DOUBLE: Gabarit = {
+  ...GABARIT_ATELIER,
+  boardCardMax: 18,
+  chipBlockHeight: 21,
+  chipsVisibles: 1,
+};
+
+/**
+ * HAUTEUR DE LA TABLE DANS LE CRÉATEUR, par nombre de sièges.
+ * ──────────────────────────────────────────────────────────
+ * Le feed impose `largeur × 1,25` et n'a personne avec qui partager l'écran. L'atelier, lui, vit
+ * au-dessus d'une rangée de boutons et d'un sélecteur de cartes : il prend le PLANCHER de son
+ * nombre de sièges, et pas un pixel de plus.
+ *
+ * Ces valeurs sont RELEVÉES, pas devinées : `scripts/test-table-geometrie.js` rejoue le modèle de
+ * collision (sièges, jetons de mise, board, pastille de pot) et vérifie que chacune reste au-dessus
+ * du plancher mesuré, à toutes les largeurs d'iPhone. Trois décisions sont incorporées :
+ *
+ *   • le maximum SUR LES LARGEURS, pour que la table ne change pas de taille d'un téléphone à
+ *     l'autre — le plancher brut varie de 60 px entre 339 et 430 px de large à neuf joueurs ;
+ *   • un maximum COURANT sur le nombre de sièges, pour que sept joueurs ne donnent jamais une table
+ *     plus courte que six. Le plancher brut, lui, n'est pas monotone (l'angle entre deux sièges
+ *     voisins change le siège qui coince), et une table qui rapetisse quand on ajoute un joueur
+ *     serait incompréhensible ;
+ *   • rien en dessous de 268 px : c'est le plancher des tables de 2 à 4 joueurs, où plus rien ne
+ *     se chevauche et où c'est le board au centre qui commande.
+ */
+const HAUTEURS_ATELIER: Record<number, number> = {
+  2: 268, 3: 268, 4: 268, 5: 300, 6: 342, 7: 342, 8: 342, 9: 387, 10: 425,
+};
+
+/**
+ * Et les mêmes planchers pour un DOUBLE BOARD (cf. `GABARIT_ATELIER_DOUBLE`), relevés de la même
+ * façon : maximum sur les largeurs d'iPhone, puis maximum courant sur le nombre de sièges.
+ *
+ * Deux valeurs surprennent et sont justes :
+ *   • 3 joueurs coûte plus cher que 4 (311 contre 279) — et seulement sur l'iPhone le plus étroit
+ *     (339 px), où le board rétrécit avec la table mais pas les jetons. Le maximum courant tire
+ *     donc 4 à 311 avec lui ;
+ *   • à 9 et 10 joueurs, rien n'est ajouté : les hauteurs du board simple couvrent déjà tout, parce
+ *     que le board y est dessiné plus petit et que ce sont les sièges qui commandent.
+ */
+const HAUTEURS_ATELIER_DOUBLE: Record<number, number> = {
+  2: 279, 3: 311, 4: 311, 5: 316, 6: 387, 7: 387, 8: 387, 9: 387, 10: 425,
+};
+
+export function hauteurTableAtelier(nbSieges: number, doubleBoard = false): number {
+  const borne = Math.max(2, Math.min(10, Math.round(nbSieges)));
+  return (doubleBoard ? HAUTEURS_ATELIER_DOUBLE : HAUTEURS_ATELIER)[borne];
+}
+
+/**
+ * Et la même chose PENDANT LE RÉGLAGE — étapes « contexte » et « tes cartes », où la main n'a pas
+ * commencé. Le board y est absent : les cinq emplacements et la pastille de pot ne réservent plus
+ * les 53 px que les jetons doivent contourner, et la table peut descendre.
+ *
+ * Le gain n'existe QUE jusqu'à six joueurs (342 → 242, soit 100 px rendus au formulaire de l'étape 1,
+ * qui en fait 1 132). Au-delà, ce ne sont plus le board et les jetons qui commandent mais les sièges
+ * entre eux, et retirer le board ne change rien — d'où deux tables identiques à partir de sept.
+ */
+const HAUTEURS_REGLAGE: Record<number, number> = {
+  2: 226, 3: 240, 4: 240, 5: 240, 6: 242, 7: 322, 8: 342, 9: 387, 10: 425,
+};
+
+export function hauteurTableReglage(nbSieges: number): number {
+  const borne = Math.max(2, Math.min(10, Math.round(nbSieges)));
+  return HAUTEURS_REGLAGE[borne];
+}
+
+/** Hauteur du bloc d'un siège : rangée de cartes + écart + badge. */
+export function blocSiegeHauteur(g: Gabarit, hero: boolean): number {
+  return (hero ? g.carteHero.height : g.carteVilain.height) + SEAT_CARDS_GAP + g.badgeHeight;
+}
+
+/**
+ * Distance de l'ancre du siège (le point renvoyé par `layoutSeats`) jusqu'au HAUT de son bloc.
+ *
+ * Le feed garde sa valeur historique, 39 pour un bloc de 80 — un pixel au-dessus du centre, et il
+ * n'y a aucune raison de le corriger : ce serait déplacer six sièges pour rien. L'atelier, lui,
+ * centre chaque bloc sur son point, sans quoi un siège aux cartes réduites flotterait 7 px trop
+ * haut sur l'ellipse.
+ */
+export function ancreDepuisLeHaut(g: Gabarit, hero: boolean): number {
+  if (g.carteVilain.height === g.carteHero.height && g.carteHero.height === 46) return 39;
+  return blocSiegeHauteur(g, hero) / 2;
+}
+
+// Conservés pour les appelants qui raisonnent encore sur le gabarit du feed.
+export const SEAT_CARDS_HEIGHT = GABARIT_FEED.carteHero.height;
+export const SEAT_BADGE_HEIGHT = GABARIT_FEED.badgeHeight;
+
+/**
+ * Bord du contenu d'un siège le plus proche du centre de la table : le bas du badge pour un siège
+ * du haut (toujours un adversaire — Hero est fixé en bas), le haut des cartes pour Hero.
+ */
+export function bordInterieurHaut(g: Gabarit): number {
+  return blocSiegeHauteur(g, false) - ancreDepuisLeHaut(g, false);
+}
+export function bordInterieurBas(g: Gabarit): number {
+  return ancreDepuisLeHaut(g, true);
+}
+
+export const SEAT_INNER_EDGE_TOP_HALF = bordInterieurHaut(GABARIT_FEED);
+export const SEAT_INNER_EDGE_BOTTOM_HALF = bordInterieurBas(GABARIT_FEED);
+
+/** Marge verticale réservée en haut et en bas de la table pour que les blocs de siège y tiennent. */
+function margeCarte(g: Gabarit): number {
+  return Math.max(ancreDepuisLeHaut(g, true), ancreDepuisLeHaut(g, false));
+}
 
 // Hauteur réelle de la pastille "Pot X" (ChipsView), mesurée dans le DOM rendu : texte 11px +
 // paddingVertical(1×2) + bordure(1×2) = 18. À resynchroniser si le style de ChipsView change.
@@ -45,63 +225,54 @@ export const POT_PILL_HEIGHT = 18;
  * Le bloc board + pot (cartes, avec la pastille du pot empilée au-dessus) n'est pas symétrique :
  * seule la pastille dépasse d'un côté. Centré naïvement sur la table, ce bloc laisse donc bien
  * plus de marge au siège du bas (Hero) qu'à celui du haut (BB) — c'était la vraie cause du
- * chevauchement de BB avec le pot, pas une particularité de BB lui-même (cf. discussion sur
- * l'architecture du replayer). En redescendant le bloc de ce décalage, les deux sièges du milieu
- * récupèrent une marge égale des deux côtés, sans qu'aucun jeton n'ait besoin de bouger sur le
- * côté pour l'éviter.
+ * chevauchement de BB avec le pot, pas une particularité de BB lui-même. En redescendant le bloc
+ * de ce décalage, les deux sièges du milieu récupèrent une marge égale des deux côtés, sans
+ * qu'aucun jeton n'ait besoin de bouger sur le côté pour l'éviter.
+ *
  * Ce décalage ne dépend NI de la taille de la table NI de celle des cartes du board : dans le
  * calcul de l'écart entre BB et Hero, ces deux grandeurs s'annulent (elles pénalisent les deux
- * côtés à égalité) — seule l'asymétrie propre à la pastille du pot compte. C'est ce qui rend cette
- * valeur valable à n'importe quelle taille d'écran, sans avoir besoin de la recalculer.
+ * côtés à égalité) — seule l'asymétrie propre à la pastille du pot compte, plus, depuis l'atelier,
+ * celle des deux blocs de siège quand ils n'ont plus la même hauteur.
  */
-export function boardVerticalOffset(potPillHeight: number = POT_PILL_HEIGHT): number {
-  return (SEAT_INNER_EDGE_TOP_HALF - SEAT_INNER_EDGE_BOTTOM_HALF) / 2 + potPillHeight / 2;
+export function boardVerticalOffset(
+  potPillHeight: number = POT_PILL_HEIGHT,
+  gabarit: Gabarit = GABARIT_FEED
+): number {
+  return (bordInterieurHaut(gabarit) - bordInterieurBas(gabarit)) / 2 + potPillHeight / 2;
 }
 
 // Taille d'une carte du board (community cards) : SOURCE UNIQUE partagée avec `BoardView` et le
 // placement des jetons, pour que les deux ne se désynchronisent jamais.
 // La largeur du board est plafonnée à une FRACTION de la largeur de table (0.5) plutôt qu'à une
 // taille de carte fixe : sur un petit écran, le board rétrécit donc proportionnellement au lieu de
-// rester large et de manger l'anneau de felt où se posent les mises. Le plafond dur à 34px empêche
-// juste les cartes de grossir démesurément sur grand écran.
+// rester large et de manger l'anneau de felt où se posent les mises. Le plafond dur (34 au feed,
+// 26 à l'atelier) empêche juste les cartes de grossir démesurément sur grand écran.
 const BOARD_CARD_GAP = 4;
 const BOARD_CARD_ASPECT = 46 / 34;
-export function boardCardSize(tableWidth: number): { width: number; height: number } {
-  if (tableWidth <= 0) return { width: 34, height: 46 };
+export function boardCardSize(
+  tableWidth: number,
+  gabarit: Gabarit = GABARIT_FEED
+): { width: number; height: number } {
+  const max = gabarit.boardCardMax;
+  if (tableWidth <= 0) return { width: max, height: Math.round(max * BOARD_CARD_ASPECT) };
   const maxCardsWidth = tableWidth * 0.5;
-  const width = Math.max(18, Math.min(34, (maxCardsWidth - 4 * BOARD_CARD_GAP) / 5));
+  const width = Math.max(18, Math.min(max, (maxCardsWidth - 4 * BOARD_CARD_GAP) / 5));
   return { width, height: Math.round(width * BOARD_CARD_ASPECT) };
 }
 
 /**
- * Est-ce qu'un siège "du milieu" (BB, Hero) a assez de place, UNE FOIS le board recentré
- * (`boardVerticalOffset`), pour la pile de jetons pleine taille plutôt que le rendu compact ?
- * Calculé à partir de la géométrie RÉELLE de la table au moment du rendu (largeur, hauteur) —
- * jamais d'une valeur figée à une seule taille d'écran. Sur une table plus grande, `ry` grandit
- * alors que le contenu (cartes, badge, board, pot) garde une taille fixe : la marge disponible
- * grandit donc naturellement, et la pile complète redevient possible.
+ * Rayon vertical de l'ellipse des sièges — extrait pour être réutilisé par le calcul de centrage
+ * du board. Les cartes + le badge (nom, position, stack) d'un siège sont dessinés AU-DESSUS de lui :
+ * on plafonne le rayon pour que les sièges du haut et du bas gardent toujours cette marge dans la
+ * table, sinon leurs cartes/badges débordent et sont coupés par le bord du feutre — ou chevauchent
+ * le pot flottant au centre.
  */
-export function centerSeatChipFits(
-  tableWidth: number,
-  tableHeight: number,
-  spaceNeeded: number,
-  potPillHeight: number = POT_PILL_HEIGHT
-): boolean {
-  const ry = seatEllipseRy(tableHeight);
-  const { height: cardHeight } = boardCardSize(tableWidth);
-  // Marge disponible pour BB ET pour Hero, une fois le board recentré à égalité entre les deux
-  // (dérivée de la même géométrie que `boardVerticalOffset`).
-  const balancedGap = ry - (SEAT_INNER_EDGE_TOP_HALF - 1) - cardHeight / 2 - potPillHeight / 2;
-  return balancedGap >= spaceNeeded;
-}
-
-/** Rayon vertical de l'ellipse des sièges — extrait pour être réutilisé par le calcul de centrage du board. */
-export function seatEllipseRy(height: number, seatMarginRatio = 0.16): number {
-  // Les cartes + le badge (nom, position, stack) d'un siège sont dessinés AU-DESSUS de lui.
-  // On plafonne le rayon vertical pour que les sièges du haut et du bas gardent toujours
-  // cette marge dans la table, sinon leurs cartes/badges débordent et sont coupés par le
-  // bord du feutre — ou chevauchent le pot flottant au centre.
-  return Math.min((height / 2) * (1 - seatMarginRatio * 0.6), height / 2 - CARD_MARGIN);
+export function seatEllipseRy(
+  height: number,
+  seatMarginRatio = 0.16,
+  gabarit: Gabarit = GABARIT_FEED
+): number {
+  return Math.min((height / 2) * (1 - seatMarginRatio * 0.6), height / 2 - margeCarte(gabarit));
 }
 
 /**
@@ -112,14 +283,15 @@ export function layoutSeats(
   seats: Seat[],
   width: number,
   height: number,
-  seatMarginRatio = 0.16
+  seatMarginRatio = 0.16,
+  gabarit: Gabarit = GABARIT_FEED
 ): SeatCoordinate[] {
   const ordered = orderSeatsFromHero(seats);
   const n = ordered.length;
   const cx = width / 2;
   const cy = height / 2;
   const rx = (width / 2) * (1 - seatMarginRatio);
-  const ry = seatEllipseRy(height, seatMarginRatio);
+  const ry = seatEllipseRy(height, seatMarginRatio, gabarit);
 
   return ordered.map((seat, i) => {
     const angleDeg = 90 + (i * 360) / n;

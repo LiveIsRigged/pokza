@@ -34,11 +34,21 @@ interface MultiCardPickerProps {
   onChange: (cards: (Card | undefined)[]) => void;
   /** Cartes déjà utilisées ailleurs dans la main, à désactiver */
   disabledCards?: Card[];
+  /**
+   * Masque la rangée d'aperçu au-dessus du sélecteur. À n'activer que là où les cartes choisies
+   * sont DÉJÀ visibles ailleurs à l'écran — la table du créateur les pose devant Hero à mesure
+   * qu'on les choisit, et les revoir juste en dessous ne dit rien de plus. Ailleurs (abattage,
+   * corrections), l'aperçu reste le seul endroit où on relit sa sélection : il ne bouge pas.
+   */
+  sansApercu?: boolean;
 }
 
-function sameCard(a: Card, b: Card) {
+/** Deux cartes identiques ? Exporté : le créateur en a besoin pour replacer ce que ce sélecteur
+ *  renvoie TASSÉ (il ignore les trous), aussi bien pour le board que pour une main d'adversaire. */
+export function memeCarte(a: Card, b: Card) {
   return a.rank === b.rank && a.suit === b.suit;
 }
+const sameCard = memeCarte;
 
 /**
  * Une couleur (♠ ♥ ♦ ♣) sur une seule ligne défilante, avec un fondu sur le bord droit tant qu'il
@@ -145,7 +155,13 @@ function SuitRow({
   );
 }
 
-export function MultiCardPicker({ count, selected, onChange, disabledCards = [] }: MultiCardPickerProps) {
+export function MultiCardPicker({
+  count,
+  selected,
+  onChange,
+  disabledCards = [],
+  sansApercu = false,
+}: MultiCardPickerProps) {
   const chosen = selected.filter(Boolean) as Card[];
 
   const toggle = (card: Card) => {
@@ -161,17 +177,19 @@ export function MultiCardPicker({ count, selected, onChange, disabledCards = [] 
 
   return (
     <View>
-      <View style={styles.slots}>
-        {Array.from({ length: count }).map((_, i) => (
-          <Pressable
-            key={i}
-            onPress={() => chosen[i] && onChange(chosen.filter((_, j) => j !== i))}
-            style={styles.slot}
-          >
-            {chosen[i] ? <CardView card={chosen[i]} size="medium" /> : <View style={styles.emptySlot} />}
-          </Pressable>
-        ))}
-      </View>
+      {!sansApercu && (
+        <View style={styles.slots}>
+          {Array.from({ length: count }).map((_, i) => (
+            <Pressable
+              key={i}
+              onPress={() => chosen[i] && onChange(chosen.filter((_, j) => j !== i))}
+              style={styles.slot}
+            >
+              {chosen[i] ? <CardView card={chosen[i]} size="medium" /> : <View style={styles.emptySlot} />}
+            </Pressable>
+          ))}
+        </View>
+      )}
 
       {SUITS.map(({ suit, symbol, red }) => (
         <SuitRow

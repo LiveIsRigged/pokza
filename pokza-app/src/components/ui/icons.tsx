@@ -373,3 +373,15 @@ export function ArrowUpIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }:
     </Svg>
   );
 }
+
+/** Lignes de texte — « La main en texte », le récit du coup à copier ailleurs. */
+export function TextLinesIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M3 5.5 H21" {...line(color)} />
+      <Path d="M3 10.5 H21" {...line(color)} />
+      <Path d="M3 15.5 H21" {...line(color)} />
+      <Path d="M3 20.5 H14" {...line(color)} />
+    </Svg>
+  );
+}

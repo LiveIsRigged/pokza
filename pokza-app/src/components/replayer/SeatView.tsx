@@ -5,10 +5,15 @@ import { cashChipColors, chipColors, colors, radius, typography } from '../../th
 import { formatChipAmount } from '../../utils/chipFormat';
 import {
   POT_PILL_HEIGHT,
+  ancreDepuisLeHaut,
+  blocSiegeHauteur,
   boardCardSize,
   boardVerticalOffset,
+  GABARIT_FEED,
+  type Gabarit,
 } from '../../engine/layout';
 import { CardView } from './CardView';
+import { Pressable } from '../ui/Pressable';
 import type { CodeDevise } from '../../utils/currency';
 
 interface SeatViewProps {
@@ -67,10 +72,49 @@ interface SeatViewProps {
   /** Nombre de cartes fermées à afficher selon la variante (2/4/5) — utilisé pour dessiner le bon
    * nombre de dos de carte quand la main de l'adversaire est inconnue ou masquée. */
   holeCardCount: number;
+  /** Taille de ce que le siège dessine (cf. `Gabarit`). Absent = le gabarit du feed, inchangé. */
+  gabarit?: Gabarit;
+  /**
+   * Cette table montre un RÉGLAGE, pas une main qui se déroule.
+   *
+   * Un jeton qui disparaît y disparaît, point : il n'a pas été ramassé par le croupier, il n'a
+   * jamais été posé. Sans ce drapeau, décocher « Bomb pot » faisait glisser les six bombes vers le
+   * centre — le geste exact de la fin d'une street — et elles y restaient, si bien qu'une main
+   * redevenue normale gardait des antes au milieu. Le même défaut valait pour tout réglage qui
+   * retire une mise forcée : éteindre un straddle, changer de position, retirer un joueur.
+   */
+  sansGeste?: boolean;
+  /**
+   * La mise affichée devant ce siège est une SAISIE EN COURS, pas une mise posée. Le jeton devient
+   * creux, le montant italique, et `stackRemaining` est alors le tapis PROJETÉ — affiché « → 220€ »
+   * à la place du vrai. Mesuré à la vraie police le 30/08 : écrire « 490€ → 220€ » demande 72,7 px
+   * pour 80 disponibles, et « 2 450 CHF → 1 900 CHF » 126,3 — impossible. La flèche seule tient
+   * partout (41,8 px, 68,3 au pire mesuré), et l'italique dit que rien n'est joué.
+   */
+  miseFantome?: boolean;
+  /**
+   * Les cartes manquantes de ce siège sont ATTENDUES, pas inconnues : on les dessine en pointillés,
+   * à leur place, au lieu d'un dos de carte.
+   *
+   * La nuance n'est pas cosmétique. Un dos de carte veut dire « il a une main, je ne la connais
+   * pas » — c'est le cas d'un adversaire. À l'étape « Tes cartes », deux dos devant Hero racontent
+   * donc exactement le contraire de ce qui se passe : ils disent qu'il a déjà des cartes, alors
+   * qu'on attend qu'il les choisisse. Or c'est la table et le sélecteur qui attirent l'œil, pas le
+   * titre de l'écran (remarque de Victor, 31/08) : la table doit se suffire.
+   *
+   * Réservé à Hero, et jamais activé au feed : un adversaire garde ses dos.
+   */
+  cartesAttendues?: boolean;
+  /** Toucher UNE carte fermée de ce siège (index dans la main affichée). Fourni, les cartes
+   * deviennent des cibles : c'est ce qui permet au créateur de retirer une carte en tapant dessus,
+   * là où elle est — sur le feutre. Absent (le feed), le siège reste inerte, comme avant : le
+   * `pointerEvents` du bloc n'est relâché QUE si quelqu'un écoute. */
+  onCartePress?: (index: number) => void;
 }
 
 const CASH_DENOMS = [1000, 100, 25, 5, 1] as const;
 const TOURNAMENT_DENOMS = [5000, 1000, 100, 25, 10, 5, 1] as const;
+/** Jetons empilés au maximum, au gabarit du feed — l'atelier en montre un de moins (cf. `Gabarit`). */
 const MAX_VISIBLE_CHIPS = 3;
 const BTN_MARKER_SIZE = 20;
 const BTN_CLEARANCE = 4;
@@ -83,7 +127,9 @@ const BTN_CLEARANCE = 4;
 // adversaires, qui peuvent se retrouver collés au bord de l'écran sur les tables pleines, gardent
 // des cartes plus petites pour ne pas être coupés. Les deux hauteurs restent ≤ 46 (l'enveloppe
 // réservée par le layout, cf. SEAT_CARDS_HEIGHT dans engine/layout.ts) : rien ne déborde sur le board.
-const HOLE_CARD_2 = { w: 34, h: 46 };
+// Cartes fermées d'une variante à DEUX cartes : la seule taille que le gabarit fait varier. Les
+// éventails de PLO/PLO5 gardent la leur — celui d'un adversaire (25×34) est déjà à la taille que
+// l'atelier vise, il n'y avait rien à y gagner.
 const HOLE_CARD_FAN_HERO = { w: 31, h: 42 };
 const HOLE_CARD_FAN_VILLAIN = { w: 25, h: 34 };
 const FAN_OVERLAP = 0.44; // fraction d'une carte masquée par la suivante
@@ -93,11 +139,12 @@ const FAN_ARC = 2; // px : les cartes extérieures descendent légèrement (galb
 // Jetons 20% plus petits qu'à l'origine (14px → 11px) et empilés bien droit plutôt qu'en éventail
 // diagonal : la pile occupe une largeur proche d'un seul jeton, ce qui laisse plus de marge contre
 // le board (sièges du milieu) et contre le bord ovale de la table (sièges excentrés) — cf. SeatView.
-const CHIP_TOKEN_SIZE = 11;
 const CHIP_TOKEN_INNER_SIZE = 4;
+/** Opacité du bloc de mise quand il n'est qu'un fantôme (cf. `BetChipPopIn`). */
+const OPACITE_FANTOME = 0.6;
 const CHIP_STACK_OFFSET = 2;
-const CHIP_STACK_WIDTH = CHIP_TOKEN_SIZE + 6;
-const CHIP_STACK_HEIGHT = CHIP_TOKEN_SIZE + (MAX_VISIBLE_CHIPS - 1) * CHIP_STACK_OFFSET;
+const jetonLargeur = (g: Gabarit) => g.chipTokenSize + 6;
+const jetonHauteur = (g: Gabarit) => g.chipTokenSize + (g.chipsVisibles - 1) * CHIP_STACK_OFFSET;
 // Encombrement total du bloc mise (pile de jetons + montant en dessous) : sert au placement radial
 // (demi-hauteur = distance à laisser devant le siège) et au centrage du conteneur.
 // La LARGEUR ne sert qu'à centrer le bloc sur son point de dépose : elle n'entre dans aucun calcul
@@ -110,7 +157,9 @@ const CHIP_STACK_HEIGHT = CHIP_TOKEN_SIZE + (MAX_VISIBLE_CHIPS - 1) * CHIP_STACK
 // compris (« CHF 2500 » ≈ 44 px), et restent sous les 49 px de dégagement d'un siège latéral en
 // 9-max — mesuré le 30/08/2026.
 const CHIP_BLOCK_W = 56;
-const CHIP_BLOCK_H = CHIP_STACK_HEIGHT + 2 + 12;
+/** Hauteur du bloc mise. Au feed elle vaut 29 (pile de 15 + 2 + le montant) ; le gabarit la porte
+ *  désormais, pour que l'atelier puisse en rendre 4 sans que ce calcul se désynchronise. */
+const blocMiseHauteur = (g: Gabarit) => g.chipBlockHeight;
 
 interface ChipToken {
   denom: number;
@@ -119,17 +168,17 @@ interface ChipToken {
 
 // Une mise "économise" ses jetons par dénomination (ex: 45 → 1 vert (25) + 4 rouges (5)) au lieu
 // d'un seul rond générique — plus lisible, et plus proche de ce qu'on voit sur une vraie table.
-function chipStackFor(amount: number, gameType: GameType): ChipToken[] {
+function chipStackFor(amount: number, gameType: GameType, maxVisible = MAX_VISIBLE_CHIPS): ChipToken[] {
   const denoms: readonly number[] = gameType === 'cash' ? CASH_DENOMS : TOURNAMENT_DENOMS;
   const palette: Record<number, string> = gameType === 'cash' ? cashChipColors : chipColors;
   const stack: ChipToken[] = [];
   let remaining = amount;
   for (const denom of denoms) {
-    while (remaining >= denom && stack.length < MAX_VISIBLE_CHIPS) {
+    while (remaining >= denom && stack.length < maxVisible) {
       stack.push({ denom, color: palette[denom] });
       remaining -= denom;
     }
-    if (stack.length >= MAX_VISIBLE_CHIPS) break;
+    if (stack.length >= maxVisible) break;
   }
   if (stack.length === 0) {
     const smallest = denoms[denoms.length - 1];
@@ -151,6 +200,8 @@ function BetChipPopIn({
   bb,
   useBB,
   compact = false,
+  gabarit,
+  fantome = false,
 }: {
   amount: number;
   gameType: GameType;
@@ -158,33 +209,59 @@ function BetChipPopIn({
   showAmount: boolean;
   bb: number;
   useBB: boolean;
+  gabarit: Gabarit;
   // BB et Hero (sièges "du milieu") poussent leur jeton vers le centre, où le board est recentré
   // pour leur laisser une marge égale — mais cette marge reste, par construction, plus courte que
   // la hauteur de la pile de jetons illustrée utilisée pour les sièges de côté. Plutôt que de la
   // laisser chevaucher le board, on bascule sur un rendu compact (un point + le montant, en
   // ligne) qui tient dans l'espace réellement disponible.
   compact?: boolean;
+  /**
+   * MISE EN COURS DE SAISIE, pas encore validée.
+   *
+   * Attention au signe choisi : le jeton porte DÉJÀ un liseré en pointillés, c'est son décor de
+   * jeton de casino — en rajouter ne dirait rien. Ce qui distingue le fantôme, c'est que le jeton
+   * est CREUX (plus de pastille de couleur, seul le liseré reste), que tout le bloc est estompé, et
+   * que le montant passe en italique. Trois signes qui disent la même chose : rien n'est joué.
+   *
+   * Et surtout : AUCUNE animation. Le montant change à chaque frappe, une apparition rejouée à
+   * chaque chiffre serait un clignotement continu.
+   */
+  fantome?: boolean;
 }) {
-  const chipAnim = useRef(new Animated.Value(0)).current;
+  const chipAnim = useRef(new Animated.Value(fantome ? 1 : 0)).current;
 
   useEffect(() => {
+    if (fantome) return;
     Animated.timing(chipAnim, {
       toValue: 1,
       duration: 350,
       useNativeDriver: true,
     }).start();
-  }, [chipAnim]);
+  }, [chipAnim, fantome]);
 
   const scale = chipAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
-  const opacity = chipAnim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 1] });
-  const chipStack = chipStackFor(amount, gameType);
+  // ⚠️ L'opacité doit sortir d'ICI, pas d'une feuille de style : elle est posée en ligne juste
+  // après, et une valeur en ligne l'emporte sur tout ce qu'un tableau de styles a mis avant elle.
+  // Le fantôme estompé y avait été perdu en silence (mesuré : opacité 1 alors qu'on attendait 0,5).
+  const opacity = fantome
+    ? chipAnim.interpolate({ inputRange: [0, 1], outputRange: [OPACITE_FANTOME, OPACITE_FANTOME] })
+    : chipAnim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 1] });
+  const chipStack = chipStackFor(amount, gameType, gabarit.chipsVisibles);
 
   if (compact) {
     return (
       <Animated.View style={[styles.compactChip, { opacity, transform: [{ scale }] }]}>
-        <View style={[styles.compactDot, { backgroundColor: chipStack[0].color }]} />
+        <View
+          style={[
+            styles.compactDot,
+            fantome ? styles.pastilleFantome : { backgroundColor: chipStack[0].color },
+          ]}
+        />
         {showAmount && (
-          <Text style={styles.compactAmount}>{formatChipAmount(amount, gameType, { bb, useBB }, currency)}</Text>
+          <Text style={[styles.compactAmount, fantome && styles.montantFantome]}>
+            {formatChipAmount(amount, gameType, { bb, useBB }, currency)}
+          </Text>
         )}
       </Animated.View>
     );
@@ -192,14 +269,19 @@ function BetChipPopIn({
 
   return (
     <Animated.View style={{ opacity, transform: [{ scale }] }}>
-      <View style={styles.chipStack}>
+      <View style={[styles.chipStack, { width: jetonLargeur(gabarit), height: jetonHauteur(gabarit) }]}>
         {chipStack.map((token, i) => (
           <View
             key={i}
             style={[
               styles.chipToken,
               {
-                backgroundColor: token.color,
+                left: (jetonLargeur(gabarit) - gabarit.chipTokenSize) / 2,
+                width: gabarit.chipTokenSize,
+                height: gabarit.chipTokenSize,
+                borderRadius: gabarit.chipTokenSize / 2,
+                // Creux en fantôme : il ne reste que le liseré, donc la place du jeton sans le jeton.
+                backgroundColor: fantome ? 'transparent' : token.color,
                 zIndex: i,
                 // Empilés bien droit (juste un décalage vertical, le "chant" de chaque jeton qui
                 // dépasse) plutôt qu'en éventail diagonal : la pile occupe une largeur proche d'un
@@ -214,7 +296,9 @@ function BetChipPopIn({
         ))}
       </View>
       {showAmount && (
-        <Text style={styles.chipAmount}>{formatChipAmount(amount, gameType, { bb, useBB }, currency)}</Text>
+        <Text style={[styles.chipAmount, fantome && styles.montantFantome]}>
+          {formatChipAmount(amount, gameType, { bb, useBB }, currency)}
+        </Text>
       )}
     </Animated.View>
   );
@@ -243,9 +327,20 @@ export function SeatView({
   useBB = false,
   straddleLabel = null,
   holeCardCount,
+  gabarit = GABARIT_FEED,
+  sansGeste = false,
+  miseFantome = false,
+  cartesAttendues = false,
+  onCartePress,
 }: SeatViewProps) {
-  const cardOpacity = useRef(new Animated.Value(1)).current;
-  const cardOffset = useRef(new Animated.Value(0)).current;
+  // Un siège qui MONTE déjà couché n'a jamais montré ses cartes : il n'a rien à faire disparaître.
+  // Sans ça, les valeurs partaient de « visible » et l'effet ci-dessous les faisait fondre sur
+  // 450 ms — ce qui, dans le créateur, se voyait à CHAQUE street : l'étape entière est remontée
+  // (`key` par street dans `LiveHandCreator`), et les cartes de tous les couchés réapparaissaient
+  // une demi-seconde avant de s'effacer à nouveau. Le replayer du feed, lui, ne remonte jamais en
+  // cours de main : il n'a jamais montré ce défaut, et ce départ ne change rien pour lui.
+  const cardOpacity = useRef(new Animated.Value(folded ? 0 : 1)).current;
+  const cardOffset = useRef(new Animated.Value(folded ? 10 : 0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const winnerSlideAnim = useRef(new Animated.Value(0)).current;
   const haloAnim = useRef(new Animated.Value(0.35)).current;
@@ -254,6 +349,8 @@ export function SeatView({
   // La mise reste affichée (et glisse vers le pot) un instant après la fin de la street, plutôt
   // que de disparaître d'un coup dès que `currentBet` retombe à zéro pour ce siège.
   const [displayBet, setDisplayBet] = useState<number | undefined>(currentBet);
+  /** La mise actuellement affichée est-elle un fantôme ? Lu quand elle disparaît (cf. l'effet). */
+  const etaitFantome = useRef(Boolean(miseFantome));
 
   useEffect(() => {
     Animated.parallel([
@@ -278,7 +375,16 @@ export function SeatView({
     if (currentBet) {
       slideAnim.setValue(0);
       setDisplayBet(currentBet);
+      etaitFantome.current = Boolean(miseFantome);
     } else if (displayBet) {
+      // Table de réglage : rien à raconter, donc rien à faire glisser (cf. `sansGeste`).
+      // Un fantôme annulé non plus : il n'a jamais été misé, le croupier n'a rien à ramasser.
+      if (sansGeste || etaitFantome.current) {
+        slideAnim.setValue(0);
+        setDisplayBet(undefined);
+        etaitFantome.current = false;
+        return;
+      }
       Animated.timing(slideAnim, {
         toValue: 1,
         duration: 450,
@@ -373,7 +479,7 @@ export function SeatView({
   // L'anneau de felt nécessaire entre les sièges et le board vient de la table plus haute que large
   // (cf. HandReplayer, aspectRatio 0.8) : c'est ce qui garantit qu'à cette distance le jeton est
   // toujours dégagé du board et du pot, pour tous les sièges.
-  const seatAnchor = { x: 40, y: 39 };
+  const seatAnchor = { x: 40, y: ancreDepuisLeHaut(gabarit, seat.isHero) };
   const toCenterX = tableCenter.x - x;
   const toCenterY = tableCenter.y - y;
   const distToCenter = Math.hypot(toCenterX, toCenterY) || 1;
@@ -382,13 +488,18 @@ export function SeatView({
 
   // Distance pour sortir du bloc cartes+badge (rectangle ~80×80 centré sur l'ancre) dans la
   // direction du centre, + une marge, + la demi-hauteur du bloc jeton pour le poser juste devant.
-  const SEAT_BOX_HALF = 40;
+  // Demi-encombrement du bloc du siège, PAR AXE. Au gabarit du feed les deux valent 40 (le bloc est
+  // un carré de 80) et le calcul est exactement celui d'avant ; à l'atelier, un adversaire dont les
+  // cartes ont maigri a un bloc plus court, et son jeton se pose donc plus près de lui — c'est là
+  // qu'une partie du dégagement gagné face au board vient.
+  const SEAT_BOX_HALF_W = 40;
+  const seatBoxHalfH = blocSiegeHauteur(gabarit, seat.isHero) / 2;
   const CHIP_CLEARANCE = 6;
   const boxExit = Math.min(
-    SEAT_BOX_HALF / (Math.abs(dirX) || 1e-6),
-    SEAT_BOX_HALF / (Math.abs(dirY) || 1e-6)
+    SEAT_BOX_HALF_W / (Math.abs(dirX) || 1e-6),
+    seatBoxHalfH / (Math.abs(dirY) || 1e-6)
   );
-  const chipDistance = boxExit + CHIP_CLEARANCE + CHIP_BLOCK_H / 2;
+  const chipDistance = boxExit + CHIP_CLEARANCE + blocMiseHauteur(gabarit) / 2;
   const chipCenter = {
     x: seatAnchor.x + dirX * chipDistance,
     y: seatAnchor.y + dirY * chipDistance,
@@ -397,8 +508,9 @@ export function SeatView({
   // Position de la pastille "Pot X" : cartes du board centrées sur la table, pastille du pot
   // collée juste au-dessus (cf. BoardView), puis le même décalage de recentrage lui est appliqué —
   // calculé à partir de la taille RÉELLE de la table, pas d'une position mesurée une seule fois.
-  const { height: boardCardHeight } = boardCardSize(tableCenter.x * 2);
-  const potPillCenterOffset = -boardCardHeight / 2 - POT_PILL_HEIGHT / 2 + boardVerticalOffset();
+  const { height: boardCardHeight } = boardCardSize(tableCenter.x * 2, gabarit);
+  const potPillCenterOffset =
+    -boardCardHeight / 2 - POT_PILL_HEIGHT / 2 + boardVerticalOffset(POT_PILL_HEIGHT, gabarit);
   const restTarget = { x: tableCenter.x, y: tableCenter.y + potPillCenterOffset };
   const restDx = restTarget.x - x;
   const restDy = restTarget.y - y;
@@ -446,8 +558,8 @@ export function SeatView({
   const perpX = dirY;
   const perpY = -dirX;
   const btnBoxExit = Math.min(
-    SEAT_BOX_HALF / (Math.abs(perpX) || 1e-6),
-    SEAT_BOX_HALF / (Math.abs(perpY) || 1e-6)
+    SEAT_BOX_HALF_W / (Math.abs(perpX) || 1e-6),
+    seatBoxHalfH / (Math.abs(perpY) || 1e-6)
   );
   const btnDistance = btnBoxExit + BTN_CLEARANCE + BTN_MARKER_SIZE / 2;
   // Un pur décalage perpendiculaire laisse le bouton au même "rayon" que le siège lui-même — sur
@@ -468,7 +580,15 @@ export function SeatView({
   const stackText = formatChipAmount(Math.max(stackRemaining, 0), gameType, { bb, useBB }, currency);
 
   return (
-    <View style={[styles.wrapper, { left: x, top: y }]} pointerEvents="none">
+    <View
+      style={[
+        styles.wrapper,
+        { left: x, top: y, transform: [{ translateX: -40 }, { translateY: -seatAnchor.y }] },
+      ]}
+      // `box-none` : le bloc lui-même n'est jamais la cible, mais ses enfants peuvent l'être. Sans
+      // ça, `none` couperait aussi les cartes, et le Pressable posé dessous ne recevrait rien.
+      pointerEvents={onCartePress ? 'box-none' : 'none'}
+    >
       <Animated.View
         style={[
           styles.cardsRow,
@@ -478,12 +598,25 @@ export function SeatView({
         {(() => {
           // Nombre de cartes à dessiner : la vraie longueur si la main est connue, sinon le nombre
           // imposé par la variante (dos de carte pour un adversaire inconnu ou masqué).
-          const n = seat.holeCards?.length ?? holeCardCount;
+          // Un siège dont on ATTEND les cartes en dessine toujours le compte complet : les places
+          // vides sont des emplacements à remplir, pas des cartes absentes.
+          const n = cartesAttendues ? holeCardCount : seat.holeCards?.length ?? holeCardCount;
           const fan = n >= 4;
-          const dims = fan ? (seat.isHero ? HOLE_CARD_FAN_HERO : HOLE_CARD_FAN_VILLAIN) : HOLE_CARD_2;
+          const carte2 = seat.isHero ? gabarit.carteHero : gabarit.carteVilain;
+          const dims = fan
+            ? seat.isHero
+              ? HOLE_CARD_FAN_HERO
+              : HOLE_CARD_FAN_VILLAIN
+            : { w: carte2.width, h: carte2.height };
           return Array.from({ length: n }).map((_, i) => {
             const card = showCardBacks || !seat.holeCards ? undefined : seat.holeCards[i];
             const centered = i - (n - 1) / 2;
+            const laCarte =
+              cartesAttendues && !card ? (
+                <View style={[styles.carteAttendue, { width: dims.w, height: dims.h }]} />
+              ) : (
+                <CardView card={card} width={dims.w} height={dims.h} />
+              );
             return (
               <View
                 key={i}
@@ -495,7 +628,18 @@ export function SeatView({
                     : undefined,
                 }}
               >
-                <CardView card={card} width={dims.w} height={dims.h} />
+                {/* On n'enveloppe QUE si quelqu'un écoute : un `Pressable` inerte reste un nœud de
+                    plus dans l'arbre, et il a suffi une fois à décaler tout le rendu du feed.
+                    Mais on enveloppe AUSSI les emplacements vides : à l'abattage, taper le siège
+                    d'un adversaire est la façon de le choisir, et un adversaire qu'on n'a pas
+                    encore saisi n'a QUE des emplacements vides — il devenait donc intouchable dès
+                    qu'un premier adversaire avait reçu ses cartes. Ailleurs, taper un vide ne
+                    retire rien : les trois appelants sont sans effet sur un emplacement déjà libre. */}
+                {onCartePress ? (
+                  <Pressable onPress={() => onCartePress(i)}>{laCarte}</Pressable>
+                ) : (
+                  laCarte
+                )}
               </View>
             );
           });
@@ -512,7 +656,11 @@ export function SeatView({
           isActive && (
             <Animated.View
               pointerEvents="none"
-              style={[styles.halo, { opacity: haloAnim, transform: [{ scale: winnerScale }] }]}
+              style={[
+                styles.halo,
+                gabarit.haloAppuye && styles.haloAppuye,
+                { opacity: haloAnim, transform: [{ scale: winnerScale }] },
+              ]}
             />
           )
         )}
@@ -551,6 +699,10 @@ export function SeatView({
           <Text style={styles.checkLabel}>check</Text>
         ) : folded ? (
           <Text style={[typography.stackAmount, styles.stack, styles.textFolded]}>{stackText}</Text>
+        ) : miseFantome ? (
+          // Le tapis PROJETÉ prend la place du vrai — c'est tout l'intérêt du fantôme : voir ce
+          // qu'il resterait. La flèche dit qu'on regarde un après, l'italique qu'il n'est pas acquis.
+          <Text style={[typography.stackAmount, styles.stack, styles.stackFantome]}>{`→ ${stackText}`}</Text>
         ) : equityPct != null ? (
           <Text style={styles.equityLabel}>{Math.round(equityPct)}%</Text>
         ) : equityPending ? (
@@ -587,7 +739,7 @@ export function SeatView({
             styles.betChip,
             {
               left: chipCenter.x - CHIP_BLOCK_W / 2,
-              top: chipCenter.y - CHIP_BLOCK_H / 2,
+              top: chipCenter.y - blocMiseHauteur(gabarit) / 2,
               transform: [
                 { translateX: slideTranslateX },
                 { translateY: slideTranslateY },
@@ -599,13 +751,18 @@ export function SeatView({
           ]}
         >
           <BetChipPopIn
-            key={displayBet}
+            // Clé STABLE tant qu'on saisit : sans ça, chaque chiffre tapé démonterait et
+            // remonterait le bloc — le remède de l'animation ne suffirait pas, la valeur animée
+            // repartirait de zéro à chaque frappe.
+            key={miseFantome ? 'fantome' : displayBet}
             amount={displayBet}
             gameType={gameType}
             currency={currency}
             showAmount={Boolean(currentBet)}
             bb={bb}
             useBB={useBB}
+            gabarit={gabarit}
+            fantome={miseFantome}
           />
         </Animated.View>
       ) : null}
@@ -614,10 +771,11 @@ export function SeatView({
 }
 
 const styles = StyleSheet.create({
+  // La translation verticale est posée au rendu (elle dépend du gabarit et de qui occupe le siège) ;
+  // l'horizontale l'accompagne là-bas pour ne pas être écrasée par elle.
   wrapper: {
     position: 'absolute',
     alignItems: 'center',
-    transform: [{ translateX: -40 }, { translateY: -39 }],
     width: 80,
   },
   cardsRow: {
@@ -640,6 +798,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.gold,
+  },
+  // Le halo APPUYÉ de l'atelier : un fond, pas seulement un trait. Il n'existe que là où le halo
+  // porte seul l'information « c'est à lui » — dans le feed, la bulle d'action le double déjà.
+  haloAppuye: {
+    backgroundColor: 'rgba(201,162,39,0.3)',
+    borderWidth: 2,
   },
   // Contrairement au halo doré "à toi de jouer" (pulsant, ponctuel), celui-ci reste fixe tant que
   // le siège est à tapis — pas d'opacité animée en boucle, pour ne pas distraire le reste de la
@@ -728,18 +892,15 @@ const styles = StyleSheet.create({
     width: CHIP_BLOCK_W,
     alignItems: 'center',
   },
+  // Largeur, hauteur et taille des jetons viennent du gabarit au moment du rendu (cf. `jetonLargeur`
+  // / `jetonHauteur`) : ce sont les seules dimensions de ce fichier que l'atelier fait varier.
   chipStack: {
-    width: CHIP_STACK_WIDTH,
-    height: CHIP_STACK_HEIGHT,
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
   chipToken: {
     position: 'absolute',
-    left: (CHIP_STACK_WIDTH - CHIP_TOKEN_SIZE) / 2,
     bottom: 0,
-    width: CHIP_TOKEN_SIZE,
-    height: CHIP_TOKEN_SIZE,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -752,6 +913,37 @@ const styles = StyleSheet.create({
     height: CHIP_TOKEN_INNER_SIZE,
     borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  // LE FANTÔME. Quatre écarts avec une vraie mise, et il en faut quatre : les trois premiers
+  // essayés (jeton creux, bloc estompé, italique) restaient « un poil trop légers » à l'usage.
+  // Le quatrième est le plus fort et le plus simple : LA COULEUR. L'or, dans toute l'app, c'est de
+  // l'argent qui existe. Un montant qui n'est pas encore joué n'a rien à faire en or.
+  // La carte qu'on attend devant un siège — même dessin que sur le board, à l'échelle du siège.
+  carteAttendue: {
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.38)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  // Réglage du 31/08, en deux temps : l'or estompé ne se distinguait pas assez d'une vraie mise,
+  // le blanc ÉTEINT (`textOnFeltMuted`, déjà à 60 % d'alpha) devenait trop pâle une fois multiplié
+  // par l'opacité du bloc. L'entre-deux retenu : le blanc PLEIN du feutre, à 60 % de bloc. Ce qui
+  // porte la différence reste la couleur — l'or, dans toute l'app, c'est de l'argent qui existe.
+  montantFantome: {
+    fontStyle: 'italic',
+    fontWeight: '500',
+    color: colors.textOnFelt,
+    textShadowColor: 'transparent',
+  },
+  pastilleFantome: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.textOnFelt,
+  },
+  stackFantome: {
+    fontStyle: 'italic',
+    color: colors.textOnFelt,
   },
   chipAmount: {
     marginTop: 2,

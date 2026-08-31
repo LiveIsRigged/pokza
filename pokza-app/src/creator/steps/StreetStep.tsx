@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
 import type { Action, ActionType, Card, GameType, Seat, Street, Variant } from '../../types/poker';
-import { borders, colors, tints, typography } from '../../theme/theme';
+import { borders, colors, tints } from '../../theme/theme';
 import { getActingOrder, getActingOrderAfter } from '../positions';
 import { WizardScreen } from '../WizardScreen';
-import { MultiCardPicker } from '../MultiCardPicker';
+import { MultiCardPicker, memeCarte } from '../MultiCardPicker';
 import { formatChipAmount, roundMoney } from '../../utils/chipFormat';
 import { nextBetAbove, roundBet, type BetRoundingContext } from '../../utils/betRounding';
 import { straddleSeatLabel } from '../../engine/handEngine';
+import { TableVue, type SiegeAffiche } from '../../components/table/TableVue';
+import { GABARIT_ATELIER, GABARIT_ATELIER_DOUBLE, hauteurTableAtelier } from '../../engine/layout';
+import { holeCardCount } from '../../types/poker';
 import type { CodeDevise } from '../../utils/currency';
 
 const STREET_TITLES: Record<Street, string> = {
@@ -17,6 +20,85 @@ const STREET_TITLES: Record<Street, string> = {
   turn: 'Turn',
   river: 'River',
 };
+
+/**
+ * Combien de cartes de board sont DÉJÀ TOMBÉES quand cette street s'ouvre.
+ *
+ * Garde-fou nécessaire, pas décoratif : le créateur transporte le board complet qu'il connaît, et
+ * sur le chemin de CORRECTION d'une main publiée, il connaît déjà le flop en arrivant sur l'étape
+ * du flop — qu'on s'apprête pourtant à ressaisir. Sans cette coupe, l'étape affichait trois cartes
+ * « passées » PLUS ses trois emplacements : six pour une rangée qui n'en dessine que cinq, la
+ * sixième disparaissant en silence.
+ */
+const CARTES_DEJA_TOMBEES: Record<Street, number> = { preflop: 0, flop: 0, turn: 3, river: 4 };
+
+/** À quelle street appartient un index du board à plat : 0-2 le flop, 3 le turn, 4 la river. */
+const rueDeLIndex = (i: number) => (i < 3 ? 'flop' : i === 3 ? 'turn' : 'river');
+
+/**
+ * LA MÉCANIQUE D'UN BOARD — ses emplacements, le geste qui en vide un, celui qui y loge une carte.
+ * ───────────────────────────────────────────────────────────────────────────────────────────────
+ * Écrite une fois et appliquée aux DEUX boards d'un bomb pot : ils suivent exactement les mêmes
+ * règles. Ils partagent en revanche UN SEUL sélecteur (décision de Victor, 31/08/2026) — deux
+ * grilles obligeaient à défiler pour saisir le second board une fois le premier fini, alors que les
+ * deux rangées sont là, sous les yeux. La question « quelle carte remplit quoi ? » se répond donc
+ * comme pour une seule rangée : la carte choisie va dans le PREMIER trou, board 1 d'abord, board 2
+ * ensuite — et c'est le trou en pointillés sur le feutre qui le montre avant même de choisir.
+ */
+function mecaniqueBoard(
+  avantBrut: Card[],
+  trous: number[],
+  setTrous: React.Dispatch<React.SetStateAction<number[]>>,
+  cartes: (Card | undefined)[],
+  setCartes: React.Dispatch<React.SetStateAction<(Card | undefined)[]>>,
+  corriger?: (index: number, carte: Card) => void
+) {
+  /** Tout le board visible à cette street : les cartes déjà tombées (trous compris), puis les siennes. */
+  const emplacements: (Card | undefined)[] = [
+    ...avantBrut.map((c, i) => (trous.includes(i) ? undefined : c)),
+    ...cartes,
+  ];
+
+  /**
+   * Taper une carte la retire — la prochaine choisie prendra sa place. Retaper l'emplacement qu'on
+   * vient de vider annule le retrait (possible seulement pour les streets passées, où la carte
+   * d'origine est encore connue).
+   */
+  const taper = (i: number) => {
+    if (i < avantBrut.length) {
+      setTrous((prev) => {
+        if (prev.includes(i)) return prev.filter((j) => j !== i);
+        const memeRue = prev.length === 0 || rueDeLIndex(prev[0]) === rueDeLIndex(i);
+        return memeRue ? [...prev, i] : [i];
+      });
+      return;
+    }
+    // Retoucher la street EN COURS referme ce qu'on avait ouvert sur une street passée : une seule
+    // street se ressaisit à la fois, et celle qu'on a sous les doigts l'emporte.
+    setTrous([]);
+    const j = i - avantBrut.length;
+    setCartes((prev) => prev.map((c, k) => (k === j ? undefined : c)));
+  };
+
+  /** Loger une carte dans le PREMIER emplacement libre — celui qu'on vient de vider, en pratique. */
+  const poser = (carte: Card) => {
+    const trou = emplacements.findIndex((c) => !c);
+    if (trou === -1) return;
+    if (trou < avantBrut.length) {
+      // Une carte d'une street passée : c'est le créateur qui la détient, pas cette étape.
+      corriger?.(trou, carte);
+      setTrous((prev) => prev.filter((j) => j !== trou));
+      return;
+    }
+    const j = trou - avantBrut.length;
+    setCartes((prev) => prev.map((c, k) => (k === j ? carte : c)));
+  };
+
+  /** Les cartes momentanément retirées : à laisser choisissables, pour pouvoir les remettre. */
+  const enAttente = trous.map((i) => avantBrut[i]).filter(Boolean) as Card[];
+
+  return { emplacements, taper, poser, enAttente };
+}
 
 const POT_SHORTCUTS: { label: string; fraction: number }[] = [
   { label: '1/3 pot', fraction: 1 / 3 },
@@ -95,6 +177,22 @@ interface StreetStepProps {
   /** Variante : en PLO/PLO5 le pot est le maximum légal, donc le raccourci « Pot » vaut le pot
    * exact au lieu d'être arrondi. */
   variant?: Variant;
+  /** Les cartes de Hero, pour qu'il les revoie sur la table pendant qu'il saisit. */
+  heroCards?: Card[];
+  /** Le board DÉJÀ tombé aux streets précédentes — celui de cette street s'y ajoute à mesure. */
+  boardAvant?: Card[];
+  /**
+   * Corriger une carte d'une street DÉJÀ passée (index dans `boardAvant`). Ces cartes appartiennent
+   * au créateur, pas à cette étape : c'est lui qui les range dans le bon board et qui répercute la
+   * correction sur l'historique de retour. Absent, les cartes passées restent inertes.
+   */
+  onCorrigerBoard?: (index: number, carte: Card) => void;
+  /** Le SECOND board déjà tombé (bomb pot double board), et sa correction. Mêmes règles que le
+   *  premier, cloisonnées : chaque board a ses emplacements et son sélecteur. */
+  board2Avant?: Card[];
+  onCorrigerBoard2?: (index: number, carte: Card) => void;
+  /** Corriger une carte de Hero depuis ici (index dans sa main). Absent, ses cartes sont inertes. */
+  onCorrigerHero?: (index: number, carte: Card) => void;
   gameType?: GameType;
   /** Devise de la main (cf. `DEVISES`) ; absente = euro. Sans effet en tournoi. */
   currency?: CodeDevise;
@@ -152,6 +250,12 @@ export function StreetStep({
   bb = 0,
   sb = 0,
   variant = 'nlhe',
+  heroCards = [],
+  boardAvant = [],
+  onCorrigerBoard,
+  board2Avant = [],
+  onCorrigerBoard2,
+  onCorrigerHero,
   gameType = 'cash',
   currency,
   bombPot = false,
@@ -191,8 +295,99 @@ export function StreetStep({
   const [amountError, setAmountError] = useState<string | null>(null);
   const [enteringAmount, setEnteringAmount] = useState<'bet' | 'raise' | null>(null);
   const [history, setHistory] = useState<Snapshot[]>([]);
+  /**
+   * LE BOARD SE MODIFIE SUR LE FEUTRE, PAS DANS UN FORMULAIRE (décision de Victor, 31/08/2026).
+   * ─────────────────────────────────────────────────────────────────────────────────────────
+   * Taper une carte du board la retire ; elle laisse un trou en pointillés à sa place, et la
+   * prochaine carte choisie vient s'y loger. Ça vaut aussi pour les cartes d'une street DÉJÀ
+   * passée : on corrige un flop depuis la river, sans revenir en arrière.
+   *
+   * On peut ouvrir PLUSIEURS trous d'un coup, mais dans UNE SEULE street à la fois (décision de
+   * Victor, 31/08/2026). Deux trous dans le même flop ne posent aucune question : ces trois cartes
+   * tombent ensemble, l'ordre dans lequel on les remplit n'a pas de sens. Deux trous dans deux
+   * streets différentes, si — laquelle se remplit d'abord ? Ouvrir un trou sur une autre street
+   * referme donc les précédents, qui retrouvent leur carte. Retaper un trou l'annule aussi.
+   *
+   * Le sélecteur, lui, n'a plus d'état à retenir : il est là tant qu'un emplacement attend une
+   * carte, et il se range tout seul dès qu'il n'en reste plus. Il mesure 338 px — c'est lui qui
+   * poussait les boutons d'action sous le pli (5 px de marge sur un iPhone 14, 172 px manquants
+   * sur un SE).
+   */
+  /** Bomb pot à deux boards : le seul cas où la seconde rangée existe. */
+  const doubleBoard = boardCount2 > 0 || board2Avant.length > 0;
+  const [trousAvant, setTrousAvant] = useState<number[]>([]);
+  const [trousAvant2, setTrousAvant2] = useState<number[]>([]);
+  const dejaTombees = CARTES_DEJA_TOMBEES[street];
+  const avant1 = boardAvant.slice(0, dejaTombees);
+  const avant2 = board2Avant.slice(0, dejaTombees);
+  const [trousHero, setTrousHero] = useState<number[]>([]);
+  const b1 = mecaniqueBoard(avant1, trousAvant, setTrousAvant, boardCards, setBoardCards, onCorrigerBoard);
+  const b2 = mecaniqueBoard(avant2, trousAvant2, setTrousAvant2, boardCards2, setBoardCards2, onCorrigerBoard2);
+  /**
+   * LA MAIN DE HERO SE CHANGE ELLE AUSSI SUR LE FEUTRE, sans remonter à l'étape 2 (demande de
+   * Victor au premier tour, 30/08). C'est exactement la même mécanique que le board — ses cartes
+   * sont « déjà tombées », il n'y en a aucune à choisir pour cette street — d'où la liste vide et
+   * le `setCartes` qui ne sert jamais.
+   */
+  const hero = mecaniqueBoard(heroCards, trousHero, setTrousHero, [], () => {}, onCorrigerHero);
 
-  const boardComplete = boardCards.every(Boolean) && boardCards2.every(Boolean);
+  const emplacements = b1.emplacements;
+  const emplacements2 = b2.emplacements;
+  /** Le board de cette street est-il posé ? (les deux rangées en double board) */
+  const boardPret = emplacements.every(Boolean) && emplacements2.every(Boolean);
+  /** Hero a-t-il toujours sa main complète, ou en a-t-on retiré une carte pour la changer ? */
+  const heroPret = hero.emplacements.every(Boolean);
+  const boardComplete = boardPret && heroPret;
+  /**
+   * Ce que le sélecteur unique remplit, dans cet ordre : board 1, board 2, puis la main de Hero.
+   *
+   * Hero n'entre dans la liste QUE si le board de la street est posé — sinon retirer une de ses
+   * cartes ouvrirait un trou pendant que le board en a déjà, et la carte suivante irait au board
+   * sans qu'on comprenne pourquoi. C'est la même règle qu'entre deux streets : une chose à la fois.
+   */
+  const emplacementsBoard = doubleBoard ? [...emplacements, ...emplacements2] : emplacements;
+  const tousLesEmplacements = boardPret
+    ? [...emplacementsBoard, ...hero.emplacements]
+    : emplacementsBoard;
+
+  /** Toucher le board referme ce qu'on avait ouvert dans la main de Hero, et réciproquement. */
+  const taperBoard1 = (i: number) => {
+    setTrousHero([]);
+    b1.taper(i);
+  };
+  const taperBoard2 = (i: number) => {
+    setTrousHero([]);
+    b2.taper(i);
+  };
+
+  /** Ce que la grille grise : ce qui est pris ailleurs, jamais ce qui est sur l'un des deux boards. */
+  const disponiblesExclues = usedCardsElsewhere.filter(
+    (c) =>
+      !tousLesEmplacements.some((e) => e && memeCarte(e, c)) &&
+      ![...b1.enAttente, ...b2.enAttente, ...hero.enAttente].some((a) => memeCarte(a, c))
+  );
+
+  /**
+   * Le sélecteur renvoie une liste TASSÉE (il ne connaît pas les trous) : on replace par différence.
+   * Une carte ajoutée va dans le premier trou — board 1 puis board 2 ; une carte retirée depuis la
+   * grille refait le geste qu'on aurait fait sur le feutre.
+   */
+  const surChoixDuSelecteur = (next: (Card | undefined)[]) => {
+    const posees = tousLesEmplacements.filter(Boolean) as Card[];
+    const ajoutee = next.find((c) => c && !posees.some((p) => memeCarte(p, c))) as Card | undefined;
+    if (ajoutee) {
+      if (emplacements.some((c) => !c)) b1.poser(ajoutee);
+      else if (doubleBoard && emplacements2.some((c) => !c)) b2.poser(ajoutee);
+      else hero.poser(ajoutee);
+      return;
+    }
+    const retire = tousLesEmplacements.findIndex((c) => c && !next.some((n) => n && memeCarte(n, c)));
+    if (retire < 0) return;
+    if (retire < emplacements.length) taperBoard1(retire);
+    else if (retire < emplacementsBoard.length) taperBoard2(retire - emplacements.length);
+    else hero.taper(retire - emplacementsBoard.length);
+  };
+
   const fmt = (n: number) => formatChipAmount(n, gameType, undefined, currency);
 
   // Pot total en direct : ce qui a été misé sur les streets précédentes (déjà réglé) + l'ante de
@@ -532,11 +727,183 @@ export function StreetStep({
     }
   };
 
+  /**
+   * LA TABLE, ALIMENTÉE PAR CE QUE CET ÉCRAN A DÉJÀ SOUS LA MAIN.
+   * ────────────────────────────────────────────────────────────
+   * C'est la deuxième source de `TableVue` : là où le replayer branche `computeHandState` sur une
+   * main publiée, on branche ici l'état vivant de la saisie. Rien n'est recalculé — `active`,
+   * `contributions`, `remainingFor` et `currentSeatId` existaient déjà, ils servaient seulement à
+   * afficher du texte.
+   *
+   * Ce que la table sait, l'auteur le sait : ses propres cartes, et rien de celles des adversaires
+   * (dos de carte, comme le verra le lecteur). `holeCards` n'est donc greffé que sur Hero.
+   */
+  const dernierEnregistre = recorded[recorded.length - 1];
+  /**
+   * LE FANTÔME DE LA MISE EN COURS DE SAISIE.
+   * ─────────────────────────────────────────
+   * Saisir un montant est le seul moment du créateur où l'on tape un chiffre sans voir ce qu'il
+   * fait. La table le montre : le jeton se pose devant le miseur (creux, montant estompé et en
+   * italique) et son tapis est remplacé par ce qu'il RESTERAIT. Le pot du centre, lui, ne bouge
+   * pas — voir plus bas.
+   *
+   * Deux garde-fous, et ils comptent autant que l'effet :
+   *
+   *   1. ON NE MONTRE JAMAIS UN MONTANT ILLÉGAL. Le filtre ci-dessous rejoue exactement les règles
+   *      de `confirmAmount` — montant lisible, plafonné au tapis, relance qui dépasse la mise à
+   *      suivre sauf tapis. Ce qui serait refusé à la validation ne doit pas s'afficher comme si
+   *      c'était joué : le fantôme s'abstient, et le message d'erreur reste le seul retour.
+   *   2. ON NE REJOUE PAS L'ANIMATION À CHAQUE FRAPPE — traité côté `SeatView` (clé stable et
+   *      apparition désactivée en fantôme), sans quoi taper « 1 2 5 » ferait clignoter le jeton
+   *      trois fois.
+   */
+
+  const fantome = (() => {
+    if (!enteringAmount || !currentSeatId) return null;
+    const saisi = parseFloat(amountInput.replace(',', '.'));
+    if (!Number.isFinite(saisi) || saisi <= 0) return null;
+    const montant = Math.min(saisi, currentRemaining);
+    if (montant <= betAmount && montant < currentRemaining) return null;
+    return { seatId: currentSeatId, montant, ajout: montant - (contributions[currentSeatId] ?? 0) };
+  })();
+
+  const siegesTable: SiegeAffiche[] = seats.map((s) => {
+    const couche = !active.includes(s.id);
+    const miseur = fantome?.seatId === s.id;
+    return {
+      seat:
+        s.isHero && heroCards.length > 0
+          ? { ...s, holeCards: hero.emplacements as Card[] }
+          : s,
+      folded: couche,
+      stackRemaining: Math.max(remainingFor(s.id) - (miseur ? fantome!.ajout : 0), 0),
+      currentBet: miseur ? fantome!.montant : contributions[s.id],
+      miseFantome: miseur,
+      // Le halo doré remplace la phrase « À X de jouer », retirée le 30/08 : c'est le seul signal
+      // de qui doit parler. Il ne s'allume que si la street est saisissable — pendant le choix du
+      // board, personne n'a encore la parole.
+      isActive: boardComplete && s.id === currentSeatId,
+      justFolded: dernierEnregistre?.seatId === s.id && dernierEnregistre.type === 'fold',
+      justChecked: dernierEnregistre?.seatId === s.id && dernierEnregistre.type === 'check',
+      straddleLabel: straddleSeatLabel(seats, priorActions, s.id),
+      // Ses cartes se changent d'un tap, comme celles du board — mais seulement une fois le board de
+      // la street posé (cf. `tousLesEmplacements`), pour qu'il n'y ait jamais deux trous en concurrence.
+      onCartePress: s.isHero && boardPret && onCorrigerHero ? hero.taper : undefined,
+      // Une carte retirée pour être changée laisse son emplacement en pointillés, comme sur le board.
+      cartesAttendues: s.isHero && !heroPret,
+    };
+  });
+
+  const table = (
+    <TableVue
+      sieges={siegesTable}
+      board={emplacements}
+      // Le second board n'existe qu'en bomb pot double board — absent partout ailleurs.
+      board2={doubleBoard ? emplacements2 : undefined}
+      // LE POT NE BOUGE PAS pendant une saisie (décision de Victor, 31/08, après l'avoir vu bouger).
+      // Le pot est un fait : ce qui est au centre y est. Le jeton fantôme devant le miseur et son
+      // tapis projeté disent déjà ce qui se prépare, et ils le disent comme un conditionnel — un
+      // total qui se réécrit à chaque frappe, lui, se lit comme un acquis.
+      pot={potNow}
+      gameType={gameType}
+      currency={currency}
+      bb={bb}
+      holeCardCount={holeCardCount(variant)}
+      // Deux rangées de board coûtent 41 px au centre, là même où les jetons viennent buter : le
+      // format a donc sa propre hauteur ET son propre gabarit, tout dessiné plus petit (cf. layout).
+      hauteur={hauteurTableAtelier(seats.length, doubleBoard)}
+      gabarit={doubleBoard ? GABARIT_ATELIER_DOUBLE : GABARIT_ATELIER}
+      // Au préflop il n'y a pas de board : aucune cible, la table reste inerte comme au feed.
+      onCarteBoardPress={emplacements.length > 0 ? taperBoard1 : undefined}
+      onCarteBoard2Press={doubleBoard && emplacements2.length > 0 ? taperBoard2 : undefined}
+    />
+  );
+
+  /**
+   * LE SOCLE : ce qu'on tape, toujours au même endroit.
+   * ──────────────────────────────────────────────────
+   * Les boutons d'action ne défilent plus. C'est le geste le plus répété du créateur — trente à
+   * quarante fois par main — et jusqu'ici le sélecteur de cartes les poussait sous le pli au flop
+   * (mesuré : 5 px de marge sur un iPhone 14, 172 px manquants sur un SE). Trois états, jamais
+   * deux à la fois : on valide un montant, on agit, ou il ne reste plus qu'à passer la street.
+   */
+  const socleContenu = !boardComplete ? null : !currentSeat ? (
+    <Pressable style={styles.primaryButton} onPress={() => onComplete(finalBoard(), finalBoard2(), [], active)}>
+      <Text style={styles.primaryText}>Continuer</Text>
+    </Pressable>
+  ) : enteringAmount ? (
+    <View style={styles.row}>
+      <Pressable
+        style={styles.secondaryButton}
+        onPress={() => {
+          setAmountError(null);
+          setEnteringAmount(null);
+        }}
+      >
+        <Text style={styles.secondaryText}>Annuler</Text>
+      </Pressable>
+      <Pressable style={styles.primaryButton} onPress={confirmAmount}>
+        <Text style={styles.primaryText}>Valider</Text>
+      </Pressable>
+    </View>
+  ) : (
+    <View style={styles.row}>
+    {canCheck ? (
+      <Pressable style={styles.actionButton} onPress={handleCheck}>
+        <Text style={styles.actionText}>Check</Text>
+      </Pressable>
+    ) : (
+      <>
+        <Pressable style={styles.actionButton} onPress={handleFold}>
+          <Text style={styles.actionText}>Fold</Text>
+        </Pressable>
+        <Pressable style={styles.actionButton} onPress={handleCall}>
+          <Text style={styles.actionText}>
+            Suivre ({fmt(callTo)}){isCallAllIn ? ' · tapis' : ''}
+          </Text>
+        </Pressable>
+      </>
+    )}
+    {/* Même traitement que Fold et Suivre : au poker aucune de ces actions n'est
+        « la bonne », et Relancer était le seul en orange plein — la couleur d'appel
+        de la marque, qui poussait vers la relance sans que ce soit voulu. Seul
+        Tapis reste distinct, parce qu'il est irréversible. */}
+    {currentRemaining > betAmount && (
+      <Pressable
+        style={styles.actionButton}
+        onPress={() => {
+          setAmountError(null);
+          setEnteringAmount(betAmount > 0 ? 'raise' : 'bet');
+        }}
+      >
+        <Text style={styles.actionText}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
+      </Pressable>
+    )}
+    <Pressable style={styles.allInButton} onPress={handleAllIn}>
+      <Text style={styles.allInText}>Tapis ({fmt(currentRemaining)})</Text>
+    </Pressable>
+    </View>
+  );
+
   return (
     <WizardScreen
       title={STREET_TITLES[street]}
-      subtitle={boardCount > 0 ? 'Cartes puis actions' : 'Actions des joueurs'}
+      /* Pas de sous-titre : la table dit ce que la phrase disait. */
       onBack={onBack}
+      zoneFixe={table}
+      socle={socleContenu}
+      rangeeFixe={
+        <>
+          {/* Plus de titre « Le turn » : la carte attendue se dessine en pointillés SUR LE BOARD,
+              à sa place exacte. Rien à annoncer que la table ne montre déjà. */}
+          <View />
+          {history.length > 0 ? (
+            <Pressable onPress={handleUndo} style={styles.undoButton}>
+              <Text style={styles.undoText}>↩ Annuler</Text>
+            </Pressable>
+          ) : null}
+        </>
+      }
       step={step}
       totalSteps={totalSteps}
       footerLink={
@@ -548,86 +915,42 @@ export function StreetStep({
           : undefined
       }
     >
-      {boardCount > 0 && (
+      {/*
+        La condition porte sur les EMPLACEMENTS, pas sur le board : au préflop il n'y a aucune carte
+        de board à choisir (`boardCount` vaut 0), mais retirer une carte de Hero y ouvre quand même
+        un trou — et sans sélecteur, ce trou ne se remplissait jamais. Signalé par Victor le 31/08.
+      */}
+      {tousLesEmplacements.length > 0 && !boardComplete && (
         <View style={styles.boardSection}>
-          {boardCount2 > 0 && <Text style={styles.boardLabel}>Board 1</Text>}
+          {/*
+            UN SEUL SÉLECTEUR, même en double board. Ni aperçu, ni libellés « Board 1 / Board 2 » :
+            les emplacements sont SUR LE FEUTRE, à leur place, et c'est le trou en pointillés qui dit
+            où ira la prochaine carte. Deux grilles obligeaient à défiler pour attaquer le second
+            board une fois le premier fini — pour choisir dans une liste identique à celle du dessus.
+          */}
           <MultiCardPicker
-            count={boardCount}
-            selected={boardCards}
-            // En double board, une carte prise sur le board 2 ne doit pas être re-sélectionnable ici.
-            disabledCards={[...usedCardsElsewhere, ...(boardCards2.filter(Boolean) as Card[])]}
-            onChange={(next) => {
-              const filled = [...next];
-              while (filled.length < boardCount) filled.push(undefined);
-              setBoardCards(filled);
-            }}
+            sansApercu
+            count={tousLesEmplacements.length}
+            selected={tousLesEmplacements}
+            disabledCards={disponiblesExclues}
+            onChange={surChoixDuSelecteur}
           />
-          {boardCount2 > 0 && (
-            <>
-              <Text style={[styles.boardLabel, styles.boardLabel2]}>Board 2</Text>
-              <MultiCardPicker
-                count={boardCount2}
-                selected={boardCards2}
-                disabledCards={[...usedCardsElsewhere, ...(boardCards.filter(Boolean) as Card[])]}
-                onChange={(next) => {
-                  const filled = [...next];
-                  while (filled.length < boardCount2) filled.push(undefined);
-                  setBoardCards2(filled);
-                }}
-              />
-            </>
-          )}
         </View>
       )}
 
       {boardComplete && (
         <View style={styles.actionSection}>
-          {/* Rappel du pot : repère pour estimer une taille de mise (ex: "environ 1/3 pot") */}
-          <View style={styles.potRow}>
-            <Text style={styles.potLabel}>Pot</Text>
-            <Text style={styles.potValue}>{fmt(potNow)}</Text>
-          </View>
-
-          <View style={styles.summary}>
-            {recorded.map((a) => (
-              <Text key={a.id} style={styles.summaryLine}>
-                {seatDisplay(seats.find((s) => s.id === a.seatId)!, seats, priorActions)} · {a.type}
-                {a.amount ? ` ${fmt(a.amount)}` : ''}
-              </Text>
-            ))}
-          </View>
-
-          {/* Rappel des stacks restants pour chaque joueur encore en jeu */}
-          <View style={styles.stacksRow}>
-            {getActingOrder(seats, street)
-              .filter((s) => active.includes(s.id))
-              .map((s) => (
-                <View key={s.id} style={styles.stackChip}>
-                  <Text style={styles.stackChipName}>{seatDisplay(s, seats, priorActions)}</Text>
-                  <Text style={styles.stackChipValue}>{fmt(Math.max(remainingFor(s.id), 0))}</Text>
-                </View>
-              ))}
-          </View>
-
+          {/*
+            LE RAPPEL TEXTUEL A DISPARU ICI — pot, liste des actions, rangée des stacks.
+            La table au-dessus dit les trois, et mieux : elle montre le pot au centre, les mises
+            posées devant chaque joueur, les stacks sur les badges, et surtout ce que le texte ne
+            disait pas — les streets précédentes, les positions, et les cartes de Hero.
+            La liste des actions, en plus, se coupait en silence à la septième (`maxHeight: 100`
+            sans défilement). Décision de Victor du 30/08/2026 : elle disparaît, une version texte
+            copiable apparaîtra en fin de création et dans le menu « ⋯ » d'une main publiée.
+          */}
           {currentSeat ? (
             <>
-              <View style={styles.actorRow}>
-                <Text style={[typography.postTitle, styles.actor]}>
-                  {/* "Hero agit", jamais "Hero (CO) agit" : sur cette ligne, Hero c'est déjà "toi"
-                      sans ambiguïté possible — la position entre parenthèses n'ajoute rien qu'un
-                      autre joueur ne pourrait tirer du contexte, contrairement au résumé des
-                      actions et à la liste des stacks juste au-dessus, où elle aide à s'y retrouver
-                      entre plusieurs sièges. */}
-                  {currentSeat.isHero ? currentSeat.playerName ?? 'Hero' : seatDisplay(currentSeat, seats, priorActions)} agit · reste{' '}
-                  {fmt(Math.max(remainingFor(currentSeatId), 0))}
-                </Text>
-                {history.length > 0 && (
-                  <Pressable onPress={handleUndo} style={styles.undoButton}>
-                    <Text style={styles.undoText}>↩ Annuler</Text>
-                  </Pressable>
-                )}
-              </View>
-
               {enteringAmount ? (
                 <View>
                   {/* Raccourcis de taille (BB au préflop, %pot ensuite), pour miser/relancer sans calcul
@@ -670,20 +993,6 @@ export function StreetStep({
                     }}
                   />
                   {amountError && <Text style={styles.amountError}>{amountError}</Text>}
-                  <View style={styles.row}>
-                    <Pressable
-                      style={styles.secondaryButton}
-                      onPress={() => {
-                        setAmountError(null);
-                        setEnteringAmount(null);
-                      }}
-                    >
-                      <Text style={styles.secondaryText}>Annuler</Text>
-                    </Pressable>
-                    <Pressable style={styles.primaryButton} onPress={confirmAmount}>
-                      <Text style={styles.primaryText}>Valider</Text>
-                    </Pressable>
-                  </View>
                 </View>
               ) : (
                 <>
@@ -726,53 +1035,12 @@ export function StreetStep({
                       </View>
                     </View>
                   )}
-                  <View style={styles.row}>
-                  {canCheck ? (
-                    <Pressable style={styles.actionButton} onPress={handleCheck}>
-                      <Text style={styles.actionText}>Check</Text>
-                    </Pressable>
-                  ) : (
-                    <>
-                      <Pressable style={styles.actionButton} onPress={handleFold}>
-                        <Text style={styles.actionText}>Fold</Text>
-                      </Pressable>
-                      <Pressable style={styles.actionButton} onPress={handleCall}>
-                        <Text style={styles.actionText}>
-                          Suivre ({fmt(callTo)}){isCallAllIn ? ' · tapis' : ''}
-                        </Text>
-                      </Pressable>
-                    </>
-                  )}
-                  {/* Même traitement que Fold et Suivre : au poker aucune de ces actions n'est
-                      « la bonne », et Relancer était le seul en orange plein — la couleur d'appel
-                      de la marque, qui poussait vers la relance sans que ce soit voulu. Seul
-                      Tapis reste distinct, parce qu'il est irréversible. */}
-                  {currentRemaining > betAmount && (
-                    <Pressable
-                      style={styles.actionButton}
-                      onPress={() => {
-                        setAmountError(null);
-                        setEnteringAmount(betAmount > 0 ? 'raise' : 'bet');
-                      }}
-                    >
-                      <Text style={styles.actionText}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
-                    </Pressable>
-                  )}
-                  <Pressable style={styles.allInButton} onPress={handleAllIn}>
-                    <Text style={styles.allInText}>Tapis ({fmt(currentRemaining)})</Text>
-                  </Pressable>
-                  </View>
                 </>
               )}
             </>
           ) : (
-            // Plus personne ne peut agir (tous les joueurs restants sont à tapis) : on passe la street.
-            <View>
-              <Text style={styles.allInNote}>Les joueurs restants sont à tapis.</Text>
-              <Pressable style={styles.primaryButton} onPress={() => onComplete(finalBoard(), finalBoard2(), [], active)}>
-                <Text style={styles.primaryText}>Continuer</Text>
-              </Pressable>
-            </View>
+            // Plus personne ne peut agir : le bouton « Continuer » est descendu dans le socle.
+            <Text style={styles.allInNote}>Les joueurs restants sont à tapis.</Text>
           )}
         </View>
       )}
@@ -795,29 +1063,11 @@ const styles = StyleSheet.create({
   boardLabel2: {
     marginTop: 8,
   },
+  // Le filet qui séparait le sélecteur de cartes des actions est remonté dans la rangée fixe, sous
+  // la table (cf. `WizardScreen`) : la vraie frontière n'est plus entre deux blocs de contenu, elle
+  // est entre ce qui ne bouge pas et ce qui défile.
   actionSection: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: borders.hairline,
-    paddingTop: 16,
     marginTop: 4,
-  },
-  potRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-    marginBottom: 12,
-  },
-  potLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  potValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.tableFelt,
   },
   potShortcutsRow: {
     flexDirection: 'row',
@@ -877,49 +1127,6 @@ const styles = StyleSheet.create({
   foldUntilChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  summary: {
-    marginBottom: 12,
-    maxHeight: 100,
-  },
-  summaryLine: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  stacksRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 16,
-  },
-  stackChip: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    backgroundColor: tints.faint,
-  },
-  stackChipName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  stackChipValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.tableFelt,
-  },
-  actorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  actor: {
     color: colors.textPrimary,
   },
   undoButton: {

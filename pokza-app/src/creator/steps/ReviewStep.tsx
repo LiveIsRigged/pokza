@@ -1,9 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { borders, colors } from '../../theme/theme';
+import { borders, colors, radius, spacing } from '../../theme/theme';
 import type { Group } from '../../data/groups';
 import { GroupChoice } from '../../groups/GroupChoice';
 import { Chip } from '../Chip';
+import { Pressable } from '../../components/ui/Pressable';
+import { PlayIcon, TextLinesIcon } from '../../components/ui/icons';
 import { WizardScreen } from '../WizardScreen';
 import { DESCRIPTION_MAX_LENGTH, type ReviewData } from '../types';
 import {
@@ -47,6 +49,15 @@ interface ReviewStepProps {
    * publication, et le bouton doit le dire. Absent = création normale.
    */
   republication?: boolean;
+  /**
+   * Ouvre l'aperçu plein écran : la main rejouée dans le replayer du feed, commandes comprises
+   * (cf. `ApercuMainScreen`). C'est le dernier écran avant la mise en ligne, et le seul endroit
+   * d'où l'on peut aller REVOIR le déroulé sans reculer dans l'assistant ni perdre ce qu'on a
+   * déjà tapé.
+   */
+  onRevoirLaMain?: () => void;
+  /** Ouvre la main en phrases, à copier ailleurs (cf. `MainEnTexteScreen`). */
+  onVoirLeTexte?: () => void;
 }
 
 export function ReviewStep({
@@ -62,6 +73,8 @@ export function ReviewStep({
   onOpenGroupPicker,
   submitting,
   republication = false,
+  onRevoirLaMain,
+  onVoirLeTexte,
 }: ReviewStepProps) {
   const update = (patch: Partial<ReviewData>) => onChange({ ...value, ...patch });
 
@@ -101,6 +114,26 @@ export function ReviewStep({
       totalSteps={totalSteps}
     >
       <View>
+        {/* La rangée d'outils : ce qui sert à VÉRIFIER la main, avant les champs qui l'habillent.
+            En haut parce qu'on vérifie d'abord et qu'on écrit ensuite — un titre se choisit mieux
+            quand on vient de revoir le coup. */}
+        {onRevoirLaMain || onVoirLeTexte ? (
+          <View style={styles.outils}>
+            {onRevoirLaMain ? (
+              <Pressable style={styles.outil} onPress={onRevoirLaMain}>
+                <PlayIcon size={18} color={colors.textPrimary} />
+                <Text style={styles.outilTexte}>Revoir la main</Text>
+              </Pressable>
+            ) : null}
+            {onVoirLeTexte ? (
+              <Pressable style={styles.outil} onPress={onVoirLeTexte}>
+                <TextLinesIcon size={18} color={colors.textPrimary} />
+                <Text style={styles.outilTexte}>La main en texte</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Compteur sur le titre comme sur la description : a 80 caracteres la limite ne se
             rencontrait jamais, a 40 on la touche en pleine phrase. Sans ce chiffre, l auteur bute
             sur un mur invisible. Il affiche aussi "52/40" sur une ancienne main trop longue —
@@ -199,6 +232,26 @@ export function ReviewStep({
 }
 
 const styles = StyleSheet.create({
+  outils: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  outil: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: borders.default,
+  },
+  outilTexte: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
   label: {
     fontSize: 12,
     fontWeight: '700',

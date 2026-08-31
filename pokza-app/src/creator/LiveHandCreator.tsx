@@ -8,6 +8,9 @@ import { StreetStep } from './steps/StreetStep';
 import { ShowdownStep } from './steps/ShowdownStep';
 import { StreetCorrectionStep } from './steps/StreetCorrectionStep';
 import { ReviewStep } from './steps/ReviewStep';
+import { ApercuMainScreen } from './ApercuMainScreen';
+import { MainEnTexteScreen } from '../components/post/MainEnTexteScreen';
+import type { PartieDecrite } from '../utils/denomination';
 import { appliquerContexteAuxSieges, buildSeats } from './positions';
 import { straddlesAPoster } from './straddle';
 import { committedBySeat } from '../engine/handEngine';
@@ -300,23 +303,34 @@ export function LiveHandCreator({
   // acceptées. Le garde-fou ne peut donc être que côté client.
   const [submitting, setSubmitting] = useState(false);
 
+  /** Aperçu plein écran ouvert depuis l'étape « Publier » (cf. `ApercuMainScreen`). */
+  const [apercu, setApercu] = useState<Hand | null>(null);
+  /** La même main, mais en phrases (cf. `MainEnTexteScreen`). Figée à l'ouverture, comme l'aperçu. */
+  const [texte, setTexte] = useState<PartieDecrite | null>(null);
+
   /**
-   * Publie. Les surcharges servent à la correction sans ressaisie : quand l'auteur ne touche qu'à
-   * des champs non invalidants, l'étape publie DIRECTEMENT au lieu de le faire défiler à travers
-   * des écrans qu'il n'a aucune raison de revoir. Les valeurs modifiées ne sont pas encore dans
-   * l'état React au moment de l'appel — d'où le passage explicite plutôt qu'une lecture d'état.
+   * LA MAIN TELLE QU'ELLE SERA PUBLIÉE.
+   * ───────────────────────────────────
+   * Extraite de `finalize` pour qu'un SECOND appelant s'en serve : l'aperçu de l'étape
+   * « Publier », qui rejoue la main dans le replayer du feed avant la mise en ligne. Il faut que
+   * ce soit le même objet, bâti par le même code — un aperçu monté à côté montrerait une main
+   * voisine de celle qui part, et le seul défaut qu'il ne saurait pas montrer serait justement
+   * celui du montage.
+   *
+   * Les surcharges servent à la correction sans ressaisie : les valeurs modifiées ne sont pas
+   * encore dans l'état React au moment de l'appel — d'où le passage explicite plutôt qu'une
+   * lecture d'état.
    */
-  const finalize = async (
+  const construitMain = (
     finalActions: Action[],
     finalBoard: Board,
     surcharge: Partial<Pick<Snapshot, 'context' | 'seats' | 'heroCards' | 'board2' | 'revealedCards'>> = {}
-  ) => {
+  ): Hand => {
     const ctx = surcharge.context ?? context;
     const sts = surcharge.seats ?? seats;
     const hc = surcharge.heroCards ?? heroCards;
     const b2 = surcharge.board2 ?? board2;
     const rc = surcharge.revealedCards ?? revealedCards;
-    if (submitting) return;
     // Un adversaire n'est "connu" (et donc départageable/inclus dans l'équité) que si TOUTES ses
     // cartes ont été saisies — une main Omaha partielle (< count cartes) n'est pas évaluable, on la
     // traite alors comme mucked, exactement comme au Hold'em où il fallait les 2 cartes.
@@ -327,7 +341,7 @@ export function LiveHandCreator({
       if (cartesMontrees.length === cardCount) return { ...s, holeCards: cartesMontrees };
       return s;
     });
-    const hand: Hand = {
+    return {
       id: `hand-${Date.now()}`,
       variant: ctx.variant,
       gameType: ctx.gameType,
@@ -357,6 +371,21 @@ export function LiveHandCreator({
       stoppedAtSeatId: stoppedAtSeatId ?? undefined,
       revealShowdown,
     };
+  };
+
+  /**
+   * Publie. Les surcharges servent à la correction sans ressaisie : quand l'auteur ne touche qu'à
+   * des champs non invalidants, l'étape publie DIRECTEMENT au lieu de le faire défiler à travers
+   * des écrans qu'il n'a aucune raison de revoir.
+   */
+  const finalize = async (
+    finalActions: Action[],
+    finalBoard: Board,
+    surcharge: Partial<Pick<Snapshot, 'context' | 'seats' | 'heroCards' | 'board2' | 'revealedCards'>> = {}
+  ) => {
+    if (submitting) return;
+    const ctx = surcharge.context ?? context;
+    const hand = construitMain(finalActions, finalBoard, surcharge);
     const post: Post = {
       id: `post-${Date.now()}`,
       authorId,
@@ -398,12 +427,76 @@ export function LiveHandCreator({
   // jusqu'ici passés au SEUL écran préflop — flop/turn/river retombaient donc sur le défaut 'cash',
   // et un tournoi y affichait « 16777€ » au lieu de « 16,8k ». En bomb pot, la « BB » est le
   // montant de la bombe et il n'y a pas de petite blinde : même convention que `finalize`.
+  /**
+   * CORRIGER UNE CARTE D'UNE STREET DÉJÀ TOMBÉE, depuis l'étape où l'on se trouve.
+   * ─────────────────────────────────────────────────────────────────────────────
+   * L'index est celui du board À PLAT tel que la table le montre : 0-2 le flop, 3 le turn, 4 la
+   * river. Corriger une carte du flop depuis la river ne rend aucune mise illégale — ce sont les
+   * montants qui contraignent le déroulé, pas les cartes — donc rien n'est à ressaisir.
+   *
+   * La correction est appliquée AUSSI à tous les instantanés d'historique : sans ça, un « Retour »
+   * ferait ressusciter la carte qu'on vient de remplacer, en silence. Les instantanés pris avant
+   * que la carte n'existe sont laissés tels quels (le garde-fou sur la longueur du flop).
+   */
+  const appliqueCorrection = (index: number, carte: Card) => {
+    return (b: Board): Board => {
+      if (index < 3) {
+        const flop = [...(b.flop ?? [])];
+        if (flop.length < 3) return b;
+        flop[index] = carte;
+        return { ...b, flop: flop as [Card, Card, Card] };
+      }
+      if (index === 3) return b.turn ? { ...b, turn: carte } : b;
+      return b.river ? { ...b, river: carte } : b;
+    };
+  };
+
+  const corrigerBoard = (index: number, carte: Card) => {
+    const applique = appliqueCorrection(index, carte);
+    setBoard(applique);
+    setHistory((h) => h.map((snap) => ({ ...snap, board: applique(snap.board) })));
+  };
+
+  /** La même chose sur le SECOND board d'un bomb pot double board. */
+  const corrigerBoard2 = (index: number, carte: Card) => {
+    const applique = appliqueCorrection(index, carte);
+    setBoard2(applique);
+    setHistory((h) => h.map((snap) => ({ ...snap, board2: applique(snap.board2) })));
+  };
+
   const tableProps = {
     gameType: context.gameType,
     currency: context.currency,
     variant: context.variant,
     sb: context.bombPot ? 0 : context.sb,
     bb: context.bombPot ? context.bombAnte : context.bb,
+    // La table du créateur montre ce que l'auteur SAIT : ses propres cartes, et le board déjà
+    // tombé. Sans ça, il saisit les actions du flop sans pouvoir revoir la main qu'il a choisie
+    // deux écrans plus tôt — c'était le cas jusqu'ici.
+    heroCards: heroCards.filter(Boolean) as Card[],
+    boardAvant: [
+      ...(board.flop ?? []),
+      ...(board.turn ? [board.turn] : []),
+      ...(board.river ? [board.river] : []),
+    ],
+    onCorrigerBoard: corrigerBoard,
+    board2Avant: [
+      ...(board2.flop ?? []),
+      ...(board2.turn ? [board2.turn] : []),
+      ...(board2.river ? [board2.river] : []),
+    ],
+    onCorrigerBoard2: corrigerBoard2,
+    /**
+     * Corriger UNE carte de Hero sans remonter à l'étape 2. Symétrique du board : ses cartes sont
+     * sur le feutre pendant toute la main, c'est donc là qu'on les change. Une carte de Hero ne
+     * contraint aucune mise — rien à ressaisir — mais elle vit dans les instantanés d'historique
+     * comme le board, d'où la même répercussion : sans elle, un « Retour » ramènerait l'ancienne.
+     */
+    onCorrigerHero: (index: number, carte: Card) => {
+      const applique = (cartes: (Card | undefined)[]) => cartes.map((c, i) => (i === index ? carte : c));
+      setHeroCards(applique);
+      setHistory((h) => h.map((snap) => ({ ...snap, heroCards: applique(snap.heroCards) })));
+    },
   };
 
   const totalSteps = totalStepsFor(context.bombPot);
@@ -488,6 +581,24 @@ export function LiveHandCreator({
           onChange={(seatId, cards) => setRevealedCards((r) => ({ ...r, [seatId]: cards }))}
           revealShowdown={revealShowdown}
           onChangeRevealShowdown={setRevealShowdown}
+          // De quoi dessiner la table de fin de main (cf. `ShowdownStep`) : le board complet, la
+          // main de Hero, et qui est encore debout.
+          board={[
+            ...(board.flop ?? []),
+            ...(board.turn ? [board.turn] : []),
+            ...(board.river ? [board.river] : []),
+          ]}
+          board2={[
+            ...(board2.flop ?? []),
+            ...(board2.turn ? [board2.turn] : []),
+            ...(board2.river ? [board2.river] : []),
+          ]}
+          heroCards={heroCards.filter(Boolean) as Card[]}
+          activeSeatIds={activeSeatIds}
+          gameType={context.gameType}
+          currency={context.currency}
+          bb={context.bombPot ? context.bombAnte : context.bb}
+          holeCardCount={holeCardCount(context.variant)}
           onBack={goBack}
           nextLabel={libelleBouton(false)}
           nextBloque={aLEntree && !abattageModifie}
@@ -614,6 +725,7 @@ export function LiveHandCreator({
       return (
         <HoleCardsStep
           count={holeCardCount(context.variant)}
+          context={context}
           cards={heroCards}
           onChange={setHeroCards}
           step={step}
@@ -852,6 +964,20 @@ export function LiveHandCreator({
           defaultGroupId={preselectedGroupId}
           onCreateGroup={onCreateGroup}
           onOpenGroupPicker={() => setGroupPickerOpen(true)}
+          // La main est bâtie À L'OUVERTURE et rangée telle quelle : le replayer travaille ainsi
+          // sur un objet stable, là où un calcul à chaque rendu lui en donnerait un neuf à chaque
+          // fois (son identifiant contient `Date.now()`).
+          onRevoirLaMain={() => setApercu(construitMain(actions, board))}
+          // Le contexte part avec la main : l'en-tête du texte nomme la partie (lieu, cave,
+          // niveau), et à cette étape il n'existe encore aucun `Post` d'où le tirer.
+          onVoirLeTexte={() =>
+            setTexte({
+              hand: construitMain(actions, board),
+              location: context.location,
+              buyIn: context.buyIn,
+              level: context.level,
+            })
+          }
         />
       );
 
@@ -879,6 +1005,8 @@ export function LiveHandCreator({
       {/* Frère de l'étape et non enfant : le glissement de bord du wizard est attaché à
           `WizardScreen`, qui n'est pas un ancêtre d'ici — le geste ne traverse donc pas le
           sélecteur pour reculer d'une étape dans son dos. */}
+      {apercu && <ApercuMainScreen hand={apercu} onFermer={() => setApercu(null)} />}
+      {texte && <MainEnTexteScreen visible partie={texte} onFermer={() => setTexte(null)} />}
       {groupPickerOpen && (
         <GroupPickerScreen
           groups={orderedGroups}

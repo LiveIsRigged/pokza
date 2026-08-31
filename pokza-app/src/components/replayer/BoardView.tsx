@@ -2,15 +2,23 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import type { Card, GameType } from '../../types/poker';
 import { colors } from '../../theme/theme';
-import { boardCardSize } from '../../engine/layout';
+import { boardCardSize, GABARIT_FEED, type Gabarit } from '../../engine/layout';
 import { CardView } from './CardView';
+import { Pressable } from '../ui/Pressable';
 import { ChipsView } from './ChipsView';
 import type { CodeDevise } from '../../utils/currency';
 
 interface BoardViewProps {
-  cards: Card[];
+  /**
+   * Les cartes du board, dans l'ordre. Un TROU (`undefined`) dans la longueur fournie est une carte
+   * ATTENDUE : elle se dessine en pointillés, à sa place. C'est ce qui permet au créateur de
+   * montrer « il manque le turn » sur le feutre plutôt que dans un formulaire sous la table.
+   * Le replayer, lui, ne passe que des cartes déjà révélées : il n'a jamais de trou, et les
+   * emplacements au-delà de la longueur restent vides comme avant.
+   */
+  cards: (Card | undefined)[];
   /** Second board (double board bomb pot) — affiché sous le premier. Absent = un seul board. */
-  cards2?: Card[];
+  cards2?: (Card | undefined)[];
   pot: number;
   /** Une part de pot qui file vers un vainqueur : sa position (relative au centre de la table) et son
    * MONTANT explicite. Tableau vide tant que la main n'est pas résolue (la pastille reste alors
@@ -34,6 +42,23 @@ interface BoardViewProps {
   verticalOffset?: number;
   bb: number;
   useBB?: boolean;
+  /** Taille des cartes du board (cf. `Gabarit`). Absent = le gabarit du feed, inchangé. */
+  gabarit?: Gabarit;
+  /**
+   * Pas de rangée de board du tout — ni cartes, ni emplacements vides. Sert aux étapes de RÉGLAGE
+   * du créateur, où la main n'a pas commencé : réserver cinq emplacements pour des cartes qui ne
+   * seront distribuées qu'à l'écran suivant coûterait 53 px de hauteur pour ne rien montrer.
+   */
+  sansCartes?: boolean;
+  /**
+   * Toucher UNE carte du board (index dans la rangée). Fourni, chaque emplacement en jeu devient
+   * une cible — carte posée comme trou en attente. Absent (le feed), la rangée reste inerte et ne
+   * paye aucun nœud supplémentaire.
+   */
+  onCartePress?: (index: number) => void;
+  /** Idem pour la SECONDE rangée (double board du bomb pot). Chaque board a ses propres
+   *  emplacements et son propre sélecteur : une carte choisie va dans le board qu'on a touché. */
+  onCartePress2?: (index: number) => void;
 }
 
 const CARD_GAP = 4;
@@ -78,25 +103,45 @@ function PotShare({
   );
 }
 
-/** Une rangée de 5 emplacements de board (cartes révélées ou trous vides). */
+/**
+ * Une rangée de 5 emplacements de board. Trois états par emplacement :
+ *   • une carte posée ;
+ *   • un TROU EN ATTENTE (dans la longueur fournie, mais pas encore choisi) — pointillés ;
+ *   • rien du tout (au-delà de la longueur fournie) — l'emplacement garde sa place, invisible.
+ */
 function BoardRow({
   cards,
   cardWidth,
   cardHeight,
   style,
+  onCartePress,
 }: {
-  cards: Card[];
+  cards: (Card | undefined)[];
   cardWidth: number;
   cardHeight: number;
   style?: object;
+  onCartePress?: (index: number) => void;
 }) {
   return (
     <View style={[styles.cardsRow, { gap: CARD_GAP }, style]}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <View key={i} style={{ width: cardWidth, height: cardHeight }}>
-          {cards[i] ? <CardView card={cards[i]} width={cardWidth} height={cardHeight} /> : null}
-        </View>
-      ))}
+      {[0, 1, 2, 3, 4].map((i) => {
+        const enJeu = i < cards.length;
+        const contenu = cards[i] ? (
+          <CardView card={cards[i]} width={cardWidth} height={cardHeight} />
+        ) : enJeu ? (
+          <View style={[styles.emplacementAttendu, { width: cardWidth, height: cardHeight }]} />
+        ) : null;
+        return (
+          <View key={i} style={{ width: cardWidth, height: cardHeight }}>
+            {/* Enveloppe tactile seulement là où elle sert (cf. `onCartePress`). */}
+            {onCartePress && enJeu ? (
+              <Pressable onPress={() => onCartePress(i)}>{contenu}</Pressable>
+            ) : (
+              contenu
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -113,15 +158,22 @@ export function BoardView({
   verticalOffset = 0,
   bb,
   useBB = false,
+  gabarit = GABARIT_FEED,
+  sansCartes = false,
+  onCartePress,
+  onCartePress2,
 }: BoardViewProps) {
   // Les 5 cartes ne doivent jamais déborder sur les badges des sièges latéraux : on les
   // dimensionne à partir de la largeur réelle de la table plutôt qu'une taille fixe (même formule
   // que `SeatView`, via `boardCardSize`, pour que les deux calculs restent synchronisés).
-  const { width: cardWidth, height: cardHeight } = boardCardSize(tableWidth);
+  const { width: cardWidth, height: cardHeight } = boardCardSize(tableWidth, gabarit);
   const doubleBoard = Boolean(cards2);
 
   return (
-    <View style={[styles.wrapper, { transform: [{ translateY: verticalOffset }] }]} pointerEvents="none">
+    <View
+      style={[styles.wrapper, { transform: [{ translateY: verticalOffset }] }]}
+      pointerEvents={onCartePress || onCartePress2 ? 'box-none' : 'none'}
+    >
       <View style={styles.chipsFloat}>
         {winnerShares.length === 0 ? (
           <ChipsView amount={pot} gameType={gameType} currency={currency} isWinning={false} bb={bb} useBB={useBB} />
@@ -140,9 +192,22 @@ export function BoardView({
         )}
       </View>
 
-      <BoardRow cards={cards} cardWidth={cardWidth} cardHeight={cardHeight} />
-      {doubleBoard && (
-        <BoardRow cards={cards2!} cardWidth={cardWidth} cardHeight={cardHeight} style={styles.secondBoard} />
+      {!sansCartes && (
+        <BoardRow
+          cards={cards}
+          cardWidth={cardWidth}
+          cardHeight={cardHeight}
+          onCartePress={onCartePress}
+        />
+      )}
+      {doubleBoard && !sansCartes && (
+        <BoardRow
+          cards={cards2!}
+          cardWidth={cardWidth}
+          cardHeight={cardHeight}
+          style={styles.secondBoard}
+          onCartePress={onCartePress2}
+        />
       )}
 
       {unresolvedNote && (
@@ -192,6 +257,16 @@ const styles = StyleSheet.create({
   },
   cardsRow: {
     flexDirection: 'row',
+  },
+  // La carte qu'on attend. Elle se dessine SUR LE FEUTRE, pas sur le parchemin : les pointillés du
+  // sélecteur (gris sur fond clair) y seraient invisibles. Assez présente pour dire « il manque ça
+  // ici », assez discrète pour ne pas se faire prendre pour une carte posée.
+  emplacementAttendu: {
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.38)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   // Le second board se pose juste sous le premier, avec un petit écart pour bien les distinguer.
   secondBoard: {

@@ -87,7 +87,7 @@ export function totalReplaySteps(hand: Hand): number {
  * première frame (cf. `computeHandState`, qui inclut toujours tous les events jusqu'à `step` exclu,
  * skippés ou non).
  */
-const MECHANICAL_POSTS = new Set(['post-sb', 'post-bb', 'post-ante', 'post-straddle']);
+export const MECHANICAL_POSTS = new Set(['post-sb', 'post-bb', 'post-ante', 'post-straddle']);
 export function initialReplayStep(hand: Hand): number {
   const events = buildReplayEvents(hand);
   let i = 0;
@@ -660,17 +660,35 @@ export function determineWinner(hand: Hand): string[] {
 }
 
 /**
+ * UNE ACTION, EN UNE PHRASE. Le seul narrateur de la main : la bulle du replayer, la feuille de
+ * correction et l'export texte passent tous par ici.
+ *
  * `isAllIn` : ajoute le suffixe "— ALL-IN" quand cette action précise vide le stack du joueur.
  * `useBB` : affiche le montant en grosses blindes plutôt qu'en jetons bruts (préférence globale
  * au feed, cf. `useDisplayUnit`).
+ * `etiquette` : comment nommer le siège. Par défaut `seatLabel`, celui des badges de la table ;
+ * l'export texte, lui, écrit « CO (Hero) » — à l'écran la table dit où chacun est assis, un texte
+ * collé ailleurs n'a que ses lignes.
+ * `langue` : le vocabulaire. 'fr' dans l'app, 'en' pour l'export texte, où Victor a demandé les
+ * termes des hand histories (31/08/2026). Les deux tables vivent CÔTE À CÔTE ici et nulle part
+ * ailleurs : c'est ce qui garantit qu'une correction de forme — le montant, le « — ALL-IN », le
+ * cas tordu du straddle — profite aux deux au lieu de n'en réparer qu'une.
  */
+export interface OptionsDeLibelle {
+  isAllIn?: boolean;
+  useBB?: boolean;
+  etiquette?: (seatId: string) => string;
+  langue?: 'fr' | 'en';
+}
+
 export function describeAction(
   hand: ContexteDeLibelle,
   action: Action,
-  isAllIn = false,
-  useBB = false
+  options: OptionsDeLibelle = {}
 ): string {
-  const who = seatLabel(hand, action.seatId);
+  const { isAllIn = false, useBB = false, etiquette, langue = 'fr' } = options;
+  const en = langue === 'en';
+  const who = etiquette ? etiquette(action.seatId) : seatLabel(hand, action.seatId);
   const amount =
     action.amount != null
       ? formatChipAmount(action.amount, hand.gameType, { bb: hand.blinds.bb, useBB }, hand.currency)
@@ -678,38 +696,43 @@ export function describeAction(
   let base: string;
   switch (action.type) {
     case 'post-sb':
-      base = `${who} poste la petite blinde (${amount})`;
+      base = en ? `${who} posts the small blind (${amount})` : `${who} poste la petite blinde (${amount})`;
       break;
     case 'post-bb':
-      base = `${who} poste la grosse blinde (${amount})`;
+      base = en ? `${who} posts the big blind (${amount})` : `${who} poste la grosse blinde (${amount})`;
       break;
     case 'post-ante':
-      base = `${who} poste l'ante (${amount})`;
+      base = en ? `${who} posts the ante (${amount})` : `${who} poste l'ante (${amount})`;
       break;
     case 'post-straddle': {
       const seat = hand.seats.find((s) => s.id === action.seatId);
       const label = straddleSeatLabel(hand.seats, hand.actions, action.seatId)!.toLowerCase();
-      // Sans nom de joueur personnalisé, `who` EST déjà ce label ("Straddle"/"Double straddle"/...,
-      // cf. `seatLabel`) : le répéter donnerait "Straddle straddle (10€)". Le héros fait exception —
-      // il s'appelle toujours "Hero", jamais "Straddle" — et garde donc son verbe.
+      // Sans nom de joueur personnalisé, `who` EST déjà ce label (« Straddle »/« Double straddle »…,
+      // cf. `seatLabel`, et l'étiquette de l'export texte le reprend telle quelle) : le répéter
+      // donnerait « Straddle straddle (10€) ». Le héros fait exception — il s'appelle toujours
+      // « Hero », jamais « Straddle » — et garde donc son verbe.
       const whoEstDejaLeLabel = !seat?.isHero && !seat?.playerName;
-      base = whoEstDejaLeLabel ? `${who} poste (${amount})` : `${who} ${label} (${amount})`;
+      base = whoEstDejaLeLabel
+        ? `${who} ${en ? 'posts' : 'poste'} (${amount})`
+        : en
+          ? `${who} straddles (${amount})`
+          : `${who} ${label} (${amount})`;
       break;
     }
     case 'fold':
-      base = `${who} se couche`;
+      base = en ? `${who} folds` : `${who} se couche`;
       break;
     case 'check':
-      base = `${who} check`;
+      base = en ? `${who} checks` : `${who} check`;
       break;
     case 'call':
-      base = `${who} suit (${amount})`;
+      base = en ? `${who} calls ${amount}` : `${who} suit (${amount})`;
       break;
     case 'bet':
-      base = `${who} mise ${amount}`;
+      base = en ? `${who} bets ${amount}` : `${who} mise ${amount}`;
       break;
     case 'raise':
-      base = `${who} relance à ${amount}`;
+      base = en ? `${who} raises to ${amount}` : `${who} relance à ${amount}`;
       break;
     default:
       base = who;

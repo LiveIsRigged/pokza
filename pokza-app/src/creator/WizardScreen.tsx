@@ -34,6 +34,25 @@ interface WizardScreenProps {
    * plus lourd de l'écran, juste sous des boutons d'action qui, eux, sont le vrai sujet.
    */
   footerLink?: { label: string; onPress: () => void };
+  /**
+   * UNE ZONE QUI NE DÉFILE PAS, entre le titre et le contenu — c'est là que se pose la table du
+   * créateur. Elle est hors du `ScrollView` par nécessité, pas par confort : un calque absolu dans
+   * ce `ScrollView` défilerait avec le contenu et serait rogné (cf. `EditPostScreen.tsx:310`), et
+   * une table qui disparaît quand on descend chercher une carte ne sert à rien.
+   */
+  zoneFixe?: React.ReactNode;
+  /**
+   * La rangée qui suit immédiatement la zone fixe, elle aussi immobile : le libellé de ce qu'on est
+   * en train de faire à gauche, « ↩ Annuler » à droite. Séparée de `zoneFixe` parce qu'elle n'a rien
+   * à voir avec la table — elle la commente, et l'annulation doit rester à portée sans défiler.
+   */
+  rangeeFixe?: React.ReactNode;
+  /**
+   * Le SOCLE : ce qui reste collé au-dessus du pied, sous le contenu qui défile. Les boutons
+   * d'action d'une street y vivent, pour qu'on les tape toujours au même endroit — c'est le geste
+   * le plus répété de tout le créateur, trente à quarante fois par main.
+   */
+  socle?: React.ReactNode;
 }
 
 export function WizardScreen({
@@ -49,6 +68,9 @@ export function WizardScreen({
   scrollRef,
   footerNote,
   footerLink,
+  zoneFixe,
+  rangeeFixe,
+  socle,
 }: WizardScreenProps) {
   // Retour au glissement bord-gauche → droite, double du bouton ‹ Retour (étape précédente, ou
   // sortie du créateur à la première étape). Inerte quand l'étape n'a pas de retour.
@@ -71,14 +93,24 @@ export function WizardScreen({
       </View>
       <Text style={[typography.postTitle, styles.title]}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {/* La table déborde des marges de l'écran : elle va d'un bord à l'autre, comme dans le feed. */}
+      {zoneFixe ? <View style={styles.zoneFixe}>{zoneFixe}</View> : null}
+      {rangeeFixe ? <View style={styles.rangeeFixe}>{rangeeFixe}</View> : null}
       <ScrollView
         ref={scrollRef}
         style={styles.content}
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator={false}
+        // Sans ça, le premier appui clavier ouvert ne fait QUE refermer le clavier : il n'atteint
+        // jamais l'élément visé. Une suggestion de lieu demanderait donc deux touchers, le premier
+        // sans effet visible — et le même défaut frappe déjà toutes les pastilles de ces écrans.
+        // « handled » ne garde le clavier que si un enfant a effectivement traité l'appui ; toucher
+        // le vide le referme comme avant.
+        keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
+      {socle ? <View style={styles.socle}>{socle}</View> : null}
       {footerNote ? <Text style={styles.footerNote}>{footerNote}</Text> : null}
       {onNext && (
         <Pressable
@@ -134,6 +166,26 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  // `-18` annule le rembourrage du conteneur : la table touche les deux bords de l'écran.
+  zoneFixe: {
+    marginHorizontal: -18,
+  },
+  // Le filet marque la frontière entre ce qui ne défile pas (la table) et l'atelier en dessous.
+  // Il est ici plutôt que dans le contenu pour qu'il ne parte JAMAIS en défilement : une frontière
+  // qui s'en va n'en est plus une.
+  rangeeFixe: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: borders.hairline,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    marginBottom: 6,
+    minHeight: 28,
+  },
+  socle: {
+    paddingTop: 12,
   },
   contentInner: {
     flexGrow: 1,

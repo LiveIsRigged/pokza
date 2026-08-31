@@ -2,11 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
 import { CurrencyPicker } from '../../components/ui/CurrencyPicker';
+import { LocationInput } from '../../components/ui/LocationInput';
 import { devise } from '../../utils/currency';
 import type { Position } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
 import { borders, colors, tints } from '../../theme/theme';
 import { Chip } from '../Chip';
+import { TableVue } from '../../components/table/TableVue';
+import { GABARIT_ATELIER, hauteurTableReglage } from '../../engine/layout';
+import { potDeReglage, siegesDeReglage } from '../tableReglage';
+import { useClavierOuvert } from '../clavier';
 import { WizardScreen } from '../WizardScreen';
 import { POSITION_SETS } from '../positions';
 import { straddleAwarePositionLabel } from '../../engine/handEngine';
@@ -21,7 +26,6 @@ import { TOURNAMENT_DEFAULTS, type ContextData } from '../types';
 import {
   BUY_IN_MAX_LENGTH,
   LEVEL_DIGITS_MAX,
-  LOCATION_MAX_LENGTH,
   OPPONENT_NAME_MAX_LENGTH,
 } from '../../constants/limits';
 import { abbreviateChips, formatChipInput, parseChipAmount } from '../../utils/chipFormat';
@@ -301,10 +305,35 @@ export function ContextStep({
     onChange(next);
   };
 
+  /**
+   * LA TABLE SE REPLIE PENDANT QU'ON ÉCRIT (cf. `useClavierOuvert`).
+   * Ce formulaire fait 1 132 px ; la table lui en prend 253. Clavier ouvert, il ne resterait que
+   * 121 px pour saisir un nom ou un tapis — inutilisable. C'est la seule exception à « la table
+   * est toujours là », et elle se dit en une phrase.
+   */
+  const clavierOuvert = useClavierOuvert();
+
   return (
     <WizardScreen
       title="La table"
       subtitle="Contexte de la main"
+      zoneFixe={
+        clavierOuvert ? null : (
+          <TableVue
+            sieges={siegesDeReglage(value)}
+            board={[]}
+            sansBoard
+            sansGeste
+            pot={potDeReglage(value)}
+            gameType={value.gameType}
+            currency={value.currency}
+            bb={value.bombPot ? value.bombAnte : value.bb}
+            holeCardCount={holeCardCount(value.variant)}
+            hauteur={hauteurTableReglage(value.numPlayers)}
+            gabarit={GABARIT_ATELIER}
+          />
+        )
+      }
       onNext={onNext}
       nextLabel={nextLabel}
       nextDisabled={
@@ -644,10 +673,9 @@ export function ContextStep({
         })}
 
         <Text style={styles.label}>Lieu (optionnel)</Text>
-        <TextInput
+        <LocationInput
           style={styles.input}
           placeholder="Ex : Club Circus, Bruxelles"
-          maxLength={LOCATION_MAX_LENGTH}
           value={value.location ?? ''}
           onChangeText={(t) => update({ location: t })}
         />

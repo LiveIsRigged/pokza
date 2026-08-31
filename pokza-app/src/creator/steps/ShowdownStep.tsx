@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Pressable } from '../../components/ui/Pressable';
 import type { Action, Card, Seat } from '../../types/poker';
 import { borders, colors, typography } from '../../theme/theme';
 import { WizardScreen } from '../WizardScreen';
-import { MultiCardPicker } from '../MultiCardPicker';
-import { CardView } from '../../components/replayer/CardView';
+import { MultiCardPicker, memeCarte } from '../MultiCardPicker';
 import { Chip } from '../Chip';
 import { straddleSeatLabel } from '../../engine/handEngine';
+import { potDeFinDeMain, siegesDeFinDeMain } from '../tableReglage';
+import { TableVue, type SiegeAffiche } from '../../components/table/TableVue';
+import { GABARIT_ATELIER, GABARIT_ATELIER_DOUBLE, hauteurTableAtelier } from '../../engine/layout';
+import type { GameType } from '../../types/poker';
+import type { CodeDevise } from '../../utils/currency';
 
 interface ShowdownStepProps {
   /** Nombre de cartes fermées par joueur selon la variante : 2 (Hold'em), 4 (PLO) ou 5 (PLO5). */
@@ -37,6 +40,15 @@ interface ShowdownStepProps {
   footerNote?: string | null;
   /** Empêche de valider une correction qui ne change rien — elle coûterait ses réactions pour rien. */
   nextBloque?: boolean;
+  /** De quoi dessiner la table de fin de main : le board tombé, la main de Hero, et qui est encore là. */
+  board: Card[];
+  board2?: Card[];
+  heroCards: Card[];
+  activeSeatIds: string[];
+  gameType?: GameType;
+  currency?: CodeDevise;
+  bb: number;
+  holeCardCount: number;
 }
 
 function seatLabel(seat: Seat, seats: Seat[], actions: Action[]): string {
@@ -58,10 +70,36 @@ export function ShowdownStep({
   nextLabel,
   footerNote,
   nextBloque,
+  board,
+  board2,
+  heroCards,
+  activeSeatIds,
+  gameType = 'cash',
+  currency,
+  bb,
+  holeCardCount,
 }: ShowdownStepProps) {
   const [selectedId, setSelectedId] = useState<string>(villains[0]?.id ?? '');
 
-  const selectedCards = revealed[selectedId] ?? [];
+  /**
+   * LES MAINS ADVERSES SE SAISISSENT SUR LE FEUTRE, comme tout le reste.
+   * ────────────────────────────────────────────────────────────────────
+   * Les adversaires encore en jeu montrent des emplacements en pointillés devant eux. Taper l'un
+   * d'eux CHOISIT ce joueur (halo doré) et, s'il y avait une carte, la retire — la suivante choisie
+   * vient s'y loger. La rangée de puces « UTG / CO / BTN » qui servait à désigner le joueur a donc
+   * disparu : elle répétait des noms déjà écrits sur les badges, et la table dit mieux qui est
+   * encore là, avec quel tapis, sur quel board.
+   */
+  const emplacementsDe = (seatId: string): (Card | undefined)[] =>
+    Array.from({ length: count }, (_, i) => (revealed[seatId] ?? [])[i]);
+
+  const taperCarte = (seatId: string) => (i: number) => {
+    setSelectedId(seatId);
+    const cartes = emplacementsDe(seatId);
+    if (cartes[i]) onChange(seatId, cartes.map((c, j) => (j === i ? undefined : c)));
+  };
+
+  const selectedCards = emplacementsDe(selectedId);
 
   // Cartes indisponibles pour le siège en cours d'édition : hero + board + cartes des AUTRES adversaires.
   const disabledForSelected: Card[] = [
@@ -70,6 +108,25 @@ export function ShowdownStep({
       .filter((v) => v.id !== selectedId)
       .flatMap((v) => (revealed[v.id] ?? []).filter(Boolean) as Card[]),
   ];
+
+  const doubleBoard = Boolean(board2 && board2.length > 0);
+  const sieges: SiegeAffiche[] = siegesDeFinDeMain({
+    seats,
+    actions,
+    activeSeatIds,
+    heroCards,
+    revealed,
+    nbCartes: count,
+  }).map((s) => {
+    const adversaireEnJeu = activeSeatIds.includes(s.seat.id) && !s.seat.isHero;
+    return {
+      ...s,
+      // Le halo désigne le joueur dont on saisit la main — c'est ce que la rangée de puces disait.
+      isActive: s.seat.id === selectedId,
+      cartesAttendues: adversaireEnJeu,
+      onCartePress: adversaireEnJeu ? taperCarte(s.seat.id) : undefined,
+    };
+  });
 
   return (
     <WizardScreen
@@ -80,6 +137,20 @@ export function ShowdownStep({
       nextDisabled={Boolean(nextBloque)}
       footerNote={footerNote}
       onBack={onBack}
+      zoneFixe={
+        <TableVue
+          sieges={sieges}
+          board={board}
+          board2={doubleBoard ? board2 : undefined}
+          pot={potDeFinDeMain(actions)}
+          gameType={gameType}
+          currency={currency}
+          bb={bb}
+          holeCardCount={holeCardCount}
+          hauteur={hauteurTableAtelier(seats.length, doubleBoard)}
+          gabarit={doubleBoard ? GABARIT_ATELIER_DOUBLE : GABARIT_ATELIER}
+        />
+      }
     >
       <Text style={styles.label}>Révéler les mains à l'abattage</Text>
       <View style={styles.revealRow}>
@@ -92,43 +163,30 @@ export function ShowdownStep({
           : 'Les cartes saisies ci-dessous seront visibles dans le replay dès le début, comme celles de Hero.'}
       </Text>
 
-      <View style={styles.villainRow}>
-        {villains.map((v) => {
-          const cards = revealed[v.id] ?? [];
-          const isSelected = v.id === selectedId;
-          return (
-            <Pressable
-              key={v.id}
-              onPress={() => setSelectedId(v.id)}
-              style={[styles.villainChip, isSelected && styles.villainChipSelected]}
-            >
-              <Text style={[styles.villainName, isSelected && styles.villainNameSelected]}>
-                {seatLabel(v, seats, actions)}
-              </Text>
-              <View style={styles.miniCards}>
-                {Array.from({ length: count }).map((_, i) =>
-                  cards[i] ? (
-                    <CardView key={i} card={cards[i]} size="small" />
-                  ) : (
-                    <View key={i} style={styles.miniEmpty} />
-                  )
-                )}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-
       {selectedId ? (
         <View style={styles.pickerSection}>
           <Text style={[typography.contextLine, styles.hint]}>
             Cartes de {seatLabel(villains.find((v) => v.id === selectedId)!, seats, actions)}
           </Text>
+          {/* Sans aperçu : les emplacements sont sur le feutre, devant leur joueur. */}
           <MultiCardPicker
+            sansApercu
             count={count}
             selected={selectedCards}
             disabledCards={disabledForSelected}
-            onChange={(next) => onChange(selectedId, next)}
+            onChange={(next) => {
+              // Le sélecteur renvoie une liste TASSÉE : on replace par différence, pour qu'une carte
+              // remplacée retrouve exactement sa place au lieu de glisser au bout.
+              const posees = selectedCards.filter(Boolean) as Card[];
+              const ajoutee = next.find((c) => c && !posees.some((p) => memeCarte(p, c))) as Card | undefined;
+              if (ajoutee) {
+                const trou = selectedCards.findIndex((c) => !c);
+                if (trou >= 0) onChange(selectedId, selectedCards.map((c, i) => (i === trou ? ajoutee : c)));
+                return;
+              }
+              const retire = selectedCards.findIndex((c) => c && !next.some((n) => n && memeCarte(n, c)));
+              if (retire >= 0) onChange(selectedId, selectedCards.map((c, i) => (i === retire ? undefined : c)));
+            }}
           />
         </View>
       ) : null}
@@ -154,46 +212,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginBottom: 18,
-  },
-  villainRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 18,
-  },
-  villainChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: borders.default,
-    alignItems: 'center',
-    gap: 6,
-  },
-  villainChipSelected: {
-    borderColor: colors.gold,
-    borderWidth: 1.5,
-    backgroundColor: '#FBF3DC',
-  },
-  villainName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  villainNameSelected: {
-    color: colors.textPrimary,
-  },
-  miniCards: {
-    flexDirection: 'row',
-    gap: 3,
-  },
-  miniEmpty: {
-    width: 22,
-    height: 30,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: borders.strong,
   },
   pickerSection: {
     marginTop: 4,
