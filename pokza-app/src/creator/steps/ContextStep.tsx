@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
 import { CurrencyPicker } from '../../components/ui/CurrencyPicker';
 import { LocationInput } from '../../components/ui/LocationInput';
@@ -29,6 +29,10 @@ import {
   OPPONENT_NAME_MAX_LENGTH,
 } from '../../constants/limits';
 import { abbreviateChips, formatChipInput, parseChipAmount } from '../../utils/chipFormat';
+
+/** Le repli de la table quand un champ prend le focus : assez long pour que l'œil suive le
+ *  mouvement, assez court pour ne pas retarder la frappe. */
+const DUREE_REPLI_MS = 200;
 
 // Un TextInput contrôlé qui reflète `String(nombre)` se mord la queue dès qu'on tape une virgule
 // ou un point : "0." → parseFloat → 0 → réaffiché "0", le "." tapé disparaît aussitôt, rendant
@@ -309,16 +313,45 @@ export function ContextStep({
    * LA TABLE SE REPLIE PENDANT QU'ON ÉCRIT (cf. `useClavierOuvert`).
    * Ce formulaire fait 1 132 px ; la table lui en prend 253. Clavier ouvert, il ne resterait que
    * 121 px pour saisir un nom ou un tapis — inutilisable. C'est la seule exception à « la table
-   * est toujours là », et elle se dit en une phrase.
+   * est toujours là », et elle vaut pour TOUS les champs de l'étape, pas seulement les noms.
+   *
+   * ELLE SE REPLIE, ELLE NE S'ÉTEINT PAS (Victor, 31/08). Rendre `null` faisait deux choses
+   * brutales dans la même image : la table disparaissait sans transition, et tout le formulaire
+   * remontait de 253 px d'un coup. Rien ne bougeait, tout se téléportait — et ça se lisait comme
+   * un plantage. La hauteur s'anime donc, et le formulaire suit le mouvement au lieu de sauter.
+   *
+   * La hauteur vient de l'INTERPOLATION et non d'une valeur figée à l'ouverture : le nombre de
+   * joueurs peut changer pendant que la table est repliée (c'est un champ de cette étape), et
+   * `outputRange` est recalculé à chaque rendu. Sans ça, elle reviendrait à l'ancienne taille.
+   *
+   * `useNativeDriver: false` est obligatoire : une hauteur n'est pas animable côté natif. Et
+   * `overflow: 'hidden'` fait que la table est ROGNÉE au lieu d'être écrasée — elle garde sa
+   * géométrie du premier au dernier pixel du repli.
    */
   const clavierOuvert = useClavierOuvert();
+  const hauteurTable = hauteurTableReglage(value.numPlayers);
+  const deploiement = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(deploiement, {
+      toValue: clavierOuvert ? 0 : 1,
+      duration: DUREE_REPLI_MS,
+      useNativeDriver: false,
+    }).start();
+  }, [clavierOuvert, deploiement]);
 
   return (
     <WizardScreen
       title="La table"
       subtitle="Contexte de la main"
       zoneFixe={
-        clavierOuvert ? null : (
+        <Animated.View
+          style={{
+            height: deploiement.interpolate({ inputRange: [0, 1], outputRange: [0, hauteurTable] }),
+            opacity: deploiement,
+            overflow: 'hidden',
+          }}
+        >
           <TableVue
             sieges={siegesDeReglage(value)}
             board={[]}
@@ -329,10 +362,10 @@ export function ContextStep({
             currency={value.currency}
             bb={value.bombPot ? value.bombAnte : value.bb}
             holeCardCount={holeCardCount(value.variant)}
-            hauteur={hauteurTableReglage(value.numPlayers)}
+            hauteur={hauteurTable}
             gabarit={GABARIT_ATELIER}
           />
-        )
+        </Animated.View>
       }
       onNext={onNext}
       nextLabel={nextLabel}
