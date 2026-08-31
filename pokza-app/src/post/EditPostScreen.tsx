@@ -7,11 +7,11 @@ import { GroupPickerScreen } from '../groups/GroupPickerScreen';
 import { defaultGroupId, loadLastUsedGroupIds, orderGroupsByLastUsed } from '../groups/lastUsedGroups';
 import { Chip } from '../creator/Chip';
 import { WizardScreen } from '../creator/WizardScreen';
+import { LocationInput } from '../components/ui/LocationInput';
 import { DESCRIPTION_MAX_LENGTH } from '../creator/types';
 import {
   BUY_IN_MAX_LENGTH,
   LEVEL_MAX_LENGTH,
-  LOCATION_MAX_LENGTH,
   TITLE_MAX_LENGTH,
   VOTE_OPTION_MAX_LENGTH,
   VOTE_QUESTION_MAX_LENGTH,
@@ -207,10 +207,9 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
           />
 
           <Text style={styles.label}>Lieu (optionnel)</Text>
-          <TextInput
+          <LocationInput
             style={styles.input}
             placeholder="Ex : Club Circus, Bruxelles"
-            maxLength={LOCATION_MAX_LENGTH}
             value={location}
             onChangeText={setLocation}
           />

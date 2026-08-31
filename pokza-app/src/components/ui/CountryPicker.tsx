@@ -3,6 +3,7 @@ import { FlatList, Modal, StyleSheet, Text, TextInput, View } from 'react-native
 import { Pressable } from './Pressable';
 import { borders, colors, radius, spacing } from '../../theme/theme';
 import { COUNTRIES, flagEmoji, type Country } from '../../data/countries';
+import { fold } from '../../utils/recherche';
 
 interface CountryPickerProps {
   visible: boolean;
@@ -13,15 +14,6 @@ interface CountryPickerProps {
   onClose: () => void;
   /** Affiche la ligne « Ne pas indiquer » (choix null). Désactivé quand le pays est obligatoire. */
   allowClear?: boolean;
-}
-
-// Retire les accents pour une recherche tolérante (« benin » trouve « Bénin »). `normalize` n'est
-// pas garanti sur tous les moteurs (vieux Hermes) : si absent, on se rabat sur la casse seule.
-function fold(text: string): string {
-  const lower = text.toLowerCase();
-  return typeof lower.normalize === 'function'
-    ? lower.normalize('NFD').replace(/[̀-ͯ]/g, '')
-    : lower;
 }
 
 /**
