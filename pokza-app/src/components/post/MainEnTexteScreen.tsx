@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Pressable } from '../ui/Pressable';
-import { mainEnTexte } from '../../engine/mainEnTexte';
+import { mainEnTexte, scinderSignature } from '../../engine/mainEnTexte';
 import type { PartieDecrite } from '../../utils/denomination';
 import { borders, colors, radius, spacing, typography } from '../../theme/theme';
 
@@ -36,6 +36,9 @@ export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScre
   // Le texte n'est bâti qu'à l'ouverture, et refait si la main change : il rejoue toute la main
   // step par step, ce n'est pas un calcul à refaire à chaque rendu du modal.
   const texte = useMemo(() => (visible ? mainEnTexte(partie) : ''), [visible, partie]);
+  // Pour l'affichage seulement : la signature se grise, mais c'est bien `texte` entier qui part
+  // dans le presse-papier (cf. `scinderSignature`).
+  const { corps, signature } = useMemo(() => scinderSignature(texte), [texte]);
 
   // La confirmation retombe d'elle-même, et surtout : elle ne survit pas à la fermeture. Sans ça,
   // rouvrir l'écran juste après une copie afficherait « Copié » sans que rien n'ait été copié.
@@ -59,8 +62,12 @@ export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScre
         </View>
 
         <ScrollView style={styles.corps} contentContainerStyle={styles.corpsInner}>
+          {/* Imbriqué, et non posé à côté : deux <Text> frères couperaient la sélection à la
+              souris en deux, et « tout sélectionner puis copier » — la porte de sortie quand le
+              presse-papier refuse — ne prendrait plus que la moitié du texte. */}
           <Text selectable style={styles.texte}>
-            {texte}
+            {corps}
+            <Text style={styles.signature}>{signature}</Text>
           </Text>
         </ScrollView>
 
@@ -126,6 +133,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: colors.textPrimary,
+  },
+  // La signature n'appartient pas à la main : elle se lit comme une mention, pas comme une ligne du
+  // coup. Grisée et en italique ICI seulement — le texte copié, lui, est du texte brut.
+  signature: {
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
   pied: {
     paddingHorizontal: 14,

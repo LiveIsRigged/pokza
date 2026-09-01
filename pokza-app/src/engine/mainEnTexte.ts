@@ -36,8 +36,38 @@ import {
  *     hand histories, celle que lisent les endroits où l'on colle ce texte ;
  *   • en-tête = la dénomination de la partie (format, variante, blindes, devise) puis le lieu, le
  *     buy-in et le niveau. C'est exactement `formatContextLine`, la ligne déjà affichée sous le
- *     titre dans le feed : une seule source, et le texte dit la même chose que la carte.
+ *     titre dans le feed : une seule source, et le texte dit la même chose que la carte ;
+ *   • une SIGNATURE en dernière ligne (01/09/2026). Ce texte voyage là où Pokza n'est pas — c'est
+ *     la seule ligne qui dise d'où il vient. En BAS : la première ligne est la dénomination, ce que
+ *     le lecteur est venu chercher, et une accroche posée avant elle se lit comme un en-tête de
+ *     spam sur un forum. Le bas est la place conventionnelle d'une signature, et il est lu juste
+ *     après la chute.
  */
+
+/**
+ * La signature, en dernière ligne. Le NOM SEUL, sans adresse : choisi ainsi par Victor, une main
+ * collée sur un forum n'a pas à ressembler à une réclame. Si une adresse devait s'y ajouter un
+ * jour, l'écrire EN DUR et surtout pas via `webOrigin()` — cette fonction rend l'origine réelle,
+ * donc `http://localhost:8081` pour tout texte copié depuis un serveur de développement.
+ */
+const SIGNATURE = 'Main partagée sur Pokza';
+
+/**
+ * Le texte scindé pour l'AFFICHAGE seulement : le déroulé d'un côté, la signature de l'autre, que
+ * `MainEnTexteScreen` grise. Ce que l'on COPIE reste `mainEnTexte()` d'un seul tenant — une mise en
+ * forme ne voyage pas dans un presse-papier, et le destinataire doit recevoir la ligne telle quelle.
+ *
+ * Découpe par recherche plutôt que par longueur : un décompte de caractères se serait décalé en
+ * silence au premier changement de signature, et aurait tronché le déroulé sans rien casser de
+ * visible ici.
+ */
+export function scinderSignature(texte: string): { corps: string; signature: string } {
+  const i = texte.lastIndexOf(`\n${SIGNATURE}`);
+  if (i === -1) return { corps: texte, signature: '' };
+  // Le `\n` trouvé appartient au CORPS : c'est lui qui pose la ligne vide de séparation, et le
+  // garder du côté gris ferait commencer la signature par un saut de ligne italique.
+  return { corps: texte.slice(0, i + 1), signature: texte.slice(i + 1) };
+}
 
 const NOM_STREET: Record<Street, string> = {
   preflop: 'PRÉFLOP',
@@ -141,7 +171,10 @@ export function mainEnTexte(partie: PartieDecrite): string {
   }
 
   lignes.push('', ...conclusion(hand, montant));
-  return lignes.join('\n').trimEnd() + '\n';
+  // Le `trimEnd` avant la signature, et non après : une main arrêtée par son auteur peut n'avoir
+  // aucune conclusion à écrire, et sans lui la signature se retrouverait à deux lignes vides du
+  // déroulé. Elle en garde exactement une, quoi qu'il précède.
+  return `${lignes.join('\n').trimEnd()}\n\n${SIGNATURE}\n`;
 }
 
 /** « FLOP  Ks 7d 2c  (pot 137€) » — les cartes qui VIENNENT de tomber, pas le board entier. */

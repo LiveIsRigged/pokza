@@ -17,13 +17,20 @@
 //      sur la question posée — pas sur un « gagne » que le replayer n'affiche pas.
 //   6. LE DOUBLE BOARD TOMBE SUR UNE SEULE LIGNE. Deux boards, un seul flop : les séparer en deux
 //      titres « FLOP » ferait croire à deux streets.
+//   7bis. LA DÉCOUPE D'AFFICHAGE NE PERD RIEN. L'écran grise la signature en la scindant du corps
+//      (`scinderSignature`) ; recoller les deux doit redonner le texte AU CARACTÈRE PRÈS, sinon
+//      l'écran montrerait autre chose que ce que le bouton copie — et personne ne le verrait.
+//   7. LA SIGNATURE FINIT LE TEXTE, UNE FOIS, À UNE SEULE LIGNE VIDE DU DÉROULÉ. C'est la seule
+//      ligne qui dise d'où vient un texte collé ailleurs. Trois façons de la casser sans le voir :
+//      la répéter, la coller au déroulé, ou l'en éloigner de deux lignes quand la main n'a pas de
+//      conclusion à écrire (main inachevée, dont `determinePotAwards` ne rend aucun vainqueur).
 //
 // Compiler d'abord (le `tsc` local, pas `npx tsc` — cf. mémoire projet) :
 //   pokza-app/node_modules/.bin/tsc pokza-app/src/engine/mainEnTexte.ts \
 //     --outDir scripts/cm --module commonjs --target es2020 --rootDir pokza-app/src --skipLibCheck
 // puis : node scripts/test-main-texte.js
 
-const { mainEnTexte } = require('./cm/engine/mainEnTexte.js');
+const { mainEnTexte, scinderSignature } = require('./cm/engine/mainEnTexte.js');
 
 let ko = 0;
 function cas(titre, obtenu, attendu) {
@@ -195,6 +202,51 @@ const t5 = mainEnTexte({ hand: tournoi, level: 'Niveau 12' });
 cas('aucun symbole de devise en tournoi', /[€$]/.test(t5), false);
 contient('les jetons de tournoi sont abrégés', t5, 'CO (Hero) 250k — As Kh');
 contient('et les blindes aussi', t5, 'Tournoi · NLHE 5k/10k · Niveau 12');
+
+// ── 6. La signature, en dernière ligne ───────────────────────────────────────
+const SIGNATURE = 'Main partagée sur Pokza';
+// Littérale, et non importée du module : un test qui lirait la constante passerait encore si
+// quelqu'un remplaçait la signature par n'importe quoi.
+cas('le texte finit sur la signature', t1.endsWith(`\n\n${SIGNATURE}\n`), true);
+cas("elle ne paraît qu'une fois", t1.split(SIGNATURE).length - 1, 1);
+absent('et rien ne la précède en haut du texte', t1.split('\n')[0], 'Pokza');
+// Une main arrêtée n'a pas de vainqueur : la conclusion tient en une phrase, pas en une ligne de
+// gains. La signature doit s'en trouver à la même distance que d'un « gagne ».
+cas("même distance sur une main arrêtée", t2.endsWith(`de jouer.\n\n${SIGNATURE}\n`), true);
+
+// Une main INACHEVÉE ne rend aucun vainqueur : `conclusion` renvoie une liste vide, et le texte se
+// terminait alors sur une ligne vide. Sans le `trimEnd` posé AVANT la signature, celle-ci
+// flotterait à deux lignes du déroulé — le seul cas où la mise en page dérape.
+reset();
+const inachevee = {
+  ...complete,
+  board: { flop: [c('Ks'), c('7d'), c('2c')] },
+  seats: seats.map((s) => (s.id === 'btn' ? { ...s, holeCards: undefined } : s)),
+  actions: [
+    a('preflop', 'sb', 'post-sb', 2), a('preflop', 'bb', 'post-bb', 5),
+    a('preflop', 'utg', 'fold'), a('preflop', 'hj', 'fold'),
+    a('preflop', 'co', 'call', 5), a('preflop', 'btn', 'call', 5),
+    a('preflop', 'sb', 'fold'), a('preflop', 'bb', 'check'),
+    a('flop', 'bb', 'check'),
+  ],
+};
+const t6 = mainEnTexte({ hand: inachevee });
+absent('main inachevée : aucun vainqueur annoncé', t6, 'gagne');
+cas('et la signature reste à UNE seule ligne vide', t6.endsWith(`BB checks\n\n${SIGNATURE}\n`), true);
+
+// ── 7. La découpe d'affichage : l'écran grise, le presse-papier ne change pas ──
+for (const [nom, texte] of [['complète', t1], ['arrêtée', t2], ['inachevée', t6]]) {
+  const { corps, signature } = scinderSignature(texte);
+  cas(`découpe (${nom}) : rien de perdu au recollage`, corps + signature, texte);
+  cas(`découpe (${nom}) : la signature est entière`, signature, `${SIGNATURE}\n`);
+  // Le saut de ligne qui précède reste au CORPS : passé du côté grisé, la signature s'afficherait
+  // précédée d'une ligne vide en italique, et le gris commencerait une ligne trop tôt.
+  cas(`découpe (${nom}) : le corps garde la ligne vide`, corps.endsWith('\n\n'), true);
+}
+// Un texte sans signature ne doit pas se faire amputer : la découpe rend tout au corps.
+const sans = scinderSignature('Cash game · NLHE 2/5€\n\nCO (Hero) 500€\n');
+cas('aucune signature : tout reste au corps', sans.corps, 'Cash game · NLHE 2/5€\n\nCO (Hero) 500€\n');
+cas('aucune signature : rien à griser', sans.signature, '');
 
 console.log(ko === 0 ? '\nTout est vert.' : `\n${ko} cas en échec.`);
 process.exit(ko === 0 ? 0 : 1);
