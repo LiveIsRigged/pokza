@@ -25,7 +25,7 @@ const {
   reprendreTable,
   validerTable,
 } = require('./cm/creator/derniereTable.js');
-const { buildSeats } = require('./cm/creator/positions.js');
+const { buildSeats, POSITION_SETS } = require('./cm/creator/positions.js');
 
 let ko = 0;
 function cas(titre, obtenu, attendu) {
@@ -111,29 +111,64 @@ cas(
 );
 cas('Les noms sont dans l\'ordre des sièges', resumeDesJoueurs(memo, 1), 'Anne +2');
 
-console.log('\n── 3. La reprise ──');
+console.log('\n── 3. La reprise : un VOISINAGE, pas des étiquettes ──');
 
-// LE CAS QUI COMPTE : on repart d'un formulaire vierge, on reprend, et la table rendue doit être
-// exactement celle qu'on avait quittée. C'est l'aller-retour complet, pas une comparaison de champs.
-const vierge = ctx({ heroPosition: 'UTG', heroName: 'Victor' });
-const reprise = reprendreTable(vierge, memo);
-cas('Aller-retour : la table reprise est celle qu\'on avait quittée', table(reprise.context), table(BASE));
-cas('Personne n\'est resté sur le carreau', reprise.oublies, []);
-cas('La place du héros est revenue avec les gens', reprise.context.heroPosition, 'CO');
+/** Les gens dans l'ordre des sièges EN PARTANT DU HÉROS. Deux tables qui ont le même anneau ont
+ *  exactement le même placement — quelles que soient les positions, qui ne sont que des étiquettes
+ *  posées par le bouton. C'est la seule forme sous laquelle une reprise se juge. */
+const anneau = (c) => {
+  const places = POSITION_SETS[c.numPlayers];
+  const h = places.indexOf(c.heroPosition);
+  return places.map((_, k) => places[(h + k) % places.length])
+    .map((p) => (p === c.heroPosition ? 'Hero' : c.opponentNames?.[p] ?? '·'));
+};
+
+// LE CAS DE VICTOR (01/09/2026), celui qui a fait réécrire cette fonction : héros au bouton, Éric
+// au CO — donc juste à sa droite. Une main plus tard le héros est en BB : Éric doit être en SB,
+// toujours juste à sa droite. Reprendre ses ANCIENNES positions le remettrait au CO, à trois sièges
+// de là, et remettrait le héros au bouton alors qu'il vient de dire qu'il était en BB.
+const memoEric = tableDepuisContexte(
+  ctx({ numPlayers: 6, heroPosition: 'BTN', heroName: 'Victor', opponentNames: { CO: 'Eric' } }),
+  QUAND
+);
+const chezEric = reprendreTable(ctx({ numPlayers: 6, heroPosition: 'BB' }), memoEric);
+cas('Héros BTN + Éric CO, repris avec le héros en BB → Éric en SB', chezEric.context.opponentNames, { SB: 'Eric' });
+cas('… et le héros ne retourne PAS au bouton', chezEric.context.heroPosition, 'BB');
+cas('… le voisinage est le même des deux côtés', anneau(chezEric.context), anneau({ ...memoEric, opponentNames: memoEric.opponentNames }));
+
+// Le même énoncé, mais tourné dans l'autre sens et sur trois joueurs nommés : Anne deux sièges
+// avant le héros, Marc juste avant, Léa juste après. Ces trois écarts doivent survivre à n'importe
+// quelle place de héros.
+for (const place of ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB']) {
+  const r = reprendreTable(ctx({ numPlayers: 6, heroPosition: place }), memo);
+  cas(`Héros en ${place} : le voisinage repris est intact`, anneau(r.context), ['Hero', 'Léa', '·', '·', 'Anne', 'Marc']);
+}
+
+cas('La place du héros n\'est JAMAIS écrasée', reprendreTable(ctx({ heroPosition: 'SB' }), memo).context.heroPosition, 'SB');
+cas('Personne ne reste sur le carreau à taille égale', reprendreTable(ctx({ heroPosition: 'SB' }), memo).oublies, []);
+
+// Les tapis suivent leur propriétaire, celui du héros compris : le sien vaut 900, celui de Léa 250,
+// et Léa est toujours le siège juste après le héros.
+const avecTapis = reprendreTable(ctx({ numPlayers: 6, heroPosition: 'UTG' }), memo);
+cas(
+  'Les tapis voyagent avec leur joueur, celui du héros compris',
+  table(avecTapis.context).filter((l) => !/\/500$/.test(l)),
+  ['UTG=Hero/900', 'HJ=Léa/250']
+);
 
 // Le nombre de joueurs choisi par l'auteur l'emporte : c'est un choix structurel qu'il vient
 // peut-être de faire exprès, et la reprise parle des gens.
-const grande = ctx({ numPlayers: 9, heroPosition: 'BTN' });
-const surGrande = reprendreTable(grande, memo);
+const surGrande = reprendreTable(ctx({ numPlayers: 9, heroPosition: 'BTN' }), memo);
 cas('Le nombre de joueurs de l\'auteur n\'est pas écrasé', surGrande.context.numPlayers, 9);
 cas('6 → 9 : tout le monde retrouve un siège', surGrande.oublies, []);
 cas(
-  '6 → 9 : les places conservent leurs occupants',
-  table(surGrande.context).filter((l) => !l.includes('=·/')),
-  ['UTG=Anne/500', 'HJ=Marc/500', 'CO=Hero/900', 'BTN=Léa/250']
+  '6 → 9 : les voisins restent voisins (la table s\'agrandit derrière eux)',
+  anneau(surGrande.context),
+  ['Hero', 'Léa', '·', '·', '·', '·', '·', 'Anne', 'Marc']
 );
 
-// Table de 8 vers table de 6 : UTG1 et LJ n'existent plus.
+// Table de 8 vers table de 6 : deux sièges disparaissent, donc deux anciens voisins peuvent viser
+// la même chaise. Le premier à parler s'assoit, l'autre est NOMMÉ.
 const memo8 = tableDepuisContexte(
   ctx({
     numPlayers: 8,
@@ -143,19 +178,9 @@ const memo8 = tableDepuisContexte(
   QUAND
 );
 const versSix = reprendreTable(ctx({ numPlayers: 6, heroPosition: 'UTG' }), memo8);
-cas('8 → 6 : les deux sièges perdus sont NOMMÉS, pas évaporés', versSix.oublies, ['Bob', 'Chloé']);
-cas('8 → 6 : les autres sont bien assis', versSix.context.opponentNames, { UTG: 'Anne', HJ: 'Marc', BTN: 'Léa' });
-
-// La place du héros n'existe pas sur la table courante (il était en LJ à 8) : elle ne revient pas,
-// et celui qui aurait atterri sous lui est signalé au lieu d'être caché.
-const memoLJ = tableDepuisContexte(
-  ctx({ numPlayers: 8, heroPosition: 'LJ', opponentNames: { HJ: 'Marc', CO: 'Léa' } }),
-  QUAND
-);
-const sousLeHeros = reprendreTable(ctx({ numPlayers: 6, heroPosition: 'CO' }), memoLJ);
-cas('La place du héros ne rentre pas : il ne bouge pas', sousLeHeros.context.heroPosition, 'CO');
-cas('… et celui qui tomberait sous lui est signalé', sousLeHeros.oublies, ['Léa']);
-cas('… et n\'est pas rangé en douce', sousLeHeros.context.opponentNames, { HJ: 'Marc' });
+cas('8 → 6 : le siège en trop est NOMMÉ, pas évaporé', versSix.oublies, ['Chloé']);
+cas('8 → 6 : les voisins immédiats du héros sont préservés', anneau(versSix.context).slice(0, 2), ['Hero', 'Léa']);
+cas('8 → 6 : et celui d\'avant aussi', anneau(versSix.context)[5], 'Marc');
 
 console.log('\n── 4. Un stockage douteux ──');
 

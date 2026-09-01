@@ -23,7 +23,7 @@
 //     --outDir scripts/cm --module commonjs --target es2020 --rootDir pokza-app/src --skipLibCheck
 // puis : node scripts/test-deplacements.js
 
-const { decalerJoueurs, echangerJoueurs, viderSiege } = require('./cm/creator/deplacements.js');
+const { decalerJoueurs, deplacerHero, echangerJoueurs, viderSiege } = require('./cm/creator/deplacements.js');
 const { buildSeats, POSITION_SETS } = require('./cm/creator/positions.js');
 
 let ko = 0;
@@ -217,6 +217,56 @@ for (const n of [2, 3, 4, 5, 6, 7, 8, 9, 10]) {
   for (let i = 0; i < n; i++) c = decalerJoueurs(c, 1);
   cas(`Table de ${n} : ${n} crans ramènent à l'identique`, table(c), depart);
 }
+
+console.log('\n── 7. Le héros change de position : toute la table suit ──');
+
+/** Les gens dans l'ordre des sièges EN PARTANT DU HÉROS : deux tables au même anneau ont le même
+ *  placement, quelles que soient les étiquettes que le bouton leur a données. */
+const anneau = (c) => {
+  const places = POSITION_SETS[c.numPlayers];
+  const h = places.indexOf(c.heroPosition);
+  return places.map((_, k) => places[(h + k) % places.length])
+    .map((p) => (p === c.heroPosition ? 'Hero' : c.opponentNames?.[p] ?? '·'));
+};
+
+// LE CAS DE VICTOR (01/09/2026) : héros au bouton, Éric au CO, donc juste à sa droite. Le héros
+// annonce qu'il était en BB — Éric doit se retrouver en SB, et non rester accroché au CO. Dire
+// « j'étais en BB » ne veut pas dire qu'on s'est levé de sa chaise, mais que le bouton était
+// ailleurs : personne n'a bougé à table.
+const AVEC_ERIC = ctx({ numPlayers: 6, heroPosition: 'BTN', heroName: 'Victor', opponentNames: { CO: 'Eric' } });
+cas('Héros BTN → BB : Éric passe du CO à la SB', deplacerHero(AVEC_ERIC, 'BB').opponentNames, { SB: 'Eric' });
+cas('… et le héros est bien arrivé', deplacerHero(AVEC_ERIC, 'BB').heroPosition, 'BB');
+cas('… Éric reste le voisin de droite', anneau(deplacerHero(AVEC_ERIC, 'BB')), ['Hero', '·', '·', '·', '·', 'Eric']);
+
+// L'invariant, énoncé une fois pour toutes : déplacer le héros ne change AUCUN voisinage, où qu'il
+// aille. Si un seul de ces six cas tombe, c'est que quelqu'un est resté accroché à son étiquette.
+for (const place of ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB']) {
+  cas(`Héros → ${place} : le voisinage est intact`, anneau(deplacerHero(BASE, place)), anneau(BASE));
+}
+cas('Aller-retour : on retrouve la table de départ', table(deplacerHero(deplacerHero(BASE, 'SB'), 'CO')), table(BASE));
+cas('Rester sur place ne change rien', table(deplacerHero(BASE, 'CO')), table(BASE));
+
+// Le tapis du héros est indexé par position comme les autres : il doit voyager avec lui, sinon il
+// resterait sur la chaise qu'il vient de quitter et habillerait le joueur qui s'y assoit.
+cas('Le tapis du héros le suit', deplacerHero(BASE, 'SB').seatStacks.SB, 900);
+cas('Le tapis de Léa la suit aussi', deplacerHero(BASE, 'SB').seatStacks.SB !== undefined && deplacerHero(BASE, 'SB').opponentNames.BB, 'Léa');
+
+// Sur une table dont personne n'est nommé, le déplacement du héros ne fait rien d'autre que le
+// déplacer : la saisie neuve est inchangée.
+const NUE = ctx({ numPlayers: 6, heroPosition: 'CO' });
+cas('Table anonyme : rien d\'autre ne bouge', [deplacerHero(NUE, 'BB').heroPosition, deplacerHero(NUE, 'BB').opponentNames], ['BB', {}]);
+
+// Une position absente de la table (le nombre de joueurs vient de changer) : on pose le héros sans
+// rien faire tourner, faute de savoir de combien.
+cas('Position hors de la table : le héros s\'y pose, rien ne tourne', deplacerHero(BASE, 'LJ').heroPosition, 'LJ');
+cas('… et les autres n\'ont pas bougé', deplacerHero(BASE, 'LJ').opponentNames, BASE.opponentNames);
+
+const apresHero = deplacerHero(AVEC_STRADDLE, 'SB');
+cas(
+  'Le straddle et les blindes restent à la chaise',
+  [apresHero.sb, apresHero.bb, apresHero.straddleCount, apresHero.straddleAmounts, apresHero.straddleBouton],
+  [2, 5, 2, [10, 20], true]
+);
 
 console.log(ko === 0 ? '\n✅ Tout passe.\n' : `\n❌ ${ko} cas en échec.\n`);
 process.exit(ko === 0 ? 0 : 1);

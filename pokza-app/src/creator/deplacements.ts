@@ -47,6 +47,18 @@ function nomVisible(ctx: ContextData, place: Position): string | undefined {
  * Le héros voyage avec les autres — il est un joueur de la table, pas un repère fixe.
  */
 export function decalerJoueurs(ctx: ContextData, sens: SensDeDecalage): ContextData {
+  return rotationDesJoueurs(ctx, -sens);
+}
+
+/**
+ * LA ROTATION, forme générale : chaque occupant avance de `pas` rangs dans l'ordre de parole.
+ *
+ * Tout le monde bouge du MÊME nombre de crans, héros compris — c'est ce qui fait qu'une rotation
+ * ne change AUCUN voisinage. Les gens ne se déplacent pas les uns par rapport aux autres, c'est la
+ * grille des étiquettes qui glisse sous eux. Une vraie table ne fait jamais autre chose : les
+ * joueurs restent sur leur chaise, seul le bouton avance.
+ */
+function rotationDesJoueurs(ctx: ContextData, pas: number): ContextData {
   const places = placesDe(ctx);
   const n = places.length;
 
@@ -55,7 +67,7 @@ export function decalerJoueurs(ctx: ContextData, sens: SensDeDecalage): ContextD
   const arrivee = (place: Position): Position => {
     const i = places.indexOf(place);
     if (i === -1) return place;
-    return places[(i - sens + n) % n];
+    return places[(((i + pas) % n) + n) % n];
   };
 
   const opponentNames: Partial<Record<Position, string>> = {};
@@ -73,6 +85,31 @@ export function decalerJoueurs(ctx: ContextData, sens: SensDeDecalage): ContextD
   }
 
   return { ...ctx, heroPosition: arrivee(ctx.heroPosition), opponentNames, seatStacks };
+}
+
+/**
+ * LE HÉROS ANNONCE UNE AUTRE POSITION — ET TOUTE LA TABLE SUIT.
+ * ─────────────────────────────────────────────────────────────
+ * Corrigé le 01/09/2026 sur un retour de Victor, et c'est LE point qui rend la reprise utile.
+ *
+ * Dire « en fait j'étais en BB, pas au bouton », ce n'est pas se lever pour changer de chaise :
+ * c'est dire que LE BOUTON était ailleurs. Les gens autour de la table n'ont pas bougé — Éric est
+ * toujours assis juste à ma droite, il s'appelle simplement SB au lieu de CO. Déplacer le seul
+ * héros laissait les autres accrochés à leurs anciennes étiquettes, et défaisait en un toucher le
+ * voisinage qu'on venait de reprendre.
+ *
+ * C'est donc exactement une rotation, de l'écart entre l'ancienne et la nouvelle place. Sur une
+ * table dont personne n'est nommé, elle ne fait rien de visible — le cas de la saisie neuve est
+ * inchangé.
+ */
+export function deplacerHero(ctx: ContextData, nouvelle: Position): ContextData {
+  const places = placesDe(ctx);
+  const depuis = places.indexOf(ctx.heroPosition);
+  const vers = places.indexOf(nouvelle);
+  // Une position hors de cette table (le nombre de joueurs vient de changer) : on pose le héros
+  // sans rien faire tourner, faute de savoir de combien.
+  if (depuis === -1 || vers === -1) return { ...ctx, heroPosition: nouvelle };
+  return rotationDesJoueurs(ctx, vers - depuis);
 }
 
 /**

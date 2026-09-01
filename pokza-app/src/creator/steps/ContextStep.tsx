@@ -30,7 +30,7 @@ import {
 } from '../../constants/limits';
 import { abbreviateChips, formatChipInput } from '../../utils/chipFormat';
 import { DecimalTextInput, OptionalDecimalTextInput } from '../../components/ui/ChipAmountInput';
-import { decalerJoueurs, echangerJoueurs, viderSiege, type SensDeDecalage } from '../deplacements';
+import { decalerJoueurs, deplacerHero, echangerJoueurs, viderSiege, type SensDeDecalage } from '../deplacements';
 import { joueursNommes, reprendreTable, resumeDesJoueurs, type DerniereTable } from '../derniereTable';
 import { chargerDerniereTable } from '../derniereTableStockage';
 import { FicheJoueur } from '../FicheJoueur';
@@ -689,7 +689,11 @@ export function ContextStep({
               key={pos}
               label={straddleLabelForPosition(pos)}
               selected={value.heroPosition === pos}
-              onPress={() => update({ heroPosition: pos })}
+              // CHANGER SA PROPRE POSITION FAIT TOURNER TOUTE LA TABLE (cf. `deplacerHero`).
+              // Dire « j'étais en BB » ne veut pas dire qu'on s'est levé pour changer de chaise,
+              // mais que le bouton était ailleurs : les voisins n'ont pas bougé, ils changent
+              // seulement de nom. Sans ça, on défaisait en un toucher le voisinage repris.
+              onPress={() => majJoueurs(posesDeTable(deplacerHero(value, pos)))}
             />
           ))}
         </View>

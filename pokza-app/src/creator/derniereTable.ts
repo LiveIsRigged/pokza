@@ -89,40 +89,76 @@ export function resumeDesJoueurs(table: DerniereTable, max = 3): string {
   return reste > 0 ? `${tete} +${reste}` : tete;
 }
 
+/** L'écart d'un siège au héros, compté par le chemin le PLUS COURT : « deux crans après moi » ou
+ *  « un cran avant moi ». Un simple modulo dirait « cinq crans après » là où le voisin est à droite,
+ *  et le voisin de droite doit rester le voisin de droite quand la table change de taille. */
+function ecartAuHero(delta: number, n: number): number {
+  const d = ((delta % n) + n) % n;
+  return d > n / 2 ? d - n : d;
+}
+
 /**
  * Reprend les joueurs dans le contexte COURANT.
+ *
+ * ON REPREND UN VOISINAGE, PAS DES ÉTIQUETTES (corrigé le 01/09/2026 sur un retour de Victor, et
+ * c'est tout l'intérêt de la fonction). Ce qui se retient d'une main à l'autre, ce n'est pas
+ * « Éric était au CO » — c'est « Éric était assis juste à ma droite ». Les positions, elles, ont
+ * tourné entre-temps : le bouton a bougé.
+ *
+ * Chaque joueur est donc rangé à son ÉCART AU HÉROS, et reposé au même écart autour de la place que
+ * le héros occupe MAINTENANT. Héros au bouton et Éric au CO, une main plus tard héros en BB : Éric
+ * se retrouve en SB. La place du héros, contrairement à la première version, n'est jamais écrasée —
+ * c'est elle qui commande tout le reste.
  *
  * Deux décisions qui ne se devinent pas :
  *
  *   • LE NOMBRE DE JOUEURS NE BOUGE PAS. C'est un choix structurel que l'auteur vient peut-être de
- *     faire exprès ; la reprise parle des gens, pas de la forme de la table. En revanche la place du
- *     héros, elle, revient — parce qu'une table est un tout : ces gens, à ces places, toi ici. La
- *     reprendre à moitié rangerait un nom sous le héros, où il serait stocké sans être affiché.
- *   • CE QUI NE RENTRE PAS EST DIT. Passer de 8 à 6 joueurs supprime deux sièges ; les joueurs qui
- *     s'y trouvaient sont renvoyés dans `oublies` pour que l'écran puisse le dire, plutôt que de
- *     les faire disparaître en silence.
+ *     faire exprès ; la reprise parle des gens, pas de la forme de la table.
+ *   • CE QUI NE RENTRE PAS EST DIT. Sur une table plus courte, deux voisins d'autrefois peuvent
+ *     viser la même chaise, ou tomber sur celle du héros. Ils ressortent dans `oublies` pour que
+ *     l'écran puisse le dire, plutôt que de s'évaporer.
  */
 export function reprendreTable(
   ctx: ContextData,
   table: DerniereTable
 ): { context: ContextData; oublies: string[] } {
-  const places = placesDe(ctx.numPlayers);
-  const heroPosition = places.includes(table.heroPosition) ? table.heroPosition : ctx.heroPosition;
+  const nouvelles = placesDe(ctx.numPlayers);
+  const anciennes = placesDe(table.numPlayers);
+  const hAncien = anciennes.indexOf(table.heroPosition);
+  const hNouveau = nouvelles.indexOf(ctx.heroPosition);
+
+  /** La chaise d'arrivée d'une ancienne place, ou `null` si elle n'en a plus. */
+  const arrivee = (place: Position): { place: Position; surLeHero: boolean } | null => {
+    const i = anciennes.indexOf(place);
+    if (i === -1 || hAncien === -1 || hNouveau === -1) return null;
+    const d = ecartAuHero(i - hAncien, anciennes.length);
+    const j = (((hNouveau + d) % nouvelles.length) + nouvelles.length) % nouvelles.length;
+    return { place: nouvelles[j], surLeHero: j === hNouveau };
+  };
 
   const opponentNames: Partial<Record<Position, string>> = {};
   const oublies: string[] = [];
   for (const { place, nom } of joueursNommes(table.numPlayers, table.heroPosition, table.opponentNames)) {
-    if (!places.includes(place) || place === heroPosition) oublies.push(nom);
-    else opponentNames[place] = nom;
+    const cible = arrivee(place);
+    // Premier arrivé, premier assis : sur une table rétrécie, deux anciens voisins peuvent viser la
+    // même chaise. On garde celui qui parlait le premier et on nomme l'autre.
+    if (!cible || cible.surLeHero || opponentNames[cible.place] !== undefined) oublies.push(nom);
+    else opponentNames[cible.place] = nom;
   }
 
+  // Les tapis suivent leur propriétaire, celui du héros compris : son écart vaut zéro, donc il
+  // atterrit sur sa nouvelle place. Un tapis dont le joueur n'a pas de siège s'en va avec lui.
   const seatStacks: Partial<Record<Position, number>> = {};
   for (const place of Object.keys(table.seatStacks) as Position[]) {
     const tapis = table.seatStacks[place];
-    if (typeof tapis === 'number' && places.includes(place)) seatStacks[place] = tapis;
+    const cible = arrivee(place);
+    if (typeof tapis !== 'number' || !cible) continue;
+    const estLeHero = place === table.heroPosition;
+    if (cible.surLeHero && !estLeHero) continue;
+    if (seatStacks[cible.place] === undefined) seatStacks[cible.place] = tapis;
   }
 
-  return { context: { ...ctx, heroPosition, opponentNames, seatStacks }, oublies };
+  return { context: { ...ctx, opponentNames, seatStacks }, oublies };
 }
 
 /**
