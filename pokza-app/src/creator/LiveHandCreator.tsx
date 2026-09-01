@@ -17,6 +17,7 @@ import { committedBySeat } from '../engine/handEngine';
 import { champsInvalidants } from './invalidation';
 import type { ContextData, Phase, ReviewData, Snapshot } from './types';
 import { defaultContextForPlayer, loadContextPrefs, saveContextPrefs } from './contextPrefs';
+import { memoriserTable } from './derniereTableStockage';
 import { seedStart, type CreatorSeed } from './rehydrate';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { GroupPickerScreen } from '../groups/GroupPickerScreen';
@@ -617,6 +618,7 @@ export function LiveHandCreator({
           onBack={goBack}
           nextLabel={libelleBouton(invalidants.length > 0)}
           nextBloque={aLEntree && !contexteModifie}
+          enCorrection={enCorrection}
           footerNote={
             !aLEntree
               ? null
@@ -630,12 +632,17 @@ export function LiveHandCreator({
             // action ne perd sa référence, contrairement à `buildSeats` qui les refabrique.
             if (aLEntree && invalidants.length === 0) {
               void saveContextPrefs(context);
+              void memoriserTable(context);
               publierDirectement({ context, seats: appliquerContexteAuxSieges(seats, context) });
               return;
             }
             // Mémorise les réglages de table pour accélérer la prochaine création (fire-and-forget :
             // un échec d'écriture ne doit pas bloquer la création en cours).
             void saveContextPrefs(context);
+            // Les joueurs de la table sont mémorisés À PART, et ne reviendront QUE sur un geste
+            // (cf. `derniereTable`) : les blindes se retapent à l'identique d'une main à l'autre,
+            // les noms non — et un nom faux est plausible, donc jamais corrigé.
+            void memoriserTable(context);
             const builtSeats = buildSeats(
               context.numPlayers,
               context.heroPosition,

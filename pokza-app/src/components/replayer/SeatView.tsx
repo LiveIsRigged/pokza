@@ -110,6 +110,10 @@ interface SeatViewProps {
    * là où elle est — sur le feutre. Absent (le feed), le siège reste inerte, comme avant : le
    * `pointerEvents` du bloc n'est relâché QUE si quelqu'un écoute. */
   onCartePress?: (index: number) => void;
+  /** Toucher le badge (nom + tapis) : c'est la fiche du joueur qui s'ouvre. Absent, le badge
+   *  n'est pas une cible et AUCUN nœud tactile n'est ajouté — le feed ne paye pas une fonction
+   *  du créateur (même raison que `onCartePress`, mesurée le 31/08). */
+  onSiegePress?: () => void;
 }
 
 const CASH_DENOMS = [1000, 100, 25, 5, 1] as const;
@@ -332,6 +336,7 @@ export function SeatView({
   miseFantome = false,
   cartesAttendues = false,
   onCartePress,
+  onSiegePress,
 }: SeatViewProps) {
   // Un siège qui MONTE déjà couché n'a jamais montré ses cartes : il n'a rien à faire disparaître.
   // Sans ça, les valeurs partaient de « visible » et l'effet ci-dessous les faisait fondre sur
@@ -587,7 +592,7 @@ export function SeatView({
       ]}
       // `box-none` : le bloc lui-même n'est jamais la cible, mais ses enfants peuvent l'être. Sans
       // ça, `none` couperait aussi les cartes, et le Pressable posé dessous ne recevrait rien.
-      pointerEvents={onCartePress ? 'box-none' : 'none'}
+      pointerEvents={onCartePress || onSiegePress ? 'box-none' : 'none'}
     >
       <Animated.View
         style={[
@@ -717,6 +722,10 @@ export function SeatView({
             {stackText}
           </Text>
         )}
+        {/* Posée EN DERNIER : dans l'ordre de peinture, elle recouvre le nom et le tapis, donc
+            c'est elle qui reçoit le toucher. Le halo, lui, reste devant à l'œil — il est dessiné
+            avant mais déborde du badge, et cette cible est transparente. */}
+        {onSiegePress ? <Pressable onPress={onSiegePress} style={styles.cibleSiege} /> : null}
       </Animated.View>
 
       {seat.position === 'BTN' && (
@@ -788,6 +797,16 @@ const styles = StyleSheet.create({
   badge: {
     position: 'relative',
     alignItems: 'center',
+  },
+  // La cible tactile du siège reprend EXACTEMENT la géométrie du halo : elle couvre le badge et
+  // le peu de marge qui l'entoure. En absolu, donc sans ajouter la moindre boîte de mise en page —
+  // un `Pressable` qui envelopperait le badge, lui, en ajouterait une, et déplacerait les noms.
+  cibleSiege: {
+    position: 'absolute',
+    top: -4,
+    left: -8,
+    right: -8,
+    bottom: -4,
   },
   halo: {
     position: 'absolute',

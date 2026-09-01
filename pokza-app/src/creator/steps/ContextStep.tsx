@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleProp, StyleSheet, Switch, Text, TextInput, TextStyle, View } from 'react-native';
+import { Animated, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
 import { CurrencyPicker } from '../../components/ui/CurrencyPicker';
 import { LocationInput } from '../../components/ui/LocationInput';
@@ -28,118 +28,17 @@ import {
   LEVEL_DIGITS_MAX,
   OPPONENT_NAME_MAX_LENGTH,
 } from '../../constants/limits';
-import { abbreviateChips, formatChipInput, parseChipAmount } from '../../utils/chipFormat';
+import { abbreviateChips, formatChipInput } from '../../utils/chipFormat';
+import { DecimalTextInput, OptionalDecimalTextInput } from '../../components/ui/ChipAmountInput';
+import { decalerJoueurs, echangerJoueurs, viderSiege, type SensDeDecalage } from '../deplacements';
+import { joueursNommes, reprendreTable, resumeDesJoueurs, type DerniereTable } from '../derniereTable';
+import { chargerDerniereTable } from '../derniereTableStockage';
+import { FicheJoueur } from '../FicheJoueur';
+import { formatRelativeDate } from '../../utils/relativeDate';
 
 /** Le repli de la table quand un champ prend le focus : assez long pour que l'œil suive le
  *  mouvement, assez court pour ne pas retarder la frappe. */
 const DUREE_REPLI_MS = 200;
-
-// Un TextInput contrôlé qui reflète `String(nombre)` se mord la queue dès qu'on tape une virgule
-// ou un point : "0." → parseFloat → 0 → réaffiché "0", le "." tapé disparaît aussitôt, rendant
-// tout nombre décimal (ex: blindes 0,25/0,5) impossible à saisir caractère par caractère. On garde
-// donc le texte tapé comme état local propre à l'input, et on ne le resynchronise depuis la valeur
-// numérique que si elle change de source EXTÉRIEURE (preset cliqué...), jamais en écho de sa propre frappe.
-function DecimalTextInput({
-  value,
-  onChangeValue,
-  style,
-  placeholder,
-  gameType,
-  onFocusChange,
-}: {
-  value: number;
-  onChangeValue: (n: number) => void;
-  style?: StyleProp<TextStyle>;
-  placeholder?: string;
-  /** Sert au format abrégé rendu à la sortie du champ ; absent = pas d'abréviation. */
-  gameType?: ContextData['gameType'];
-  /** Suit l'entrée et la sortie du champ, pour qui veut attendre la fin d'une saisie. */
-  onFocusChange?: (focused: boolean) => void;
-}) {
-  const [text, setText] = useState(String(value));
-
-  useEffect(() => {
-    const parsed = parseChipAmount(text);
-    const isOwnEcho = parsed === value || (parsed === undefined && value === 0);
-    if (!isOwnEcho) setText(gameType ? formatChipInput(value, gameType) : String(value));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  return (
-    <TextInput
-      style={style}
-      keyboardType="decimal-pad"
-      placeholder={placeholder}
-      value={text}
-      onChangeText={(t) => {
-        setText(t);
-        const parsed = parseChipAmount(t);
-        onChangeValue(parsed ?? 0);
-      }}
-      // La réécriture abrégée attend la sortie du champ : la faire à chaque frappe ferait muter
-      // "3000" en "3k" au milieu de la saisie de "30000", et la frappe suivante donnerait "3k0".
-      onFocus={() => onFocusChange?.(true)}
-      onBlur={() => {
-        onFocusChange?.(false);
-        if (!gameType) return;
-        const parsed = parseChipAmount(text);
-        if (parsed !== undefined) setText(formatChipInput(parsed, gameType));
-      }}
-    />
-  );
-}
-
-// Variante pour un champ facultatif (le stack d'un siège précis, sinon le stack effectif par
-// défaut s'applique) : un champ vidé revient à "pas de valeur" plutôt qu'à 0.
-function OptionalDecimalTextInput({
-  value,
-  onChangeValue,
-  style,
-  placeholder,
-  gameType,
-  editable,
-}: {
-  value: number | undefined;
-  onChangeValue: (n: number | undefined) => void;
-  style?: StyleProp<TextStyle>;
-  placeholder?: string;
-  /** Sert au format abrégé rendu à la sortie du champ ; absent = pas d'abréviation. */
-  gameType?: ContextData['gameType'];
-  editable?: boolean;
-}) {
-  const [text, setText] = useState(value != null ? String(value) : '');
-
-  useEffect(() => {
-    const parsed = text.trim() === '' ? undefined : parseChipAmount(text);
-    const isOwnEcho = parsed === value;
-    if (!isOwnEcho) setText(value != null ? (gameType ? formatChipInput(value, gameType) : String(value)) : '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  return (
-    <TextInput
-      style={style}
-      keyboardType="decimal-pad"
-      placeholder={placeholder}
-      editable={editable}
-      value={text}
-      onChangeText={(t) => {
-        setText(t);
-        if (t.trim() === '') {
-          onChangeValue(undefined);
-          return;
-        }
-        onChangeValue(parseChipAmount(t));
-      }}
-      // Même raison que dans `DecimalTextInput` : abréger pendant la frappe casserait la saisie.
-      onBlur={() => {
-        if (!gameType || text.trim() === '') return;
-        const parsed = parseChipAmount(text);
-        if (parsed !== undefined) setText(formatChipInput(parsed, gameType));
-      }}
-    />
-  );
-}
 
 // Le joueur ne tape que le numéro (ex: "12") ; le préfixe "Niveau" est fixe et non éditable, et la
 // valeur stockée reste "Niveau 12" (même format qu'avant, affiché tel quel dans le contexte du post).
@@ -223,6 +122,20 @@ interface ContextStepProps {
   footerNote?: string | null;
   /** Empêche de valider une correction qui ne change rien — elle coûterait ses réactions pour rien. */
   nextBloque?: boolean;
+  /**
+   * Ce formulaire corrige une main DÉJÀ PUBLIÉE, dont le déroulé est saisi.
+   *
+   * Ne sert qu'à une chose : faire taire la pastille de reprise. Décaler et échanger restent
+   * offerts, et n'ont besoin d'aucun garde-fou nouveau — ils n'écrivent que `heroPosition` (qui
+   * est structurel, donc déjà annoncé comme faisant ressaisir le déroulé, cf. `invalidation`) et
+   * des noms/tapis, dont la doctrine de ce module dit qu'ils se corrigent sans rien perdre.
+   * Remettre un nom sur le bon siège est précisément ce qu'on vient corriger.
+   *
+   * La reprise, elle, n'est pas une correction : elle IMPORTE le personnel d'une autre main. Sur
+   * une main publiée dont aucun adversaire n'était nommé, elle attribuerait les actions déjà
+   * enregistrées à cinq inconnus — et ça se relirait très bien.
+   */
+  enCorrection?: boolean;
 }
 
 export function ContextStep({
@@ -235,6 +148,7 @@ export function ContextStep({
   nextLabel,
   footerNote,
   nextBloque,
+  enCorrection,
 }: ContextStepProps) {
   const availablePositions = POSITION_SETS[value.numPlayers] ?? POSITION_SETS[6];
   const heroValid = availablePositions.includes(value.heroPosition);
@@ -309,6 +223,99 @@ export function ContextStep({
     onChange(next);
   };
 
+  /* ─── LES JOUEURS : les reprendre, les décaler, les déplacer ────────────────────────────────
+   *
+   * Trois gestes ajoutés le 01/09/2026, après un retour de testeur : refaire une main jouée à la
+   * même table imposait de tout retaper, et rien ne permettait de changer quelqu'un de place.
+   * La logique est ailleurs (`deplacements`, `derniereTable`), volontairement : elle a des pièges
+   * — le héros n'est pas rangé comme les autres — et ils se testent mal depuis un écran.
+   */
+  const [fiche, setFiche] = useState<Position | null>(null);
+  const [echangeDepuis, setEchangeDepuis] = useState<Position | null>(null);
+  const [derniereTable, setDerniereTable] = useState<DerniereTable | null>(null);
+  /** Le contexte d'AVANT la reprise, tant qu'elle n'a pas été retouchée : la porte de sortie. */
+  const [avantReprise, setAvantReprise] = useState<ContextData | null>(null);
+  const [oublies, setOublies] = useState<string[]>([]);
+
+  // La dernière table est LUE au montage, jamais APPLIQUÉE : c'est toute la différence avec les
+  // réglages mémorisés (`contextPrefs`), qui pré-remplissent le formulaire tout seuls. Un nom faux
+  // est plausible et ne se corrige jamais — il ne doit donc apparaître que sur un geste.
+  useEffect(() => {
+    let annule = false;
+    chargerDerniereTable().then((t) => {
+      if (!annule) setDerniereTable(t);
+    });
+    return () => {
+      annule = true;
+    };
+  }, []);
+
+  const nomDe = (place: Position): string =>
+    (place === value.heroPosition ? value.heroName : value.opponentNames?.[place]) ?? '';
+
+  /** Toute retouche d'un joueur referme la porte de sortie de la reprise : l'annulation rendrait
+   *  l'état d'avant, donc jetterait aussi ce qui vient d'être tapé à la main. */
+  const majJoueurs = (patch: Partial<ContextData>) => {
+    setAvantReprise(null);
+    setOublies([]);
+    update(patch);
+  };
+  const changerNom = (place: Position, nom: string) =>
+    majJoueurs(
+      place === value.heroPosition
+        ? { heroName: nom }
+        : { opponentNames: { ...value.opponentNames, [place]: nom } }
+    );
+  const changerTapis = (place: Position, tapis: number | undefined) =>
+    majJoueurs({ seatStacks: { ...value.seatStacks, [place]: tapis } });
+
+  /** Les trois champs que déplacer des joueurs peut toucher, et aucun autre : le straddle, l'ante
+   *  et les blindes restent à la chaise quand son occupant change. */
+  const posesDeTable = (suite: ContextData): Partial<ContextData> => ({
+    heroPosition: suite.heroPosition,
+    opponentNames: suite.opponentNames,
+    seatStacks: suite.seatStacks,
+  });
+
+  const decaler = (sens: SensDeDecalage) => majJoueurs(posesDeTable(decalerJoueurs(value, sens)));
+
+  const toucherSiege = (seatId: string) => {
+    const place = availablePositions.find((p) => `s-${p.toLowerCase()}` === seatId);
+    if (!place) return;
+    // Un échange armé consomme le toucher suivant. Retoucher le siège de départ ne fait rien
+    // (`echangerJoueurs` rend le contexte inchangé) et désarme — c'est la sortie la plus évidente.
+    if (echangeDepuis) {
+      const suite = echangerJoueurs(value, echangeDepuis, place);
+      setEchangeDepuis(null);
+      majJoueurs(posesDeTable(suite));
+      return;
+    }
+    setFiche(place);
+  };
+
+  const reprendre = () => {
+    if (!derniereTable) return;
+    const { context, oublies: perdus } = reprendreTable(value, derniereTable);
+    setAvantReprise(value);
+    setOublies(perdus);
+    update(posesDeTable(context));
+  };
+  const annulerLaReprise = () => {
+    if (!avantReprise) return;
+    const avant = avantReprise;
+    setAvantReprise(null);
+    setOublies([]);
+    update(posesDeTable(avant));
+  };
+
+  /** « Bob et Chloé » — le « et » final, sinon la phrase sonne comme une liste. */
+  const enumerer = (l: string[]) =>
+    l.length <= 1 ? l[0] ?? '' : `${l.slice(0, -1).join(', ')} et ${l[l.length - 1]}`;
+
+  // La pastille ne se montre que sur une table dont AUCUN adversaire n'est nommé : dès qu'un nom
+  // est tapé, la reprise n'est plus un raccourci, c'est un écrasement.
+  const tableVierge = joueursNommes(value.numPlayers, value.heroPosition, value.opponentNames).length === 0;
+
   /**
    * LA TABLE SE REPLIE PENDANT QU'ON ÉCRIT (cf. `useClavierOuvert`).
    * Ce formulaire fait 1 132 px ; la table lui en prend 253. Clavier ouvert, il ne resterait que
@@ -364,8 +371,25 @@ export function ContextStep({
             holeCardCount={holeCardCount(value.variant)}
             hauteur={hauteurTable}
             gabarit={GABARIT_ATELIER}
+            onSiegePress={toucherSiege}
           />
         </Animated.View>
+      }
+      rangeeFixe={
+        // Elle n'existe QUE pendant un échange : le reste du temps l'écran garde exactement la
+        // forme qu'il avait. Ici plutôt que dans le contenu, parce que la consigne parle de la
+        // table — et qu'une consigne qui part en défilement pendant qu'on cherche un siège ne
+        // sert plus à rien.
+        echangeDepuis ? (
+          <>
+            <Text style={styles.consigne} numberOfLines={1}>
+              Touche le siège où envoyer {nomDe(echangeDepuis) || straddleLabelForPosition(echangeDepuis)}
+            </Text>
+            <Pressable onPress={() => setEchangeDepuis(null)} hitSlop={8}>
+              <Text style={styles.annuler}>↩ Annuler</Text>
+            </Pressable>
+          </>
+        ) : undefined
       }
       onNext={onNext}
       nextLabel={nextLabel}
@@ -670,7 +694,54 @@ export function ContextStep({
           ))}
         </View>
 
-        <Text style={styles.label}>Joueurs (nom et stack, optionnel)</Text>
+        <View style={styles.enteteJoueurs}>
+          <Text style={[styles.label, styles.labelSansMarge]}>Joueurs (nom et stack, optionnel)</Text>
+          {/* SANS NOM, JUSTE UN SIGLE (Victor, 01/09). Deux sens, parce qu'un cran de trop coûterait
+              sinon cinq touchers pour revenir sur une table de six.
+
+              LE SENS DES FLÈCHES N'EST PAS UN CHOIX DE GOÛT : `layoutSeats` pose les sièges à angle
+              CROISSANT, et en repère écran (y vers le bas) un angle croissant tourne dans le sens
+              des aiguilles. L'ordre de parole tourne donc à l'écran comme il tourne à une vraie
+              table, et « une main plus tard » se lit ↻.
+
+              Ce qui bouge à l'écran, d'ailleurs, n'est PAS ce qu'on croit : la table est dessinée
+              depuis le héros, et il se décale comme les autres — les joueurs nommés gardent donc
+              tous leur emplacement. Ce qui se déplace, c'est le jeton de donneur et les mises
+              forcées. Ce qui est exactement ce que « le bouton a tourné » veut dire. */}
+          <View style={styles.crans}>
+            <Pressable style={styles.cran} onPress={() => decaler(-1)} hitSlop={6}>
+              <Text style={styles.cranSigle}>↺</Text>
+            </Pressable>
+            <Pressable style={styles.cran} onPress={() => decaler(1)} hitSlop={6}>
+              <Text style={styles.cranSigle}>↻</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* LA PASTILLE NOMME SA CARGAISON. Le danger n'est pas la reprise, c'est la reprise muette :
+            on doit savoir QUI arrive, d'OÙ et de QUAND avant de la toucher. */}
+        {derniereTable && tableVierge && !avantReprise && !enCorrection ? (
+          <Pressable style={styles.reprise} onPress={reprendre}>
+            <Text style={styles.repriseTitre} numberOfLines={1}>
+              Reprendre {resumeDesJoueurs(derniereTable)}
+            </Text>
+            <Text style={styles.repriseDetail} numberOfLines={1}>
+              {[derniereTable.lieu, formatRelativeDate(derniereTable.quand)].filter(Boolean).join(' · ')}
+            </Text>
+          </Pressable>
+        ) : null}
+        {avantReprise ? (
+          <View style={styles.apresReprise}>
+            <Text style={styles.apresRepriseTexte}>
+              {oublies.length === 0
+                ? 'Joueurs repris.'
+                : `${enumerer(oublies)} n'${oublies.length > 1 ? 'ont' : 'a'} plus de siège à ${value.numPlayers}.`}
+            </Text>
+            <Pressable onPress={annulerLaReprise} hitSlop={8}>
+              <Text style={styles.annuler}>↩ Annuler</Text>
+            </Pressable>
+          </View>
+        ) : null}
         {availablePositions.map((pos) => {
           const isHero = pos === value.heroPosition;
           const label = straddleLabelForPosition(pos);
@@ -686,9 +757,7 @@ export function ContextStep({
                 placeholder={isHero ? 'Hero' : 'Nom'}
                 maxLength={OPPONENT_NAME_MAX_LENGTH}
                 value={(isHero ? value.heroName : value.opponentNames?.[pos]) ?? ''}
-                onChangeText={(t) =>
-                  update(isHero ? { heroName: t } : { opponentNames: { ...value.opponentNames, [pos]: t } })
-                }
+                onChangeText={(t) => changerNom(pos, t)}
               />
               {/* Le tapis d'un siège parti à tapis reste MODIFIABLE, et descendre sous l'engagé
                   aussi : on n'interdit rien, on annonce le prix (les mises seront à ressaisir) et
@@ -699,11 +768,38 @@ export function ContextStep({
                 placeholder={formatChipInput(value.effectiveStack, value.gameType)}
                 value={value.seatStacks?.[pos]}
                 gameType={value.gameType}
-                onChangeValue={(stack) => update({ seatStacks: { ...value.seatStacks, [pos]: stack } })}
+                onChangeValue={(stack) => changerTapis(pos, stack)}
               />
             </View>
           );
         })}
+
+        <FicheJoueur
+          visible={fiche !== null}
+          libelle={fiche ? straddleLabelForPosition(fiche) : ''}
+          estHero={fiche === value.heroPosition}
+          nom={fiche ? nomDe(fiche) : ''}
+          tapis={fiche ? value.seatStacks?.[fiche] : undefined}
+          tapisParDefaut={value.effectiveStack}
+          gameType={value.gameType}
+          onNom={(n) => {
+            if (fiche) changerNom(fiche, n);
+          }}
+          onTapis={(t) => {
+            if (fiche) changerTapis(fiche, t);
+          }}
+          onChangerDePlace={() => {
+            setEchangeDepuis(fiche);
+            setFiche(null);
+          }}
+          onVider={() => {
+            if (!fiche) return;
+            const suite = viderSiege(value, fiche);
+            majJoueurs({ ...posesDeTable(suite), heroName: suite.heroName });
+            setFiche(null);
+          }}
+          onFermer={() => setFiche(null)}
+        />
 
         <Text style={styles.label}>Lieu (optionnel)</Text>
         <LocationInput
@@ -757,6 +853,47 @@ export function ContextStep({
 }
 
 const styles = StyleSheet.create({
+  enteteJoueurs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    // Les marges du libellé remontent sur la rangée : laissées sur le texte, elles décaleraient
+    // les deux crans de quatre pixels vers le bas (le centrage porte sur la boîte AVEC ses marges).
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  labelSansMarge: { marginTop: 0, marginBottom: 0, flex: 1 },
+  crans: { flexDirection: 'row', gap: 6 },
+  cran: {
+    borderWidth: 1,
+    borderColor: borders.default,
+    borderRadius: 14,
+    width: 34,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cranSigle: { fontSize: 16, color: colors.textPrimary, lineHeight: 20 },
+  reprise: {
+    borderWidth: 1,
+    borderColor: borders.default,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 8,
+  },
+  repriseTitre: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  repriseDetail: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  apresReprise: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 8,
+  },
+  apresRepriseTexte: { fontSize: 12, color: colors.textSecondary, flex: 1 },
+  consigne: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, flex: 1 },
+  annuler: { fontSize: 13, fontWeight: '700', color: colors.action },
   label: {
     fontSize: 12,
     fontWeight: '700',

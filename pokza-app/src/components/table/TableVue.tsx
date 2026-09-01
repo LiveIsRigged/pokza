@@ -110,6 +110,14 @@ export interface TableVueProps {
   /** Idem pour le second board d'un bomb pot double board. */
   onCarteBoard2Press?: (index: number) => void;
   /**
+   * Toucher un SIÈGE (son badge nom + tapis). Fourni, chaque siège devient une cible — le
+   * troisième endroit où cette table cesse d'être une vitrine pour devenir une surface de saisie,
+   * après les cartes du board et celles des adversaires. Le créateur s'en sert pour ouvrir la
+   * fiche d'un joueur : on tape la personne qu'on veut corriger, là où on la voit.
+   * Absent (le feed), les sièges restent inertes et n'ajoutent aucun nœud tactile.
+   */
+  onSiegePress?: (seatId: string) => void;
+  /**
    * La main n'a pas commencé : aucune rangée de board, seulement la pastille de pot. Les étapes de
    * réglage du créateur (contexte, cartes de Hero) l'utilisent pour gagner la hauteur que des
    * emplacements vides ne méritent pas.
@@ -142,6 +150,7 @@ export function TableVue({
   sansGeste = false,
   onCarteBoardPress,
   onCarteBoard2Press,
+  onSiegePress,
   sansBoard = false,
 }: TableVueProps) {
   /**
@@ -324,6 +333,7 @@ export function TableVue({
             miseFantome={s.miseFantome}
             cartesAttendues={s.cartesAttendues}
             onCartePress={s.onCartePress}
+            onSiegePress={onSiegePress ? () => onSiegePress(seat.id) : undefined}
           />
         );
       })}
