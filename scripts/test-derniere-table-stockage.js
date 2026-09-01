@@ -85,6 +85,31 @@ const liste = () => JSON.parse(disque.brut(CLE) ?? 'null');
   for (let i = 1; i <= 8; i++) await memoriserTable(ctx({ opponentNames: { HJ: `J${i}` } }));
   cas('Huit mains : la liste est plafonnée à cinq', liste().map((e) => e.opponentNames.HJ), ['J8', 'J7', 'J6', 'J5', 'J4']);
 
+  console.log('\n── 2 bis. Repasser par l\'étape 1 ne doit pas empiler ──');
+
+  // La mémorisation se fait en VALIDANT L'ÉTAPE 1, pas à la publication. Or on repasse par cette
+  // étape autant de fois qu'on le veut dans une seule main : reculer pour corriger un tapis, revenir.
+  // Sans dédoublonnage, quatre allers-retours suffiraient à chasser les quatre tables précédentes
+  // de la liste — et la banque de tables par lieu, le jour où elle existera, n'aurait plus rien.
+  disque.vider();
+  await memoriserTable(ctx({ opponentNames: { HJ: 'Marc', BTN: 'Léa' } }));
+  await memoriserTable(ctx({ opponentNames: { UTG: 'Anne' } }));
+  for (let i = 0; i < 4; i++) await memoriserTable(ctx({ opponentNames: { UTG: 'Anne' }, seatStacks: { UTG: 100 * i } }));
+  cas('Cinq passages sur la même table : une seule entrée', liste().length, 2);
+  cas('… la table précédente est intacte dessous', liste()[1].opponentNames, { HJ: 'Marc', BTN: 'Léa' });
+  cas('… et c\'est le dernier passage qui compte', liste()[0].seatStacks, { UTG: 300 });
+
+  // Les mêmes gens à des places différentes restent la même table : on a corrigé un placement, on
+  // n'a pas changé de partie.
+  disque.vider();
+  await memoriserTable(ctx({ heroPosition: 'CO', opponentNames: { HJ: 'Marc' } }));
+  await memoriserTable(ctx({ heroPosition: 'BB', opponentNames: { UTG: 'Marc' } }));
+  cas('Le même joueur déplacé : toujours une seule entrée', liste().length, 1);
+
+  // Un nom de plus, en revanche, c'est une autre table.
+  await memoriserTable(ctx({ opponentNames: { HJ: 'Marc', BTN: 'Léa' } }));
+  cas('Un joueur de plus : une nouvelle entrée', liste().length, 2);
+
   console.log('\n── 3. Un stockage abîmé ──');
 
   disque.vider();

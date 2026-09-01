@@ -19,18 +19,40 @@ const KEY = 'pokza.creator.dernieresTables.v1';
  *  ce qui y est déjà. Le plafond est une borne technique, pas une valeur produit — rien ne l'affiche. */
 const MAX_TABLES = 5;
 
-/** Appelée à la PUBLICATION seulement : une main abandonnée en cours de route n'a pas de table
- *  digne d'être reproposée. Sans effet quand aucun adversaire n'est nommé. */
+/**
+ * Deux tables sont LA MÊME quand ce sont les mêmes gens. Sert à ne pas empiler : repasser par
+ * l'étape 1 pour corriger une place ou un tapis réécrit l'entrée de tête au lieu d'en ajouter une,
+ * sinon quatre allers-retours dans une seule main chasseraient toutes les tables précédentes.
+ */
+function memesJoueurs(a: DerniereTable, b: DerniereTable): boolean {
+  const empreinte = (t: DerniereTable) =>
+    Object.values(t.opponentNames)
+      .map((n) => n.trim().toLowerCase())
+      .sort()
+      .join('|');
+  return empreinte(a) === empreinte(b);
+}
+
+/**
+ * Appelée quand l'auteur VALIDE L'ÉTAPE 1, pas à la publication (Victor, 01/09/2026) : la table
+ * est réelle dès qu'elle est déclarée — on a bien joué avec ces gens, que la main aille au bout ou
+ * non. Ne mémoriser qu'à la publication ferait retaper toute la table après la moindre
+ * interruption, c'est-à-dire exactement la friction dont part ce chantier.
+ *
+ * Sans effet quand aucun adversaire n'est nommé.
+ */
 export async function memoriserTable(ctx: ContextData): Promise<void> {
   const table = tableDepuisContexte(ctx, new Date().toISOString());
   if (!table) return;
   try {
     const brut = await AsyncStorage.getItem(KEY);
-    const liste = brut ? (JSON.parse(brut) as unknown[]) : [];
-    const suite = [table, ...(Array.isArray(liste) ? liste : [])].slice(0, MAX_TABLES);
-    await AsyncStorage.setItem(KEY, JSON.stringify(suite));
+    const liste = JSON.parse(brut ?? '[]') as unknown;
+    const anciennes = Array.isArray(liste) ? liste : [];
+    const tete = validerTable(anciennes[0]);
+    const reste = tete && memesJoueurs(tete, table) ? anciennes.slice(1) : anciennes;
+    await AsyncStorage.setItem(KEY, JSON.stringify([table, ...reste].slice(0, MAX_TABLES)));
   } catch {
-    // Pur confort : un échec d'écriture ne doit jamais interrompre une publication.
+    // Pur confort : un échec d'écriture ne doit jamais interrompre la création en cours.
   }
 }
 
