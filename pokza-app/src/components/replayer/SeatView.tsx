@@ -649,6 +649,15 @@ export function SeatView({
             );
           });
         })()}
+        {/* LES CARTES FONT PARTIE DU JOUEUR. Ne rendre que le badge touchable laissait une moitié
+            de siège inerte : on vise la personne, on tape ses cartes, il ne se passe rien.
+
+            Seulement quand les cartes n'ont PAS déjà leur propre rôle : à l'abattage, `onCartePress`
+            leur en donne un (choisir la carte), et il l'emporte — c'est le geste le plus précis des
+            deux. Les deux cibles ne coexistent donc jamais. */}
+        {onSiegePress && !onCartePress ? (
+          <Pressable onPress={onSiegePress} style={StyleSheet.absoluteFill} />
+        ) : null}
       </Animated.View>
 
       <Animated.View style={[styles.badge, { transform: [{ scale: winnerScale }] }]}>
@@ -798,7 +807,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
   },
-  // La cible tactile du siège reprend EXACTEMENT la géométrie du halo : elle couvre le badge et
+  // La cible du BADGE reprend EXACTEMENT la géométrie du halo : elle couvre le badge et
   // le peu de marge qui l'entoure. En absolu, donc sans ajouter la moindre boîte de mise en page —
   // un `Pressable` qui envelopperait le badge, lui, en ajouterait une, et déplacerait les noms.
   cibleSiege: {
