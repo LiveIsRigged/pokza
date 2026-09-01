@@ -26,6 +26,7 @@ const {
   validerTable,
 } = require('./cm/creator/derniereTable.js');
 const { buildSeats, POSITION_SETS } = require('./cm/creator/positions.js');
+const { deplacerHero } = require('./cm/creator/deplacements.js');
 
 let ko = 0;
 function cas(titre, obtenu, attendu) {
@@ -203,7 +204,23 @@ cas(
 );
 cas('Une table saine se relit à l\'identique', validerTable(JSON.parse(JSON.stringify(memo))), memo);
 
-console.log('\n── 5. Le filtre, isolé ──');
+console.log('\n── 5. L\'ordre des deux gestes ne change rien ──');
+
+// REPRENDRE PUIS ANNONCER SA POSITION, OU L'INVERSE : les deux doivent donner exactement la même
+// table. Sinon il existerait un bon ordre et un mauvais, et rien à l'écran ne le dirait — l'auteur
+// découvrirait le mauvais en publiant une main où tout le monde est décalé d'un siège.
+//
+// Ce n'est pas une coïncidence, c'est la conséquence du modèle : la reprise pose chacun à son écart
+// au héros, et déplacer le héros fait tourner tout le monde du même nombre de crans. Les deux
+// opérations commutent parce qu'elles parlent toutes les deux d'écarts, jamais de positions.
+for (const place of ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB']) {
+  const depart = ctx({ numPlayers: 6, heroPosition: 'BTN', heroName: 'Victor' });
+  const placeDAbord = reprendreTable({ ...depart, heroPosition: place }, memo).context;
+  const repriseDAbord = deplacerHero(reprendreTable(depart, memo).context, place);
+  cas(`Héros en ${place} : les deux ordres donnent la même table`, table(repriseDAbord), table(placeDAbord));
+}
+
+console.log('\n── 6. Le filtre, isolé ──');
 
 cas(
   'joueursNommes rend les places dans l\'ordre de parole',
