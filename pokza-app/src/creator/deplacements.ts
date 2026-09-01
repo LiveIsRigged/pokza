@@ -109,9 +109,12 @@ export function echangerJoueurs(ctx: ContextData, a: Position, b: Position): Con
 }
 
 /**
- * VIDER UN SIÈGE : le nom ET le tapis (Victor, 01/09/2026). La fiche parle d'une personne — si elle
- * s'en va, son tapis part avec, et la place retombe sur le stack effectif comme un siège jamais
- * touché. Un tapis orphelin resterait affiché sans qu'on sache à qui il appartient.
+ * REMETTRE UN SIÈGE À ZÉRO : le nom ET le tapis (Victor, 01/09/2026). La fiche parle d'une personne
+ * — si elle s'en va, son tapis part avec, et la place retombe sur le stack effectif comme un siège
+ * jamais touché. Un tapis orphelin resterait affiché sans qu'on sache à qui il appartient.
+ *
+ * Le bouton s'appelle « Reset » et non « Vider ce siège » : ce dernier laissait croire que la PLACE
+ * disparaissait de la table, alors qu'elle ne bouge pas — seuls ses deux champs s'effacent.
  *
  * Le héros ne quitte pas la table : vider SA place efface son nom (il redevient « Hero ») et son
  * tapis, mais il reste assis.

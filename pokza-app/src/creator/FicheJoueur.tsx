@@ -51,8 +51,8 @@ export function FicheJoueur({
   onVider,
   onFermer,
 }: FicheJoueurProps) {
-  // Un siège où rien n'a été saisi n'a rien à vider : le bouton reste là (sa place ne bouge pas d'une
-  // fiche à l'autre) mais il est éteint, plutôt que de promettre un effet qu'il n'aurait pas.
+  // Un siège où rien n'a été saisi n'a rien à remettre à zéro : le bouton reste là (sa place ne
+  // bouge pas d'une fiche à l'autre) mais il est éteint, plutôt que de promettre un effet nul.
   const aQuelqueChoseAVider = nom.trim().length > 0 || tapis !== undefined;
 
   /**
@@ -116,8 +116,11 @@ export function FicheJoueur({
                 disabled={!aQuelqueChoseAVider}
                 onPress={onVider}
               >
+                {/* « Reset » et non « Vider ce siège » (Victor, 01/09) : le second laissait croire
+                    que le siège lui-même allait disparaître, alors que seuls le nom et le tapis
+                    s'effacent — la place, elle, reste à table. */}
                 <Text style={[styles.actionTexte, !aQuelqueChoseAVider && styles.actionTexteEteint]}>
-                  Vider ce siège
+                  Reset
                 </Text>
               </Pressable>
             </View>
