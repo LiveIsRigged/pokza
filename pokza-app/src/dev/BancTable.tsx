@@ -132,6 +132,9 @@ export function BancTable() {
   }
   if (quoi.includes('createur')) {
     const abattage = quoi.includes('abattage');
+    // `&neuf=1` : un créateur SANS main de départ, donc `enCorrection` faux — le seul moyen de
+    // voir la pastille de reprise, qui se tait sur une correction.
+    const neuf = quoi.includes('neuf');
     const seed = postToSeed(abattage ? POST_ABATTAGE : POST);
     return (
       <SafeAreaProvider initialMetrics={initialWindowMetrics}><DisplayUnitProvider>
@@ -143,7 +146,7 @@ export function BancTable() {
             onCancel={() => {}}
             groups={[]}
             onCreateGroup={async () => ({ id: 'g', name: 'g' }) as any}
-            initial={seed}
+            initial={neuf ? undefined : seed}
             initialPhase={
               abattage
                 ? 'showdown'
