@@ -142,7 +142,11 @@ export function LiveHandCreator({
   // adverses saisies ci-dessus restent visibles dans le replayer même perdantes. Comme
   // `review.visibility`, ce n'est pas dans `Snapshot` — persiste tel quel à travers la navigation
   // arrière/avant plutôt que d'être restauré à une valeur antérieure.
-  const [revealShowdown, setRevealShowdown] = useState(initial?.revealShowdown ?? false);
+  // Caché jusqu'à l'abattage PAR DÉFAUT sur une main neuve : c'est le mode de lecture que
+  // préfèrent les joueurs. Le `??` compte : une main REPRISE garde son propre réglage — `rehydrate`
+  // rend toujours un booléen (`!!hand.revealShowdown`), donc jamais `undefined`, et une main
+  // publiée avant ce jour ne se met pas à cacher ce qu'elle montrait.
+  const [revealShowdown, setRevealShowdown] = useState(initial?.revealShowdown ?? true);
   const [history, setHistory] = useState<Snapshot[]>(depart?.history ?? []);
   // Change à chaque changement de phase, pour forcer un remount propre des écrans de street
   // (sinon revenir en arrière puis ré-avancer réutilise un composant à l'état "terminé").

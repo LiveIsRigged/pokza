@@ -27,9 +27,14 @@ interface ShowdownStepProps {
   baseUsedCards: Card[];
   /** Actions de la main (dont un éventuel straddle préflop) — sert uniquement à l'affichage du nom des sièges */
   actions: Action[];
-  /** Une fois activé, les mains adverses saisies ci-dessous restent visibles dans le replayer même
-   * si elles perdent (sinon mucking classique) — ne concerne jamais Hero, toujours visible dès le
-   * départ. Réglage global à la main, pas par adversaire. */
+  /** QUAND les mains saisies ci-dessous apparaissent dans le replayer — jamais SI : une main saisie
+   * finit toujours par se montrer, gagnante ou perdante. Activé : dos de carte jusqu'à l'abattage.
+   * Désactivé : visibles dès le début, comme Hero. Ne concerne jamais Hero. Réglage global à la
+   * main, pas par adversaire.
+   *
+   * Le nom du drapeau dit « révéler À l'abattage », l'écran demande « cacher JUSQU'À l'abattage » :
+   * c'est la même chose vue des deux bouts, et c'est la seconde formulation qui a été retenue (cf.
+   * le libellé plus bas). */
   revealShowdown: boolean;
   onChangeRevealShowdown: (value: boolean) => void;
   onNext: () => void;
@@ -131,7 +136,6 @@ export function ShowdownStep({
   return (
     <WizardScreen
       title="L'abattage"
-      subtitle="Cartes montrées par les adversaires (optionnel)"
       onNext={onNext}
       nextLabel={nextLabel ?? 'Continuer'}
       nextDisabled={Boolean(nextBloque)}
@@ -152,15 +156,21 @@ export function ShowdownStep({
         />
       }
     >
-      <Text style={styles.label}>Révéler les mains à l'abattage</Text>
+      {/* « CACHER jusqu'à l'abattage », et non « révéler à l'abattage ». Un testeur lisait la
+          question précédente de travers : « Révéler les mains » avec « Non » posé EN PREMIER faisait
+          choisir, à qui allait vite, exactement l'inverse de ce qu'il croyait. Ici le premier chip
+          est celui qu'on veut presque toujours, et il dit ce qu'il fait. Attention en relisant :
+          « Oui » vaut `revealShowdown = true` — le drapeau nomme la révélation, la question nomme
+          l'attente. */}
+      <Text style={styles.label}>Cacher les mains jusqu'à l'abattage</Text>
       <View style={styles.revealRow}>
-        <Chip label="Non" selected={!revealShowdown} onPress={() => onChangeRevealShowdown(false)} />
         <Chip label="Oui" selected={revealShowdown} onPress={() => onChangeRevealShowdown(true)} />
+        <Chip label="Non" selected={!revealShowdown} onPress={() => onChangeRevealShowdown(false)} />
       </View>
       <Text style={styles.revealHint}>
         {revealShowdown
-          ? "Les cartes saisies ci-dessous resteront cachées pendant tout le coup, et n'apparaîtront qu'à l'abattage — gagnant ou perdant."
-          : 'Les cartes saisies ci-dessous seront visibles dans le replay dès le début, comme celles de Hero.'}
+          ? "Les cartes resteront cachées pendant le coup, et n'apparaîtront qu'à l'abattage."
+          : 'Les cartes seront visibles dans le replay dès le début.'}
       </Text>
 
       {selectedId ? (
@@ -196,6 +206,10 @@ export function ShowdownStep({
 
 const styles = StyleSheet.create({
   label: {
+    // La table est en `zoneFixe`, hors du defilement, et rien ne l'en separait : mesure a 0 px, la
+    // question etait collee au feutre. 12, comme le `paddingTop` de la rangee fixe et du socle —
+    // c'est deja l'espace de cet ecran entre ce qui ne defile pas et ce qui suit.
+    marginTop: 12,
     fontSize: 12,
     fontWeight: '700',
     color: colors.textSecondary,

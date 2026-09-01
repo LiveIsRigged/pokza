@@ -173,7 +173,7 @@ export function HandReplayer({ hand }: HandReplayerProps) {
     // les cartes sont connues (saisies à l'abattage) mais que le créateur a choisi de ne révéler
     // qu'au showdown (`hand.revealShowdown`) — dos de carte jusqu'à l'event `revealCards`, UN CRAN
     // AVANT que le gagnant ne soit désigné : les mains se dévoilent d'abord, le pot part vers le
-    // vainqueur ensuite, deux steps distincts. Désactivé (défaut) : vraie carte visible dès le début.
+    // vainqueur ensuite, deux steps distincts. Désactivé : vraie carte visible dès le début.
     const showCardBacks = villainKnownCards && Boolean(hand.revealShowdown) && !state.cardsRevealed;
 
     return {
