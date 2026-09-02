@@ -694,12 +694,25 @@ export function ContextStep({
         />
 
         <Text style={styles.label}>Nombre de joueurs</Text>
-        <View style={styles.row}>
+        {/* UNE SEULE LIGNE, EN LARGEURS ÉGALES (Victor, 02/09/2026).
+            2 à 10 est un CONTINUUM, pas une liste. En pastilles à largeur libre, les neuf ne
+            tenaient pas (352 px de pastilles + 64 px d'espaces = 416 pour 354 disponibles) et
+            repassaient à la ligne — 7 + 2 sur un iPhone 14, 6 + 3 sur un SE, 8 + 1 sur un Pro Max.
+            Le point de rupture dépendait donc du téléphone, et la coupure RESSEMBLAIT à une
+            intention : « 9 » et « 10 » seuls en dessous se lisaient comme une catégorie à part.
+            En largeurs égales on voit la plage entière et où on est dessus, et c'est stable partout.
+            La cible passe de 38 à 34 px de large (32 sur un SE, 26 sur un 320), sous les 44
+            recommandés — mais ces 44 visent une cible ISOLÉE, entourée de vide. Ici les pastilles
+            sont jointives : pas d'espace mort, l'erreur possible est un cran de décalage, elle est
+            BRUYANTE (la table se redessine sous les yeux) et se répare d'un toucher, puisque le
+            handler ne supprime rien — noms et tapis sont rangés par position. */}
+        <View style={styles.rangeeNombre}>
           {[2, 3, 4, 5, 6, 7, 8, 9, 10]
             .filter((n) => n <= maxPlayers)
             .map((n) => (
             <Chip
               key={n}
+              style={styles.pastilleNombre}
               label={String(n)}
               selected={value.numPlayers === n}
               onPress={() => {
@@ -946,6 +959,22 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  // `flexWrap` absent : c'est tout l'objet — cette rangée ne passe JAMAIS à la ligne.
+  // `marginBottom` repris ici parce que les pastilles perdent le leur ci-dessous.
+  rangeeNombre: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 8,
+  },
+  // Largeurs égales, sans rembourrage horizontal : c'est la place disponible qui fixe la taille,
+  // pas le contenu. `alignItems` recentre le chiffre, que le rembourrage centrait jusqu'ici.
+  pastilleNombre: {
+    flex: 1,
+    paddingHorizontal: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    alignItems: 'center',
   },
   inlineInputs: {
     flexDirection: 'row',

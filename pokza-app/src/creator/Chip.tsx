@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors } from '../theme/theme';
 
@@ -7,11 +7,15 @@ interface ChipProps {
   label: string;
   selected: boolean;
   onPress: () => void;
+  /** Posé APRÈS les styles par défaut, donc il les écrase. Sert au seul cas où ces pastilles ne
+   *  sont pas une liste mais une ÉCHELLE — le nombre de joueurs, qui se range sur une ligne en
+   *  largeurs égales (cf. `ContextStep`). Partout ailleurs, ne rien passer. */
+  style?: StyleProp<ViewStyle>;
 }
 
-export function Chip({ label, selected, onPress }: ChipProps) {
+export function Chip({ label, selected, onPress, style }: ChipProps) {
   return (
-    <Pressable style={[styles.chip, selected && styles.chipSelected]} onPress={onPress}>
+    <Pressable style={[styles.chip, selected && styles.chipSelected, style]} onPress={onPress}>
       <Text style={[styles.text, selected && styles.textSelected]}>{label}</Text>
     </Pressable>
   );
