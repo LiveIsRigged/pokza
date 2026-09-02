@@ -30,6 +30,28 @@
       body {
         overflow: hidden;
       }
+      /*
+        PAS DE ZOOM AU DOUBLE-TAP — signalé par Victor le 02/09/2026, sur iPhone uniquement.
+        Taper vite deux cartes voisines du sélecteur (le 8♥ puis le 9♥, distants de 27 px) faisait
+        annuler la PREMIÈRE : le second toucher était livré à la carte déjà choisie, qui se
+        désélectionnait. On se retrouvait sans aucune carte.
+
+        Safari garde un geste « double-tap pour zoomer » en réserve pendant ~300 ms après un
+        toucher. Deux appuis rapprochés dans le temps ET dans l'espace en sont un candidat, et le
+        second clic est alors retardé, fusionné ou réattribué. `react-native-web` pose déjà
+        `touch-action: manipulation` sur chaque `Pressable`, ce qui neutralise le geste QUAND LES
+        DEUX APPUIS SONT SUR LE MÊME élément — mais pas quand ils sont sur deux voisins, car la
+        reconnaissance se fait alors plus haut dans l'arbre. Posé ici, sur `body`, il couvre toute
+        chaîne d'ancêtres : `touch-action` se compose en descendant, donc plus aucun double-tap
+        n'est candidat au zoom, où qu'il tombe.
+
+        `manipulation` et non `none` : le défilement d'un doigt ET LE ZOOM À DEUX DOIGTS restent
+        intacts. Seul le zoom au double-tap disparaît — celui dont personne ne se sert dans une app
+        et qui, ici, mange un toucher sur deux.
+      */
+      body {
+        touch-action: manipulation;
+      }
       /* These styles make the root element full-height */
       #root {
         display: flex;
