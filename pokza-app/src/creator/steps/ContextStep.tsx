@@ -351,16 +351,36 @@ export function ContextStep({
    * géométrie du premier au dernier pixel du repli.
    */
   const clavierOuvert = useClavierOuvert();
+  /**
+   * ELLE NE SE DÉPLIE PAS NON PLUS SOUS UNE LISTE DE SUGGESTIONS (Victor, 02/09/2026).
+   * ────────────────────────────────────────────────────────────────────────────────
+   * La banque de lieux ne marchait plus : on tapait trois lettres, la suggestion apparaissait, on
+   * la touchait — et le champ gardait les trois lettres. Deux corrections d'août qui se
+   * télescopaient, et aucune des deux n'était fautive.
+   *
+   * Toucher une suggestion fait perdre le focus au champ. Le `focusout` rendait aussitôt
+   * `clavierOuvert` faux, la table se dépliait, et TOUT LE FORMULAIRE descendait de la hauteur de
+   * la table — 211 px à deux joueurs, 312 à dix. Entre le doigt qui se pose et celui qui se lève,
+   * la ligne visée était partie ; le pointeur n'était plus dessus, React annulait l'appui, et
+   * `onPress` ne partait jamais. Le sursis de 150 ms de `LocationInput` traitait la ligne qui
+   * DISPARAÎT ; il ne pouvait rien contre la ligne qui BOUGE, puisqu'elle était toujours là.
+   *
+   * Le repli veut dire « il est occupé dans un champ ». Choisir une suggestion, c'est encore être
+   * dans ce champ : l'écran garde donc sa forme jusqu'à ce que la liste se ferme — ce que fait
+   * `choisir` juste après avoir écrit le lieu. Le dépliement est retardé de quelques dizaines de
+   * millisecondes, et il arrive quand l'appui a produit son effet.
+   */
+  const [listeLieuOuverte, setListeLieuOuverte] = useState(false);
   const hauteurTable = hauteurTableContexte(value.numPlayers);
   const deploiement = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.timing(deploiement, {
-      toValue: clavierOuvert ? 0 : 1,
+      toValue: clavierOuvert || listeLieuOuverte ? 0 : 1,
       duration: DUREE_REPLI_MS,
       useNativeDriver: false,
     }).start();
-  }, [clavierOuvert, deploiement]);
+  }, [clavierOuvert, listeLieuOuverte, deploiement]);
 
   return (
     <WizardScreen
@@ -826,6 +846,7 @@ export function ContextStep({
           placeholder="Ex : Club Circus, Bruxelles"
           value={value.location ?? ''}
           onChangeText={(t) => update({ location: t })}
+          onListeOuverte={setListeLieuOuverte}
         />
 
         {/* LA DEVISE EST TOUT EN BAS, sous le lieu, et pas à côté des blindes : elle décrit OÙ on a
