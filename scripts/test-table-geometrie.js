@@ -42,6 +42,7 @@ function vrai(titre, condition, details = '') {
 
 const FEED = L.GABARIT_FEED;
 const ATELIER = L.GABARIT_ATELIER;
+const CONTEXTE = L.GABARIT_CONTEXTE;
 
 console.log('\n— Le feed, valeur par valeur (relevés d’avant le gabarit) —');
 eq('bloc de siège', L.blocSiegeHauteur(FEED, false), 80);
@@ -81,7 +82,7 @@ function sieges(n) {
 }
 
 /** Toutes les boîtes visibles d'une table : blocs de siège, jetons de mise, board, pastille de pot. */
-function boites(n, w, h, g, avecJetons = true, avecBoard = true, rangees = 1) {
+function boites(n, w, h, g, avecJetons = true, avecBoard = true, rangees = 1, blindesSeules = false) {
   const coords = L.layoutSeats(sieges(n), w, h, 0.16, g);
   const cx = w / 2;
   const cy = h / 2;
@@ -107,6 +108,8 @@ function boites(n, w, h, g, avecJetons = true, avecBoard = true, rangees = 1) {
     out.push({ n: `s${i}.cartes`, x1: x - largeurCartes / 2, x2: x + largeurCartes / 2, y1: haut, y2: haut + carte.height });
     out.push({ n: `s${i}.badge`, x1: x - 40, x2: x + 40, y1: haut + carte.height + 4, y2: haut + bloc });
     if (!avecJetons) return;
+    // Aux étapes de RÉGLAGE, personne n'a encore agi : seules la SB et la BB ont posé quelque chose.
+    if (blindesSeules && seat.position !== 'SB' && seat.position !== 'BB') return;
     const dx = cx - x;
     const dy = cy - y;
     const d = Math.hypot(dx, dy) || 1;
@@ -125,8 +128,8 @@ function boites(n, w, h, g, avecJetons = true, avecBoard = true, rangees = 1) {
   return out;
 }
 
-function conflits(n, w, h, g, avecJetons = true, avecBoard = true, rangees = 1) {
-  const b = boites(n, w, h, g, avecJetons, avecBoard, rangees);
+function conflits(n, w, h, g, avecJetons = true, avecBoard = true, rangees = 1, blindesSeules = false) {
+  const b = boites(n, w, h, g, avecJetons, avecBoard, rangees, blindesSeules);
   const out = new Set();
   for (let i = 0; i < b.length; i++)
     for (let j = i + 1; j < b.length; j++) {
@@ -189,14 +192,21 @@ vrai(
   'largeur de table 430'
 );
 
-/** Plancher SANS board réservé — les étapes de réglage, où la main n'a pas commencé. */
+/**
+ * Plancher des étapes de RÉGLAGE : pas de board réservé, et SEULES LES BLINDES ont un jeton devant
+ * elles — la main n'a pas commencé, personne n'a encore agi.
+ *
+ * ⚠️ Ce second point est la correction du 01/09/2026, et elle vaut cher : le modèle posait un jeton
+ * devant chaque siège, donc mesurait une table qui n'existe pas. C'est ce qui a fait annoncer 425 px
+ * à dix joueurs alors que 312 suffisent.
+ */
 function plancherReglage(n, w, g) {
   const tolere = new Set(conflits(n, w, Math.round(w * 1.25), FEED));
   let dernier = null;
-  for (let h = 150; h <= Math.round(w * 1.25); h++) {
-    if (conflits(n, w, h, g, true, false).filter((c) => !tolere.has(c)).length) dernier = h;
+  for (let h = 120; h <= Math.round(w * 1.25); h++) {
+    if (conflits(n, w, h, g, true, false, 1, true).filter((c) => !tolere.has(c)).length) dernier = h;
   }
-  return dernier ? dernier + 1 : 150;
+  return dernier ? dernier + 1 : 120;
 }
 
 console.log('\n— Les hauteurs de l’atelier tiennent le plancher, à toutes les largeurs —');
@@ -256,16 +266,34 @@ vrai(
 
 // TÉMOIN : la hauteur doit rester NETTEMENT sous celle du feed, sinon les trois réductions n'ont
 // servi à rien et l'écran de street ne rentrera pas.
-console.log('\n— Et les hauteurs de RÉGLAGE (étapes 1 et 2, sans board) —');
+console.log('\n— Et les hauteurs de RÉGLAGE : étape 1 à 80 %, étape 2 pleine taille —');
 for (const n of [2, 4, 5, 6, 7, 8, 9, 10]) {
-  const annoncee = L.hauteurTableReglage(n);
-  const pire = Math.max(...LARGEURS.map((w) => plancherReglage(n, w, ATELIER)));
-  vrai(`${n} joueurs : ${annoncee} px ≥ plancher mesuré ${pire}`, annoncee >= pire);
+  // Deux écrans, deux gabarits (choix de Victor du 01/09) : l'étape 1 réduit ses cartes à 80 %,
+  // l'étape 2 garde celles de l'atelier — c'est là qu'on choisit sa main.
+  const c = L.hauteurTableContexte(n);
+  const pireC = Math.max(...LARGEURS.map((w) => plancherReglage(n, w, CONTEXTE)));
+  vrai(`étape 1, ${n} joueurs : ${c} px ≥ plancher mesuré ${pireC}`, c >= pireC);
+  const k = L.hauteurTableCartes(n);
+  const pireK = Math.max(...LARGEURS.map((w) => plancherReglage(n, w, ATELIER)));
+  vrai(`étape 2, ${n} joueurs : ${k} px ≥ plancher mesuré ${pireK}`, k >= pireK);
 }
 vrai(
-  'la table de réglage n’est jamais plus haute que celle de la main',
-  [2, 4, 5, 6, 7, 8, 9, 10].every((n) => L.hauteurTableReglage(n) <= L.hauteurTableAtelier(n)),
+  'les tables de réglage ne sont jamais plus hautes que celle de la main',
+  [2, 4, 5, 6, 7, 8, 9, 10].every(
+    (n) => L.hauteurTableContexte(n) <= L.hauteurTableAtelier(n) && L.hauteurTableCartes(n) <= L.hauteurTableAtelier(n)
+  ),
   'retirer le board ne peut pas exiger PLUS de hauteur'
+);
+vrai(
+  'l’étape 1 n’est jamais plus haute que l’étape 2',
+  [2, 4, 5, 6, 7, 8, 9, 10].every((n) => L.hauteurTableContexte(n) <= L.hauteurTableCartes(n)),
+  'des cartes plus petites ne peuvent pas exiger plus de hauteur'
+);
+vrai(
+  'ni l’une ni l’autre ne rétrécit quand on ajoute un joueur',
+  [3, 4, 5, 6, 7, 8, 9, 10].every(
+    (n) => L.hauteurTableContexte(n) >= L.hauteurTableContexte(n - 1) && L.hauteurTableCartes(n) >= L.hauteurTableCartes(n - 1)
+  )
 );
 
 vrai(

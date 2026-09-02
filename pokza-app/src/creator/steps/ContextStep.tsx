@@ -9,7 +9,7 @@ import { holeCardCount } from '../../types/poker';
 import { borders, colors, tints } from '../../theme/theme';
 import { Chip } from '../Chip';
 import { TableVue } from '../../components/table/TableVue';
-import { GABARIT_ATELIER, hauteurTableReglage } from '../../engine/layout';
+import { GABARIT_CONTEXTE, hauteurTableContexte } from '../../engine/layout';
 import { potDeReglage, siegesDeReglage } from '../tableReglage';
 import { useClavierOuvert } from '../clavier';
 import { WizardScreen } from '../WizardScreen';
@@ -312,9 +312,24 @@ export function ContextStep({
   const enumerer = (l: string[]) =>
     l.length <= 1 ? l[0] ?? '' : `${l.slice(0, -1).join(', ')} et ${l[l.length - 1]}`;
 
-  // La pastille ne se montre que sur une table dont AUCUN adversaire n'est nommé : dès qu'un nom
-  // est tapé, la reprise n'est plus un raccourci, c'est un écrasement.
-  const tableVierge = joueursNommes(value.numPlayers, value.heroPosition, value.opponentNames).length === 0;
+  /**
+   * UN DROIT À L'ERREUR — constat 5 de l'audit, tranché par Victor le 02/09/2026.
+   * ───────────────────────────────────────────────────────────────────────────
+   * La pastille disparaissait dès le PREMIER nom tapé. Or elle est à y = 789 dans un formulaire
+   * dont la lucarne fait 427 px : il faut défiler de 380 à 580 px pour la voir. Celui qui descend,
+   * commence à saisir, PUIS l'aperçoit du coin de l'œil ne la retrouvait qu'en vidant son champ.
+   * Et c'est la commande qui épargne le plus de saisie de tout l'écran — jusqu'à 18 champs à neuf
+   * joueurs.
+   *
+   * Elle survit donc au premier nom et ne se tait qu'au DEUXIÈME. Le prix est réel et il est
+   * assumé : reprendre après un premier nom l'ÉCRASE. C'est le bon compromis parce que ce nom-là
+   * vient d'être tapé, il est sous les yeux, et le retaper coûte quelques secondes — là où
+   * retrouver la pastille coûtait de vider un champ sans savoir que c'était la manœuvre.
+   *
+   * Deux noms, en revanche, c'est une saisie engagée : la reprise cesse d'être un raccourci pour
+   * devenir une perte.
+   */
+  const tableVierge = joueursNommes(value.numPlayers, value.heroPosition, value.opponentNames).length <= 1;
 
   /**
    * LA TABLE SE REPLIE PENDANT QU'ON ÉCRIT (cf. `useClavierOuvert`).
@@ -336,7 +351,7 @@ export function ContextStep({
    * géométrie du premier au dernier pixel du repli.
    */
   const clavierOuvert = useClavierOuvert();
-  const hauteurTable = hauteurTableReglage(value.numPlayers);
+  const hauteurTable = hauteurTableContexte(value.numPlayers);
   const deploiement = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -370,7 +385,7 @@ export function ContextStep({
             bb={value.bombPot ? value.bombAnte : value.bb}
             holeCardCount={holeCardCount(value.variant)}
             hauteur={hauteurTable}
-            gabarit={GABARIT_ATELIER}
+            gabarit={GABARIT_CONTEXTE}
             onSiegePress={toucherSiege}
           />
         </Animated.View>

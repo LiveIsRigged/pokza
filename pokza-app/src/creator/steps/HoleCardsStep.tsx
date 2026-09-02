@@ -4,7 +4,7 @@ import type { Card } from '../../types/poker';
 import { MultiCardPicker } from '../MultiCardPicker';
 import { WizardScreen } from '../WizardScreen';
 import { TableVue } from '../../components/table/TableVue';
-import { GABARIT_ATELIER, hauteurTableReglage } from '../../engine/layout';
+import { GABARIT_ATELIER, hauteurTableCartes } from '../../engine/layout';
 import { potDeReglage, siegesDeReglage } from '../tableReglage';
 import type { ContextData } from '../types';
 
@@ -83,7 +83,7 @@ export function HoleCardsStep({
           currency={context.currency}
           bb={context.bombPot ? context.bombAnte : context.bb}
           holeCardCount={count}
-          hauteur={hauteurTableReglage(context.numPlayers)}
+          hauteur={hauteurTableCartes(context.numPlayers)}
           gabarit={GABARIT_ATELIER}
         />
       }

@@ -159,21 +159,72 @@ export function hauteurTableAtelier(nbSieges: number, doubleBoard = false): numb
 }
 
 /**
- * Et la même chose PENDANT LE RÉGLAGE — étapes « contexte » et « tes cartes », où la main n'a pas
- * commencé. Le board y est absent : les cinq emplacements et la pastille de pot ne réservent plus
- * les 53 px que les jetons doivent contourner, et la table peut descendre.
+ * LE GABARIT DE L'ÉTAPE 1 — « La table ».
+ * ───────────────────────────────────────
+ * L'atelier avec ses cartes à 80 %. Rien d'autre ne change : mêmes badges, mêmes jetons.
  *
- * Le gain n'existe QUE jusqu'à six joueurs (342 → 242, soit 100 px rendus au formulaire de l'étape 1,
- * qui en fait 1 132). Au-delà, ce ne sont plus le board et les jetons qui commandent mais les sièges
- * entre eux, et retirer le board ne change rien — d'où deux tables identiques à partir de sept.
+ * ⚠️ L'ÉTAPE 2 NE L'UTILISE PAS (choix de Victor, 01/09/2026). Elle garde les cartes de l'atelier :
+ * c'est l'écran où l'on choisit SA main et où on la regarde apparaître sur le feutre — le plus
+ * mauvais endroit pour rapetisser des cartes. Le gain qu'on y perd est petit et mesuré : les 80 %
+ * ne rendent que 26 à 33 px au-delà de l'aplatissement, alors que l'aplatissement seul suffit à
+ * empêcher le sélecteur de défiler (cf. `hauteurTableCartes`).
+ *
+ * Pourquoi ce sont les CARTES qu'on réduit, et pas autre chose (mesuré le 01/09/2026, après que
+ * Victor a entouré le vide au centre d'une table à dix) : la hauteur d'une table est commandée par
+ * la hauteur du BLOC d'un siège — cartes + écart + badge — et par elle seule. Rentrer les sièges
+ * vers le centre EMPIRE tout (le plancher à dix passe de 345 à 489 quand on resserre l'ellipse) :
+ * dix plaques de 80 px demandent 800 px de tour, et raccourcir l'anneau les fait se percuter. Le
+ * trou au milieu n'est pas de la place perdue, c'est l'intérieur d'un anneau presque plein.
+ *
+ * Les cartes de HERO comptent double : c'est leur demi-hauteur que `seatEllipseRy` retranche pour
+ * plafonner le rayon vertical. Les réduire raccourcit le bloc ET agrandit l'ellipse.
+ *
+ * 80 % est le choix de Victor entre les échelles mesurées. En dessous, les cartes des adversaires
+ * passeraient sous les 18 px de `boardCardSize` et la cible tactile d'un siège tomberait à la
+ * moitié de sa surface.
  */
-const HAUTEURS_REGLAGE: Record<number, number> = {
-  2: 226, 3: 240, 4: 240, 5: 240, 6: 242, 7: 322, 8: 342, 9: 387, 10: 425,
+export const GABARIT_CONTEXTE: Gabarit = {
+  ...GABARIT_ATELIER,
+  carteVilain: { width: 19, height: 26 },
+  carteHero: { width: 27, height: 37 },
 };
 
-export function hauteurTableReglage(nbSieges: number): number {
-  const borne = Math.max(2, Math.min(10, Math.round(nbSieges)));
-  return HAUTEURS_REGLAGE[borne];
+/**
+ * LES PLANCHERS DES DEUX ÉTAPES DE RÉGLAGE, où la main n'a pas commencé.
+ * ─────────────────────────────────────────────────────────────────────
+ * Deux choses les font descendre bien plus bas que ceux de l'atelier :
+ *
+ *   • le board est absent (`TableVue.sansBoard`) ;
+ *   • ⚠️ SEULES LA SB ET LA BB ONT UN JETON DEVANT ELLES. Personne n'a encore agi : il n'y a que les
+ *     blindes. Le modèle qui posait un jeton devant CHAQUE siège mesurait une autre table que celle
+ *     qu'on dessine, et c'est ce qui a fait annoncer 425 px à dix joueurs pendant tout août.
+ *
+ * Relevés au maximum sur les largeurs d'iPhone (339 → 430), puis maximum courant sur le nombre de
+ * sièges — ajouter un joueur ne doit jamais rétrécir la table. Le maximum courant est ce qui tient
+ * 3, 6 et 7 joueurs au-dessus de leur plancher propre.
+ *
+ * ⚠️ Chaque table va avec SON gabarit, et les rejouer avec l'autre ferait mordre des jetons ;
+ * `scripts/test-table-geometrie.js` le vérifie pour les deux.
+ */
+const HAUTEURS_CONTEXTE: Record<number, number> = {
+  2: 211, 3: 211, 4: 211, 5: 226, 6: 233, 7: 233, 8: 241, 9: 274, 10: 312,
+};
+
+/** Étape 2, cartes de l'atelier : mêmes règles, blocs plus hauts, donc planchers plus hauts. */
+const HAUTEURS_CARTES: Record<number, number> = {
+  2: 226, 3: 226, 4: 226, 5: 235, 6: 242, 7: 242, 8: 267, 9: 303, 10: 345,
+};
+
+const borneSieges = (n: number) => Math.max(2, Math.min(10, Math.round(n)));
+
+/** Étape 1 « La table » — avec `GABARIT_CONTEXTE`. */
+export function hauteurTableContexte(nbSieges: number): number {
+  return HAUTEURS_CONTEXTE[borneSieges(nbSieges)];
+}
+
+/** Étape 2 « Tes cartes » — avec `GABARIT_ATELIER`, cartes pleine taille. */
+export function hauteurTableCartes(nbSieges: number): number {
+  return HAUTEURS_CARTES[borneSieges(nbSieges)];
 }
 
 /** Hauteur du bloc d'un siège : rangée de cartes + écart + badge. */
