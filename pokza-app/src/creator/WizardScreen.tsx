@@ -171,9 +171,12 @@ const styles = StyleSheet.create({
   zoneFixe: {
     marginHorizontal: -18,
   },
-  // Le filet marque la frontière entre ce qui ne défile pas (la table) et l'atelier en dessous.
-  // Il est ici plutôt que dans le contenu pour qu'il ne parte JAMAIS en défilement : une frontière
-  // qui s'en va n'en est plus une.
+  // PLUS DE FILET (Victor, 02/09/2026). Il prétendait marquer la frontière entre ce qui ne défile
+  // pas — la table — et l'atelier en dessous. Mais il ne la marquait que sur DEUX écrans sur cinq :
+  // les streets, et l'étape 1 seulement pendant un échange de sièges. Ni « Tes cartes », ni
+  // l'abattage, ni la publication ne l'avaient, alors qu'ils ont exactement la même structure — et
+  // l'étape 1, de loin celle qui défile le plus (1 280 px de formulaire pour 436 de lucarne), s'en
+  // passait en temps normal. Une frontière qu'on ne trace qu'ici ne dit plus rien de général.
   //
   // ⚠️ `minHeight` DOIT couvrir le plus grand des occupants, sinon la rangée grandit quand il
   // arrive et POUSSE TOUT L'ATELIER VERS LE BAS. C'est ce qui se passait au préflop (signalé par
@@ -181,11 +184,9 @@ const styles = StyleSheet.create({
   // parole, et son apparition décalait de 11 px le nom du joueur, les pastilles de fold rapide et
   // tout ce qui suit — pile au moment où le doigt vise. Le plus grand occupant est ce bouton :
   // 12 px de rembourrage haut + 26 px de bouton (6 + 6 de `paddingVertical` autour d'un texte de
-  // 12) + le filet. 40 les tient tous, avec un pixel et demi de jeu. La rangée mesure donc la même
+  // 12). 40 les tient tous, avec de la marge. La rangée mesure donc la même
   // chose qu'elle soit vide, qu'elle porte un nom seul, ou les deux.
   rangeeFixe: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: borders.hairline,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

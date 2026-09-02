@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Card } from '../../types/poker';
 import { MultiCardPicker } from '../MultiCardPicker';
 import { WizardScreen } from '../WizardScreen';
@@ -88,9 +88,20 @@ export function HoleCardsStep({
         />
       }
     >
-      <View>
+      {/* LES CARTES NE TOUCHENT PAS LE FEUTRE (Victor, 02/09/2026). Mesuré : le bas de la table
+          et le haut de la grille étaient au MÊME pixel (342), là où les écrans de street laissent
+          46 px — occupés chez eux par la rangée « À X de jouer ». Cet écran n'a rien à y mettre :
+          on reprend donc seulement l'espacement de cette rangée (12 px de rembourrage haut, 6 de
+          marge basse), pas la bande vide de 40 px qu'elle réserve pour son contenu. */}
+      <View style={styles.selecteur}>
         <MultiCardPicker count={count} selected={cards} onChange={onChange} sansApercu />
       </View>
     </WizardScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  selecteur: {
+    paddingTop: 18,
+  },
+});
