@@ -25,7 +25,6 @@ import { AuthProvider, useAuth } from './src/state/auth';
 import { useProfileStatus } from './src/state/profile';
 import { AuthScreen } from './src/auth/AuthScreen';
 import { PublicPostScreen } from './src/post/PublicPostScreen';
-import { BancTable } from './src/dev/BancTable'; // BANC TEMPORAIRE
 import { NewPasswordScreen } from './src/auth/NewPasswordScreen';
 import { CompleteProfileScreen } from './src/profile/CompleteProfileScreen';
 import { ProfileScreen } from './src/profile/ProfileScreen';
@@ -71,8 +70,6 @@ import { clearDeepLinkFromUrl, readInitialDeepLink } from './src/navigation/deep
 import { initAnalytics, resetAnalytics, trackEvent } from './src/analytics';
 
 export default function App() {
-  // BANC D'ESSAI TEMPORAIRE — à retirer (cf. src/dev/BancTable.tsx)
-  if (typeof location !== 'undefined' && location.search.includes('banc')) return <BancTable />;
   // `SafeAreaProvider` mesure les zones sûres (encoche / Dynamic Island / barre système) et les
   // expose via `useSafeAreaInsets`. `initialMetrics` fournit ces valeurs dès le premier rendu natif,
   // sans le petit saut de mise en page qu'on aurait sinon le temps de la première mesure.
