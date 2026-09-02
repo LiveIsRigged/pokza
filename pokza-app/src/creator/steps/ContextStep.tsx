@@ -206,15 +206,42 @@ export function ContextStep({
   };
   const maxPlayers = maxPlayersFor(value);
 
+  /**
+   * LA POSITION QUE L'AUTEUR A VOULUE — et qu'on lui rend dès qu'elle redevient possible.
+   * ──────────────────────────────────────────────────────────────────────────────────
+   * Signalé le 02/09/2026. Réduire la table peut effacer le siège du héros : « j'étais en BB »
+   * à 9 joueurs, on descend à 2, la BB n'existe plus et la position est repoussée sur le premier
+   * siège venu. Jusqu'ici, REMONTER à 9 rendait les neuf sièges mais pas la BB — le choix était
+   * perdu en silence, et c'est le réglage dont l'audit dit qu'il commande tout l'aval.
+   *
+   * Le souhait est donc mémorisé, et relu chaque fois qu'un siège est repris de force. Deux
+   * chemins mènent à ce forçage, et un seul à l'enregistrement :
+   *   • le nombre de joueurs, touché directement (plus bas) ;
+   *   • le plafond du jeu de 52 cartes, quand la variante change (juste en dessous).
+   *
+   * Une position n'est retenue que si le correctif la porte SANS toucher au nombre de joueurs :
+   * c'est exactement ce qui distingue un geste de l'auteur (choisir sa place, décaler la table,
+   * échanger deux sièges, reprendre des joueurs — tous passent par `posesDeTable`) d'un
+   * repositionnement subi. Une référence et non un état : elle ne change rien à l'affichage.
+   */
+  const positionVoulue = useRef<Position>(value.heroPosition);
+
   const update = (patch: Partial<ContextData>) => {
     const next = { ...value, ...patch };
+    if (patch.heroPosition !== undefined && patch.numPlayers === undefined) {
+      positionVoulue.current = patch.heroPosition;
+    }
     // Si le changement (variante, double board...) réduit le plafond sous le nombre courant, on
     // ramène le nombre de joueurs au max — et on répare la position du héros si elle n'existe plus.
     const max = maxPlayersFor(next);
     if (next.numPlayers > max) {
       next.numPlayers = max;
       const positions = POSITION_SETS[max] ?? POSITION_SETS[6];
-      if (!positions.includes(next.heroPosition)) next.heroPosition = positions[0];
+      if (!positions.includes(next.heroPosition)) {
+        next.heroPosition = positions.includes(positionVoulue.current)
+          ? positionVoulue.current
+          : positions[0];
+      }
     }
     // Le straddle a ses propres règles de cohérence — le bouton qui n'a plus sa place, la longueur
     // de la chaîne, le montant du bouton qui suit ce qui le précède. Elles vivent toutes dans
@@ -717,8 +744,16 @@ export function ContextStep({
               selected={value.numPlayers === n}
               onPress={() => {
                 const newPositions = POSITION_SETS[n];
-                const stillValid = newPositions.includes(value.heroPosition);
-                update({ numPlayers: n, heroPosition: stillValid ? value.heroPosition : newPositions[0] });
+                // Le souhait d'abord (cf. `positionVoulue`) : agrandir la table rend au héros le
+                // siège qu'une réduction lui avait pris. Puis sa place actuelle si elle tient
+                // toujours, et en dernier recours le premier siège de la nouvelle table.
+                const voulue = positionVoulue.current;
+                const cible = newPositions.includes(voulue)
+                  ? voulue
+                  : newPositions.includes(value.heroPosition)
+                    ? value.heroPosition
+                    : newPositions[0];
+                update({ numPlayers: n, heroPosition: cible });
               }}
             />
           ))}
