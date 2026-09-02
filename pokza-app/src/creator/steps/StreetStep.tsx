@@ -472,6 +472,43 @@ export function StreetStep({
   const currentRemaining = currentSeatId ? availableAtStart(currentSeatId) : 0;
   const callTo = Math.min(betAmount, currentRemaining); // suivre est plafonné au tapis
   const isCallAllIn = callTo >= currentRemaining && callTo < betAmount;
+  /**
+   * CE QU'IL RESTE À POSER POUR SUIVRE — décision de Victor, 02/09/2026.
+   * ───────────────────────────────────────────────────────────────────
+   * Le bouton affichait `callTo`, le TOTAL de la street. À 5-10, la BB voyait « Suivre (30) » face
+   * à une ouverture à 30 alors qu'elle n'avait que 20 à poser ; au flop, après avoir misé 65 et
+   * s'être fait relancer à 265, elle lisait « Suivre (265) » pour 200 à sortir.
+   *
+   * LA RÈGLE, ET ELLE N'EST PAS UN MÉLANGE D'UNITÉS : ce qu'on DÉCLARE se nomme par son niveau,
+   * ce qu'on se contente de SUIVRE se paie par la différence. Une mise, une relance, un tapis, on
+   * en choisit la taille — c'est donc une taille, et « Tapis » continue d'afficher le total (faire
+   * tapis avec 65 déjà devant soi et 500 en début de street, c'est miser 500, pas 435). Suivre, on
+   * ne choisit rien : on comble un écart. C'est mot pour mot le format des hand histories, que la
+   * narration imite déjà avec son `raises to` — « raises 200 to 265 » puis « calls 200 ».
+   *
+   * ⚠️ `callTo - contributions`, PAS `owed`. `owed` (= betAmount - contributions) n'est pas plafonné
+   * au tapis : un joueur qui doit 200 mais n'a que 85 devant lui afficherait « Suivre (200) · tapis »,
+   * une somme qu'il ne peut pas poser. Le plafond est déjà dans `callTo`.
+   *
+   * Rien d'autre ne bouge : l'action ENREGISTRÉE reste le total, comme les jetons dessinés devant
+   * chaque joueur et comme la ligne narrée. Seul le libellé du bouton change.
+   */
+  const resteAPoser = callTo - (contributions[currentSeatId] ?? 0);
+  /**
+   * SUIVRE ME MET-IL À TAPIS ? — distinct de `isCallAllIn`, et c'est voulu.
+   * ─────────────────────────────────────────────────────────────────────
+   * `isCallAllIn` répond à « je ne peux même pas ÉGALER la mise » (`callTo < betAmount`) : c'est ce
+   * qui justifie le suffixe « · tapis », parce que les autres restent alors redevables du solde.
+   * Celui-ci répond à « ce suivi consomme tout mon tapis », ce qui est vrai dès l'égalité exacte —
+   * le cas que le suffixe rate, et qui n'avait plus AUCUN signal depuis que le bouton « Tapis » se
+   * retire quand il fait doublon.
+   *
+   * Il ne pilote que l'habillage. Le socle traitait Fold, Suivre et Relancer à l'identique parce
+   * qu'aucune de ces actions n'est « la bonne » ; seul Tapis se distinguait, PARCE QU'IL EST
+   * IRRÉVERSIBLE. Un suivi à tapis l'est tout autant : il porte donc le même costume, et pas
+   * l'orange de marque, qui pousserait à l'action (cf. le commentaire du bouton Relancer).
+   */
+  const suivreMetATapis = callTo >= currentRemaining;
 
   const rounding: BetRoundingContext = { gameType, sb, bb };
   const isPotLimit = variant === 'plo' || variant === 'plo5';
@@ -842,6 +879,9 @@ export function StreetStep({
     if (currentRemaining <= 0) return;
     if (currentRemaining <= betAmount) {
       // Pas de quoi relancer : tapis = suivre à tapis (les autres restent redevables du betAmount).
+      // ⚠️ Plus atteignable depuis le bouton, qui se retire dans ce cas précis (cf. le socle) —
+      // gardée parce qu'elle EST la définition de ce que fait un tapis qui ne couvre pas la mise,
+      // et parce que `handleAllIn` redeviendrait faux si un futur appelant s'y branchait.
       const pile = pushHistory();
       const nextRecorded = pushAction('call', currentRemaining);
       const nextContributions = { ...contributions, [currentSeatId]: currentRemaining };
@@ -1018,9 +1058,12 @@ export function StreetStep({
         <Pressable style={styles.actionButton} onPress={handleFold}>
           <Text style={styles.actionText}>Fold</Text>
         </Pressable>
-        <Pressable style={styles.actionButton} onPress={handleCall}>
+        <Pressable
+          style={[styles.actionButton, suivreMetATapis && styles.actionButtonTapis]}
+          onPress={handleCall}
+        >
           <Text style={styles.actionText}>
-            Suivre ({fmt(callTo)}){isCallAllIn ? ' · tapis' : ''}
+            Suivre ({fmt(resteAPoser)}){isCallAllIn ? ' · tapis' : ''}
           </Text>
         </Pressable>
       </>
@@ -1040,9 +1083,22 @@ export function StreetStep({
         <Text style={styles.actionText}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
       </Pressable>
     )}
-    <Pressable style={styles.allInButton} onPress={handleAllIn}>
-      <Text style={styles.allInText}>Tapis ({fmt(currentRemaining)})</Text>
-    </Pressable>
+    {/* « TAPIS » DISPARAÎT QUAND IL NE FAIT QUE DOUBLER « SUIVRE » (Victor, 02/09/2026).
+        Tant que le tapis ne dépasse pas la mise en cours, faire tapis N'EST PAS une relance :
+        `handleAllIn` le note lui-même comme un suivi (`pushAction('call', currentRemaining)`, avec
+        `currentRemaining === callTo` dans ce cas). Les deux boutons produisaient donc exactement
+        la même action et le même montant enregistré — et depuis que « Suivre » affiche ce qu'il
+        reste à poser, ils l'annonçaient avec deux nombres différents (« Suivre (910€) » à côté de
+        « Tapis (1000€) »), ce qui laissait croire à deux gestes distincts.
+        Aucune capacité n'est perdue : quand le tapis ne couvre pas la mise, le seul tapis possible
+        est un suivi à tapis, et c'est « Suivre » qui le fait. La rangée tombe alors à deux boutons,
+        Fold et Suivre — l'absence de « Relancer » ET de « Tapis » dit à elle seule qu'il n'y a plus
+        de quoi relancer. */}
+    {currentRemaining > betAmount && (
+      <Pressable style={styles.allInButton} onPress={handleAllIn}>
+        <Text style={styles.allInText}>Tapis ({fmt(currentRemaining)})</Text>
+      </Pressable>
+    )}
     </View>
   );
 
@@ -1224,6 +1280,25 @@ export function StreetStep({
   );
 }
 
+/**
+ * LE COSTUME « TAPIS » : liseré or, fond crème. Défini UNE fois et porté par les deux boutons qui
+ * disent la même chose — « Tapis », et « Suivre » quand suivre consomme tout le tapis. Deux copies
+ * auraient dérivé au premier ajustement de teinte, et le lecteur aurait alors deux signaux là où
+ * il n'y a qu'un fait.
+ *
+ * Ce n'est PAS l'orange de marque (`colors.action`) : c'est la paire or + crème qui, dans cette
+ * app, veut dire « celui-là est à part » (même couple que `cardSelected` dans le sélecteur de
+ * cartes), et non « fais celui-là ».
+ *
+ * Le liseré passe aussi de 1 à 1,5 px : la distinction ne repose donc pas sur la seule teinte, et
+ * reste perceptible pour qui ne la voit pas.
+ */
+const COSTUME_TAPIS = {
+  borderWidth: 1.5,
+  borderColor: colors.gold,
+  backgroundColor: '#FBF3DC',
+} as const;
+
 const styles = StyleSheet.create({
   boardSection: {
     marginBottom: 8,
@@ -1340,6 +1415,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: borders.default,
   },
+  actionButtonTapis: COSTUME_TAPIS,
   actionText: {
     fontSize: 14,
     fontWeight: '600',
@@ -1349,9 +1425,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: colors.gold,
-    backgroundColor: '#FBF3DC',
+    ...COSTUME_TAPIS,
   },
   allInText: {
     fontSize: 14,
