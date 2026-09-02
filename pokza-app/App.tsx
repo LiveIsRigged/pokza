@@ -11,6 +11,7 @@ import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-
 import { ActivityIndicator, Animated, AppState, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { installPwaMeta } from './src/web/installPwaMeta';
+import { AjusteurHauteur } from './src/web/AjusteurHauteur';
 import { InstallPromptProvider } from './src/web/InstallPrompt';
 import { registerPushServiceWorker } from './src/web/push';
 import { PostCard } from './src/components/post/PostCard';
@@ -75,6 +76,10 @@ export default function App() {
   // sans le petit saut de mise en page qu'on aurait sinon le temps de la première mesure.
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      {/* Ne rend rien : cale la racine sur la bande visible pendant qu'un clavier est à l'écran,
+          pour que Safari iOS cesse de faire glisser la page. Monté ici parce que le défaut vient
+          de la feuille de style d'`index.html` — il ne concerne pas un écran en particulier. */}
+      <AjusteurHauteur />
       <DisplayUnitProvider>
         <AuthProvider>
           <RootChrome>

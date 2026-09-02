@@ -1195,7 +1195,8 @@ export function StreetStep({
                       mesuré. Le clavier iOS ne rétrécit PAS la fenêtre de mise en page : l'app reste
                       haute de tout l'écran dans une bande visible réduite, et Safari fait glisser la
                       page ENTIÈRE jusqu'en bas. La position du champ n'est pas le déclencheur ; le
-                      correctif est de faire rétrécir la racine à `visualViewport.height`. */}
+                      correctif a été fait ailleurs, en calant la racine sur la bande réellement
+                      visible (`src/web/hauteurVisible.ts`). */}
                   {sizeShortcuts.length > 0 && (
                     <>
                       <Text style={styles.sectionLabel}>

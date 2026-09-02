@@ -21,10 +21,24 @@
 
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
-      /* These styles make the body full-height */
+      /*
+        `--hauteur-app` : posée sur <html> par `src/web/AjusteurHauteur.tsx` pendant qu'un clavier
+        virtuel est à l'écran, et retirée dès qu'il s'en va. Sans elle, `100%` reprend la main et le
+        comportement est exactement celui d'avant — c'est ce qui rend ce correctif annulable.
+
+        Pourquoi : le clavier iOS ne rétrécit PAS la fenêtre de mise en page (`innerHeight` reste à
+        932 px) mais seulement la bande visible (`visualViewport.height` tombe à 569 px). À `100%`,
+        l'app fait donc 932 px de haut dans une bande de 569 px, et Safari fait glisser la page
+        ENTIÈRE vers le bas pour révéler le champ focalisé. Calée sur la bande visible, l'app n'a
+        plus rien sous le bord de l'écran, donc Safari n'a plus rien à révéler. Les mesures et les
+        garde-fous sont dans `src/web/hauteurVisible.ts`.
+
+        Les DEUX règles doivent la lire : c'est la hauteur du DOCUMENT qui autorise le glissement,
+        pas celle de la seule racine React.
+      */
       html,
       body {
-        height: 100%;
+        height: var(--hauteur-app, 100%);
       }
       /* These styles disable body scrolling if you are using <ScrollView> */
       body {
@@ -55,8 +69,34 @@
       /* These styles make the root element full-height */
       #root {
         display: flex;
-        height: 100%;
+        height: var(--hauteur-app, 100%);
         flex: 1;
+      }
+      /*
+        LES FEUILLES ET LES MODALES ÉCHAPPENT À `#root`, IL FAUT LES BORNER À PART.
+        `react-native-web` monte chaque `Modal` dans un `<div>` accroché directement à `<body>`, et
+        son calque est `position: fixed; top:0; right:0; bottom:0; left:0` (cf.
+        `react-native-web/dist/exports/Modal/ModalContent.js`). Un élément `fixed` se dimensionne
+        sur la fenêtre de MISE EN PAGE, pas sur son parent : rétrécir `<html>` ne l'atteint donc
+        pas, et les cinq feuilles qui contiennent un champ (fiche d'un joueur, signalement,
+        commentaires, choix du pays, GIF) auraient gardé le défaut.
+
+        `bottom: auto` explicite ce que le navigateur ferait de toute façon : `top`, `bottom` et
+        `height` tous les trois posés, c'est `bottom` qui saute (CSS 2.1 §10.6.4). On préfère le
+        dire que s'appuyer sur une règle de résolution de conflit. Sans la variable, `height: 100%`
+        se résout sur cette même fenêtre de mise en page et redonne exactement la hauteur d'avant.
+
+        Aucun risque de ressusciter une feuille fermée : `ModalAnimation` ne rend rien du tout tant
+        qu'elle est invisible (`isRendering || visible ? … : null`), donc l'élément que ce sélecteur
+        vise n'existe même pas à ce moment-là.
+
+        `html` en tête du sélecteur, uniquement pour le poids : `react-native-web` injecte ses
+        règles (`.r-bottom-1p0dtai { bottom: 0 }`) dans une feuille ajoutée APRÈS celle-ci, et une
+        classe seule l'emporterait à égalité de spécificité.
+      */
+      html [aria-modal='true'] {
+        bottom: auto;
+        height: var(--hauteur-app, 100%);
       }
     </style>
   </head>
