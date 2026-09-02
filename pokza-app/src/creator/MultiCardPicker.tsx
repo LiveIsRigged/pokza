@@ -3,11 +3,11 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import type { Card, Rank, Suit } from '../types/poker';
+import type { Card, Suit } from '../types/poker';
 import { borders, colors, tints } from '../theme/theme';
 import { CardView } from '../components/replayer/CardView';
+import { CARD_HEIGHT, RANKS, ROW_GAP, grilleCartes } from './grilleCartes';
 
-const RANKS: Rank[] = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
 const SUITS: { suit: Suit; symbol: string; red: boolean }[] = [
   { suit: 's', symbol: '♠', red: false },
   { suit: 'h', symbol: '♥', red: true },
@@ -15,16 +15,16 @@ const SUITS: { suit: Suit; symbol: string; red: boolean }[] = [
   { suit: 'c', symbol: '♣', red: false },
 ];
 
-const CARD_WIDTH = 44;
-const CARD_HEIGHT = 58;
-const CARD_GAP = 6;
 /** Hauteur d'une rangée = la carte plus le talon bas de `suitRow` : sert à dimensionner le fondu. */
-const ROW_HEIGHT = CARD_HEIGHT + CARD_GAP;
+const ROW_HEIGHT = CARD_HEIGHT + ROW_GAP;
 /** Largeur du fondu de bord : un peu moins qu'une carte, pour qu'on voie bien une carte s'estomper
  * plutôt qu'un bandeau plein posé par-dessus. */
 const FADE_WIDTH = 34;
-/** Largeur totale d'une ligne de 13 rangs : déterministe, donc jamais mesurée (cf. `SuitRow`). */
-const CONTENT_WIDTH = RANKS.length * CARD_WIDTH + (RANKS.length - 1) * CARD_GAP;
+
+/** L'aperçu des cartes choisies garde SA taille : il montre de vraies cartes (`CardView` medium,
+ *  34×46), pas des touches. Le rétrécissement du 01/09 ne concerne que la grille qu'on tape. */
+const SLOT_WIDTH = 44;
+const SLOT_HEIGHT = 58;
 
 interface MultiCardPickerProps {
   /** Nombre de cartes à choisir */
@@ -98,9 +98,15 @@ function SuitRow({
   // périmées identiques et ne servait à rien.
   const [visibleWidth, setVisibleWidth] = useState(0);
   const [offsetX, setOffsetX] = useState(0);
+  const grille = grilleCartes(windowWidth);
   // Marge d'un pixel : au bout de la course, les arrondis laissent parfois un résidu fractionnaire
   // qui ferait clignoter le fondu.
-  const remaining = CONTENT_WIDTH - (visibleWidth || windowWidth) - offsetX > 1;
+  //
+  // Le fondu ne devrait plus JAMAIS s'allumer depuis que la carte se dimensionne (cf.
+  // `grilleCartes`) — il reste comme filet : si un écran posait ce sélecteur dans un conteneur plus
+  // étroit que les 18 px de rembourrage prévus par `INSET`, la rangée déborderait en silence, et
+  // c'est exactement ce qu'on ne veut plus.
+  const remaining = grille.contenu - (visibleWidth || windowWidth) - offsetX > 1;
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     setOffsetX(e.nativeEvent.contentOffset.x);
@@ -112,7 +118,7 @@ function SuitRow({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.suitRow}
+        contentContainerStyle={[styles.suitRow, { gap: grille.gap }]}
         scrollEventThrottle={16}
         onScroll={onScroll}
       >
@@ -127,10 +133,29 @@ function SuitRow({
               key={rank}
               disabled={isUsed}
               onPress={() => onToggle(card)}
-              style={[styles.card, isSelected && styles.cardSelected, isDisabled && styles.cardDisabled]}
+              style={[
+                styles.card,
+                { width: grille.largeur, height: CARD_HEIGHT, borderRadius: grille.rayon },
+                isSelected && styles.cardSelected,
+                isDisabled && styles.cardDisabled,
+              ]}
             >
-              <Text style={[styles.rank, { color: red ? colors.cardTextRed : colors.cardTextBlack }]}>{rank}</Text>
-              <Text style={[styles.suit, { color: red ? colors.cardTextRed : colors.cardTextBlack }]}>{symbol}</Text>
+              <Text
+                style={[
+                  styles.rank,
+                  { fontSize: grille.tailleRang, color: red ? colors.cardTextRed : colors.cardTextBlack },
+                ]}
+              >
+                {rank}
+              </Text>
+              <Text
+                style={[
+                  styles.suit,
+                  { fontSize: grille.tailleCouleur, color: red ? colors.cardTextRed : colors.cardTextBlack },
+                ]}
+              >
+                {symbol}
+              </Text>
             </Pressable>
           );
         })}
@@ -214,12 +239,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   slot: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    width: SLOT_WIDTH,
+    height: SLOT_HEIGHT,
   },
   emptySlot: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    width: SLOT_WIDTH,
+    height: SLOT_HEIGHT,
     borderRadius: 8,
     borderWidth: 1.5,
     borderStyle: 'dashed',
@@ -237,15 +262,13 @@ const styles = StyleSheet.create({
     width: FADE_WIDTH,
     height: ROW_HEIGHT,
   },
+  // `gap` est posé au rendu : il suit la largeur des cartes (cf. `grilleCartes`).
   suitRow: {
     flexDirection: 'row',
-    gap: CARD_GAP,
-    paddingBottom: CARD_GAP,
+    paddingBottom: ROW_GAP,
   },
+  // Largeur, hauteur et rayon sont posés au rendu : ils dépendent de la largeur de l'écran.
   card: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.cardFace,
@@ -259,12 +282,11 @@ const styles = StyleSheet.create({
   cardDisabled: {
     opacity: 0.2,
   },
+  // `fontSize` est posé au rendu : les deux textes suivent la carte (cf. `grilleCartes`).
   rank: {
-    fontSize: 17,
     fontWeight: '700',
   },
   suit: {
-    fontSize: 16,
     marginTop: 1,
   },
 });
