@@ -14,11 +14,29 @@ import { GABARIT_ATELIER, GABARIT_ATELIER_DOUBLE, hauteurTableAtelier } from '..
 import { holeCardCount } from '../../types/poker';
 import type { CodeDevise } from '../../utils/currency';
 
+/**
+ * LE TITRE NOMME SON ÉTAPE, SUR LES QUATRE — décision de Victor du 02/09/2026.
+ * ──────────────────────────────────────────────────────────────────────────
+ * Le préflop, le flop, le turn, la river et l'abattage ne sont plus cinq étapes mais cinq écrans
+ * de l'étape 3 (cf. `TOTAL_ETAPES` dans `LiveHandCreator`). Le compteur reste donc sur « 3/4 »
+ * pendant tout ce temps, et c'est le titre qui porte les deux informations : de quelle étape il
+ * s'agit, et où on en est dedans.
+ *
+ * On a d'abord essayé de loger « La main » à côté du compteur, en haut à droite. Écarté par
+ * Victor, et à raison : sur les trois autres étapes le nom se lit dans le TITRE (« La table »,
+ * « Tes cartes », « Publier »), et le mettre ailleurs ici aurait posé la même information à deux
+ * endroits selon l'écran.
+ *
+ * Le tiret plutôt qu'une parenthèse : une parenthèse rétrograde ce qu'elle enferme, or la street
+ * est le fait principal de l'écran — la seule chose qui ait changé depuis le précédent. Le tiret
+ * joint deux pairs.
+ */
+const ETAPE = 'La main';
 const STREET_TITLES: Record<Street, string> = {
-  preflop: 'Préflop',
-  flop: 'Flop',
-  turn: 'Turn',
-  river: 'River',
+  preflop: `${ETAPE} — Préflop`,
+  flop: `${ETAPE} — Flop`,
+  turn: `${ETAPE} — Turn`,
+  river: `${ETAPE} — River`,
 };
 
 /**
@@ -148,6 +166,27 @@ interface Snapshot {
   orderCounter: number;
 }
 
+/**
+ * TOUT CE QU'IL FAUT POUR ROUVRIR CETTE STREET EXACTEMENT COMME ON L'A QUITTÉE.
+ * ────────────────────────────────────────────────────────────────────────────
+ * Un `Snapshot` (l'état du tour d'enchères), ses cartes de board, et **sa pile d'annulation**.
+ * Cette dernière est la moitié qui compte : sans elle on rouvrirait une street figée, qu'on ne
+ * pourrait que traverser. Avec elle, « ↩ Annuler » reprend là où il en était, action par action.
+ *
+ * Ce que ça règle, mesuré le 01/09/2026 : un « ‹ Retour » depuis le turn effaçait les 3 cartes du
+ * flop ET ses 4 actions, sans un mot. La cause n'était pas l'instantané du créateur — lui est
+ * juste, il ramène bien `actions` à l'avant-street — mais le fait que `StreetStep` repartait vide.
+ *
+ * Les trous (`trousAvant`, `trousHero`…) n'en font PAS partie, et c'est voulu : une street ne peut
+ * pas se terminer avec un emplacement ouvert (`boardComplete` l'exige), donc ils sont toujours
+ * vides au moment où l'on quitte l'écran.
+ */
+export interface EtatStreet extends Snapshot {
+  boardCards: (Card | undefined)[];
+  boardCards2: (Card | undefined)[];
+  history: Snapshot[];
+}
+
 interface StreetStepProps {
   street: Street;
   boardCount: number;
@@ -200,6 +239,18 @@ interface StreetStepProps {
    * street (checker/folder en cascade est courant au flop d'un bomb pot). Hors bomb pot, ils ne sont
    * gardés qu'au préflop (fold général jusqu'à une position) et retirés en postflop. */
   bombPot?: boolean;
+  /**
+   * L'état de cette street quand on l'a déjà jouée puis quittée par « ‹ Retour ». Absent, la street
+   * démarre vierge — le cas normal. Présent, elle se rouvre telle quelle : ses cartes, son tour
+   * d'enchères, et sa pile d'annulation (cf. `EtatStreet`).
+   */
+  reprise?: EtatStreet;
+  /**
+   * Appelé JUSTE AVANT chaque sortie de l'écran, avec de quoi le rouvrir intact. Le créateur le
+   * range sous la phase courante ; « ‹ Retour » le rend. Séparé des trois sorties exprès : elles
+   * disent où l'on va, celle-ci dit ce qu'on laisse derrière, et le parent n'a qu'un fil à brancher.
+   */
+  onEtat?: (etat: EtatStreet) => void;
   onBack: () => void;
   onComplete: (boardCards: Card[], board2Cards: Card[], actions: Action[], remainingActiveSeatIds: string[]) => void;
   onHandEndsEarly: (
@@ -259,6 +310,8 @@ export function StreetStep({
   gameType = 'cash',
   currency,
   bombPot = false,
+  reprise,
+  onEtat,
   onBack,
   onComplete,
   onHandEndsEarly,
@@ -266,8 +319,12 @@ export function StreetStep({
   step,
   totalSteps,
 }: StreetStepProps) {
-  const [boardCards, setBoardCards] = useState<(Card | undefined)[]>(Array(boardCount).fill(undefined));
-  const [boardCards2, setBoardCards2] = useState<(Card | undefined)[]>(Array(boardCount2).fill(undefined));
+  const [boardCards, setBoardCards] = useState<(Card | undefined)[]>(
+    reprise ? reprise.boardCards : Array(boardCount).fill(undefined)
+  );
+  const [boardCards2, setBoardCards2] = useState<(Card | undefined)[]>(
+    reprise ? reprise.boardCards2 : Array(boardCount2).fill(undefined)
+  );
 
   // Chips qu'un siège peut engager sur CETTE street (son stack restant en début de street).
   // L'ante posté sur cette street est de l'argent mort indépendant du niveau de mise à suivre :
@@ -285,16 +342,18 @@ export function StreetStep({
     ? getActingOrderAfter(seats, street, firstToActAfterSeatId)
     : getActingOrder(seats, street);
   const order = baseOrder.filter((s) => activeSeatIds.includes(s.id) && availableAtStart(s.id) > 0);
-  const [queue, setQueue] = useState<string[]>(order.map((s) => s.id));
-  const [active, setActive] = useState<string[]>(activeSeatIds);
-  const [betAmount, setBetAmount] = useState(initialBetAmount);
-  const [contributions, setContributions] = useState<Record<string, number>>(initialContributions);
-  const [recorded, setRecorded] = useState<Action[]>([]);
-  const [orderCounter, setOrderCounter] = useState(startOrder);
+  const [queue, setQueue] = useState<string[]>(reprise ? reprise.queue : order.map((s) => s.id));
+  const [active, setActive] = useState<string[]>(reprise ? reprise.active : activeSeatIds);
+  const [betAmount, setBetAmount] = useState(reprise ? reprise.betAmount : initialBetAmount);
+  const [contributions, setContributions] = useState<Record<string, number>>(
+    reprise ? reprise.contributions : initialContributions
+  );
+  const [recorded, setRecorded] = useState<Action[]>(reprise ? reprise.recorded : []);
+  const [orderCounter, setOrderCounter] = useState(reprise ? reprise.orderCounter : startOrder);
   const [amountInput, setAmountInput] = useState('');
   const [amountError, setAmountError] = useState<string | null>(null);
   const [enteringAmount, setEnteringAmount] = useState<'bet' | 'raise' | null>(null);
-  const [history, setHistory] = useState<Snapshot[]>([]);
+  const [history, setHistory] = useState<Snapshot[]>(reprise ? reprise.history : []);
   /**
    * LE BOARD SE MODIFIE SUR LE FEUTRE, PAS DANS UN FORMULAIRE (décision de Victor, 31/08/2026).
    * ─────────────────────────────────────────────────────────────────────────────────────────
@@ -544,8 +603,28 @@ export function StreetStep({
    */
   const arretPossible = boardComplete && Boolean(currentSeat);
 
-  const pushHistory = () => {
-    setHistory((h) => [...h, { queue, active, betAmount, contributions, recorded, orderCounter }]);
+  /**
+   * On est revenu sur une street DÉJÀ JOUÉE (« ‹ Retour » depuis la suivante), et non sur une street
+   * où plus personne ne peut parler. Les deux se ressemblent — la file est vide dans les deux cas —
+   * mais la phrase à afficher est l'exact opposé : ici il reste des joueurs, et tout est encore là.
+   *
+   * Figé au montage : la file peut se remplir de nouveau si l'auteur défait une action, et se
+   * revider ensuite — mais ce second vidage passe par `finishIfDone`, qui quitte l'écran. Tant
+   * qu'on est dans cet état, il vient bien d'une reprise.
+   */
+  const [revenuSurStreetFinie] = useState(() => reprise !== undefined && reprise.queue.length === 0);
+
+  /**
+   * Empile l'état d'AVANT le coup qu'on s'apprête à jouer, et RENVOIE la pile à jour.
+   *
+   * Le retour n'est pas décoratif : `finishIfDone` doit ranger cette pile-là dans l'`EtatStreet`, et
+   * l'état React `history` ne l'a pas encore encaissée à cet instant. Sans ça, rouvrir la street et
+   * appuyer sur « ↩ Annuler » défaisait DEUX actions au lieu d'une (mesuré le 01/09/2026).
+   */
+  const pushHistory = (): Snapshot[] => {
+    const suivant = [...history, { queue, active, betAmount, contributions, recorded, orderCounter }];
+    setHistory(suivant);
+    return suivant;
   };
 
   const handleUndo = () => {
@@ -577,7 +656,52 @@ export function StreetStep({
     return nextRecorded;
   };
 
-  const finishIfDone = (nextQueue: string[], nextActive: string[], nextRecorded: Action[]) => {
+  /**
+   * L'état à ranger en quittant l'écran, pour pouvoir le rouvrir intact (cf. `EtatStreet`).
+   *
+   * ⚠️ Il se construit à partir des valeurs QU'ON PASSE, jamais des états React : au moment où l'on
+   * sort, les `setQueue`/`setRecorded` de l'action en cours n'ont pas encore été appliqués. Lire
+   * `queue` ou `recorded` ici rangerait l'avant-dernier coup, et le retour ferait réapparaître une
+   * action déjà jouée.
+   */
+  const etatCourant = (
+    nextQueue: string[],
+    nextActive: string[],
+    nextRecorded: Action[],
+    nextOrderCounter: number,
+    suite: { betAmount?: number; contributions?: Record<string, number>; history?: Snapshot[] } = {}
+  ): EtatStreet => ({
+    queue: nextQueue,
+    active: nextActive,
+    betAmount: suite.betAmount ?? betAmount,
+    contributions: suite.contributions ?? contributions,
+    recorded: nextRecorded,
+    orderCounter: nextOrderCounter,
+    boardCards,
+    boardCards2,
+    history: suite.history ?? history,
+  });
+
+  // Le compteur d'ordre du PREMIER coup de cette street. `orderCounter` vaut toujours cette base
+  // plus le nombre d'actions déjà enregistrées — c'est l'invariant de `pushAction`, et il tient
+  // aussi bien sur une reprise, où l'on remonte à la base au lieu de supposer que `startOrder`
+  // n'a pas bougé entre les deux passages.
+  const baseOrdre = reprise ? reprise.orderCounter - reprise.recorded.length : startOrder;
+
+  /**
+   * ⚠️ `suite` porte les mises que l'action en cours vient de poser. Sans elle, l'état rangé lirait
+   * `contributions` et `betAmount` dans l'état React — pas encore appliqués à cet instant — et la
+   * street rouverte afficherait le pot d'AVANT le dernier coup (mesuré : 47 € au lieu de 62).
+   */
+  const finishIfDone = (
+    nextQueue: string[],
+    nextActive: string[],
+    nextRecorded: Action[],
+    suite: { betAmount?: number; contributions?: Record<string, number>; history?: Snapshot[] } = {}
+  ) => {
+    // `orderCounter` n'a pas encore encaissé le `+1` de `pushAction` : on le recalcule sur la
+    // longueur remontée, seule source qui soit à jour ici.
+    onEtat?.(etatCourant(nextQueue, nextActive, nextRecorded, baseOrdre + nextRecorded.length, suite));
     if (nextActive.length <= 1) {
       onHandEndsEarly(finalBoard(), finalBoard2(), nextRecorded, nextActive);
       return true;
@@ -590,13 +714,13 @@ export function StreetStep({
   };
 
   const handleFold = () => {
-    pushHistory();
+    const pile = pushHistory();
     const nextRecorded = pushAction('fold', undefined);
     const nextActive = active.filter((id) => id !== currentSeatId);
     const nextQueue = queue.slice(1);
     setActive(nextActive);
     setQueue(nextQueue);
-    finishIfDone(nextQueue, nextActive, nextRecorded);
+    finishIfDone(nextQueue, nextActive, nextRecorded, { history: pile });
   };
 
   // Raccourci "fold jusqu'à" : coucher d'un coup tous les sièges de la file AVANT le siège visé,
@@ -610,7 +734,7 @@ export function StreetStep({
   const handleFoldUntil = (targetSeatId: string) => {
     const targetIndex = queue.indexOf(targetSeatId);
     if (targetIndex <= 0) return;
-    pushHistory();
+    const pile = pushHistory();
     let nextRecorded = recorded;
     let nextActive = active;
     let remainingQueue = queue;
@@ -629,7 +753,7 @@ export function StreetStep({
     setOrderCounter(counter);
     setActive(nextActive);
     setQueue(remainingQueue);
-    finishIfDone(remainingQueue, nextActive, nextRecorded);
+    finishIfDone(remainingQueue, nextActive, nextRecorded, { history: pile });
   };
 
   // Pendant de "fold jusqu'à" quand personne n'a misé (betAmount === 0) : passer d'un coup tous les
@@ -641,7 +765,7 @@ export function StreetStep({
   const handleCheckUntil = (targetSeatId: string) => {
     const targetIndex = queue.indexOf(targetSeatId);
     if (targetIndex <= 0) return;
-    pushHistory();
+    const pile = pushHistory();
     let nextRecorded = recorded;
     let remainingQueue = queue;
     let counter = orderCounter;
@@ -657,38 +781,40 @@ export function StreetStep({
     setRecorded(nextRecorded);
     setOrderCounter(counter);
     setQueue(remainingQueue);
-    finishIfDone(remainingQueue, active, nextRecorded);
+    finishIfDone(remainingQueue, active, nextRecorded, { history: pile });
   };
 
   const handleCheck = () => {
-    pushHistory();
+    const pile = pushHistory();
     const nextRecorded = pushAction('check', undefined);
     const nextQueue = queue.slice(1);
     setQueue(nextQueue);
-    finishIfDone(nextQueue, active, nextRecorded);
+    finishIfDone(nextQueue, active, nextRecorded, { history: pile });
   };
 
   const handleCall = () => {
-    pushHistory();
+    const pile = pushHistory();
     // Suivre est plafonné au stack : si le joueur ne peut pas couvrir, il suit à tapis.
     const nextRecorded = pushAction('call', callTo);
-    setContributions((c) => ({ ...c, [currentSeatId]: callTo }));
+    const nextContributions = { ...contributions, [currentSeatId]: callTo };
+    setContributions(nextContributions);
     const nextQueue = queue.slice(1);
     setQueue(nextQueue);
-    finishIfDone(nextQueue, active, nextRecorded);
+    finishIfDone(nextQueue, active, nextRecorded, { contributions: nextContributions, history: pile });
   };
 
   // Mise/relance à un montant cumulé sur la street (déjà plafonné au stack en amont).
   const commitBetTo = (amount: number, type: ActionType) => {
-    pushHistory();
+    const pile = pushHistory();
     const nextRecorded = pushAction(type, amount);
     const nextQueue = reorderAfter(active.filter((id) => id !== currentSeatId), currentSeatId);
+    const nextContributions = { ...contributions, [currentSeatId]: amount };
     setBetAmount(amount);
-    setContributions((c) => ({ ...c, [currentSeatId]: amount }));
+    setContributions(nextContributions);
     setQueue(nextQueue);
     setAmountInput('');
     setEnteringAmount(null);
-    finishIfDone(nextQueue, active, nextRecorded);
+    finishIfDone(nextQueue, active, nextRecorded, { betAmount: amount, contributions: nextContributions, history: pile });
   };
 
   const confirmAmount = () => {
@@ -716,12 +842,13 @@ export function StreetStep({
     if (currentRemaining <= 0) return;
     if (currentRemaining <= betAmount) {
       // Pas de quoi relancer : tapis = suivre à tapis (les autres restent redevables du betAmount).
-      pushHistory();
+      const pile = pushHistory();
       const nextRecorded = pushAction('call', currentRemaining);
-      setContributions((c) => ({ ...c, [currentSeatId]: currentRemaining }));
+      const nextContributions = { ...contributions, [currentSeatId]: currentRemaining };
+      setContributions(nextContributions);
       const nextQueue = queue.slice(1);
       setQueue(nextQueue);
-      finishIfDone(nextQueue, active, nextRecorded);
+      finishIfDone(nextQueue, active, nextRecorded, { contributions: nextContributions, history: pile });
     } else {
       commitBetTo(currentRemaining, betAmount > 0 ? 'raise' : 'bet');
     }
@@ -794,6 +921,31 @@ export function StreetStep({
     };
   });
 
+  /**
+   * LE NOM DE CELUI QUI PARLE — constat 3 de l'audit du 01/09/2026.
+   * ────────────────────────────────────────────────────────────────
+   * Deux écrans consécutifs au flop portaient des boutons RIGOUREUSEMENT identiques (« Check ·
+   * Miser · Tapis (985 €) ») : le seul signal de qui avait la parole était le halo doré, un
+   * contraste de 2:1 posé jusqu'à 560 px au-dessus des boutons qu'il gouverne. Et l'erreur est
+   * silencieuse — miser à la place de son adversaire produit une main fausse que rien ne signale.
+   *
+   * La phrase « À X de jouer » avait été retirée le 30/08 pour de bonnes raisons, chiffrées : elle
+   * rendait 42 px et faisait passer le 10 joueurs sur SE. L'objection portait sur une ligne EN PLUS.
+   * Ici elle va dans la rangée fixe de 28 px qui existe déjà sous la table et qui est vide tant
+   * qu'il n'y a rien à annuler : coût vertical réel, ZÉRO.
+   *
+   * Le mot est calqué sur `SeatView` (le héros porte son nom s'il s'en est donné un, sinon
+   * « Hero » — jamais sa position) : la rangée doit dire EXACTEMENT ce que dit le badge qui
+   * s'allume, sinon elle ajoute une question au lieu d'en fermer une.
+   */
+  const nomQuiParle = currentSeat
+    ? currentSeat.isHero
+      ? currentSeat.playerName ?? 'Hero'
+      : currentSeat.playerName ??
+        straddleSeatLabel(seats, priorActions, currentSeat.id) ??
+        currentSeat.position
+    : null;
+
   const table = (
     <TableVue
       sieges={siegesTable}
@@ -828,7 +980,16 @@ export function StreetStep({
    * deux à la fois : on valide un montant, on agit, ou il ne reste plus qu'à passer la street.
    */
   const socleContenu = !boardComplete ? null : !currentSeat ? (
-    <Pressable style={styles.primaryButton} onPress={() => onComplete(finalBoard(), finalBoard2(), [], active)}>
+    // `recorded`, et non une liste vide : ce bouton ne servait qu'au cas « plus personne ne peut
+    // agir », où rien n'a été saisi ici. Il sert désormais AUSSI à ressortir d'une street rouverte
+    // par « ‹ Retour », qui elle a ses actions — les jeter à la sortie annulerait tout le bénéfice.
+    <Pressable
+      style={styles.primaryButton}
+      onPress={() => {
+        onEtat?.(etatCourant(queue, active, recorded, orderCounter));
+        onComplete(finalBoard(), finalBoard2(), recorded, active);
+      }}
+    >
       <Text style={styles.primaryText}>Continuer</Text>
     </Pressable>
   ) : enteringAmount ? (
@@ -895,8 +1056,16 @@ export function StreetStep({
       rangeeFixe={
         <>
           {/* Plus de titre « Le turn » : la carte attendue se dessine en pointillés SUR LE BOARD,
-              à sa place exacte. Rien à annoncer que la table ne montre déjà. */}
-          <View />
+              à sa place exacte. Rien à annoncer que la table ne montre déjà. La place ainsi libérée
+              porte désormais le nom de celui qui a la parole (cf. `nomQuiParle`) — et rien pendant
+              le choix du board, où personne ne l'a encore. */}
+          {boardComplete && nomQuiParle ? (
+            <Text style={styles.aQuiDeJouer} numberOfLines={1}>
+              À <Text style={styles.aQuiNom}>{nomQuiParle}</Text> de jouer
+            </Text>
+          ) : (
+            <View />
+          )}
           {history.length > 0 ? (
             <Pressable onPress={handleUndo} style={styles.undoButton}>
               <Text style={styles.undoText}>↩ Annuler</Text>
@@ -910,7 +1079,10 @@ export function StreetStep({
         arretPossible
           ? {
               label: 'Arrêter la main ici',
-              onPress: () => onStop(finalBoard(), finalBoard2(), recorded, active, currentSeatId),
+              onPress: () => {
+                onEtat?.(etatCourant(queue, active, recorded, orderCounter));
+                onStop(finalBoard(), finalBoard2(), recorded, active, currentSeatId);
+              },
             }
           : undefined
       }
@@ -1040,7 +1212,11 @@ export function StreetStep({
             </>
           ) : (
             // Plus personne ne peut agir : le bouton « Continuer » est descendu dans le socle.
-            <Text style={styles.allInNote}>Les joueurs restants sont à tapis.</Text>
+            <Text style={styles.allInNote}>
+              {revenuSurStreetFinie
+                ? 'Cette street est déjà jouée. « ↩ Annuler » revient dessus action par action.'
+                : 'Les joueurs restants sont à tapis.'}
+            </Text>
           )}
         </View>
       )}
@@ -1127,6 +1303,18 @@ const styles = StyleSheet.create({
   foldUntilChipText: {
     fontSize: 12,
     fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  // `flexShrink` : un nom long se coupe plutôt que de pousser « ↩ Annuler » hors de l'écran — les
+  // deux occupants de la rangée sont posés en `space-between`, sans quoi le plus bavard gagne.
+  aQuiDeJouer: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    flexShrink: 1,
+    paddingRight: 8,
+  },
+  aQuiNom: {
+    fontWeight: '700',
     color: colors.textPrimary,
   },
   undoButton: {

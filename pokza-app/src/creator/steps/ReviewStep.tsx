@@ -138,8 +138,14 @@ export function ReviewStep({
             rencontrait jamais, a 40 on la touche en pleine phrase. Sans ce chiffre, l auteur bute
             sur un mur invisible. Il affiche aussi "52/40" sur une ancienne main trop longue —
             c est voulu : ca lui dit exactement combien enlever pour pouvoir enregistrer. */}
+        {/* « (obligatoire) » — constat 8 de l'audit, tranché par Victor le 02/09/2026.
+            Le titre vide est la SEULE cause qui estompe « Publier la main », et rien ne le disait :
+            le seul indice était une déduction par l'absence — « Description » et « Question au
+            vote » portent « (optionnel) », donc ce qui n'en porte pas serait requis. C'est vrai, et
+            c'est beaucoup demander à 1 h du matin, après tout le travail, sur le geste qui le
+            conclut. Le mot est le contraire exact des deux autres, à la même place. */}
         <View style={styles.labelRow}>
-          <Text style={[styles.label, styles.labelNoMargin]}>Titre</Text>
+          <Text style={[styles.label, styles.labelNoMargin]}>Titre (obligatoire)</Text>
           <Text style={[styles.counter, titleTooLong && styles.counterOver]}>
             {value.title.length}/{TITLE_MAX_LENGTH}
           </Text>

@@ -39,6 +39,10 @@ interface ShowdownStepProps {
   onChangeRevealShowdown: (value: boolean) => void;
   onNext: () => void;
   onBack: () => void;
+  /** L'abattage n'était compté nulle part : c'était le seul des huit écrans à ne pas passer `step`
+   *  et `totalSteps`, et `WizardScreen` masque le compteur quand ils manquent (constat 7). */
+  step?: number;
+  totalSteps?: number;
   /** Correction en cours : « Valider » publie directement au lieu de continuer l'assistant. */
   nextLabel?: string;
   /** La phrase collée au bouton, qui annonce ce que le changement en cours va coûter. */
@@ -72,6 +76,8 @@ export function ShowdownStep({
   onChangeRevealShowdown,
   onNext,
   onBack,
+  step,
+  totalSteps,
   nextLabel,
   footerNote,
   nextBloque,
@@ -135,7 +141,11 @@ export function ShowdownStep({
 
   return (
     <WizardScreen
-      title="L'abattage"
+      // « Abattage » sans article : « La main — L'abattage » enchaînait deux déterminants et butait
+      // à l'oreille (Victor, 02/09). Même forme que les quatre streets, cf. `STREET_TITLES`.
+      title="La main — Abattage"
+      step={step}
+      totalSteps={totalSteps}
       onNext={onNext}
       nextLabel={nextLabel ?? 'Continuer'}
       nextDisabled={Boolean(nextBloque)}

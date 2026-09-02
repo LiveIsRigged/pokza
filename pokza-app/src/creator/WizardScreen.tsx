@@ -174,6 +174,15 @@ const styles = StyleSheet.create({
   // Le filet marque la frontière entre ce qui ne défile pas (la table) et l'atelier en dessous.
   // Il est ici plutôt que dans le contenu pour qu'il ne parte JAMAIS en défilement : une frontière
   // qui s'en va n'en est plus une.
+  //
+  // ⚠️ `minHeight` DOIT couvrir le plus grand des occupants, sinon la rangée grandit quand il
+  // arrive et POUSSE TOUT L'ATELIER VERS LE BAS. C'est ce qui se passait au préflop (signalé par
+  // Victor le 01/09/2026) : le bouton « ↩ Annuler » n'existe qu'à partir de la deuxième prise de
+  // parole, et son apparition décalait de 11 px le nom du joueur, les pastilles de fold rapide et
+  // tout ce qui suit — pile au moment où le doigt vise. Le plus grand occupant est ce bouton :
+  // 12 px de rembourrage haut + 26 px de bouton (6 + 6 de `paddingVertical` autour d'un texte de
+  // 12) + le filet. 40 les tient tous, avec un pixel et demi de jeu. La rangée mesure donc la même
+  // chose qu'elle soit vide, qu'elle porte un nom seul, ou les deux.
   rangeeFixe: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: borders.hairline,
@@ -182,7 +191,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 12,
     marginBottom: 6,
-    minHeight: 28,
+    minHeight: 40,
   },
   socle: {
     paddingTop: 12,

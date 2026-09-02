@@ -4,7 +4,7 @@ import { holeCardCount } from '../types/poker';
 import type { Group } from '../data/groups';
 import { ContextStep } from './steps/ContextStep';
 import { HoleCardsStep } from './steps/HoleCardsStep';
-import { StreetStep } from './steps/StreetStep';
+import { StreetStep, type EtatStreet } from './steps/StreetStep';
 import { ShowdownStep } from './steps/ShowdownStep';
 import { StreetCorrectionStep } from './steps/StreetCorrectionStep';
 import { ReviewStep } from './steps/ReviewStep';
@@ -29,14 +29,57 @@ import {
 } from '../groups/lastUsedGroups';
 import { TrashIcon } from '../components/ui/icons';
 
-// Un bomb pot n'a pas de preflop : une étape de moins (6 au lieu de 7), et la numérotation des
-// étapes décale d'autant. L'abattage reste un écran optionnel intercalé avant la publication, sans
-// numéro d'étape dans les deux cas.
-const totalStepsFor = (bombPot: boolean): number => (bombPot ? 6 : 7);
-const phaseStepMap = (bombPot: boolean): Partial<Record<Phase, number>> =>
-  bombPot
-    ? { context: 1, holeCards: 2, 'street-flop': 3, 'street-turn': 4, 'street-river': 5, review: 6 }
-    : { context: 1, holeCards: 2, 'street-preflop': 3, 'street-flop': 4, 'street-turn': 5, 'street-river': 6, review: 7 };
+/**
+ * QUATRE ÉTAPES, TOUJOURS — constat 7 de l'audit, tranché par Victor le 02/09/2026.
+ * ──────────────────────────────────────────────────────────────────────────────
+ * Avant : sept écrans numérotés, six en bomb pot (pas de préflop), et l'abattage qui n'était compté
+ * NULLE PART — un écran plein, avec deux décisions dessus, qui n'existait pas pour le compteur. Le
+ * maximum réel était de huit écrans, annoncés sept.
+ *
+ * On aurait pu numéroter l'abattage : le total serait alors passé de 7 à 8 EN COURS DE ROUTE, un
+ * défaut de plus par-dessus celui du bomb pot. Victor a proposé mieux — réunir le préflop, le flop,
+ * le turn, la river et l'abattage en UNE étape. Ce sont les seuls écrans sans bouton « Continuer » :
+ * ils s'enchaînent d'eux-mêmes parce que ce n'est pas une suite d'étapes à valider, c'est un seul
+ * geste, raconter ce qui s'est passé.
+ *
+ * Le total devient donc INVARIANT : 4, bomb pot ou non, abattage ou non. Le compteur ne ment plus
+ * jamais, et il n'y a plus de cas particulier à tenir.
+ *
+ * Le prix, assumé : le compteur reste sur « 3/4 » pendant jusqu'à cinq écrans d'affilée. C'est le
+ * TITRE qui dit où on en est dans la main — « La main — Flop » (cf. `StreetStep`/`ShowdownStep`) —
+ * et le titre nomme son étape sur les quatre, sans exception. Un compteur figé sans rien pour
+ * l'expliquer se lirait comme une panne ; ici la réponse est dans le titre, en gros, à gauche.
+ *
+ * ⚠️ Ces nombres ne servent QU'À L'AFFICHAGE (`step`/`totalSteps` → `WizardScreen`). Rien d'autre
+ * ne les lit — ni la navigation, ni « Corriger une main ».
+ */
+const TOTAL_ETAPES = 4;
+const totalStepsFor = (_bombPot: boolean): number => TOTAL_ETAPES;
+/** L'ordre des écrans, pour savoir lesquels sont EN AVAL d'une street qu'on vient de modifier. */
+const ORDRE_PHASES: Phase[] = [
+  'context',
+  'holeCards',
+  'street-preflop',
+  'street-flop',
+  'street-turn',
+  'street-river',
+  'showdown',
+  'review',
+];
+
+/** Le bomb pot n'a plus de numérotation à lui : ses écrans sont les mêmes, moins le préflop, et
+ *  tous logés dans l'étape 3 (cf. `TOTAL_ETAPES`). Le paramètre reste pour ne pas toucher aux
+ *  appelants — et pour que la signature dise qu'on a REGARDÉ le cas plutôt que de l'oublier. */
+const phaseStepMap = (_bombPot: boolean): Partial<Record<Phase, number>> => ({
+  context: 1,
+  holeCards: 2,
+  'street-preflop': 3,
+  'street-flop': 3,
+  'street-turn': 3,
+  'street-river': 3,
+  showdown: 3,
+  review: 4,
+});
 
 interface LiveHandCreatorProps {
   authorId: string;
@@ -148,6 +191,15 @@ export function LiveHandCreator({
   // publiée avant ce jour ne se met pas à cacher ce qu'elle montrait.
   const [revealShowdown, setRevealShowdown] = useState(initial?.revealShowdown ?? true);
   const [history, setHistory] = useState<Snapshot[]>(depart?.history ?? []);
+  /**
+   * CE QUE CHAQUE STREET A LAISSÉ DERRIÈRE ELLE, pour pouvoir la rouvrir intacte.
+   * ───────────────────────────────────────────────────────────────────────────
+   * `history` ramène bien l'état du CRÉATEUR à l'avant-street, et il a toujours eu raison. Ce qui
+   * manquait, c'est l'état interne de `StreetStep` : il repartait vide, donc un « ‹ Retour » depuis
+   * le turn effaçait le flop entier — 3 cartes et 4 actions, sans un mot (mesuré le 01/09/2026).
+   * Chaque street range ici son `EtatStreet` en sortant, et le retrouve en revenant.
+   */
+  const [etatsDeStreet, setEtatsDeStreet] = useState<Partial<Record<Phase, EtatStreet>>>({});
   // Change à chaque changement de phase, pour forcer un remount propre des écrans de street
   // (sinon revenir en arrière puis ré-avancer réutilise un composant à l'état "terminé").
   const [phaseKey, setPhaseKey] = useState(0);
@@ -219,6 +271,33 @@ export function LiveHandCreator({
   // Total misé par chaque siège lors des streets précédant `street` (exclut donc les blindes de la street courante).
   const priorCommittedFor = (street: 'preflop' | 'flop' | 'turn' | 'river') =>
     committedBySeat(actions.filter((a) => a.street !== street));
+
+  /**
+   * Range l'état interne de la street qu'on quitte, et INVALIDE celles d'après si son contenu a
+   * changé.
+   *
+   * L'invalidation n'est pas une précaution de principe : l'état d'une street est calculé à partir
+   * des streets précédentes (contributions, tapis restants, qui est encore en jeu). Revenir sur le
+   * flop, y défaire une relance, puis ré-avancer, rendrait un turn dont les montants parlent d'un
+   * flop qui n'existe plus. À l'inverse, revenir puis ré-avancer SANS rien toucher doit tout
+   * retrouver — c'est toute la promesse — d'où la comparaison plutôt qu'un effacement systématique.
+   */
+  const rangerEtat = (phaseQuittee: Phase, etat: EtatStreet) => {
+    setEtatsDeStreet((prev) => {
+      const avant = prev[phaseQuittee];
+      const memeContenu =
+        avant !== undefined &&
+        JSON.stringify([avant.recorded, avant.boardCards, avant.boardCards2]) ===
+          JSON.stringify([etat.recorded, etat.boardCards, etat.boardCards2]);
+      if (memeContenu) return { ...prev, [phaseQuittee]: etat };
+      const apres = ORDRE_PHASES.indexOf(phaseQuittee);
+      const garde: Partial<Record<Phase, EtatStreet>> = {};
+      for (const [cle, valeur] of Object.entries(prev) as [Phase, EtatStreet][]) {
+        if (ORDRE_PHASES.indexOf(cle) <= apres) garde[cle] = valeur;
+      }
+      return { ...garde, [phaseQuittee]: etat };
+    });
+  };
 
   // Enregistre l'état courant avant de passer à la phase suivante, pour pouvoir revenir en arrière sans perdre ni dupliquer les données.
   const pushSnapshotAndGo = (nextPhase: Phase, patch: Partial<Omit<Snapshot, 'phase'>> = {}) => {
@@ -608,6 +687,8 @@ export function LiveHandCreator({
           nextLabel={libelleBouton(false)}
           nextBloque={aLEntree && !abattageModifie}
           footerNote={aLEntree ? RIEN_A_RESSAISIR : null}
+          step={step}
+          totalSteps={totalSteps}
           onNext={() => (aLEntree ? publierDirectement({ revealedCards }) : pushSnapshotAndGo('review'))}
         />
       );
@@ -780,6 +861,8 @@ export function LiveHandCreator({
       return (
         <StreetStep
           key={`preflop-${phaseKey}`}
+          reprise={etatsDeStreet['street-preflop']}
+          onEtat={(etat) => rangerEtat('street-preflop', etat)}
           street="preflop"
           boardCount={0}
           usedCardsElsewhere={usedCards}
@@ -820,6 +903,8 @@ export function LiveHandCreator({
       return (
         <StreetStep
           key={`flop-${phaseKey}`}
+          reprise={etatsDeStreet['street-flop']}
+          onEtat={(etat) => rangerEtat('street-flop', etat)}
           street="flop"
           boardCount={3}
           boardCount2={context.bombPot && context.doubleBoard ? 3 : 0}
@@ -868,6 +953,8 @@ export function LiveHandCreator({
       return (
         <StreetStep
           key={`turn-${phaseKey}`}
+          reprise={etatsDeStreet['street-turn']}
+          onEtat={(etat) => rangerEtat('street-turn', etat)}
           street="turn"
           boardCount={1}
           boardCount2={context.bombPot && context.doubleBoard ? 1 : 0}
@@ -916,6 +1003,8 @@ export function LiveHandCreator({
       return (
         <StreetStep
           key={`river-${phaseKey}`}
+          reprise={etatsDeStreet['street-river']}
+          onEtat={(etat) => rangerEtat('street-river', etat)}
           street="river"
           boardCount={1}
           boardCount2={context.bombPot && context.doubleBoard ? 1 : 0}
