@@ -1181,37 +1181,21 @@ export function StreetStep({
             <>
               {enteringAmount ? (
                 <View>
-                  {/* LE CHAMP EST AU-DESSUS DES RACCOURCIS, ET C'EST POUR LE CLAVIER.
-                      Mesuré sur l'iPhone de Victor le 02/09/2026 : le clavier et sa barre occupent
-                      les 39 % bas de l'écran, et le champ commençait EXACTEMENT sur cette ligne.
-                      Safari faisait donc défiler toute la page pour le dégager — l'en-tête et les
-                      trois quarts de la table partaient en haut, et avec eux la mise fantôme qu'on
-                      est justement en train de composer. Remonté d'un cran, le champ tient
-                      au-dessus de la ligne : le navigateur n'a plus rien à révéler, il ne défile
-                      plus, et le feutre reste entier sous les yeux.
-                      La contrepartie est assumée : les raccourcis passent sous le champ, donc leur
-                      moitié basse se retrouve derrière le clavier. C'est le bon sens de l'échange —
-                      on n'ouvre le clavier que lorsqu'on a renoncé aux raccourcis. */}
-                  <TextInput
-                    style={styles.amountInput}
-                    keyboardType="numeric"
-                    autoFocus
-                    placeholder={`Montant (max ${fmt(currentRemaining)})`}
-                    value={amountInput}
-                    onChangeText={(t) => {
-                      setAmountInput(t);
-                      setAmountError(null);
-                    }}
-                  />
-
                   {/* Raccourcis de taille (BB au préflop, %pot ensuite), pour miser/relancer sans calcul
                       de tête. Un tap POSE la mise et passe au joueur suivant : le montant vient d'être
-                      désigné, redemander « Valider » ne confirmerait rien de neuf.
+                      désigné, redemander « Valider » ne confirmerait rien de neuf, et le clavier
+                      numérique (le champ est en `autoFocus`) est justement en travers du chemin.
                       C'est la mécanique des chips « Fold/Check rapide jusqu'à » de cet écran, qu'elles
                       partageaient déjà en apparence sans la partager en comportement — d'où le mot
                       « rapide » repris ici, qui y signifie déjà « un tap et c'est joué ».
                       Un mauvais tap se répare par « ↩ Annuler » juste au-dessus (`commitBetTo` empile
-                      un snapshot). Le champ au-dessus reste le chemin du montant libre. */}
+                      un snapshot). Le champ en dessous reste le chemin du montant libre.
+
+                      ⚠️ LES REMONTER AU-DESSUS DU CHAMP NE SERT À RIEN — essayé le 02/09/2026, et
+                      mesuré. Le clavier iOS ne rétrécit PAS la fenêtre de mise en page : l'app reste
+                      haute de tout l'écran dans une bande visible réduite, et Safari fait glisser la
+                      page ENTIÈRE jusqu'en bas. La position du champ n'est pas le déclencheur ; le
+                      correctif est de faire rétrécir la racine à `visualViewport.height`. */}
                   {sizeShortcuts.length > 0 && (
                     <>
                       <Text style={styles.sectionLabel}>
@@ -1231,6 +1215,18 @@ export function StreetStep({
                       </View>
                     </>
                   )}
+                  <TextInput
+                    style={styles.amountInput}
+                    keyboardType="numeric"
+                    autoFocus
+                    placeholder={`Montant (max ${fmt(currentRemaining)})`}
+                    value={amountInput}
+                    onChangeText={(t) => {
+                      setAmountInput(t);
+                      setAmountError(null);
+                    }}
+                  />
+
                   {amountError && <Text style={styles.amountError}>{amountError}</Text>}
                 </View>
               ) : (
