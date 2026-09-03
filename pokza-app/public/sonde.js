@@ -38,6 +38,7 @@
       dedans: Math.round(dedans ? dedans.scrollTop : 0),
       champY: Math.round(r.top),
       actif: document.activeElement === champ,
+      echelle: vue ? Math.round(vue.scale * 100) / 100 : 1,
       variable: racine.style.getPropertyValue('--hauteur-app') || '—'
     };
   }
@@ -68,6 +69,7 @@
       ' dedans=' + String(e.dedans).padStart(4) +
       ' CHAMP=' + String(e.champY).padStart(5) +
       ' foc=' + (e.actif ? 'o' : 'n') +
+      ' ech=' + e.echelle +
       ' var=' + e.variable
     );
     journal.textContent = lignes.join('\n');
@@ -89,8 +91,10 @@
   }
 
   function poser(px) {
-    if (px === null) racine.style.removeProperty('--hauteur-app');
-    else racine.style.setProperty('--hauteur-app', Math.round(px) + 'px');
+    if (px === null) { racine.style.removeProperty('--hauteur-app'); return; }
+    racine.style.setProperty('--hauteur-app', Math.round(px) + 'px');
+    // `AjusteurHauteur` fait exactement ceci : sans lui, la sonde ne teste pas ce qui tourne.
+    if (window.scrollY !== 0) window.scrollTo(0, 0);
   }
 
   // ── Échantillonnage au chronomètre : c'est LUI qui remplace les événements ─────────────────
@@ -111,7 +115,9 @@
     var e = noter('focus');
     reference = e.champY; // la position AVANT que quoi que ce soit ne bouge
     if (mode === 'C') {
-      var devinee = retenue() || Math.round(window.innerHeight * 0.45);
+      // 410 px mesures le 03/09 sur l iPhone de Victor. On rogne genereusement : trop court ne
+      // fait jamais glisser, trop long si.
+      var devinee = retenue() || 410;
       poser(window.innerHeight - devinee - 20);
       noter('C:devine');
     }
@@ -169,7 +175,7 @@
   var bouton = document.getElementById('copier');
   bouton.addEventListener('click', function () {
     var texte = [
-      'Sonde v2 — ' + new Date().toLocaleString('fr-FR'),
+      'Sonde v3 — ' + new Date().toLocaleString('fr-FR'),
       'écran ' + screen.width + '×' + screen.height + ' · dpr ' + window.devicePixelRatio,
       'standalone : ' + (window.navigator.standalone === true ? 'OUI (écran d\'accueil)' : 'non (onglet Safari)'),
       ''
