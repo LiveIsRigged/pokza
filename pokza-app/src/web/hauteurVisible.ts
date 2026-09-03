@@ -1,59 +1,65 @@
 /**
  * L'APP TIENT DANS LA BANDE RÉELLEMENT VISIBLE
  * ────────────────────────────────────────────
- * Signalé par Victor le 02/09/2026 : ouvrir « Relancer » fait remonter tout l'écran pour laisser
- * la place au clavier, et on perd de vue ce qu'on était en train de faire. Le même défaut existe
- * partout où l'on saisit quelque chose — 21 écrans et 5 feuilles ont un champ.
+ * Signalé par Victor le 02/09/2026 : ouvrir « Relancer » fait remonter tout l'écran. Le défaut
+ * existe partout où l'on saisit quelque chose — 21 écrans et 5 feuilles ont un champ.
  *
- * CE QUI SE PASSE VRAIMENT (mesuré le 02/09/2026, iPhone de Victor)
- *   Le clavier iOS ne rétrécit PAS la fenêtre de MISE EN PAGE : `window.innerHeight` reste à 932 px,
- *   clavier ouvert comme fermé. Il ne rétrécit que la fenêtre VISIBLE — `visualViewport.height`
- *   tombe à 569 px. Avec `html, body, #root { height: 100% }`, l'app fait donc 932 px de haut dans
- *   une bande de 569 px : 363 px d'app existent SOUS le bord de l'écran. Safari fait alors glisser
- *   la page entière vers le bas pour révéler le champ focalisé.
+ * CE QUI SE PASSE, MESURÉ SUR SON IPHONE LE 03/09/2026 EN MODE APPLICATION
+ *   Au repos, la bande visible fait 873 px. Clavier ouvert, elle tombe à 487 : il en manque 386.
+ *   La fenêtre de MISE EN PAGE, elle, reste à 873 — `html { height: 100% }` s'y résout, donc l'app
+ *   fait 873 px de haut dans une bande de 487, et Safari fait glisser la page de 386 px pour
+ *   révéler le champ. C'est ce glissement que Victor voit.
  *
- *   Une première tentative a consisté à remonter le champ au-dessus des raccourcis, en croyant que
- *   Safari ne glissait que « juste assez ». La capture d'écran de Victor après déploiement l'a
- *   démentie : la page glissait pareil. Ce n'est pas la position du champ qui déclenche, c'est le
- *   simple fait qu'il existe de l'app hors de la bande visible.
+ * DEUX ERREURS PAYÉES CHER, QU'IL NE FAUT PAS REFAIRE
  *
- * LE CORRECTIF
- *   Faire tenir la racine dans la bande visible. Plus rien n'existe sous le bord, Safari n'a plus
- *   rien à révéler, et il ne glisse pas. On pose `--hauteur-app` sur `<html>` ; les trois règles de
- *   `public/index.html` la lisent avec `100%` en repli, donc sans la variable le comportement est
- *   exactement celui d'avant.
+ *   1. `window.innerHeight` N'EST PAS LA FENÊTRE DE MISE EN PAGE SUR iOS. Elle suit la bande
+ *      VISIBLE. Clavier ouvert, on lit `innerHeight = 487` et `visualViewport.height = 487` : les
+ *      deux mêmes chiffres. La première version de ce fichier s'en servait comme garde-fou —
+ *      « si l'écart est inférieur à 120 px, ce n'est pas un clavier » — et cet écart valait donc
+ *      TOUJOURS zéro. Le correctif ne s'est jamais déclenché une seule fois, en silence.
+ *      La référence est désormais `hauteurAuRepos` : la bande visible mesurée quand aucun champ
+ *      n'a le focus. C'est la seule grandeur stable qu'on ait trouvée.
  *
- * POURQUOI CE FICHIER NE MESURE RIEN POUR SAVOIR SI LE CLAVIER EST LÀ
- *   `clavier.ts` pose une règle : on détecte le clavier par le focus, jamais par la taille du
- *   viewport, « notoirement instable sur Safari iOS ». Elle tient toujours. Ici la mesure ne sert
- *   qu'à DIMENSIONNER, une fois qu'un champ focalisé a dit qu'un clavier arrivait. Le retrait sert
- *   seulement de garde-fou : il écarte ce qui n'est pas un clavier.
+ *   2. RÉTRÉCIR APRÈS AVOIR MESURÉ LE CLAVIER ARRIVE TROP TARD. Le décalage de Safari est déjà
+ *      posé à 89 ms, quand le premier `resize` arrive ; s'aligner à 90 ms ne le défait pas. Il
+ *      faut rétrécir DÈS LE TOUCHER, sur une hauteur devinée, avant que Safari ne décide de faire
+ *      défiler. C'est mesuré : au toucher, la page ne bouge plus du tout (`off=0`, `scroll=0`, le
+ *      champ ne se déplace pas d'un pixel) ; sur le premier `resize`, elle glisse de 386 px.
+ *
+ * On devine généreusement, puis on corrige à la hausse dès que la vraie mesure arrive : rogner un
+ * peu trop laisse une bande de fond pendant 90 ms, rogner un peu trop peu fait glisser la page.
  */
 
 /**
- * En dessous de ce retrait (mise en page − visible), ce n'est pas un clavier.
- *   • barre d'adresse Safari (onglet, pas PWA), qui va et vient au défilement : 50 à 80 px ;
- *   • barre de suggestions d'un clavier matériel sur iPad : ~55 px ;
- *   • le plus petit clavier iOS (iPhone SE, portrait) : 216 px, barre d'outils en plus.
- * 120 px sépare franchement les deux familles. Conséquence heureuse : sur un ordinateur, et sur
- * les navigateurs Android qui rétrécissent la fenêtre de mise en page (le retrait y vaut alors 0),
- * on ne s'engage jamais — ces plateformes n'ont pas le défaut, on ne leur touche pas.
+ * En dessous de ce retrait (repos − visible), ce n'est pas un clavier : barre d'adresse Safari en
+ * onglet (50 à 80 px), barre de suggestions d'un clavier matériel (~55 px). Le plus petit clavier
+ * iOS, lui, fait 216 px. 120 sépare franchement les deux familles.
  */
 export const RETRAIT_MINIMUM = 120;
 
 /**
- * Page zoomée : `visualViewport.height` devient la hauteur de la LOUPE, pas celle de l'écran.
- * S'y caler écraserait l'app. On lâche tout, et on retombe sur le comportement d'avant.
- * (Dans la PWA, iOS interdit le zoom : `echelle` y vaut toujours 1. Le cas ne se rencontre qu'en
- * onglet, où Safari zoome tout seul sur un champ dont la fonte fait moins de 16 px.)
+ * Page zoomée : `visualViewport.height` devient la hauteur de la loupe et non celle de l'écran.
+ * S'y caler écraserait l'app. (En mode application iOS interdit le zoom ; le cas ne se rencontre
+ * qu'en onglet.)
  */
 export const ECHELLE_MAX = 1.05;
 
+/**
+ * Part de l'écran que prend un clavier, tant qu'on n'en a pas mesuré un vrai. Sert au seul premier
+ * toucher de la vie de l'app : dès le premier `resize`, la vraie hauteur est retenue.
+ * 0,55 est délibérément généreux — 0,44 sur l'iPhone de Victor. Trop rogner ne fait jamais glisser
+ * la page ; pas assez, si.
+ */
+export const PART_CLAVIER_PAR_DEFAUT = 0.55;
+
+/** On ne rétrécit jamais en dessous : sous ce seuil il n'y a plus d'app, juste une bande. */
+export const HAUTEUR_PLANCHER = 200;
+
 export type EtatViewport = {
-  /** `visualViewport.height` — la bande réellement visible. */
+  /** `visualViewport.height` relevée quand aucun champ n'a le focus. La référence. */
+  hauteurAuRepos: number;
+  /** `visualViewport.height` maintenant. */
   hauteurVisible: number;
-  /** `window.innerHeight` — la fenêtre de mise en page, que le clavier iOS ne touche pas. */
-  hauteurMiseEnPage: number;
   /** `visualViewport.scale` — 1 tant que la page n'est pas zoomée. */
   echelle: number;
   /** Un champ de saisie a le focus, au sens de `clavier.ts`. */
@@ -61,21 +67,31 @@ export type EtatViewport = {
 };
 
 /**
- * Quelle hauteur poser sur la racine ? `null` = aucune, on rend la main à `100%`.
+ * La hauteur à poser DÈS LE TOUCHER, avant que le clavier n'existe et donc avant toute mesure.
+ * `clavierRetenu` vient du dernier clavier réellement mesuré sur cet appareil (0 si aucun).
+ */
+export function hauteurAnticipee(hauteurAuRepos: number, clavierRetenu: number): number | null {
+  if (!(hauteurAuRepos > 0)) return null;
+  const clavier = clavierRetenu >= RETRAIT_MINIMUM
+    ? clavierRetenu
+    : Math.round(hauteurAuRepos * PART_CLAVIER_PAR_DEFAUT);
+  return Math.max(HAUTEUR_PLANCHER, Math.round(hauteurAuRepos - clavier));
+}
+
+/**
+ * La hauteur à poser une fois le clavier mesuré. `null` = aucune, on rend la main à `100%`.
  *
- * `engage` dit si l'on avait déjà pris la main. Il sert à la SORTIE : quand le champ perd le focus,
- * le clavier met encore ~250 ms à redescendre. Rendre la hauteur tout de suite rendrait l'app
- * haute de 932 px dans une bande encore réduite — c'est-à-dire le défaut qu'on corrige, le temps
- * de l'animation. Tant qu'on est engagé, on accompagne donc le clavier qui s'en va, et on ne rend
- * la main qu'une fois le retrait retombé sous le seuil.
+ * `engage` sert à la SORTIE : quand le champ perd le focus, le clavier met encore ~250 ms à
+ * redescendre. Rendre la hauteur tout de suite rejouerait le défaut le temps de l'animation. Tant
+ * qu'on est engagé, on accompagne donc le clavier qui s'en va.
  */
 export function hauteurAAppliquer(etat: EtatViewport, engage: boolean): number | null {
-  const { hauteurVisible, hauteurMiseEnPage, echelle, champFocalise } = etat;
+  const { hauteurAuRepos, hauteurVisible, echelle, champFocalise } = etat;
   // `!(x > 0)` et non `x <= 0` : attrape aussi NaN, que `visualViewport` renvoie le temps d'un
   // changement d'orientation.
-  if (!(hauteurVisible > 0) || !(hauteurMiseEnPage > 0)) return null;
+  if (!(hauteurVisible > 0) || !(hauteurAuRepos > 0)) return null;
   if (echelle > ECHELLE_MAX) return null;
-  if (hauteurMiseEnPage - hauteurVisible < RETRAIT_MINIMUM) return null;
+  if (hauteurAuRepos - hauteurVisible < RETRAIT_MINIMUM) return null;
   if (!champFocalise && !engage) return null;
-  return Math.round(hauteurVisible);
+  return Math.max(HAUTEUR_PLANCHER, Math.round(hauteurVisible));
 }
