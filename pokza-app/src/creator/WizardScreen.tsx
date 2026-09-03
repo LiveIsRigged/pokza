@@ -1,8 +1,39 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, typography } from '../theme/theme';
+import { borders, colors, spacing, tints, typography } from '../theme/theme';
 import { useLeftEdgeSwipe } from '../navigation/edgeSwipe';
+import { RESIDU_TOLERE } from './debordement';
+
+/**
+ * LE RAIL DE DÉFILEMENT — « il y a une suite, et voilà combien ».
+ * ──────────────────────────────────────────────────────────────
+ * Le problème d'origine (Victor, 03/09/2026) : à l'étape 1, rien ne dit qu'il faut défiler, et un
+ * premier utilisateur peut remplir les blindes puis toucher « Continuer » en croyant avoir fini.
+ * Mesuré par une sonde sur son appareil : le formulaire fait 1172 px pour une lucarne de 460 —
+ * **61 % du contenu est sous le pli.**
+ *
+ * ⚠️ POURQUOI UN RAIL ET PAS UN FONDU. Un fondu a été tenté toute la journée du 03/09 : six
+ * versions, six rejets, toujours le même mot — « bandes blanches ». Jamais élucidé, jamais
+ * reproduit ailleurs que sur son téléphone. La leçon retenue : **ne rien poser de translucide
+ * par-dessus le contenu.** Un rail ne recouvre rien, ne peut pas être pris pour un défaut
+ * d'affichage, et dit une chose de plus que le fondu — non seulement « il y a une suite » mais
+ * « il en reste tant ». C'est le seul repère qu'on n'avait jamais essayé.
+ *
+ * La barre native ne suffit pas : sur iOS elle n'apparaît QUE pendant qu'on défile, donc jamais
+ * pour celui qu'on veut prévenir — celui qui ne défile pas. D'où ce rail permanent, dessiné par
+ * l'app, tant que le contenu déborde.
+ */
+/** 3 px, la convention iOS pour un indicateur de défilement. */
+const RAIL_LARGEUR = 3;
+/** Le curseur ne descend jamais sous 24 px : en dessous il cesse d'être saisissable à l'œil sur un
+ *  contenu très long. `spacing.lg` du thème, pas une valeur inventée. */
+const RAIL_CURSEUR_MIN = spacing.lg;
+/** Posé dans la marge du conteneur (`spacing.sm`), pas au ras du contenu : à `right: 0` il
+ *  tomberait pile sur la bordure droite des champs de saisie, qui font toute la largeur, et se
+ *  lirait comme un épaississement de leur contour plutôt que comme un rail. */
+const RAIL_DECALAGE = spacing.sm;
 
 interface WizardScreenProps {
   title: string;
@@ -75,6 +106,73 @@ export function WizardScreen({
   // Retour au glissement bord-gauche → droite, double du bouton ‹ Retour (étape précédente, ou
   // sortie du créateur à la première étape). Inerte quand l'étape n'a pas de retour.
   const backSwipe = useLeftEdgeSwipe(onBack ?? (() => {}), !!onBack);
+
+  /**
+   * LA MESURE — la géométrie dans l'état, la POSITION dans une `Animated.Value`.
+   *
+   * ⚠️ CE PARTAGE N'EST PAS UN DÉTAIL. `onScroll` tire soixante fois par seconde : mettre la
+   * position dans l'état relancerait le rendu de tout l'écran à chaque image — table comprise,
+   * alors qu'elle est de loin ce qu'on redessine le plus cher. Une `Animated.Value` écrit
+   * directement dans le nœud et ne passe pas par React. La géométrie (hauteur du contenu, hauteur
+   * de la lucarne), elle, ne bouge qu'au montage et quand une section se déplie : l'état lui va,
+   * et il FAUT qu'elle y soit pour que l'interpolation ci-dessous soit reconstruite quand elle
+   * change — sinon un dépliement laisserait le curseur calé sur l'ancienne longueur.
+   */
+  const [geometrie, setGeometrie] = useState({ contenu: 0, lucarne: 0 });
+  const defilement = useRef(new Animated.Value(0)).current;
+  const noter = (contenu: number, lucarne: number) => {
+    if (!(contenu > 0) || !(lucarne > 0)) return;
+    setGeometrie((g) => (g.contenu === contenu && g.lucarne === lucarne ? g : { contenu, lucarne }));
+  };
+  const zone = useRef<ScrollView | null>(null);
+  // Deux destinataires pour une seule ref : la nôtre, et celle que l'étape passe pour se faire
+  // défiler (cf. `scrollRef`, utilisé par l'étape 1 pour amener une section dépliée en vue).
+  const attacher = (n: ScrollView | null) => {
+    zone.current = n;
+    if (scrollRef) (scrollRef as React.MutableRefObject<ScrollView | null>).current = n;
+  };
+
+  /**
+   * LE FILET : une mesure DOM directe, plus un `ResizeObserver`.
+   *
+   * Sans lui le rail n'aurait aucun intérêt : `onScroll` ne se déclenche que si l'on défile, or le
+   * rail doit être là AVANT — pour celui qui s'apprête à ne pas défiler. Un seul assistant est
+   * monté à la fois, donc un seul observateur.
+   *
+   * On observe le conteneur de contenu ET la lucarne : un `ResizeObserver` regarde la boîte, pas
+   * `scrollHeight` — sans le premier, une section qui se déplie ne rallongerait pas le rail.
+   *
+   * ⚠️ En react-native-web, la ref d'un `ScrollView` EST le nœud DOM défilant : `_setScrollNodeRef`
+   * y accroche `getScrollableNode` avant de le transmettre (`exports/ScrollView/index.js:249-270`,
+   * vérifié sur l'app en marche le 03/09).
+   */
+  useLayoutEffect(() => {
+    const vue = zone.current as unknown as
+      | (HTMLElement & { getScrollableNode?: () => HTMLElement | null })
+      | null;
+    const el = typeof vue?.getScrollableNode === 'function' ? vue.getScrollableNode() : vue;
+    if (!el || typeof el.scrollHeight !== 'number') return;
+    const mesurer = () => noter(el.scrollHeight, el.clientHeight);
+    mesurer();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observateur = new ResizeObserver(mesurer);
+    observateur.observe(el);
+    const contenu = el.firstElementChild;
+    if (contenu) observateur.observe(contenu);
+    return () => observateur.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Le rail n'existe que si ça déborde vraiment. `RESIDU_TOLERE` absorbe la fraction de pixel que
+  // les arrondis laissent parfois, qui le ferait sinon apparaître sur une page qui ne défile pas.
+  const course = geometrie.contenu - geometrie.lucarne;
+  const railVisible = geometrie.contenu > 0 && geometrie.lucarne > 0 && course > RESIDU_TOLERE;
+  // Proportion vue / total, comme n'importe quelle barre de défilement : le curseur DIT combien il
+  // reste, il ne fait pas que signaler qu'il reste quelque chose.
+  const curseurHauteur = railVisible
+    ? Math.max(RAIL_CURSEUR_MIN, (geometrie.lucarne * geometrie.lucarne) / geometrie.contenu)
+    : 0;
+
   return (
     <View style={styles.container} {...backSwipe.panHandlers}>
       <View style={styles.topRow}>
@@ -96,20 +194,58 @@ export function WizardScreen({
       {/* La table déborde des marges de l'écran : elle va d'un bord à l'autre, comme dans le feed. */}
       {zoneFixe ? <View style={styles.zoneFixe}>{zoneFixe}</View> : null}
       {rangeeFixe ? <View style={styles.rangeeFixe}>{rangeeFixe}</View> : null}
-      <ScrollView
-        ref={scrollRef}
-        style={styles.content}
-        contentContainerStyle={styles.contentInner}
-        showsVerticalScrollIndicator={false}
-        // Sans ça, le premier appui clavier ouvert ne fait QUE refermer le clavier : il n'atteint
-        // jamais l'élément visé. Une suggestion de lieu demanderait donc deux touchers, le premier
-        // sans effet visible — et le même défaut frappe déjà toutes les pastilles de ces écrans.
-        // « handled » ne garde le clavier que si un enfant a effectivement traité l'appui ; toucher
-        // le vide le referme comme avant.
-        keyboardShouldPersistTaps="handled"
-      >
-        {children}
-      </ScrollView>
+      <View style={styles.lucarne}>
+        <ScrollView
+          ref={attacher}
+          style={styles.content}
+          contentContainerStyle={styles.contentInner}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onLayout={(e: LayoutChangeEvent) => noter(geometrie.contenu, e.nativeEvent.layout.height)}
+          onContentSizeChange={(_l: number, h: number) => noter(h, geometrie.lucarne)}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: defilement } } }], {
+            // `false` et non `true` : react-native-web ne sait pas piloter une animation hors du
+            // fil JS. Ça reste sans coût de rendu — `Animated` écrit dans le nœud sans passer par
+            // React, c'est tout l'intérêt de sortir la position de l'état.
+            useNativeDriver: false,
+            listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+              const n = e.nativeEvent;
+              noter(n.contentSize.height, n.layoutMeasurement.height);
+            },
+          })}
+          // Sans ça, le premier appui clavier ouvert ne fait QUE refermer le clavier : il n'atteint
+          // jamais l'élément visé. Une suggestion de lieu demanderait donc deux touchers, le premier
+          // sans effet visible — et le même défaut frappe déjà toutes les pastilles de ces écrans.
+          // « handled » ne garde le clavier que si un enfant a effectivement traité l'appui ; toucher
+          // le vide le referme comme avant.
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ScrollView>
+        {railVisible && (
+          <View style={[styles.rail, { height: geometrie.lucarne }]} pointerEvents="none">
+            <Animated.View
+              style={[
+                styles.railCurseur,
+                {
+                  height: curseurHauteur,
+                  transform: [
+                    {
+                      translateY: defilement.interpolate({
+                        inputRange: [0, course],
+                        outputRange: [0, geometrie.lucarne - curseurHauteur],
+                        // Sans ça, l'élastique d'iOS (on tire au-delà des deux bouts) enverrait le
+                        // curseur hors du rail.
+                        extrapolate: 'clamp',
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          </View>
+        )}
+      </View>
       {socle ? <View style={styles.socle}>{socle}</View> : null}
       {footerNote ? <Text style={styles.footerNote}>{footerNote}</Text> : null}
       {onNext && (
@@ -164,8 +300,27 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 14,
   },
+  // La lucarne : le conteneur qui porte le rail à côté de la zone défilante. Elle prend la place
+  // que prenait le `ScrollView`, pour que rien d'autre ne bouge dans la colonne.
+  lucarne: {
+    flex: 1,
+  },
   content: {
     flex: 1,
+  },
+  rail: {
+    position: 'absolute',
+    top: 0,
+    // Négatif : le rail vit dans la marge du conteneur, à l'écart du bord droit des champs.
+    right: -RAIL_DECALAGE,
+    width: RAIL_LARGEUR,
+    borderRadius: RAIL_LARGEUR / 2,
+    backgroundColor: tints.light,
+  },
+  railCurseur: {
+    width: RAIL_LARGEUR,
+    borderRadius: RAIL_LARGEUR / 2,
+    backgroundColor: borders.strong,
   },
   // `-18` annule le rembourrage du conteneur : la table touche les deux bords de l'écran.
   zoneFixe: {
