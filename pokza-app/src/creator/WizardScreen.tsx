@@ -15,10 +15,31 @@ import { MESURE_VIERGE, debordeSousLePli, fusionner, type MesureDefilement } fro
  * retirer le filet sous la table le 02/09/2026. Il apparaît là où il y a vraiment une suite et
  * nulle part ailleurs, parce qu'il est calculé depuis le débordement mesuré (cf. `debordement.ts`).
  *
- * 52 px : la hauteur validée par Victor sur les maquettes du 03/09/2026. Assez pour qu'on voie une
- * rangée s'estomper — donc qu'on comprenne qu'elle est coupée — sans effacer la ligne du dessus.
+ * ⚠️ POURQUOI ON PEINT VERS DU NAVY, PAS VERS LE FOND (Victor, 03/09/2026, deuxième version).
+ * La v1 dégradait du beige transparent au beige opaque : mathématiquement identique au fond de
+ * l'app partout où il n'y a rien à masquer. Sur ton iPhone à 6 joueurs, la lucarne fait 429 px et
+ * le contenu déborde de ~13 : sur les 52 px du fondu, 39 tombaient donc sur du vide, invisibles.
+ * `MultiCardPicker` a le même geste beige→beige, mais lui masque des cartes colorées ; ici le
+ * fondu passe soit sur des pastilles beiges, soit sur du fond beige, et le geste s'évapore.
+ *
+ * On peint donc vers une nuance de NAVY — la même que la couleur des bordures et de la table.
+ * L'opacité maximale reste basse (12 %) pour un rendu discret, mais VISIBLE sur du fond nu : c'est
+ * ce qui rend le geste lisible même quand le débordement est petit. Le pont avec le reste du
+ * design system est déjà là (voir `tints.faint`/`light` dans `theme.ts`).
+ *
+ * 72 px de haut : le contenu qu'il masque part de la moitié d'une rangée de pastilles, ce qui
+ * suffit à faire lire « coupé » ; la hauteur validée sur maquette (52) reposait sur du contenu
+ * réellement présent, or ce n'est pas garanti — mieux vaut couvrir plus haut pour être sûr d'y
+ * trouver quelque chose à effacer.
  */
-const HAUTEUR_FONDU = 52;
+const HAUTEUR_FONDU = 72;
+/** Le navy des bordures, en teinte du fondu.
+ *
+ *  Aligné avec `tints.faint` / `tints.light` / `tints.medium` du thème — même famille, opacité
+ *  légèrement plus haute (12 %) pour que le geste se voie au bord bas d'une lucarne qui ne cache
+ *  qu'un pixel. */
+const COULEUR_FONDU = '#16233D';
+const OPACITE_FONDU_MAX = 0.12;
 /** Un seul assistant est monté à la fois : un identifiant fixe suffit. Il ne télescope pas ceux de
  *  `MultiCardPicker` (`fade-<couleur>`), qui vit à l'intérieur de cet écran à l'étape 2. */
 const ID_FONDU = 'fonduWizard';
@@ -220,8 +241,8 @@ export function WizardScreen({
             <Svg width={largeur} height={HAUTEUR_FONDU}>
               <Defs>
                 <LinearGradient id={ID_FONDU} x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={colors.feedBackground} stopOpacity="0" />
-                  <Stop offset="1" stopColor={colors.feedBackground} stopOpacity="1" />
+                  <Stop offset="0" stopColor={COULEUR_FONDU} stopOpacity="0" />
+                  <Stop offset="1" stopColor={COULEUR_FONDU} stopOpacity={OPACITE_FONDU_MAX} />
                 </LinearGradient>
               </Defs>
               <Rect width={largeur} height={HAUTEUR_FONDU} fill={`url(#${ID_FONDU})`} />
