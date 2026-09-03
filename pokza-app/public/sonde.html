@@ -1,0 +1,358 @@
+<!--
+  PAGE DE DIAGNOSTIC TEMPORAIRE — à retirer une fois la mesure faite.
+  Posée le 03/09/2026 parce que le correctif clavier (`58e35d5`) ne change rien sur l'iPhone de
+  Victor alors qu'il est bien déployé (CSS servi, code dans le bundle, aucun cache de service
+  worker). Plutôt qu'une troisième hypothèse livrée à l'aveugle, on mesure.
+
+  Elle n'est liée depuis nulle part, ne lit ni n'écrit aucune donnée, et ne parle à personne.
+-->
+<title>Sonde clavier iOS</title>
+<style>
+  /* Instrument de mesure : fond feutre, chiffres en chasse fixe. Thème unique et assumé —
+     tout est peint explicitement pour ne rien emprunter au fond de l'hôte. */
+  :root {
+    --feutre: #16233D;
+    --feutre-clair: #1C2C4C;
+    --rail: #0E1830;
+    --parchemin: #EDEAE2;
+    --parchemin-doux: #9AA3B4;
+    --or: #E8C93B;
+    --alerte: #E8571F;
+    --bon: #5FA777;
+    --trait: rgba(237, 234, 226, 0.16);
+  }
+  * { box-sizing: border-box; }
+
+  /* MÊME MISE EN PAGE QUE POKZA : c'est tout l'intérêt de la sonde. */
+  html, body { height: var(--hauteur-app, 100%); margin: 0; }
+  body { overflow: hidden; touch-action: manipulation; }
+  #app { display: flex; flex-direction: column; height: var(--hauteur-app, 100%); }
+
+  body {
+    background: var(--feutre);
+    color: var(--parchemin);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-text-size-adjust: 100%;
+  }
+  .num {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  header {
+    flex: 0 0 auto;
+    padding: 12px 14px 10px;
+    background: var(--rail);
+    border-bottom: 1px solid var(--trait);
+  }
+  h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+  .sous { margin: 3px 0 0; font-size: 12.5px; color: var(--parchemin-doux); }
+
+  .verdict {
+    margin-top: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    background: rgba(237, 234, 226, 0.07);
+    border: 1px solid var(--trait);
+  }
+  .verdict[data-etat="glisse"] { background: rgba(232, 87, 31, 0.16); border-color: var(--alerte); color: #FFC3A8; }
+  .verdict[data-etat="tient"]  { background: rgba(95, 167, 125, 0.16); border-color: var(--bon); color: #B7E5C8; }
+
+  .cadrans {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--trait);
+    border: 1px solid var(--trait);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .cadran { background: var(--rail); padding: 7px 10px; }
+  .cadran dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--parchemin-doux); margin: 0; }
+  .cadran dd { margin: 1px 0 0; font-size: 17px; font-weight: 700; }
+  .cadran[data-chaud="oui"] dd { color: var(--alerte); }
+
+  main { flex: 1 1 auto; overflow-y: auto; padding: 14px; }
+
+  .modes { display: flex; flex-direction: column; gap: 8px; }
+  .mode {
+    display: flex; gap: 11px; align-items: flex-start;
+    padding: 12px; border-radius: 9px;
+    background: var(--feutre-clair);
+    border: 1.5px solid var(--trait);
+    cursor: pointer;
+  }
+  .mode[data-actif="oui"] { border-color: var(--or); background: rgba(232, 201, 59, 0.1); }
+  .mode .lettre {
+    flex: 0 0 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(237, 234, 226, 0.12); color: var(--parchemin);
+    font-weight: 700; font-size: 13px;
+  }
+  .mode[data-actif="oui"] .lettre { background: var(--or); color: var(--rail); }
+  .mode b { display: block; font-size: 14.5px; }
+  .mode span { display: block; font-size: 12.5px; color: var(--parchemin-doux); margin-top: 2px; }
+
+  .remplissage {
+    margin-top: 16px; padding: 14px; border-radius: 9px;
+    background: var(--feutre-clair); border: 1px solid var(--trait);
+    color: var(--parchemin-doux); font-size: 13px;
+  }
+  .remplissage p { margin: 0 0 9px; }
+  .remplissage p:last-child { margin: 0; }
+
+  .zone-champ { margin-top: 16px; }
+  label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--parchemin-doux); margin-bottom: 6px; }
+  input[type="text"] {
+    width: 100%; padding: 13px 14px;
+    font: inherit; font-size: 17px; /* 17 px : en dessous de 16, Safari zoome tout seul */
+    color: var(--parchemin);
+    background: var(--rail);
+    border: 1.5px solid var(--trait); border-radius: 9px;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--or); }
+
+  .actions { margin-top: 14px; display: flex; gap: 9px; }
+  button {
+    flex: 1; padding: 12px; font: inherit; font-size: 14px; font-weight: 600;
+    color: var(--parchemin); background: var(--feutre-clair);
+    border: 1.5px solid var(--trait); border-radius: 9px; cursor: pointer;
+  }
+  button.principal { background: var(--or); color: var(--rail); border-color: var(--or); }
+  button:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; }
+
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--parchemin-doux); margin: 20px 0 8px; font-weight: 600; }
+  #journal {
+    background: var(--rail); border: 1px solid var(--trait); border-radius: 9px;
+    padding: 10px 12px; font-size: 11.5px; line-height: 1.65;
+    max-height: 42vh; overflow: auto; white-space: pre;
+  }
+  #journal:empty::after { content: "Choisis un mode, puis touche le champ."; color: var(--parchemin-doux); white-space: normal; }
+</style>
+
+<div id="app">
+  <header>
+    <h1>Sonde clavier iOS</h1>
+    <p class="sous">Pour comprendre pourquoi Pokza remonte. Mêmes réglages de mise en page que l'app.</p>
+    <div class="verdict" id="verdict" data-etat="">En attente d'un toucher dans le champ</div>
+    <dl class="cadrans">
+      <div class="cadran"><dt>Mise en page</dt><dd class="num" id="c-inner">—</dd></div>
+      <div class="cadran"><dt>Bande visible</dt><dd class="num" id="c-visible">—</dd></div>
+      <div class="cadran" id="cad-offset"><dt>Décalage Safari</dt><dd class="num" id="c-offset">—</dd></div>
+      <div class="cadran" id="cad-scroll"><dt>Défilement page</dt><dd class="num" id="c-scroll">—</dd></div>
+    </dl>
+  </header>
+
+  <main>
+    <div class="modes" id="modes">
+      <div class="mode" data-mode="A" data-actif="oui">
+        <span class="lettre">A</span>
+        <div><b>Rien du tout</b><span>L'app d'avant le correctif. Le témoin.</span></div>
+      </div>
+      <div class="mode" data-mode="B">
+        <span class="lettre">B</span>
+        <div><b>Rétrécir quand le clavier est mesuré</b><span>Le correctif que je t'ai livré ce matin.</span></div>
+      </div>
+      <div class="mode" data-mode="C">
+        <span class="lettre">C</span>
+        <div><b>Rétrécir dès le toucher</b><span>Avant que le clavier n'arrive, sur une hauteur devinée. Mon hypothèse.</span></div>
+      </div>
+    </div>
+
+    <div class="remplissage">
+      <p>Ce bloc n'est là que pour donner de la hauteur à la page, comme le formulaire de Pokza.</p>
+      <p>Touche le champ tout en bas et regarde si l'écran remonte. Referme le clavier, puis lis le journal.</p>
+      <p>Fais les trois modes à la suite : c'est la comparaison qui compte, pas un mode isolé.</p>
+    </div>
+
+    <div class="zone-champ">
+      <label for="champ">Le champ à toucher</label>
+      <input type="text" id="champ" placeholder="Tape n'importe quoi" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
+
+    <div class="actions">
+      <button type="button" id="copier" class="principal">Copier le rapport</button>
+      <button type="button" id="vider">Vider</button>
+    </div>
+
+    <h2>Journal</h2>
+    <div id="journal" class="num"></div>
+  </main>
+</div>
+
+<script>
+(function () {
+  var racine = document.documentElement;
+  var vue = window.visualViewport;
+  var journal = document.getElementById('journal');
+  var verdict = document.getElementById('verdict');
+  var champ = document.getElementById('champ');
+  var mode = 'A';
+  var lignes = [];
+  var t0 = 0;
+  var focalise = false;
+  var pire = 0;
+
+  // Hauteur de clavier retenue d'un essai sur l'autre : c'est ce que fait le mode C pour deviner
+  // avant que le clavier n'arrive.
+  var CLE = 'sonde-clavier-hauteur';
+  function retenue() {
+    try { return parseInt(localStorage.getItem(CLE), 10) || 0; } catch (e) { return 0; }
+  }
+  function retenir(px) {
+    try { localStorage.setItem(CLE, String(px)); } catch (e) {}
+  }
+
+  function etat() {
+    return {
+      inner: window.innerHeight,
+      visible: vue ? Math.round(vue.height) : window.innerHeight,
+      offset: vue ? Math.round(vue.offsetTop) : 0,
+      pageTop: vue ? Math.round(vue.pageTop) : 0,
+      scroll: Math.round(window.scrollY || 0),
+      echelle: vue ? Math.round(vue.scale * 100) / 100 : 1,
+      docHaut: Math.round(document.getElementById('app').getBoundingClientRect().bottom),
+      variable: racine.style.getPropertyValue('--hauteur-app') || '—'
+    };
+  }
+
+  function cadrans(e) {
+    document.getElementById('c-inner').textContent = e.inner;
+    document.getElementById('c-visible').textContent = e.visible;
+    document.getElementById('c-offset').textContent = e.offset;
+    document.getElementById('c-scroll').textContent = e.scroll;
+    document.getElementById('cad-offset').dataset.chaud = e.offset > 0 ? 'oui' : 'non';
+    document.getElementById('cad-scroll').dataset.chaud = e.scroll > 0 ? 'oui' : 'non';
+  }
+
+  function noter(evenement) {
+    var e = etat();
+    cadrans(e);
+    var glissement = e.offset + e.scroll;
+    if (focalise && glissement > pire) pire = glissement;
+    var ms = t0 ? String(Date.now() - t0).padStart(5, ' ') : '    0';
+    lignes.push(
+      ms + 'ms ' + evenement.padEnd(11, ' ') +
+      ' page=' + String(e.inner).padStart(4) +
+      ' vis=' + String(e.visible).padStart(4) +
+      ' off=' + String(e.offset).padStart(4) +
+      ' scr=' + String(e.scroll).padStart(4) +
+      ' bas=' + String(e.docHaut).padStart(4) +
+      ' var=' + e.variable
+    );
+    journal.textContent = lignes.join('\n');
+    journal.scrollTop = journal.scrollHeight;
+    return e;
+  }
+
+  function afficherVerdict() {
+    if (pire > 0) {
+      verdict.dataset.etat = 'glisse';
+      verdict.textContent = 'Mode ' + mode + ' : la page a glissé de ' + pire + ' px';
+    } else {
+      verdict.dataset.etat = 'tient';
+      verdict.textContent = 'Mode ' + mode + ' : la page n\'a pas bougé';
+    }
+  }
+
+  function poser(px) {
+    if (px === null) racine.style.removeProperty('--hauteur-app');
+    else racine.style.setProperty('--hauteur-app', Math.round(px) + 'px');
+  }
+
+  // ── Les trois modes ──────────────────────────────────────────────────────────
+  function surFocus() {
+    focalise = true;
+    pire = 0;
+    t0 = Date.now();
+    lignes.push('── mode ' + mode + ' ' + '─'.repeat(46));
+    noter('focus');
+    if (mode === 'C') {
+      // On rétrécit TOUT DE SUITE, avant que Safari ne décide de faire défiler pour révéler le
+      // champ. La hauteur du clavier n'est pas encore connue : on la devine, généreusement (mieux
+      // vaut trop petit que pas assez — trop petit ne fait jamais glisser).
+      var devinee = retenue() || Math.round(window.innerHeight * 0.45);
+      poser(window.innerHeight - devinee - 20);
+      noter('C:devine');
+    }
+  }
+
+  function surResize() {
+    var e = noter('resize');
+    var retrait = e.inner - e.visible;
+    if (retrait > 120 && focalise) retenir(retrait);
+    if ((mode === 'B' || mode === 'C') && retrait > 120) {
+      poser(e.visible);
+      noter('  cale');
+    } else if ((mode === 'B' || mode === 'C') && retrait <= 120 && !focalise) {
+      poser(null);
+      noter('  relache');
+    }
+  }
+
+  function surBlur() {
+    focalise = false;
+    noter('blur');
+    setTimeout(function () {
+      var e = etat();
+      if (e.inner - e.visible <= 120) poser(null);
+      noter('fin');
+      afficherVerdict();
+    }, 700);
+  }
+
+  champ.addEventListener('focus', surFocus);
+  champ.addEventListener('blur', surBlur);
+  if (vue) {
+    vue.addEventListener('resize', surResize);
+    vue.addEventListener('scroll', function () { noter('vv-scroll'); });
+  }
+  window.addEventListener('scroll', function () { noter('scroll'); });
+
+  document.getElementById('modes').addEventListener('click', function (ev) {
+    var carte = ev.target.closest('.mode');
+    if (!carte) return;
+    mode = carte.dataset.mode;
+    [].forEach.call(document.querySelectorAll('.mode'), function (m) {
+      m.dataset.actif = m === carte ? 'oui' : 'non';
+    });
+    poser(null);
+    pire = 0;
+    verdict.dataset.etat = '';
+    verdict.textContent = 'Mode ' + mode + ' choisi — touche le champ';
+  });
+
+  document.getElementById('vider').addEventListener('click', function () {
+    lignes = [];
+    journal.textContent = '';
+    verdict.dataset.etat = '';
+    verdict.textContent = 'Journal vidé';
+  });
+
+  var bouton = document.getElementById('copier');
+  bouton.addEventListener('click', function () {
+    var entete = [
+      'Sonde clavier — ' + new Date().toLocaleString('fr-FR'),
+      'écran ' + screen.width + '×' + screen.height + ' · dpr ' + window.devicePixelRatio,
+      'standalone : ' + (window.navigator.standalone === true ? 'OUI (depuis l\'écran d\'accueil)' : 'non (onglet Safari)'),
+      'visualViewport : ' + (vue ? 'disponible' : 'ABSENT'),
+      ''
+    ].join('\n');
+    var texte = entete + lignes.join('\n');
+    var fini = function (ok) {
+      bouton.textContent = ok ? 'Copié' : 'Sélectionne le journal';
+      setTimeout(function () { bouton.textContent = 'Copier le rapport'; }, 2000);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texte).then(function () { fini(true); }, function () { fini(false); });
+    } else { fini(false); }
+  });
+
+  cadrans(etat());
+})();
+</script>
