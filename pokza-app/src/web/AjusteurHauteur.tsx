@@ -64,12 +64,39 @@ export function AjusteurHauteur() {
     // visible sur iOS et vaut donc la même chose qu'elle, clavier ouvert comme fermé.
     let hauteurAuRepos = vue.height;
 
+    /**
+     * AMENER LE CHAMP FOCALISÉ EN VUE — le devoir dont on vient d'hériter.
+     *
+     * Jusqu'ici, c'est le glissement de Safari qui remontait le champ au-dessus du clavier. Il
+     * était brutal (toute la page partait vers le bas) mais il rendait ce service. En le
+     * supprimant, on a laissé le champ derrière le clavier : Victor, capture à l'appui, voyait la
+     * table et « À UTG de jouer », mais plus la case où il tapait.
+     *
+     * `block: 'nearest'` fait le MINIMUM de défilement : le champ affleure le haut du clavier, et
+     * ce qui le précède — les raccourcis de mise, « Annuler / Valider » — reste visible. Un
+     * `'center'` cacherait ce contexte sans rien apporter.
+     *
+     * Ça défile le conteneur le plus proche, donc le `ScrollView` de l'écran, jamais la page :
+     * celle-ci tient désormais tout entière dans la bande visible et n'a plus rien à faire défiler.
+     */
+    const amenerLeChampEnVue = () => {
+      const actif = document.activeElement as HTMLElement | null;
+      if (!actif || actif === document.body) return;
+      if (typeof actif.scrollIntoView !== 'function') return;
+      actif.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    };
+
     const poser = (px: number) => {
       racine.style.setProperty(VARIABLE, `${px}px`);
       engage = true;
       // Safari a pu commencer à glisser. Une fois le document aussi court que la bande visible il
       // n'y a plus rien à faire défiler, mais le décalage déjà pris ne se défait pas toujours seul.
       if (window.scrollY !== 0) window.scrollTo(0, 0);
+      // Après la prochaine image : la hauteur vient de changer, il faut que la mise en page soit
+      // recalculée pour que le défilement vise juste.
+      window.requestAnimationFrame(() => {
+        if (focalise.current) amenerLeChampEnVue();
+      });
     };
 
     const rendre = () => {
