@@ -50,7 +50,7 @@ const COULEUR_FONDU = '#16233D';
 const OPACITE_FONDU_MI = 0.14;
 /** Reprise de `borders.strong` (voir `theme.ts`) : la valeur déjà choisie dans l'app pour « ce
  *  contour doit se voir avant ce qu'il entoure » — exactement le rôle de ce fondu. */
-const OPACITE_FONDU_MAX = 0.35;
+const OPACITE_FONDU_MAX = 0.9; // ⚠️ TEMPORAIRE — valeur diagnostique volontairement excessive, pas la valeur finale.
 /** Un seul assistant est monté à la fois : un identifiant fixe suffit. Il ne télescope pas ceux de
  *  `MultiCardPicker` (`fade-<couleur>`), qui vit à l'intérieur de cet écran à l'étape 2. */
 const ID_FONDU = 'fonduWizard';
