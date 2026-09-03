@@ -23,34 +23,23 @@ import { MESURE_VIERGE, debordeSousLePli, fusionner, type MesureDefilement } fro
  * fondu passe soit sur des pastilles beiges, soit sur du fond beige, et le geste s'évapore.
  *
  * On peint donc vers une nuance de NAVY — la même que la couleur des bordures et de la table.
- *
- * ⚠️ TROISIÈME VERSION — 12 % ÉTAIT TECHNIQUEMENT UN DÉGRADÉ, PERÇU COMME UN CARRÉ GRIS.
- * Reproduit hors authentification (`?debugfondu=1`, jamais commité) et VÉRIFIÉ EN PIXELS : le
- * rectangle est géométriquement exact, bord à bord du formulaire, sans le moindre trou. Le défaut
- * signalé par Victor (« plus aucun dégradé », « bandes blanches sur les côtés ») n'était donc PAS
- * un bug de position — c'était l'œil. Sur 72 px, une pente de 0 à 12 % est si plate que le cerveau
- * ne la lit pas comme une pente : il la lit comme un aplat, et les pastilles voisines, plus
- * contrastées, font paraître le reste « blanc » par comparaison (bandes de Mach, un effet connu des
- * dégradés à faible amplitude). La v2 échouait donc sur l'INTENSITÉ, pas la géométrie.
- *
- * Opacité maximale reprise de `borders.strong` (0,35) — « Contour appuyé, quand il doit se voir
- * avant le texte qu'il entoure » dans `theme.ts` : exactement notre cas, pas une valeur inventée.
- * Et TROIS PALIERS plutôt que deux : une pente linéaire de 0 à 35 % a le même défaut que 0 à 12 %,
- * en plus fort — elle reste plate sur son premier tiers avant qu'on la remarque. Un palier
- * intermédiaire à mi-hauteur fait partir la pente plus tôt, donc PLUS LONGUE à l'œil.
+ * L'opacité maximale reste basse (12 %) pour un rendu discret, mais VISIBLE sur du fond nu : c'est
+ * ce qui rend le geste lisible même quand le débordement est petit. Le pont avec le reste du
+ * design system est déjà là (voir `tints.faint`/`light` dans `theme.ts`).
  *
  * 72 px de haut : le contenu qu'il masque part de la moitié d'une rangée de pastilles, ce qui
- * suffit à faire lire « coupé ».
+ * suffit à faire lire « coupé » ; la hauteur validée sur maquette (52) reposait sur du contenu
+ * réellement présent, or ce n'est pas garanti — mieux vaut couvrir plus haut pour être sûr d'y
+ * trouver quelque chose à effacer.
  */
 const HAUTEUR_FONDU = 72;
-/** Le navy des bordures, en teinte du fondu — même hexadécimal que `borders.*` dans `theme.ts`. */
+/** Le navy des bordures, en teinte du fondu.
+ *
+ *  Aligné avec `tints.faint` / `tints.light` / `tints.medium` du thème — même famille, opacité
+ *  légèrement plus haute (12 %) pour que le geste se voie au bord bas d'une lucarne qui ne cache
+ *  qu'un pixel. */
 const COULEUR_FONDU = '#16233D';
-/** Palier intermédiaire, à mi-hauteur : fait partir la pente plus tôt qu'un dégradé à deux points,
- *  pour qu'elle se voie sur toute la hauteur et non seulement dans son dernier tiers. */
-const OPACITE_FONDU_MI = 0.14;
-/** Reprise de `borders.strong` (voir `theme.ts`) : la valeur déjà choisie dans l'app pour « ce
- *  contour doit se voir avant ce qu'il entoure » — exactement le rôle de ce fondu. */
-const OPACITE_FONDU_MAX = 0.35;
+const OPACITE_FONDU_MAX = 0.12;
 /** Un seul assistant est monté à la fois : un identifiant fixe suffit. Il ne télescope pas ceux de
  *  `MultiCardPicker` (`fade-<couleur>`), qui vit à l'intérieur de cet écran à l'étape 2. */
 const ID_FONDU = 'fonduWizard';
@@ -253,7 +242,6 @@ export function WizardScreen({
               <Defs>
                 <LinearGradient id={ID_FONDU} x1="0" y1="0" x2="0" y2="1">
                   <Stop offset="0" stopColor={COULEUR_FONDU} stopOpacity="0" />
-                  <Stop offset="0.5" stopColor={COULEUR_FONDU} stopOpacity={OPACITE_FONDU_MI} />
                   <Stop offset="1" stopColor={COULEUR_FONDU} stopOpacity={OPACITE_FONDU_MAX} />
                 </LinearGradient>
               </Defs>
