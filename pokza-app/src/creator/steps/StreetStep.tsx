@@ -1111,7 +1111,16 @@ export function StreetStep({
       onBack={onBack}
       zoneFixe={table}
       socle={socleContenu}
+      /*
+        RIEN DE CETTE RANGÉE PENDANT QU'ON TAPE UN MONTANT — 58 px rendus au pavé numérique.
+        Mesuré le 03/09/2026 : à dix joueurs la table prend 425 px, et il ne restait que 125 px
+        pour un pavé qui en demande 156. C'est cette rangée qui comble l'écart.
+        Ce qu'on perd est déjà ailleurs : le siège qui parle est mis en évidence SUR LA TABLE,
+        juste au-dessus ; et « ↩ Annuler » défait l'action précédente, ce qu'on ne peut pas faire
+        au milieu d'une saisie — il faut d'abord annuler celle-ci, bouton qui est sous les yeux.
+      */
       rangeeFixe={
+        enteringAmount ? null : (
         <>
           {/* Plus de titre « Le turn » : la carte attendue se dessine en pointillés SUR LE BOARD,
               à sa place exacte. Rien à annoncer que la table ne montre déjà. La place ainsi libérée
@@ -1130,11 +1139,14 @@ export function StreetStep({
             </Pressable>
           ) : null}
         </>
+        )
       }
       step={step}
       totalSteps={totalSteps}
+      /* Idem, 65 px de plus : on est au milieu d'une action, avec « Annuler » et « Valider »
+         sous les yeux. Arrêter la main d'ici serait de toute façon un détour. */
       footerLink={
-        arretPossible
+        arretPossible && !enteringAmount
           ? {
               label: 'Arrêter la main ici',
               onPress: () => {

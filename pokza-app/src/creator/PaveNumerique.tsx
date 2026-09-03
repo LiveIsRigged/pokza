@@ -30,18 +30,29 @@ import { borders, colors, radius, tints } from '../theme/theme';
  *   donnerait deux chemins pour la même action à 40 px l'un de l'autre.
  */
 
-/** 48 px : au-dessus de la cible tactile recommandée (44), et 4 rangées tiennent en 210 px. */
+/** 48 px : au-dessus de la cible tactile recommandée de 44. */
 const HAUTEUR_TOUCHE = 48;
 const ECART = 6;
 
-/** Ce que mesure le pavé en tout. Sert au calcul de place de l'étape 3 — le tenir à jour. */
-export const HAUTEUR_PAVE = HAUTEUR_TOUCHE * 4 + ECART * 3;
+/** Ce que mesure le pavé en tout : 156 px. Sert au calcul de place de l'étape 3 — le tenir à jour. */
+export const HAUTEUR_PAVE = HAUTEUR_TOUCHE * 3 + ECART * 2;
 
+/**
+ * TROIS RANGÉES ET NON QUATRE, ET LA QUATRIÈME COLONNE EST LÀ POUR ÇA.
+ * Le pavé téléphone habituel (3 colonnes, 4 rangées) fait 210 px. Mesuré le 03/09/2026 sur
+ * l'iPhone de Victor : à dix joueurs la table prend 425 px et il ne reste que 125 px au pavé ;
+ * même à six joueurs il en manquait, et les deux dernières rangées vivaient sous le pli.
+ * En 3×4 il tombe à 156 et tient partout, sans réduire les touches sous la cible tactile.
+ *
+ * Les chiffres 1 à 9 gardent leur carré habituel : c'est lui qu'on tape sans regarder. Seule la
+ * colonne de droite est nouvelle, et ses trois touches sont celles qu'on cherche des yeux de toute
+ * façon. Le 0 y descend en bas à droite au lieu du bas au centre — c'est le prix payé, et il est
+ * moindre que deux rangées invisibles.
+ */
 const RANGEES = [
-  ['1', '2', '3'],
-  ['4', '5', '6'],
-  ['7', '8', '9'],
-  [',', '0', '⌫'],
+  ['1', '2', '3', '⌫'],
+  ['4', '5', '6', ','],
+  ['7', '8', '9', '0'],
 ] as const;
 
 export function PaveNumerique({
