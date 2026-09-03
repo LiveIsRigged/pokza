@@ -247,13 +247,6 @@ export function WizardScreen({
         >
           {children}
         </ScrollView>
-        {/* ⚠️ SONDE TEMPORAIRE — Victor, 03/09/2026, deuxieme diagnostic. A retirer une fois lue.
-            Le "exactement le meme rendu" apres avoir change 0.12 en 0.35 est trop identique pour
-            etre une histoire d'opacite : ca sent la mesure qui ne se declenche pas du tout sur son
-            appareil. On affiche les nombres au lieu de deviner, comme la sonde du clavier iOS. */}
-        <Text style={styles.sondeTexte}>
-          SONDE deborde={String(deborde)} largeur={largeur} c={Math.round(mesure.current.contenu)} l={Math.round(mesure.current.lucarne)} p={Math.round(mesure.current.position)}
-        </Text>
         {deborde && largeur > 0 && (
           <View style={styles.fondu} pointerEvents="none">
             <Svg width={largeur} height={HAUTEUR_FONDU}>
@@ -337,18 +330,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: HAUTEUR_FONDU,
-  },
-  sondeTexte: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#C0392B',
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-    padding: 4,
-    zIndex: 999,
   },
   // `-18` annule le rembourrage du conteneur : la table touche les deux bords de l'écran.
   zoneFixe: {
