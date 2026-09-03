@@ -45,21 +45,12 @@ import { MESURE_VIERGE, debordeSousLePli, fusionner, type MesureDefilement } fro
 const HAUTEUR_FONDU = 72;
 /** Le navy des bordures, en teinte du fondu — même hexadécimal que `borders.*` dans `theme.ts`. */
 const COULEUR_FONDU = '#16233D';
-/**
- * ⚠️ QUATRIÈME VERSION — la sonde a confirmé que le rendu fonctionne (0,12 et 0,35 peignaient
- * bien des pixels sur l'iPhone de Victor, juste trop peu pour qu'un coup d'œil les remarque ; 0,9,
- * lui, se voyait — mais comme une bande dure et disgracieuse, pas un fondu). La bonne valeur est
- * entre les deux, PAS la moyenne : 0,35 était déjà jugé trop faible, donc on part au-dessus de ce
- * point, loin de 0,9.
- */
-/** Palier intermédiaire, décalé à 65 % plutôt qu'à mi-hauteur : la partie haute du fondu reste
- *  quasi invisible plus longtemps, et l'assombrissement se concentre près du bord bas — plus
- *  proche d'une vignette que d'un bandeau plat, qui était le défaut reproché à 0,9. */
-const OPACITE_FONDU_MI = 0.18;
-/** Reprise de l'esprit de `borders.strong` (0,35 dans `theme.ts`) sans être identique : ce fondu
- *  couvre une SURFACE bien plus grande qu'un simple contour, donc la même opacité s'y lit plus
- *  fort. 0,5 reste sous le seuil « bande dure » constaté à 0,9 sur l'appareil réel. */
-const OPACITE_FONDU_MAX = 0.5;
+/** Palier intermédiaire, à mi-hauteur : fait partir la pente plus tôt qu'un dégradé à deux points,
+ *  pour qu'elle se voie sur toute la hauteur et non seulement dans son dernier tiers. */
+const OPACITE_FONDU_MI = 0.14;
+/** Reprise de `borders.strong` (voir `theme.ts`) : la valeur déjà choisie dans l'app pour « ce
+ *  contour doit se voir avant ce qu'il entoure » — exactement le rôle de ce fondu. */
+const OPACITE_FONDU_MAX = 0.9; // ⚠️ TEMPORAIRE — valeur diagnostique volontairement excessive, pas la valeur finale.
 /** Un seul assistant est monté à la fois : un identifiant fixe suffit. Il ne télescope pas ceux de
  *  `MultiCardPicker` (`fade-<couleur>`), qui vit à l'intérieur de cet écran à l'étape 2. */
 const ID_FONDU = 'fonduWizard';
@@ -256,13 +247,20 @@ export function WizardScreen({
         >
           {children}
         </ScrollView>
+        {/* ⚠️ SONDE TEMPORAIRE — Victor, 03/09/2026, deuxieme diagnostic. A retirer une fois lue.
+            Le "exactement le meme rendu" apres avoir change 0.12 en 0.35 est trop identique pour
+            etre une histoire d'opacite : ca sent la mesure qui ne se declenche pas du tout sur son
+            appareil. On affiche les nombres au lieu de deviner, comme la sonde du clavier iOS. */}
+        <Text style={styles.sondeTexte}>
+          SONDE deborde={String(deborde)} largeur={largeur} c={Math.round(mesure.current.contenu)} l={Math.round(mesure.current.lucarne)} p={Math.round(mesure.current.position)}
+        </Text>
         {deborde && largeur > 0 && (
           <View style={styles.fondu} pointerEvents="none">
             <Svg width={largeur} height={HAUTEUR_FONDU}>
               <Defs>
                 <LinearGradient id={ID_FONDU} x1="0" y1="0" x2="0" y2="1">
                   <Stop offset="0" stopColor={COULEUR_FONDU} stopOpacity="0" />
-                  <Stop offset="0.65" stopColor={COULEUR_FONDU} stopOpacity={OPACITE_FONDU_MI} />
+                  <Stop offset="0.5" stopColor={COULEUR_FONDU} stopOpacity={OPACITE_FONDU_MI} />
                   <Stop offset="1" stopColor={COULEUR_FONDU} stopOpacity={OPACITE_FONDU_MAX} />
                 </LinearGradient>
               </Defs>
@@ -339,6 +337,18 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: HAUTEUR_FONDU,
+  },
+  sondeTexte: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#C0392B',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    padding: 4,
+    zIndex: 999,
   },
   // `-18` annule le rembourrage du conteneur : la table touche les deux bords de l'écran.
   zoneFixe: {
