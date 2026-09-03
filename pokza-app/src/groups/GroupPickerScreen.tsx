@@ -44,6 +44,7 @@ export function GroupPickerScreen({ groups, selectedId, onSelect, onCreateGroup,
       </View>
 
       <TextInput
+        autoComplete="off"
         style={styles.search}
         placeholder="Rechercher un groupe"
         value={query}

@@ -177,6 +177,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
 
         <Text style={styles.label}>Pseudo</Text>
         <TextInput
+          autoComplete="off"
           style={styles.input}
           value={pseudo}
           onChangeText={setPseudo}
@@ -217,6 +218,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
         <Text style={styles.label}>Date de naissance</Text>
         <View style={styles.dobRow}>
           <TextInput
+            autoComplete="off"
             style={styles.dobInput}
             value={day}
             onChangeText={setDay}
@@ -225,6 +227,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             maxLength={2}
           />
           <TextInput
+            autoComplete="off"
             style={styles.dobInput}
             value={month}
             onChangeText={setMonth}
@@ -233,6 +236,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             maxLength={2}
           />
           <TextInput
+            autoComplete="off"
             style={[styles.dobInput, styles.dobInputYear]}
             value={year}
             onChangeText={setYear}
@@ -264,6 +268,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
           </Text>
         </View>
         <TextInput
+          autoComplete="off"
           style={[styles.input, styles.bioInput]}
           value={bio}
           onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}

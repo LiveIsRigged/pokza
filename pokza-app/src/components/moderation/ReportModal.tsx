@@ -121,6 +121,7 @@ export function ReportModal({
 
                 <Text style={[styles.sectionLabel, styles.detailsLabel]}>Précision (facultatif)</Text>
                 <TextInput
+                  autoComplete="off"
                   style={styles.detailsInput}
                   placeholder="Ajoute un détail utile à la modération…"
                   value={details}

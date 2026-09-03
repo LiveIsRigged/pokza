@@ -59,6 +59,8 @@ export function NewPasswordScreen({ onDone, onCancel }: NewPasswordScreenProps) 
 
       <TextInput
         style={styles.input}
+        autoComplete="new-password"
+        textContentType="newPassword"
         placeholder="Nouveau mot de passe"
         placeholderTextColor={colors.textSecondary}
         secureTextEntry
@@ -72,6 +74,8 @@ export function NewPasswordScreen({ onDone, onCancel }: NewPasswordScreenProps) 
       <TextInput
         ref={confirmPasswordRef}
         style={styles.input}
+        autoComplete="new-password"
+        textContentType="newPassword"
         placeholder="Confirme le mot de passe"
         placeholderTextColor={colors.textSecondary}
         secureTextEntry

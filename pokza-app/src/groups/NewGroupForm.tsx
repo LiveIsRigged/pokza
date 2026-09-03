@@ -38,6 +38,7 @@ export function NewGroupForm({ onCreate, onCancel }: NewGroupFormProps) {
   return (
     <View style={styles.form}>
       <TextInput
+        autoComplete="off"
         style={styles.input}
         placeholder="Nom du groupe privé"
         value={name}

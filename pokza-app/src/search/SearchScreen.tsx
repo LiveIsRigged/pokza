@@ -108,6 +108,7 @@ export function SearchScreen({
 
   const renderInput = (style: any) => (
     <TextInput
+      autoComplete="off"
       style={style}
       value={query}
       onChangeText={setQuery}

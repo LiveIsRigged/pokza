@@ -118,6 +118,7 @@ export function LocationInput({
   return (
     <>
       <TextInput
+        autoComplete="off"
         style={style}
         placeholder={placeholder}
         maxLength={LOCATION_MAX_LENGTH}

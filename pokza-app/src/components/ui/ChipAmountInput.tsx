@@ -44,6 +44,7 @@ export function DecimalTextInput({
 
   return (
     <TextInput
+      autoComplete="off"
       style={style}
       keyboardType="decimal-pad"
       placeholder={placeholder}
@@ -95,6 +96,7 @@ export function OptionalDecimalTextInput({
 
   return (
     <TextInput
+      autoComplete="off"
       style={style}
       keyboardType="decimal-pad"
       placeholder={placeholder}

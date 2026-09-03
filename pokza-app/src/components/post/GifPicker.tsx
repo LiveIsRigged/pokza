@@ -74,6 +74,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
             </View>
             <View style={styles.header}>
               <TextInput
+                autoComplete="off"
                 style={styles.searchInput}
                 placeholder="Chercher un GIF…"
                 value={query}

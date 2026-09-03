@@ -53,6 +53,7 @@ export function EditGroupScreen({ groupId, initialDescription, onCancel, onSaved
           </Text>
         </View>
         <TextInput
+          autoComplete="off"
           style={styles.input}
           value={description}
           onChangeText={(text) => setDescription(text.slice(0, DESCRIPTION_MAX_LENGTH))}

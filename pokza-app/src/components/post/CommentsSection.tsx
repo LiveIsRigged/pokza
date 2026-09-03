@@ -480,6 +480,7 @@ export function CommentsSection({
               <Text style={styles.attachButtonText}>GIF</Text>
             </Pressable>
             <TextInput
+              autoComplete="off"
               style={styles.input}
               placeholder={replyingTo ? 'Écrire une réponse…' : 'Ajouter un commentaire…'}
               maxLength={COMMENT_MAX_LENGTH}

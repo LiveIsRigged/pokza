@@ -73,6 +73,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
 
         <Text style={styles.label}>Pseudo</Text>
         <TextInput
+          autoComplete="off"
           style={styles.input}
           value={pseudo}
           onChangeText={setPseudo}
@@ -109,6 +110,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
           </Text>
         </View>
         <TextInput
+          autoComplete="off"
           style={[styles.input, styles.bioInput]}
           value={bio}
           onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}

@@ -281,6 +281,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
           {/* Note partagée (motif de sanction ou de rejet) */}
           <Text style={styles.sectionTitle}>Motif / note</Text>
           <TextInput
+            autoComplete="off"
             style={styles.noteInput}
             placeholder="Utilisé comme motif de sanction ou de rejet…"
             value={note}

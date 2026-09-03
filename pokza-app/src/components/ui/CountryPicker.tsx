@@ -63,6 +63,7 @@ export function CountryPicker({ visible, selectedCode, onSelect, onClose, allowC
 
           <View style={styles.searchWrap}>
             <TextInput
+              autoComplete="off"
               style={styles.search}
               placeholder="Rechercher un pays…"
               value={query}

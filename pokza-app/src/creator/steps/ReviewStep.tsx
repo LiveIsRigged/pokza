@@ -151,6 +151,7 @@ export function ReviewStep({
           </Text>
         </View>
         <TextInput
+          autoComplete="off"
           style={styles.input}
           placeholder="Ex : Hero call contre un reg"
           maxLength={TITLE_MAX_LENGTH}
@@ -165,6 +166,7 @@ export function ReviewStep({
           </Text>
         </View>
         <TextInput
+          autoComplete="off"
           style={[styles.input, styles.descriptionInput]}
           placeholder="Contexte, action street par street, ce que vous demandez aux lecteurs…"
           value={value.description ?? ''}
@@ -176,6 +178,7 @@ export function ReviewStep({
 
         <Text style={styles.label}>Question au vote (optionnel)</Text>
         <TextInput
+          autoComplete="off"
           style={styles.input}
           placeholder="Ex : Tu payes cette river ?"
           maxLength={VOTE_QUESTION_MAX_LENGTH}
@@ -188,6 +191,7 @@ export function ReviewStep({
             <Text style={styles.label}>Réponses possibles (2 à 4)</Text>
             {[0, 1, 2, 3].map((i) => (
               <TextInput
+                autoComplete="off"
                 key={i}
                 style={[styles.input, styles.optionInput]}
                 placeholder={i < 2 ? `Réponse ${i + 1}` : `Réponse ${i + 1} (optionnel)`}

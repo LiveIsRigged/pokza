@@ -189,7 +189,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
               {title.length}/{TITLE_MAX_LENGTH}
             </Text>
           </View>
-          <TextInput style={styles.input} maxLength={TITLE_MAX_LENGTH} value={title} onChangeText={setTitle} />
+          <TextInput autoComplete="off" style={styles.input} maxLength={TITLE_MAX_LENGTH} value={title} onChangeText={setTitle} />
 
           <View style={styles.labelRow}>
             <Text style={[styles.label, styles.labelNoMargin]}>Description (optionnel)</Text>
@@ -198,6 +198,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
             </Text>
           </View>
           <TextInput
+            autoComplete="off"
             style={[styles.input, styles.descriptionInput]}
             value={description}
             onChangeText={(t) => setDescription(t.slice(0, DESCRIPTION_MAX_LENGTH))}
@@ -218,6 +219,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
             <>
               <Text style={styles.label}>Buy-in (optionnel)</Text>
               <TextInput
+                autoComplete="off"
                 style={styles.input}
                 placeholder="Ex : 100€"
                 maxLength={BUY_IN_MAX_LENGTH}
@@ -228,6 +230,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
               {/* Champ libre ici, alors que la création impose un numéro seul (LevelNumberInput).
                   La limite couvre le format réellement stocké — « Niveau » + 3 chiffres. */}
               <TextInput
+                autoComplete="off"
                 style={styles.input}
                 placeholder="Ex : Niveau 12"
                 maxLength={LEVEL_MAX_LENGTH}
@@ -239,6 +242,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
 
           <Text style={styles.label}>Question au vote (optionnel)</Text>
           <TextInput
+            autoComplete="off"
             style={styles.input}
             placeholder="Ex : Tu payes cette river ?"
             maxLength={VOTE_QUESTION_MAX_LENGTH}
@@ -251,6 +255,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
               <Text style={styles.label}>Réponses possibles (2 à 4)</Text>
               {[0, 1, 2, 3].map((i) => (
                 <TextInput
+                  autoComplete="off"
                   key={i}
                   style={[styles.input, styles.optionInput]}
                   placeholder={i < 2 ? `Réponse ${i + 1}` : `Réponse ${i + 1} (optionnel)`}

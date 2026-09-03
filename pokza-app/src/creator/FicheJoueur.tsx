@@ -88,6 +88,7 @@ export function FicheJoueur({
           <View style={styles.corps}>
             <Text style={styles.label}>Nom</Text>
             <TextInput
+              autoComplete="off"
               style={styles.input}
               // Le héros est le seul dont le champ annonce sa valeur par défaut : laissé vide, il
               // s'affiche « Hero » partout dans la main (cf. `SeatView`).

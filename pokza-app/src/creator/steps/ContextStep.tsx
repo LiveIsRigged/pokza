@@ -62,6 +62,7 @@ function LevelNumberInput({
     <View style={styles.levelInputRow}>
       <Text style={styles.levelInputPrefix}>Niveau</Text>
       <TextInput
+        autoComplete="off"
         style={[styles.input, styles.levelInputField]}
         keyboardType="number-pad"
         placeholder="12"
@@ -840,6 +841,7 @@ export function ContextStep({
                   Son nom est rangé à part (`heroName`) et non dans `opponentNames`, indexé par
                   position : sinon changer de siège laisserait son nom sur celui qu'il quitte. */}
               <TextInput
+                autoComplete="off"
                 style={[styles.input, styles.playerNameInput]}
                 placeholder={isHero ? 'Hero' : 'Nom'}
                 maxLength={OPPONENT_NAME_MAX_LENGTH}
@@ -927,6 +929,7 @@ export function ContextStep({
           <>
             <Text style={styles.label}>Buy-in (optionnel)</Text>
             <TextInput
+              autoComplete="off"
               style={styles.input}
               placeholder="Ex : 100€"
               maxLength={BUY_IN_MAX_LENGTH}

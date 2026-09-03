@@ -92,6 +92,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
           `FlatList` il perdrait le focus à chaque frappe, la liste se re-rendant à chaque lettre. */}
       {groups.length >= SEARCH_FROM && (
         <TextInput
+          autoComplete="off"
           style={styles.search}
           placeholder="Rechercher un groupe"
           value={query}
