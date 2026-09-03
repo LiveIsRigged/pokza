@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
 import type { Action, ActionType, Card, GameType, Seat, Street, Variant } from '../../types/poker';
 import { borders, colors, tints } from '../../theme/theme';
@@ -8,6 +8,8 @@ import { WizardScreen } from '../WizardScreen';
 import { MultiCardPicker, memeCarte } from '../MultiCardPicker';
 import { formatChipAmount, roundMoney } from '../../utils/chipFormat';
 import { nextBetAbove, roundBet, type BetRoundingContext } from '../../utils/betRounding';
+import { PaveNumerique } from '../PaveNumerique';
+import { ajouterAuMontant, effacerDernier } from '../saisieMontant';
 import { straddleSeatLabel } from '../../engine/handEngine';
 import { TableVue, type SiegeAffiche } from '../../components/table/TableVue';
 import { GABARIT_ATELIER, GABARIT_ATELIER_DOUBLE, hauteurTableAtelier } from '../../engine/layout';
@@ -1183,8 +1185,7 @@ export function StreetStep({
                 <View>
                   {/* Raccourcis de taille (BB au préflop, %pot ensuite), pour miser/relancer sans calcul
                       de tête. Un tap POSE la mise et passe au joueur suivant : le montant vient d'être
-                      désigné, redemander « Valider » ne confirmerait rien de neuf, et le clavier
-                      numérique (le champ est en `autoFocus`) est justement en travers du chemin.
+                      désigné, redemander « Valider » ne confirmerait rien de neuf.
                       C'est la mécanique des chips « Fold/Check rapide jusqu'à » de cet écran, qu'elles
                       partageaient déjà en apparence sans la partager en comportement — d'où le mot
                       « rapide » repris ici, qui y signifie déjà « un tap et c'est joué ».
@@ -1216,14 +1217,32 @@ export function StreetStep({
                       </View>
                     </>
                   )}
-                  <TextInput
-                    style={styles.amountInput}
-                    keyboardType="numeric"
-                    autoFocus
-                    placeholder={`Montant (max ${fmt(currentRemaining)})`}
-                    value={amountInput}
-                    onChangeText={(t) => {
-                      setAmountInput(t);
+                  {/* PLUS DE `TextInput` ICI — et c'est le but, pas un effet de bord.
+                      Le clavier d'iOS prend 386 px, 44 % de l'écran, pour quatre chiffres au plus.
+                      Ce qui restait (une trentaine de pixels) ne suffisait pas à montrer ce champ,
+                      qui en fait 44 : on tapait sans voir ce qu'on tapait (Victor, 03/09/2026).
+                      Une simple zone de texte ne peut pas prendre le focus, donc iOS n'ouvre rien,
+                      et les 873 px de l'écran restent à nous. Le détail est dans
+                      `PaveNumerique.tsx`. */}
+                  <View style={styles.amountInput}>
+                    <Text
+                      style={[styles.amountTexte, !amountInput && styles.amountPlaceholder]}
+                      numberOfLines={1}
+                    >
+                      {amountInput || `Montant (max ${fmt(currentRemaining)})`}
+                    </Text>
+                  </View>
+                  <PaveNumerique
+                    onTouche={(c) => {
+                      setAmountInput((v) => ajouterAuMontant(v, c));
+                      setAmountError(null);
+                    }}
+                    onEffacer={() => {
+                      setAmountInput(effacerDernier);
+                      setAmountError(null);
+                    }}
+                    onToutEffacer={() => {
+                      setAmountInput('');
                       setAmountError(null);
                     }}
                   />
@@ -1445,14 +1464,25 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 12,
   },
+  // Ce n'est plus un `TextInput` mais une zone de texte (cf. le commentaire au point d'usage) :
+  // le dessin ne change pas d'un pixel, `justifyContent` remplace juste le centrage vertical que
+  // le champ faisait tout seul.
   amountInput: {
     borderWidth: 1,
     borderColor: borders.default,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 16,
     marginBottom: 10,
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  amountTexte: {
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  amountPlaceholder: {
+    color: colors.textSecondary,
   },
   amountError: {
     color: colors.cardTextRed,
