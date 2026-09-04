@@ -297,6 +297,14 @@ export const LIEUX: Lieu[] = [
   { id: 'us-lv-venetian', nom: 'The Venetian, Las Vegas' },
   { id: 'us-lv-caesars', nom: 'Caesars Palace, Las Vegas' },
   { id: 'us-lv-horseshoe', nom: 'Horseshoe, Las Vegas', alias: ['ballys', 'wsop'] },
+  // Les World Series se tiennent sur les DEUX propriétés voisines depuis 2022, pas seulement le
+  // Horseshoe (ex-Bally's) : d'où le même alias `wsop` sur les deux entrées. Le Paris n'a pas de
+  // salle permanente — il n'accueille que des tournois — mais c'est justement le lieu des
+  // championnats du monde, donc celui qu'on cherchera.
+  // Virgule, comme ses voisines : l'établissement s'appelle « Paris », et sa ville est Las Vegas.
+  // (« Paris Las Vegas » relèverait de l'autre règle, celle des noms qui portent déjà leur ville —
+  // or ici Paris est l'enseigne, pas la ville.)
+  { id: 'us-lv-paris', nom: 'Paris, Las Vegas', alias: ['wsop'] },
   { id: 'us-lv-planethollywood', nom: 'Planet Hollywood, Las Vegas' },
   { id: 'us-lv-mgm', nom: 'MGM Grand, Las Vegas' },
   { id: 'us-lv-goldennugget', nom: 'Golden Nugget, Las Vegas', alias: ['downtown', 'fremont'] },
