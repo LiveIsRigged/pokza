@@ -476,9 +476,15 @@ export function LiveHandCreator({
       authorName,
       createdAt: new Date().toISOString(),
       location: ctx.location,
-      tournamentName: ctx.tournamentName,
-      buyIn: ctx.buyIn,
-      level: ctx.level,
+      // LES TROIS CHAMPS D'ÉPREUVE NE SORTENT QU'EN TOURNOI. Le formulaire ne les montre que là,
+      // mais le contexte les CONSERVE quand on bascule sur « Cash game » — et depuis que le nom et
+      // le buy-in se mémorisent d'une main à l'autre (cf. `PEREMPTION_EPREUVE_MS`), ils peuvent
+      // désormais arriver pré-remplis sans qu'on soit passé par l'écran de tournoi. Sans ce filtre,
+      // une main de cash game publierait le buy-in du tournoi de la veille, et sa ligne de contexte
+      // l'afficherait (cf. la branche cash de `formatContextLine`, qui les affiche s'ils existent).
+      ...(ctx.gameType === 'tournament'
+        ? { tournamentName: ctx.tournamentName, buyIn: ctx.buyIn, level: ctx.level }
+        : {}),
       title: review.title,
       description: review.description?.trim() || undefined,
       voteQuestion: review.voteQuestion || undefined,
@@ -1075,9 +1081,11 @@ export function LiveHandCreator({
             setTexte({
               hand: construitMain(actions, board),
               location: context.location,
-              tournamentName: context.tournamentName,
-              buyIn: context.buyIn,
-              level: context.level,
+              // Même filtre qu'à la publication : le texte nomme la partie avec `formatContextLine`
+              // et ne doit pas décrire un cash game comme un tournoi.
+              ...(context.gameType === 'tournament'
+                ? { tournamentName: context.tournamentName, buyIn: context.buyIn, level: context.level }
+                : {}),
             })
           }
         />

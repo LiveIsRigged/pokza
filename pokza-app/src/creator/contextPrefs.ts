@@ -14,8 +14,37 @@ const KEY = 'pokza.creator.contextPrefs.v1';
  * lieu et le nom que le joueur se donne — un pseudo ne change pas d'une main à l'autre.
  *
  * On ne mémorise volontairement PAS le mode bomb pot / double board (on repart en jeu classique par
- * défaut), ni les détails propres à une main donnée (noms/stacks adverses, buy-in, niveau).
+ * défaut), ni les détails propres à une main donnée (noms/stacks adverses, NIVEAU de blindes).
+ *
+ * ⚠️ DEUX CHAMPS FONT EXCEPTION ET PÉRIMENT : le nom du tournoi et son buy-in (04/09/2026). Ils
+ * décrivent une ÉPREUVE, pas une partie habituelle — et une épreuve est un événement borné, là où
+ * une salle ou un niveau d'enjeu durent des mois. D'où `PEREMPTION_EPREUVE_MS`.
+ *
+ * Le NIVEAU, lui, reste hors de la mémorisation, et c'est le bon classement : il change tous les
+ * vingt minutes, alors que le nom et le buy-in de l'épreuve ne changent pas d'une main à l'autre.
+ * C'est aussi pour ça que les deux voyagent ENSEMBLE : ce sont deux faits sur le même tournoi, et
+ * retenir l'un sans l'autre ferait retaper « 250 € » à chaque main sous un « Main Event » déjà là.
  */
+
+/**
+ * Au-delà de ce délai, le nom du tournoi et son buy-in ne sont plus proposés. 12 h, tranché par
+ * Victor le 04/09/2026.
+ *
+ * POURQUOI CE CHAMP PÉRIME ALORS QU'AUCUN AUTRE NE LE FAIT. Des blindes périmées se corrigent
+ * d'elles-mêmes : on voit « 500/1000 » en étant à « 2000/4000 », on change. Un « Main Event » resté
+ * du tournoi de la semaine dernière, posé sur une main jouée dans un side event, **ne se voit pas**
+ * — et la main se publie avec le mauvais nom d'épreuve. Le lieu ne pose pas ce problème (une salle
+ * reste la même pendant des mois) ; un tournoi change à chaque inscription.
+ *
+ * Le compte à rebours GLISSE, mais seule une main de tournoi le réarme (cf. `epreuveAEcrire`) :
+ * une soirée de cash game ne peut pas garder en vie le nom d'un tournoi de l'avant-veille.
+ *
+ * Limite résiduelle, assumée : dans les 12 h, le champ est pré-rempli même si l'on s'est inscrit
+ * entre-temps à une autre épreuve. Aucune péremption ne peut couvrir ce cas — seul l'auteur voit
+ * dans quel tournoi il est assis. Elle ferme le cas long, pas le cas court.
+ */
+export const PEREMPTION_EPREUVE_MS = 12 * 60 * 60 * 1000;
+
 interface ContextPrefs {
   gameType: GameType;
   variant: Variant;
@@ -33,6 +62,13 @@ interface ContextPrefs {
   straddleBouton: boolean;
   straddleBoutonMontant: number;
   currency: CodeDevise;
+  /** Nom de l'épreuve. PÉRIME (cf. `PEREMPTION_EPREUVE_MS`). */
+  tournamentName?: string;
+  /** Buy-in de l'épreuve. Périme avec le nom, dont il est indissociable. */
+  buyIn?: string;
+  /** Date d'écriture des deux champs ci-dessus par une main de TOURNOI. Absent ou illisible = on ne
+   *  propose rien : oublier est le mode de défaillance souhaitable ici. */
+  tournamentSavedAt?: number;
 }
 
 const GAME_TYPES: GameType[] = ['cash', 'tournament'];
@@ -41,8 +77,45 @@ const ANTE_TYPES: AnteType[] = ['none', 'bb', 'per-player'];
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
+/**
+ * Les champs d'épreuve à écrire, et leur horodatage.
+ *
+ * Une main de TOURNOI les prend du formulaire et réarme les 12 h. Une main de CASH GAME n'y touche
+ * pas : elle relit ce qui était stocké et le réécrit tel quel, horodatage COMPRIS. C'est cette
+ * relecture qui empêche une soirée de cash game de repousser indéfiniment la péremption d'un nom de
+ * tournoi — sans elle, le simple fait de continuer à publier réarmerait le compte à rebours.
+ */
+async function epreuveAEcrire(
+  context: ContextData
+): Promise<Pick<ContextPrefs, 'tournamentName' | 'buyIn' | 'tournamentSavedAt'>> {
+  if (context.gameType === 'tournament') {
+    return {
+      tournamentName: context.tournamentName,
+      buyIn: context.buyIn,
+      tournamentSavedAt: Date.now(),
+    };
+  }
+  try {
+    const raw = await AsyncStorage.getItem(KEY);
+    if (raw) {
+      const p = JSON.parse(raw) as Partial<ContextPrefs>;
+      return {
+        tournamentName: typeof p.tournamentName === 'string' ? p.tournamentName : undefined,
+        buyIn: typeof p.buyIn === 'string' ? p.buyIn : undefined,
+        tournamentSavedAt: isNum(p.tournamentSavedAt) ? p.tournamentSavedAt : undefined,
+      };
+    }
+  } catch {
+    // Disque muet ou contenu illisible : on repart sans champs d'épreuve. La mémorisation est un
+    // pur confort, et ne rien proposer est toujours préférable à proposer n'importe quoi.
+  }
+  return {};
+}
+
 export async function saveContextPrefs(context: ContextData): Promise<void> {
+  const epreuve = await epreuveAEcrire(context);
   const prefs: ContextPrefs = {
+    ...epreuve,
     gameType: context.gameType,
     variant: context.variant,
     sb: context.sb,
@@ -146,5 +219,14 @@ export async function loadContextPrefs(base: ContextData = DEFAULT_CONTEXT): Pro
   if (typeof p.straddleBouton === 'boolean') merged.straddleBouton = p.straddleBouton;
   if (isNum(p.straddleBoutonMontant)) merged.straddleBoutonMontant = p.straddleBoutonMontant;
   if (p.currency && DEVISES.some((d) => d.code === p.currency)) merged.currency = p.currency;
+
+  // LES SEULS CHAMPS QUI PÉRIMENT (cf. `PEREMPTION_EPREUVE_MS`). Un horodatage absent, illisible ou
+  // DANS LE FUTUR ne propose rien : une horloge qui a reculé rendrait sinon un nom d'épreuve
+  // increvable, alors qu'oublier ne coûte qu'une saisie.
+  const age = isNum(p.tournamentSavedAt) ? Date.now() - p.tournamentSavedAt : Infinity;
+  if (age >= 0 && age < PEREMPTION_EPREUVE_MS) {
+    if (typeof p.tournamentName === 'string') merged.tournamentName = p.tournamentName;
+    if (typeof p.buyIn === 'string') merged.buyIn = p.buyIn;
+  }
   return merged;
 }
