@@ -137,6 +137,10 @@ export interface Post {
    * n'apparaît qu'au-delà du délai de grâce, cf. `wasEdited()`. */
   editedAt?: string;
   location?: string;
+  /** Nom de l'épreuve, en tournoi seulement (« Main Event », « #5 - W SERIES - MILLION EVENT »).
+   * Vit dans une COLONNE et non dans `hand` : le jsonb de la main n'est plus modifiable une fois
+   * publiée (cf. `updatePost`), et ce nom doit pouvoir se corriger comme le lieu. */
+  tournamentName?: string;
   buyIn?: string;
   level?: string;
   title: string;

@@ -27,8 +27,10 @@ import {
   BUY_IN_MAX_LENGTH,
   LEVEL_DIGITS_MAX,
   OPPONENT_NAME_MAX_LENGTH,
+  TOURNAMENT_NAME_MAX_LENGTH,
 } from '../../constants/limits';
 import { abbreviateChips, formatChipInput } from '../../utils/chipFormat';
+import { normaliserBuyIn } from '../../utils/buyIn';
 import { DecimalTextInput, OptionalDecimalTextInput } from '../../components/ui/ChipAmountInput';
 import { decalerJoueurs, deplacerHero, echangerJoueurs, viderSiege, type SensDeDecalage } from '../deplacements';
 import { joueursNommes, reprendreTable, resumeDesJoueurs, type DerniereTable } from '../derniereTable';
@@ -899,6 +901,24 @@ export function ContextStep({
           onListeOuverte={setListeLieuOuverte}
         />
 
+        {/* LE NOM DE L'ÉPREUVE, entre le lieu et le buy-in (Victor, 04/09/2026). Il complète le
+            lieu plutôt qu'il ne le double : le lieu dit la salle ou le site, celui-ci dit ce qu'on
+            y jouait. En live il tient dans « Main Event » ; en ligne il empile le numéro
+            d'épreuve, la série, le format et le jour, d'où les 44 caractères. */}
+        {value.gameType === 'tournament' && (
+          <>
+            <Text style={styles.label}>Nom du tournoi (optionnel)</Text>
+            <TextInput
+              autoComplete="off"
+              style={styles.input}
+              placeholder="Ex : Main Event"
+              maxLength={TOURNAMENT_NAME_MAX_LENGTH}
+              value={value.tournamentName ?? ''}
+              onChangeText={(t) => update({ tournamentName: t })}
+            />
+          </>
+        )}
+
         {/* LA DEVISE EST TOUT EN BAS, sous le lieu, et pas à côté des blindes : elle décrit OÙ on a
             joué, comme le lieu, le buy-in et le niveau — pas la mécanique du coup. Elle se retient
             d'une main à l'autre comme les blindes, donc celui qui ne quitte jamais son club la règle
@@ -935,6 +955,16 @@ export function ContextStep({
               maxLength={BUY_IN_MAX_LENGTH}
               value={value.buyIn ?? ''}
               onChangeText={(t) => update({ buyIn: t })}
+              // LE BUY-IN SE RANGE EN SORTANT DU CHAMP : « 45+5€ » devient « 50€ » sous les yeux de
+              // l'auteur, avant publication (cf. `normaliserBuyIn`). Même geste que la réécriture
+              // des jetons en « 30k », et pour la même raison : ce qu'on voit ici est exactement ce
+              // que le feed affichera. Le garde-fou de longueur existe parce que la limite a sa
+              // jumelle en base — une somme qui déborderait serait refusée à la publication, bien
+              // après qu'on ait quitté cet écran.
+              onBlur={() => {
+                const range = normaliserBuyIn(value.buyIn ?? '', value.currency);
+                if (range.length <= BUY_IN_MAX_LENGTH) update({ buyIn: range || undefined });
+              }}
             />
           </>
         )}

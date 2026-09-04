@@ -15,6 +15,10 @@ interface PostFeedRow {
    * n'est pas passée → aucune mention ne s'affiche, ce qui est le bon état de repli. */
   edited_at?: string | null;
   location: string | null;
+  /** Ajouté en fin des vues de lecture par la migration « nom du tournoi », et OPTIONNEL pour la
+   * même raison qu'`edited_at` : tant qu'elle n'est pas passée, la ligne de contexte se contente
+   * de ne pas nommer l'épreuve. */
+  tournament_name?: string | null;
   buy_in: string | null;
   level: string | null;
   title: string;
@@ -49,6 +53,7 @@ function rowToPost(row: PostFeedRow): Post {
     createdAt: row.created_at,
     editedAt: row.edited_at ?? undefined,
     location: row.location ?? undefined,
+    tournamentName: row.tournament_name ?? undefined,
     buyIn: row.buy_in ?? undefined,
     level: row.level ?? undefined,
     title: row.title,
@@ -175,6 +180,7 @@ export interface PublicPost {
   title: string;
   description?: string;
   location?: string;
+  tournamentName?: string;
   buyIn?: string;
   level?: string;
   createdAt: string;
@@ -201,7 +207,7 @@ export interface PublicPost {
 export async function fetchPublicPost(postId: string): Promise<PublicPost | null> {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, title, description, location, buy_in, level, created_at, hand')
+    .select('id, title, description, location, tournament_name, buy_in, level, created_at, hand')
     .eq('id', postId)
     .eq('visibility', 'public')
     .maybeSingle();
@@ -212,6 +218,7 @@ export async function fetchPublicPost(postId: string): Promise<PublicPost | null
     title: data.title,
     description: data.description ?? undefined,
     location: data.location ?? undefined,
+    tournamentName: data.tournament_name ?? undefined,
     buyIn: data.buy_in ?? undefined,
     level: data.level ?? undefined,
     createdAt: data.created_at,
@@ -237,6 +244,7 @@ export async function fetchSharedPost(token: string): Promise<PublicPost | null>
     title: row.title as string,
     description: (row.description as string | null) ?? undefined,
     location: (row.location as string | null) ?? undefined,
+    tournamentName: (row.tournament_name as string | null) ?? undefined,
     buyIn: (row.buy_in as string | null) ?? undefined,
     level: (row.level as string | null) ?? undefined,
     createdAt: row.created_at as string,
@@ -247,6 +255,7 @@ export async function fetchSharedPost(token: string): Promise<PublicPost | null>
 interface NewPostInput {
   authorId: string;
   location?: string;
+  tournamentName?: string;
   buyIn?: string;
   level?: string;
   title: string;
@@ -270,6 +279,7 @@ export async function createPost(
     .insert({
       author_id: input.authorId,
       location: input.location,
+      tournament_name: input.tournamentName,
       buy_in: input.buyIn,
       level: input.level,
       title: input.title,
@@ -303,6 +313,7 @@ export interface PostEditInput {
   title: string;
   description?: string;
   location?: string;
+  tournamentName?: string;
   buyIn?: string;
   level?: string;
   voteQuestion?: string;
@@ -327,6 +338,7 @@ export async function updatePost(postId: string, edits: PostEditInput): Promise<
       title: edits.title,
       description: edits.description,
       location: edits.location,
+      tournament_name: edits.tournamentName,
       buy_in: edits.buyIn,
       level: edits.level,
       vote_question: edits.voteQuestion,

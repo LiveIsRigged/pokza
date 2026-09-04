@@ -201,7 +201,11 @@ const tournoi = {
 const t5 = mainEnTexte({ hand: tournoi, level: 'Niveau 12' });
 cas('aucun symbole de devise en tournoi', /[€$]/.test(t5), false);
 contient('les jetons de tournoi sont abrégés', t5, 'CO (Hero) 250k — As Kh');
-contient('et les blindes aussi', t5, 'Tournoi · NLHE 5k/10k · Niveau 12');
+// Forme réagencée le 04/09/2026 (cf. `formatContextLine` et scripts/test-ligne-contexte.js) : la
+// variante qualifie la partie, le niveau et ses blindes forment un seul groupe relié par un
+// deux-points, et le tiret remplace la barre en tournoi. Les 5000/10000 restent abrégés — ils
+// dépassent le seuil.
+contient('et les blindes aussi', t5, 'Tournoi NLHE · Niveau 12 : 5k-10k');
 
 // ── 6. La signature, en dernière ligne ───────────────────────────────────────
 const SIGNATURE = 'Main partagée sur Pokza';

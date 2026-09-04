@@ -47,6 +47,19 @@ export const OPPONENT_NAME_MAX_LENGTH = 12;
 export const LOCATION_MAX_LENGTH = 40;
 export const BUY_IN_MAX_LENGTH = 16;
 
+/** Nom de l'épreuve, en tournoi seulement (« Main Event », « #5 - W SERIES - MILLION EVENT »).
+ *  Contraint par la LIGNE DE CONTEXTE, où il s'affiche entre le type de partie et le niveau.
+ *
+ *  44 et non 40 comme `LOCATION_MAX_LENGTH` : le plus long nom réel relevé sur une vraie hand
+ *  history en fait 41 (« #5 - W SERIES - MILLION EVENT - KO - DAY 1 »), et l'aligner sur le lieu
+ *  l'aurait coupé d'un caractère. Les noms de MTT en ligne sont longs par nature — ils empilent le
+ *  numéro d'épreuve, la série, le format et le jour.
+ *
+ *  ⚠️ Ce champ est le seul du contexte qui puisse faire passer la ligne sur DEUX lignes, donc
+ *  varier la hauteur d'une carte du feed. C'est assumé (Victor, 04/09/2026) : brider la ligne à une
+ *  seule aurait fait tomber les blindes, le bout le plus utile. */
+export const TOURNAMENT_NAME_MAX_LENGTH = 44;
+
 /** Niveau de blindes. Ce qui est STOCKÉ est la chaîne complète « Niveau 12 », pas le seul nombre
  *  (cf. LevelNumberInput) : 7 caractères de préfixe + 3 chiffres. Le niveau ne dépasse jamais
  *  999 en tournoi, d'où les 3 chiffres. */

@@ -752,6 +752,7 @@ function AppContent() {
                 {
                   authorId: draftPost.authorId,
                   location: draftPost.location,
+                  tournamentName: draftPost.tournamentName,
                   buyIn: draftPost.buyIn,
                   level: draftPost.level,
                   title: draftPost.title,
@@ -868,6 +869,7 @@ function AppContent() {
               {
                 authorId: draftPost.authorId,
                 location: draftPost.location,
+                tournamentName: draftPost.tournamentName,
                 buyIn: draftPost.buyIn,
                 level: draftPost.level,
                 title: draftPost.title,
@@ -942,6 +944,7 @@ function AppContent() {
                 {
                   authorId: session.user.id,
                   location: edits.location,
+                  tournamentName: edits.tournamentName,
                   buyIn: edits.buyIn,
                   level: edits.level,
                   title: edits.title,

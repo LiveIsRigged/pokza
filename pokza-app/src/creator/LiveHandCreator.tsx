@@ -476,6 +476,7 @@ export function LiveHandCreator({
       authorName,
       createdAt: new Date().toISOString(),
       location: ctx.location,
+      tournamentName: ctx.tournamentName,
       buyIn: ctx.buyIn,
       level: ctx.level,
       title: review.title,
@@ -1074,6 +1075,7 @@ export function LiveHandCreator({
             setTexte({
               hand: construitMain(actions, board),
               location: context.location,
+              tournamentName: context.tournamentName,
               buyIn: context.buyIn,
               level: context.level,
             })

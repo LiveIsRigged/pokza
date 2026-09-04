@@ -13,15 +13,18 @@ import {
   BUY_IN_MAX_LENGTH,
   LEVEL_MAX_LENGTH,
   TITLE_MAX_LENGTH,
+  TOURNAMENT_NAME_MAX_LENGTH,
   VOTE_OPTION_MAX_LENGTH,
   VOTE_QUESTION_MAX_LENGTH,
 } from '../constants/limits';
+import { normaliserBuyIn } from '../utils/buyIn';
 import { borders, colors } from '../theme/theme';
 
 export interface PostEdits {
   title: string;
   description?: string;
   location?: string;
+  tournamentName?: string;
   buyIn?: string;
   level?: string;
   voteQuestion?: string;
@@ -85,6 +88,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
   const [title, setTitle] = useState(post.title);
   const [description, setDescription] = useState(post.description ?? '');
   const [location, setLocation] = useState(post.location ?? '');
+  const [tournamentName, setTournamentName] = useState(post.tournamentName ?? '');
   const [buyIn, setBuyIn] = useState(post.buyIn ?? '');
   const [level, setLevel] = useState(post.level ?? '');
   const [voteQuestion, setVoteQuestion] = useState(post.voteQuestion ?? '');
@@ -150,6 +154,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
       title: title.trim(),
       description: description.trim() || undefined,
       location: location.trim() || undefined,
+      tournamentName: tournamentName.trim() || undefined,
       buyIn: buyIn.trim() || undefined,
       level: level.trim() || undefined,
       voteQuestion: voteQuestion.trim() || undefined,
@@ -217,6 +222,15 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
 
           {isTournament && (
             <>
+              <Text style={styles.label}>Nom du tournoi (optionnel)</Text>
+              <TextInput
+                autoComplete="off"
+                style={styles.input}
+                placeholder="Ex : Main Event"
+                maxLength={TOURNAMENT_NAME_MAX_LENGTH}
+                value={tournamentName}
+                onChangeText={setTournamentName}
+              />
               <Text style={styles.label}>Buy-in (optionnel)</Text>
               <TextInput
                 autoComplete="off"
@@ -225,6 +239,14 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
                 maxLength={BUY_IN_MAX_LENGTH}
                 value={buyIn}
                 onChangeText={setBuyIn}
+                // Même réécriture qu'à la création (cf. `ContextStep`). ⚠️ La devise de repli est
+                // l'euro et non celle du joueur : une main de tournoi ne PORTE pas de devise (les
+                // jetons n'y sont pas de l'argent), et cet écran n'a pas le contexte du créateur
+                // pour la retrouver. Sans effet dès que l'auteur écrit un sigle — il gagne toujours.
+                onBlur={() => {
+                  const range = normaliserBuyIn(buyIn, post.hand.currency);
+                  if (range.length <= BUY_IN_MAX_LENGTH) setBuyIn(range);
+                }}
               />
               <Text style={styles.label}>Niveau de blindes (optionnel)</Text>
               {/* Champ libre ici, alors que la création impose un numéro seul (LevelNumberInput).

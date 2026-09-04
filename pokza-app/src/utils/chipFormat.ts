@@ -68,10 +68,17 @@ export function formatChipAmount(
   return abbreviateChips(amount);
 }
 
-// En dessous de ce montant, un nombre reste plus lisible écrit en entier : "1500" parle mieux que
-// "1,5k". Le seuil ne concerne QUE la réécriture du champ de saisie — l'affichage du feed et du
-// replayer, lui, abrège dès 1000 (`abbreviateChips`), comme avant.
-const INPUT_ABBREVIATION_THRESHOLD = 10000;
+/**
+ * En dessous de ce montant, un nombre reste plus lisible écrit en entier : "1500" parle mieux que
+ * "1,5k".
+ *
+ * Servait d'abord la seule réécriture du champ de saisie ; depuis le 04/09/2026 il tranche aussi la
+ * DÉNOMINATION DES BLINDES de la ligne de contexte (cf. `formatContextLine`), où "500-1000" se lit
+ * mieux que "500-1k" pour exactement la même raison. Les jetons du feed et du replayer, eux,
+ * abrègent toujours dès 1000 (`abbreviateChips`) : un tapis n'est pas une dénomination, et
+ * l'afficher en entier déborde du siège.
+ */
+export const SEUIL_ABREGEMENT = 10000;
 
 /**
  * Texte à afficher dans un champ de saisie de jetons, une fois que le joueur en est sorti :
@@ -79,7 +86,7 @@ const INPUT_ABBREVIATION_THRESHOLD = 10000;
  * `formatChipAmount`) et sous le seuil de lisibilité.
  */
 export function formatChipInput(n: number, gameType: GameType): string {
-  if (gameType !== 'tournament' || n < INPUT_ABBREVIATION_THRESHOLD) return String(n);
+  if (gameType !== 'tournament' || n < SEUIL_ABREGEMENT) return String(n);
   return abbreviateChips(n);
 }
 

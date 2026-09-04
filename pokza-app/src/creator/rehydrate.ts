@@ -103,6 +103,7 @@ export function postToSeed(post: Post): CreatorSeed {
     numPlayers: hand.seats.length,
     heroPosition: hero?.position ?? DEFAULT_CONTEXT.heroPosition,
     location: post.location,
+    tournamentName: post.tournamentName,
     buyIn: post.buyIn,
     level: post.level,
     heroName: hero?.playerName,

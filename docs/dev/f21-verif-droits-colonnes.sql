@@ -20,6 +20,7 @@ with attendu(tbl, col, op, fonction) as (
     -- createPost() — data/posts.ts
     ('posts', 'author_id',      'INSERT', 'createPost'),
     ('posts', 'location',       'INSERT', 'createPost'),
+    ('posts', 'tournament_name','INSERT', 'createPost'),
     ('posts', 'buy_in',         'INSERT', 'createPost'),
     ('posts', 'level',          'INSERT', 'createPost'),
     ('posts', 'title',          'INSERT', 'createPost'),
@@ -33,6 +34,7 @@ with attendu(tbl, col, op, fonction) as (
     ('posts', 'title',          'UPDATE', 'updatePost'),
     ('posts', 'description',    'UPDATE', 'updatePost'),
     ('posts', 'location',       'UPDATE', 'updatePost'),
+    ('posts', 'tournament_name','UPDATE', 'updatePost'),
     ('posts', 'buy_in',         'UPDATE', 'updatePost'),
     ('posts', 'level',          'UPDATE', 'updatePost'),
     ('posts', 'vote_question',  'UPDATE', 'updatePost'),

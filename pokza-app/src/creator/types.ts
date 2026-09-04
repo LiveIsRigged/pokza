@@ -22,6 +22,10 @@ export interface ContextData {
   numPlayers: number;
   heroPosition: Position;
   location?: string;
+  /** Nom de l'épreuve — tournoi uniquement, comme `buyIn` et `level`. Volontairement ABSENT de
+   * `CHAMPS_STRUCTURELS` : c'est du texte, aucune action n'y fait référence, et le corriger après
+   * coup ne peut rendre aucune mise illégale. */
+  tournamentName?: string;
   buyIn?: string;
   level?: string;
   /** Nom du héros, optionnel — vide, il s'affiche « Hero » partout. Séparé d'`opponentNames` (qui
