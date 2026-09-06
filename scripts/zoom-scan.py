@@ -14,7 +14,7 @@ CE QU'IL RÉSOUT, ET QUI SE VOIT MAL À L'ŒIL
 
 Lancer depuis la racine du dépôt :  python3 scripts/zoom-scan.py
 """
-import re, pathlib
+import re, sys, pathlib
 
 ROOT = pathlib.Path('pokza-app/src')
 SEUIL = 16
@@ -88,3 +88,11 @@ print(f'CONFORMES (≥ {SEUIL}px)')
 print('-' * 96)
 for p, l, tag, refs, eff, origin, _ in ok:
     print(f'{eff:>3}px  <{tag}>  {p}:{l}   [{origin}]')
+
+
+# ⚠️ IL SORT EN ERREUR, ET C'EST LE POINT — ajouté le 06/09/2026, après que la règle a été enfreinte
+# une SECONDE fois (le champ de l'import, à 12px, trouvé par Victor sur iPhone : Safari zoome et ne
+# dézoome jamais). Le script existait, il était documenté dans le thème, et personne ne l'a relancé.
+# Un relevé qu'on doit penser à lire ne garde rien ; un code de sortie, si.
+if bad:
+    sys.exit(1)

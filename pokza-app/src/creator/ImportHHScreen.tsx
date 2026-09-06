@@ -339,8 +339,26 @@ const styles = StyleSheet.create({
     // Monospace : une hand history est alignée en colonnes, et c'est ce qui la rend reconnaissable
     // d'un coup d'œil quand on vérifie ce qu'on a collé.
     fontFamily: 'monospace',
-    fontSize: 12,
-    lineHeight: 17,
+    /**
+     * ⚠️⚠️ 16px, ET ON N'Y TOUCHE PLUS — voir la note en tête de `typography` dans le thème.
+     *
+     * Ce champ était à 12px, pour montrer plus de lignes d'un coup. Signalé par Victor le
+     * 06/09/2026, sur iPhone : **Safari zoome sur tout champ sous 16px et ne dézoome JAMAIS** — il
+     * a fallu pincer pour revenir après avoir collé. C'est le bug le plus visible qu'ait connu la
+     * bêta, et `scripts/zoom-scan.py` existe précisément pour le relever : il a désigné ce champ
+     * comme le SEUL des 58 de l'app à repasser sous la barre.
+     *
+     * Ce qu'on perd est modeste et déjà perdu : sur un téléphone, 331px de champ donnent ~34
+     * caractères par ligne à 16px contre ~46 à 12 — or la seule ligne d'en-tête d'une main Winamax
+     * en fait 110. Elle passe à la ligne dans les deux cas, l'alignement en colonnes est de toute
+     * façon rompu, et le champ garde son unique rôle : voir qu'on a collé la BONNE main.
+     *
+     * Le viewport n'est pas un recours (iOS ignore `maximum-scale` depuis iOS 10). La taille de
+     * police est le seul levier réel.
+     */
+    fontSize: 16,
+    // Reconduit du rapport d'avant (12 → 17), pour que l'interligne suive la police.
+    lineHeight: 22,
     color: colors.textPrimary,
     textAlignVertical: 'top',
   },
