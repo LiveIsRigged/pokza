@@ -5,6 +5,7 @@ import { Pressable } from '../ui/Pressable';
 import { mainEnTexte, scinderSignature } from '../../engine/mainEnTexte';
 import type { PartieDecrite } from '../../utils/denomination';
 import { borders, colors, radius, spacing, typography } from '../../theme/theme';
+import { LARGEUR_MAX } from '../ui/Colonne';
 
 interface MainEnTexteScreenProps {
   visible: boolean;
@@ -54,47 +55,49 @@ export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScre
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onFermer}>
       <View style={styles.page}>
-        <View style={styles.topRow}>
-          <Pressable onPress={onFermer} hitSlop={8}>
-            <Text style={styles.fermer}>←</Text>
-          </Pressable>
-          <Text style={styles.titre}>La main en texte</Text>
-        </View>
+        <View style={styles.colonne}>
+          <View style={styles.topRow}>
+            <Pressable onPress={onFermer} hitSlop={8}>
+              <Text style={styles.fermer}>←</Text>
+            </Pressable>
+            <Text style={styles.titre}>La main en texte</Text>
+          </View>
 
-        <ScrollView style={styles.corps} contentContainerStyle={styles.corpsInner}>
-          {/* Imbriqué, et non posé à côté : deux <Text> frères couperaient la sélection à la
-              souris en deux, et « tout sélectionner puis copier » — la porte de sortie quand le
-              presse-papier refuse — ne prendrait plus que la moitié du texte. */}
-          <Text selectable style={styles.texte}>
-            {corps}
-            <Text style={styles.signature}>{signature}</Text>
-          </Text>
-        </ScrollView>
-
-        <View style={styles.pied}>
-          <Pressable
-            style={styles.bouton}
-            onPress={async () => {
-              // Le presse-papier peut REFUSER : navigateur qui l'interdit, permission coupée, page
-              // servie hors contexte sécurisé. Sans ce filet, le bouton ne faisait alors
-              // absolument rien — pas de texte copié, pas un mot pour le dire. Le texte étant
-              // sélectionnable, il reste une porte de sortie, et c'est celle qu'on indique.
-              try {
-                await Clipboard.setStringAsync(texte);
-                setIssue('copie');
-              } catch {
-                setIssue('refus');
-              }
-            }}
-          >
-            <Text style={styles.boutonTexte}>
-              {issue === 'copie'
-                ? 'Copié ✓'
-                : issue === 'refus'
-                  ? 'Sélectionne le texte pour le copier'
-                  : 'Copier le texte'}
+          <ScrollView style={styles.corps} contentContainerStyle={styles.corpsInner}>
+            {/* Imbriqué, et non posé à côté : deux <Text> frères couperaient la sélection à la
+                souris en deux, et « tout sélectionner puis copier » — la porte de sortie quand le
+                presse-papier refuse — ne prendrait plus que la moitié du texte. */}
+            <Text selectable style={styles.texte}>
+              {corps}
+              <Text style={styles.signature}>{signature}</Text>
             </Text>
-          </Pressable>
+          </ScrollView>
+
+          <View style={styles.pied}>
+            <Pressable
+              style={styles.bouton}
+              onPress={async () => {
+                // Le presse-papier peut REFUSER : navigateur qui l'interdit, permission coupée, page
+                // servie hors contexte sécurisé. Sans ce filet, le bouton ne faisait alors
+                // absolument rien — pas de texte copié, pas un mot pour le dire. Le texte étant
+                // sélectionnable, il reste une porte de sortie, et c'est celle qu'on indique.
+                try {
+                  await Clipboard.setStringAsync(texte);
+                  setIssue('copie');
+                } catch {
+                  setIssue('refus');
+                }
+              }}
+            >
+              <Text style={styles.boutonTexte}>
+                {issue === 'copie'
+                  ? 'Copié ✓'
+                  : issue === 'refus'
+                    ? 'Sélectionne le texte pour le copier'
+                    : 'Copier le texte'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Modal>
@@ -104,8 +107,17 @@ export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScre
 const styles = StyleSheet.create({
   page: {
     flex: 1,
+    // LE FOND garde toute la fenêtre : plafonné, on verrait l'app par-dessous sur les côtés, et la
+    // page aurait l'air d'une fenêtre posée sur du vide. C'est le CONTENU qui se met en colonne
+    // (`colonne` ci-dessous).
+    alignItems: 'center',
     backgroundColor: colors.feedBackground,
     paddingTop: 50,
+  },
+  colonne: {
+    flex: 1,
+    width: '100%',
+    maxWidth: LARGEUR_MAX,
   },
   topRow: {
     flexDirection: 'row',

@@ -15,6 +15,7 @@ import { AjusteurHauteur } from './src/web/AjusteurHauteur';
 import { InstallPromptProvider } from './src/web/InstallPrompt';
 import { registerPushServiceWorker } from './src/web/push';
 import { PostCard } from './src/components/post/PostCard';
+import { Colonne } from './src/components/ui/Colonne';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { postToSeed } from './src/creator/rehydrate';
 import type { Phase } from './src/creator/types';
@@ -100,7 +101,13 @@ export default function App() {
 function RootChrome({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.rootChrome}>
-      <InstallPromptProvider>{children}</InstallPromptProvider>
+      {/* LA LARGEUR MAXIMALE DE L'APP (cf. `Colonne`). Sans effet sur téléphone ; sur ordinateur
+          elle ramène la table du feed de 1 560 px de haut à 538, puisque sa hauteur vaut la largeur
+          du post × 1,25. Posée ICI, au-dessus de tous les écrans — mais PAS des calques, qui se
+          rendent hors de cette hiérarchie et posent chacun la leur. */}
+      <Colonne>
+        <InstallPromptProvider>{children}</InstallPromptProvider>
+      </Colonne>
     </View>
   );
 }

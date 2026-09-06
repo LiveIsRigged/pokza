@@ -3,6 +3,7 @@ import { FlatList, Modal, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from './Pressable';
 import { borders, colors, radius, spacing } from '../../theme/theme';
 import { DEVISES, type CodeDevise, type Devise } from '../../utils/currency';
+import { LARGEUR_MAX } from './Colonne';
 
 interface CurrencyPickerProps {
   visible: boolean;
@@ -61,6 +62,12 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   backdropFill: { flex: 1 },
   sheet: {
+    // LA COLONNE, pour une feuille du bas (cf. `Colonne`) : sur ordinateur elle se centre au lieu
+    // de s'étirer sur toute la fenêtre. `width: '100%'` est nécessaire — `alignSelf: 'center'`
+    // seul ferait rétrécir la feuille à la taille de son contenu.
+    maxWidth: LARGEUR_MAX,
+    width: '100%',
+    alignSelf: 'center',
     height: '75%',
     backgroundColor: colors.feedBackground,
     borderTopLeftRadius: radius.lg,

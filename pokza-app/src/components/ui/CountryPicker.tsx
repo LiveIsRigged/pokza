@@ -4,6 +4,7 @@ import { Pressable } from './Pressable';
 import { borders, colors, radius, spacing } from '../../theme/theme';
 import { COUNTRIES, flagEmoji, type Country } from '../../data/countries';
 import { fold } from '../../utils/recherche';
+import { LARGEUR_MAX } from './Colonne';
 
 interface CountryPickerProps {
   visible: boolean;
@@ -105,6 +106,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheet: {
+    // LA COLONNE, pour une feuille du bas (cf. `Colonne`) : sur ordinateur elle se centre au lieu
+    // de s'étirer sur toute la fenêtre. `width: '100%'` est nécessaire — `alignSelf: 'center'`
+    // seul ferait rétrécir la feuille à la taille de son contenu.
+    maxWidth: LARGEUR_MAX,
+    width: '100%',
+    alignSelf: 'center',
     height: '85%',
     backgroundColor: colors.feedBackground,
     borderTopLeftRadius: radius.lg,

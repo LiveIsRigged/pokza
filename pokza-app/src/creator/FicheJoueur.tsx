@@ -6,6 +6,7 @@ import { OPPONENT_NAME_MAX_LENGTH } from '../constants/limits';
 import { borders, colors, radius, spacing } from '../theme/theme';
 import type { GameType } from '../types/poker';
 import { formatChipInput } from '../utils/chipFormat';
+import { LARGEUR_MAX } from '../components/ui/Colonne';
 
 interface FicheJoueurProps {
   visible: boolean;
@@ -139,6 +140,12 @@ const styles = StyleSheet.create({
   // n'ont pas besoin des trois quarts de l'écran, et une feuille courte laisse voir la table
   // au-dessus — c'est elle qu'on est en train de corriger.
   sheet: {
+    // LA COLONNE, pour une feuille du bas (cf. `Colonne`) : sur ordinateur elle se centre au lieu
+    // de s'étirer sur toute la fenêtre. `width: '100%'` est nécessaire — `alignSelf: 'center'`
+    // seul ferait rétrécir la feuille à la taille de son contenu.
+    maxWidth: LARGEUR_MAX,
+    width: '100%',
+    alignSelf: 'center',
     backgroundColor: colors.feedBackground,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,

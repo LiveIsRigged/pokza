@@ -6,6 +6,7 @@ import { borders, colors, radius, spacing, tints } from '../../theme/theme';
 import { useSheetDismiss, sheetGrabStyle } from '../ui/useSheetDismiss';
 import { fetchVoters, type Voter } from '../../data/votes';
 import { errorMessage } from '../../utils/errorMessage';
+import { LARGEUR_MAX } from '../ui/Colonne';
 
 interface VotersSheetProps {
   visible: boolean;
@@ -117,6 +118,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheet: {
+    // LA COLONNE, pour une feuille du bas (cf. `Colonne`) : sur ordinateur elle se centre au lieu
+    // de s'étirer sur toute la fenêtre. `width: '100%'` est nécessaire — `alignSelf: 'center'`
+    // seul ferait rétrécir la feuille à la taille de son contenu.
+    maxWidth: LARGEUR_MAX,
+    width: '100%',
+    alignSelf: 'center',
     maxHeight: '70%',
     backgroundColor: colors.feedBackground,
     borderTopLeftRadius: radius.lg,

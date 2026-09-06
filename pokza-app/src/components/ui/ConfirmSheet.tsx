@@ -4,6 +4,7 @@ import { Pressable } from './Pressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { borders, colors, radius, spacing, tints } from '../../theme/theme';
 import type { IconProps } from './icons';
+import { LARGEUR_MAX } from './Colonne';
 
 export interface ConfirmSheetProps {
   visible: boolean;
@@ -123,6 +124,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // LA COLONNE, version bloc ABSOLU : `alignSelf` n'a aucun effet ici, et `left/right: 0`
+    // gagnerait contre un simple `maxWidth` (la feuille resterait collée à gauche). Des marges
+    // automatiques la recentrent, c'est le seul cas de l'app qui demande cette forme.
+    maxWidth: LARGEUR_MAX,
+    marginHorizontal: 'auto',
     backgroundColor: colors.feedBackground,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
