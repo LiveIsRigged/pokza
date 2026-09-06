@@ -69,8 +69,27 @@ export type EtatViewport = {
 /**
  * La hauteur à poser DÈS LE TOUCHER, avant que le clavier n'existe et donc avant toute mesure.
  * `clavierRetenu` vient du dernier clavier réellement mesuré sur cet appareil (0 si aucun).
+ *
+ * ⚠️ TROISIÈME ERREUR PAYÉE, TROUVÉE PAR VICTOR LE 04/09/2026 SUR ORDINATEUR. Le focus d'un champ
+ * n'ouvre un clavier QUE sur un appareil qui en a un de virtuel — `clavier.ts` le disait déjà
+ * (« un champ qui prend le focus sur mobile ouvre le clavier ») mais personne ne vérifiait le
+ * « sur mobile ». Sur ordinateur, cliquer dans n'importe quel champ de l'app rognait donc 55 % de
+ * la hauteur sur la foi d'un clavier deviné, et **aucun `resize` ne venait jamais corriger** :
+ * une bande de fond occupait la moitié basse de l'écran pendant toute la saisie. Le défaut
+ * existait depuis le chantier du clavier et n'avait jamais été vu, faute d'avoir ouvert Pokza
+ * ailleurs que sur un iPhone.
+ *
+ * @param clavierVirtuelPlausible l'appareil a-t-il un clavier virtuel ? Mesuré par
+ *   `(pointer: coarse)` côté appelant — c'est le pointeur PRINCIPAL qui répond, donc un portable
+ *   tactile piloté à la souris répond « non », ce qui est la bonne réponse. Faux ⇒ on n'anticipe
+ *   rien du tout, et le mécanisme n'entre en jeu que sur un vrai `resize`, qui ne viendra pas.
  */
-export function hauteurAnticipee(hauteurAuRepos: number, clavierRetenu: number): number | null {
+export function hauteurAnticipee(
+  hauteurAuRepos: number,
+  clavierRetenu: number,
+  clavierVirtuelPlausible: boolean
+): number | null {
+  if (!clavierVirtuelPlausible) return null;
   if (!(hauteurAuRepos > 0)) return null;
   const clavier = clavierRetenu >= RETRAIT_MINIMUM
     ? clavierRetenu

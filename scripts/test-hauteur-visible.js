@@ -23,6 +23,13 @@
 //   4. ON NE POSE JAMAIS UNE HAUTEUR ABSURDE. Un plancher : sous 200 px il n'y a plus d'app.
 //   5. LA SORTIE ACCOMPAGNE LE CLAVIER. Rendre la hauteur dès la perte du focus rejouerait le
 //      défaut pendant les ~250 ms de l'animation de fermeture.
+//   6. ON N'ANTICIPE RIEN LÀ OÙ IL N'Y A PAS DE CLAVIER VIRTUEL. Deuxième défaut jamais vu de ce
+//      mécanisme, trouvé par Victor le 04/09/2026 en ouvrant Pokza sur un ORDINATEUR : le focus
+//      d'un champ y déclenchait l'anticipation, qui rognait 55 % de la hauteur — et rien ne
+//      corrigeait jamais, faute de `resize`. Une bande de fond occupait la moitié basse de l'écran
+//      pendant toute la saisie, dans les 21 écrans et 5 feuilles qui ont un champ. Le mécanisme
+//      était juste sur iPhone et faux partout ailleurs, comme la v1 : la leçon se répète, un
+//      correctif de clavier doit être éprouvé sur un appareil SANS clavier virtuel.
 //
 // Compiler d'abord (le `tsc` local, pas `npx tsc` — cf. mémoire projet) :
 //   pokza-app/node_modules/.bin/tsc pokza-app/src/web/hauteurVisible.ts \
@@ -33,6 +40,11 @@ const {
   hauteurAAppliquer, hauteurAnticipee,
   RETRAIT_MINIMUM, ECHELLE_MAX, PART_CLAVIER_PAR_DEFAUT, HAUTEUR_PLANCHER,
 } = require('./cm/web/hauteurVisible.js');
+
+/** Appareil à clavier VIRTUEL (téléphone, tablette) : `(pointer: coarse)` côté appelant. */
+const TACTILE = true;
+/** Ordinateur : un pointeur fin, donc aucun clavier virtuel à anticiper. */
+const ORDINATEUR = false;
 
 let ok = 0;
 const echecs = [];
@@ -105,11 +117,11 @@ eq(
 // ── 3. Rétrécir dès le toucher ─────────────────────────────────────────────────────────────────
 eq(
   'clavier déjà mesuré sur cet appareil → on vise juste',
-  hauteurAnticipee(REPOS, CLAVIER),
+  hauteurAnticipee(REPOS, CLAVIER, TACTILE),
   AVEC_CLAVIER,
 );
 // Premier toucher de la vie de l'app : aucune mesure, on devine.
-const devine = hauteurAnticipee(REPOS, 0);
+const devine = hauteurAnticipee(REPOS, 0, TACTILE);
 eq(
   'aucune mesure → on rogne la part par défaut',
   devine,
@@ -123,18 +135,28 @@ vrai(
 // Une valeur retenue absurde (un vieux stockage, une autre orientation) ne doit pas être suivie.
 eq(
   'valeur retenue sous le seuil → ignorée, on revient à la devinette',
-  hauteurAnticipee(REPOS, 40),
+  hauteurAnticipee(REPOS, 40, TACTILE),
   devine,
 );
-eq('hauteur au repos absurde → aucune anticipation', hauteurAnticipee(0, CLAVIER), null);
-eq('hauteur au repos NaN → aucune anticipation', hauteurAnticipee(NaN, CLAVIER), null);
+// ⚠️ LA TROISIÈME ERREUR, TROUVÉE PAR VICTOR LE 04/09/2026 SUR ORDINATEUR. Le focus d'un champ
+// n'ouvre un clavier que là où il en existe un de virtuel. Sans ce garde-fou, cliquer dans
+// n'importe quel champ de l'app rognait 55 % de la hauteur sur la foi d'un clavier deviné — et
+// AUCUN `resize` ne venait jamais corriger, puisqu'aucun clavier ne s'ouvrait : une bande de fond
+// occupait la moitié basse de l'écran pendant toute la saisie. Le défaut datait du chantier du
+// clavier et n'avait jamais été vu, faute d'avoir ouvert Pokza ailleurs que sur un iPhone.
+eq('ordinateur → on n\'anticipe RIEN', hauteurAnticipee(REPOS, 0, ORDINATEUR), null);
+eq('ordinateur, même avec un clavier déjà mesuré → rien',
+   hauteurAnticipee(REPOS, CLAVIER, ORDINATEUR), null);
+
+eq('hauteur au repos absurde → aucune anticipation', hauteurAnticipee(0, CLAVIER, TACTILE), null);
+eq('hauteur au repos NaN → aucune anticipation', hauteurAnticipee(NaN, CLAVIER, TACTILE), null);
 
 // ── 4. Le plancher ─────────────────────────────────────────────────────────────────────────────
 // Un très petit écran, ou un clavier retenu démesuré, ne doit pas réduire l'app à rien.
 vrai(
   'anticipation sur un petit écran : jamais sous le plancher',
-  hauteurAnticipee(400, 380) >= HAUTEUR_PLANCHER,
-  `obtenu ${hauteurAnticipee(400, 380)}`,
+  hauteurAnticipee(400, 380, TACTILE) >= HAUTEUR_PLANCHER,
+  `obtenu ${hauteurAnticipee(400, 380, TACTILE)}`,
 );
 vrai(
   'mesure aberrante : jamais sous le plancher',
@@ -239,7 +261,7 @@ vrai(
 );
 vrai(
   'l’anticipation est toujours entière',
-  [873, 812.5, 667.25].every((h) => Number.isInteger(hauteurAnticipee(h, 0))),
+  [873, 812.5, 667.25].every((h) => Number.isInteger(hauteurAnticipee(h, 0, TACTILE))),
 );
 
 // ── Résultat ───────────────────────────────────────────────────────────────────────────────────

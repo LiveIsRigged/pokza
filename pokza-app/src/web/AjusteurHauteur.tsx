@@ -22,6 +22,36 @@ const VARIABLE = '--hauteur-app';
  */
 const DELAI_SECOURS_MS = 1000;
 
+/**
+ * Délai de CONFIRMATION après une anticipation. Le premier `resize` du clavier arrive à 89 ms
+ * (mesuré le 03/09) ; 400 laisse largement le temps. Au-delà, c'est qu'aucun clavier ne vient —
+ * un clavier matériel branché sur un iPad, par exemple, où le pointeur reste « grossier » alors
+ * qu'aucun clavier virtuel ne s'ouvre. On rend alors la main, plutôt que de laisser une bande de
+ * fond pendant toute la saisie.
+ *
+ * Ce filet rend le mécanisme AUTOCORRECTIF : il ne dépend plus de la justesse d'un test
+ * d'appareil, seulement de ce qui se produit réellement. Une anticipation à tort coûte 400 ms de
+ * bande, plus toute la durée de la saisie.
+ */
+const DELAI_CONFIRMATION_MS = 400;
+
+/**
+ * Cet appareil a-t-il un clavier VIRTUEL ? `(pointer: coarse)` interroge le pointeur PRINCIPAL :
+ * un iPhone ou un iPad répond oui, un ordinateur non — y compris un portable tactile piloté à la
+ * souris, qui n'ouvre pas de clavier virtuel quand on clique dans un champ.
+ *
+ * Faux en cas de doute : ne pas anticiper laisse au pire Safari faire glisser la page une fois
+ * (l'ancien défaut, visible mais passager), là qu'anticiper à tort immobilise une bande de fond
+ * pour toute la durée de la saisie.
+ */
+function clavierVirtuelPlausible(): boolean {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+}
+
 /** Dernière hauteur de clavier réellement mesurée sur CET appareil. */
 const CLE_CLAVIER = 'pokza-hauteur-clavier';
 
@@ -60,6 +90,14 @@ export function AjusteurHauteur() {
     const racine = document.documentElement;
     let engage = false;
     let secours: ReturnType<typeof setTimeout> | null = null;
+    /** Une anticipation attend sa confirmation par un vrai `resize` de clavier. */
+    let confirmation: ReturnType<typeof setTimeout> | null = null;
+    const annulerConfirmation = () => {
+      if (confirmation) {
+        clearTimeout(confirmation);
+        confirmation = null;
+      }
+    };
     // La bande visible hors clavier. SEULE référence fiable : `window.innerHeight` suit la bande
     // visible sur iOS et vaut donc la même chose qu'elle, clavier ouvert comme fermé.
     let hauteurAuRepos = vue.height;
@@ -111,7 +149,11 @@ export function AjusteurHauteur() {
       if (!engage && !focalise.current) hauteurAuRepos = vue.height;
 
       const retrait = hauteurAuRepos - vue.height;
-      if (retrait >= RETRAIT_MINIMUM && focalise.current) retenirClavier(retrait);
+      if (retrait >= RETRAIT_MINIMUM && focalise.current) {
+        // Un vrai clavier : l'anticipation est confirmée, le filet n'a plus lieu d'être.
+        annulerConfirmation();
+        retenirClavier(retrait);
+      }
 
       const px = hauteurAAppliquer(
         {
@@ -137,11 +179,20 @@ export function AjusteurHauteur() {
         secours = null;
       }
       if (vue.scale > ECHELLE_MAX) return;
-      const px = hauteurAnticipee(hauteurAuRepos, clavierRetenu());
-      if (px !== null) poser(px);
+      const px = hauteurAnticipee(hauteurAuRepos, clavierRetenu(), clavierVirtuelPlausible());
+      if (px === null) return;
+      poser(px);
+      // Si aucun clavier ne se montre, on reprend ce qu'on vient de rogner (cf.
+      // `DELAI_CONFIRMATION_MS`).
+      annulerConfirmation();
+      confirmation = setTimeout(() => {
+        confirmation = null;
+        if (engage) rendre();
+      }, DELAI_CONFIRMATION_MS);
     };
 
     auRelachement.current = () => {
+      annulerConfirmation();
       surMesure();
       if (engage) {
         secours = setTimeout(() => {
@@ -157,6 +208,7 @@ export function AjusteurHauteur() {
       vue.removeEventListener('resize', surMesure);
       vue.removeEventListener('scroll', surMesure);
       if (secours) clearTimeout(secours);
+      annulerConfirmation();
       auToucher.current = () => {};
       auRelachement.current = () => {};
       rendre();
