@@ -204,6 +204,17 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
               règle le vide ET montre la main entière : de quoi vérifier qu'on a collé la bonne. */}
           <View style={styles.corps}>
             <TextInput
+              /**
+               * ⚠️ SANS CETTE PROP, SAFARI PROPOSE UNE CARTE BANCAIRE — signalé par Victor le
+               * 06/09/2026, et c'est la seconde fois que la règle tombe.
+               *
+               * `react-native-web` pose `autocomplete="on"` D'OFFICE quand la prop manque
+               * (`TextInput/index.js:347` : `autoComplete || autoCompleteType || 'on'`). Un champ
+               * sans prop n'est donc pas neutre : il INVITE Safari à deviner, et Safari devine
+               * d'après le contexte — une carte près d'un bouton d'envoi, un contact devant un pavé
+               * numérique. Le correctif du 03/09 avait déclaré 34 champs ; celui-ci est né après.
+               */
+              autoComplete="off"
               style={[styles.champ, survol && styles.champSurvole]}
               value={texte}
               onChangeText={(t) => {

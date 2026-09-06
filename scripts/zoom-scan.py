@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Relève la taille de police effective de chaque champ de saisie de l'app.
+"""Relève, pour chaque champ de saisie de l'app, les DEUX règles iOS qui lui sont opposables.
+
+RÈGLE 1 — la police (< 16px → Safari zoome et ne dézoome jamais).
+RÈGLE 2 — `autoComplete` (absent → `react-native-web` pose `autocomplete="on"` D'OFFICE, ce qui
+INVITE Safari à deviner : une carte bancaire près d'un bouton d'envoi, un contact devant un pavé
+numérique). Cf. `TextInput/index.js:347` : `autoComplete || autoCompleteType || 'on'`.
+
+Les deux ont été enfreintes DEUX FOIS, et par le même mécanisme : un champ NEUF, écrit après le
+correctif, qui ne connaissait pas la règle. Un relevé qu'on doit penser à lire ne garde rien —
+d'où le code de sortie 1.
 
 POURQUOI CE SCRIPT EXISTE
 Safari iOS zoome sur un champ dont la police calculée est < 16px, et ne dézoome jamais — la page
@@ -61,7 +70,24 @@ for path in sorted(ROOT.rglob('*.tsx')):
         #  · aucun `style=`   → le composant se style tout seul ; son propre TextInput est scanné
         passthrough = not refs and not inline and (
             re.search(r'style=\{style\}', tag) or 'style=' not in tag)
-        rows.append((str(path), line, m.group(1), ' + '.join(refs), eff, origin, passthrough))
+        declare = bool(re.search(r'\b(autoComplete|textContentType)\s*=', tag))
+        rows.append((str(path), line, m.group(1), ' + '.join(refs), eff, origin, passthrough, declare))
+
+# ⚠️ LES DEUX SEULES EXCEPTIONS, ET ELLES SONT UN CHOIX : « Prénom » et « Nom » de la complétion de
+# profil. C'est la VRAIE identité de la personne, le remplissage lui rend service (tranché le
+# 03/09). Toute autre absence est un trou — c'est pour ça que la liste est ici, nommée, et pas un
+# `# noqa` perdu dans le code.
+VOULUES = {
+    ('pokza-app/src/profile/CompleteProfileScreen.tsx', 190),
+    ('pokza-app/src/profile/CompleteProfileScreen.tsx', 193),
+}
+# ⚠️ SEUL LE `TextInput` PRIMITIF EST CONCERNÉ, et c'est ce qui rend la règle 2 sans faux positif :
+# c'est lui que `react-native-web` transforme en `<input autocomplete="on">`. Tout le reste
+# (`DecimalTextInput`, `LocationInput`, `LevelNumberInput`…) est un composant à NOUS, qui rend son
+# propre `TextInput` — lequel est scanné dans le fichier où il est écrit. Exiger la prop à leur
+# point d'appel donnerait 11 faux positifs, et exiger l'inverse laisserait passer un vrai trou.
+muets = [r for r in rows
+         if r[2] == 'TextInput' and not r[7] and (r[0], r[1]) not in VOULUES]
 
 bad = [r for r in rows if not r[6] and (r[4] is None or r[4] < SEUIL)]
 relay = [r for r in rows if r[6]]
@@ -72,12 +98,21 @@ print(f'{len(rows)} champs — {len(bad)} SOUS {SEUIL}px, {len(ok)} conformes, '
 if bad:
     print(f'*** CHAMPS QUI DÉCLENCHENT LE ZOOM iOS ***')
     print('-' * 96)
-    for p, l, tag, refs, eff, origin, _ in bad:
+    for p, l, tag, refs, eff, origin, *_ in bad:
         print(f'{(str(eff)+"px") if eff is not None else "  ?":>5}  <{tag}>  {p}:{l}')
         print(f'         styles : {refs or "(aucun)"}   retenu : {origin or "aucun fontSize"}')
     print()
 else:
     print(f'✅ aucun champ sous {SEUIL}px\n')
+
+if muets:
+    print('*** CHAMPS SANS `autoComplete` — iOS Y PROPOSE CARTE OU CONTACT ***')
+    print('-' * 96)
+    for p, l, tag, *_ in muets:
+        print(f'       <{tag}>  {p}:{l}')
+    print()
+else:
+    print('✅ tout champ se déclare (hors les 2 exceptions voulues)\n')
 
 print('RELAIS — leur police vient de l\'appelant, vérifié ci-dessous')
 print('-' * 96)
@@ -86,7 +121,7 @@ for p, l, tag, *_ in relay:
 print()
 print(f'CONFORMES (≥ {SEUIL}px)')
 print('-' * 96)
-for p, l, tag, refs, eff, origin, _ in ok:
+for p, l, tag, refs, eff, origin, *_ in ok:
     print(f'{eff:>3}px  <{tag}>  {p}:{l}   [{origin}]')
 
 
@@ -94,5 +129,5 @@ for p, l, tag, refs, eff, origin, _ in ok:
 # une SECONDE fois (le champ de l'import, à 12px, trouvé par Victor sur iPhone : Safari zoome et ne
 # dézoome jamais). Le script existait, il était documenté dans le thème, et personne ne l'a relancé.
 # Un relevé qu'on doit penser à lire ne garde rien ; un code de sortie, si.
-if bad:
+if bad or muets:
     sys.exit(1)
