@@ -9,6 +9,7 @@ import { ShowdownStep } from './steps/ShowdownStep';
 import { StreetCorrectionStep } from './steps/StreetCorrectionStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { ApercuMainScreen } from './ApercuMainScreen';
+import { ImportHHScreen } from './ImportHHScreen';
 import { MainEnTexteScreen } from '../components/post/MainEnTexteScreen';
 import type { PartieDecrite } from '../utils/denomination';
 import { appliquerContexteAuxSieges, buildSeats } from './positions';
@@ -18,7 +19,7 @@ import { champsInvalidants } from './invalidation';
 import type { ContextData, Phase, ReviewData, Snapshot } from './types';
 import { defaultContextForPlayer, loadContextPrefs, saveContextPrefs } from './contextPrefs';
 import { memoriserTable } from './derniereTableStockage';
-import { seedStart, type CreatorSeed } from './rehydrate';
+import { postToSeed, seedStart, type CreatorSeed, type SourceDeSeed } from './rehydrate';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { GroupPickerScreen } from '../groups/GroupPickerScreen';
 import {
@@ -27,7 +28,7 @@ import {
   orderGroupsByLastUsed,
   rememberUsedGroup,
 } from '../groups/lastUsedGroups';
-import { TrashIcon } from '../components/ui/icons';
+import { CopyIcon, TrashIcon } from '../components/ui/icons';
 
 /**
  * QUATRE ÉTAPES, TOUJOURS — constat 7 de l'audit, tranché par Victor le 02/09/2026.
@@ -190,6 +191,16 @@ export function LiveHandCreator({
   // rend toujours un booléen (`!!hand.revealShowdown`), donc jamais `undefined`, et une main
   // publiée avant ce jour ne se met pas à cacher ce qu'elle montrait.
   const [revealShowdown, setRevealShowdown] = useState(initial?.revealShowdown ?? true);
+  /**
+   * Provenance de la main (cf. `Hand.imported`). Deux sources, et deux seulement : une main
+   * REPRISE la porte déjà (`initial`), et `appliquerImport` la pose. Aucun écran ne la règle — ce
+   * n'est pas un réglage, c'est un fait sur l'origine de la main, qui ne fait que TRAVERSER : une
+   * main importée qu'on republie après avoir corrigé un pseudo reste une main importée.
+   *
+   * ⚠️ Elle ne redevient JAMAIS fausse. Repartir d'une table vide, c'est démonter le créateur, pas
+   * remettre ce drapeau à zéro — et l'import remplace de toute façon l'état entier.
+   */
+  const [importee, setImportee] = useState(initial?.imported ?? false);
   const [history, setHistory] = useState<Snapshot[]>(depart?.history ?? []);
   /**
    * CE QUE CHAQUE STREET A LAISSÉ DERRIÈRE ELLE, pour pouvoir la rouvrir intacte.
@@ -205,6 +216,10 @@ export function LiveHandCreator({
   const [phaseKey, setPhaseKey] = useState(0);
   // Confirmation avant de quitter l'étape 1 en ayant déjà saisi quelque chose.
   const [confirmingAbandon, setConfirmingAbandon] = useState(false);
+  /** L'écran d'import est ouvert (cf. `ImportHHScreen`). */
+  const [importOuvert, setImportOuvert] = useState(false);
+  /** L'import écraserait une saisie en cours : on demande avant (cf. `demanderImport`). */
+  const [confirmingImport, setConfirmingImport] = useState(false);
   // Derniers groupes publiés, lus une fois sur l'appareil : ils ordonnent la rangée de chips et
   // désignent la présélection. Tant que la lecture n'est pas revenue, la liste garde l'ordre reçu
   // et rien n'est présélectionné — jamais un mauvais groupe le temps d'un aller-retour disque.
@@ -322,6 +337,68 @@ export function LiveHandCreator({
     setStoppedAtSeatId(patch.stoppedAtSeatId ?? null);
     setPhase(nextPhase);
     setPhaseKey((k) => k + 1);
+  };
+
+  /**
+   * POSER UNE MAIN LUE DEPUIS UNE HAND HISTORY.
+   * ─────────────────────────────────────────
+   * Le même chemin que « Corriger la main », mais au MILIEU d'une session au lieu du montage :
+   * `postToSeed` redémonte la main en réglages d'étapes, `seedStart` en fait un état complet posé
+   * sur l'étape « Publier » avec toute la pile de retour — le « ‹ » redescend donc dans les quatre
+   * étapes, ce qui est exactement la structure demandée par Victor (« ça nous amène dernière étape
+   * mais on peut modifier les étapes d'avant, sert aussi quand il y a eu une petite erreur dans la
+   * lecture de la hh »).
+   *
+   * ⚠️ CE QU'IL FAUT REMETTRE À ZÉRO, et pourquoi ça ne se voit pas si on l'oublie :
+   *   • `etatsDeStreet` — l'état interne que chaque street a laissé derrière elle. Il appartient à
+   *     l'ANCIENNE main : sans ce nettoyage, rouvrir le flop de la main importée y retrouverait les
+   *     cartes et les mises d'une autre, et ça se relirait très bien.
+   *   • `refaitLesMises` — sinon une street reprise avant l'import resterait « en ressaisie ».
+   *
+   * ⚠️ `review` N'EST PAS TOUCHÉ. Le titre, la description et l'audience appartiennent à l'AUTEUR,
+   * pas à la main : quelqu'un qui a déjà tapé son titre puis importe le garde. C'est la ligne de
+   * partage du chantier — le parseur remplit ce que la hand history contient, l'auteur remplit ce
+   * qui en fait un post.
+   */
+  const appliquerImport = (source: SourceDeSeed) => {
+    const seed = postToSeed(source);
+    const debut = seedStart(seed);
+    setContext(seed.context);
+    setSeats(seed.seats);
+    setHeroCards(seed.heroCards);
+    setActions(seed.actions);
+    setActiveSeatIds(seed.activeSeatIds);
+    setBoard(seed.board);
+    setBoard2(seed.board2);
+    setRevealedCards(seed.revealedCards);
+    setRevealShowdown(seed.revealShowdown);
+    setStoppedAtSeatId(seed.stoppedAtSeatId);
+    setImportee(true);
+    setHistory(debut.history);
+    setEtatsDeStreet({});
+    setRefaitLesMises(false);
+    setImportOuvert(false);
+    setPhase(debut.phase);
+    setPhaseKey((k) => k + 1);
+  };
+
+  /**
+   * Ouvre l'import — en demandant d'abord si quelque chose serait perdu.
+   *
+   * LE CAS QUI MORD, ET IL SE PRODUIT DANS LES DEUX SENS : quelqu'un qui a déjà saisi ses blindes
+   * puis colle une hand history perd sa saisie ; et APRÈS un import, on remonte à l'étape 1 pour
+   * taper les pseudos — l'icône d'import est toujours là, en face du titre, sous le doigt.
+   *
+   * `hasEnteredSomething()` couvre l'étape 1 et les cartes du héros ; `history.length > 0` couvre
+   * le reste, car être revenu à l'étape 1 depuis une étape suivante signifie qu'il y a un déroulé
+   * derrière. Rien de saisi = on entre directement, sans question inutile.
+   */
+  const demanderImport = () => {
+    if (hasEnteredSomething() || history.length > 0) {
+      setConfirmingImport(true);
+      return;
+    }
+    setImportOuvert(true);
   };
 
   // Après la dernière street (ou un fold général), propose l'abattage s'il reste un adversaire en jeu, sinon publie.
@@ -454,6 +531,9 @@ export function LiveHandCreator({
       // qu'elle s'écrive exactement comme avant (rien de nouveau dans le jsonb publié).
       stoppedAtSeatId: stoppedAtSeatId ?? undefined,
       revealShowdown,
+      // `undefined` et non `false` sur une main saisie à la main : rien de neuf ne part alors dans
+      // le jsonb publié, exactement comme pour `bombPot` et `stoppedAtSeatId`.
+      imported: importee || undefined,
     };
   };
 
@@ -711,6 +791,7 @@ export function LiveHandCreator({
           nextLabel={libelleBouton(invalidants.length > 0)}
           nextBloque={aLEntree && !contexteModifie}
           enCorrection={enCorrection}
+          onImporter={demanderImport}
           footerNote={
             !aLEntree
               ? null
@@ -1115,6 +1196,27 @@ export function LiveHandCreator({
       {/* Frère de l'étape et non enfant : le glissement de bord du wizard est attaché à
           `WizardScreen`, qui n'est pas un ancêtre d'ici — le geste ne traverse donc pas le
           sélecteur pour reculer d'une étape dans son dos. */}
+      {/* L'import écraserait une saisie en cours. Orange et non rouge : ce n'est pas une
+          destruction gratuite, c'est un remplacement demandé — mais il faut le dire, parce que la
+          ligne est aussi sous le doigt de celui qui vient JUSTE d'importer et remonte taper ses
+          pseudos. */}
+      <ConfirmSheet
+        visible={confirmingImport}
+        icon={CopyIcon}
+        title="Remplacer cette main ?"
+        message="Ce que tu as saisi sera remplacé par la main importée."
+        confirmLabel="Importer"
+        cancelLabel="Garder ma saisie"
+        destructive={false}
+        onCancel={() => setConfirmingImport(false)}
+        onConfirm={() => {
+          setConfirmingImport(false);
+          setImportOuvert(true);
+        }}
+      />
+      {importOuvert && (
+        <ImportHHScreen onFermer={() => setImportOuvert(false)} onImportee={appliquerImport} />
+      )}
       {apercu && <ApercuMainScreen hand={apercu} onFermer={() => setApercu(null)} />}
       {texte && <MainEnTexteScreen visible partie={texte} onFermer={() => setTexte(null)} />}
       {groupPickerOpen && (

@@ -9,6 +9,21 @@ import { devise } from '../utils/currency';
  * exacte de ses propres états. C'est l'inverse de `finalize()` : ce que celui-ci assemble en un
  * `Hand`, celui-ci le redémonte en réglages d'étapes.
  */
+/**
+ * TOUT CE QUE LA RECONSTITUTION LIT D'UN POST, ET RIEN DE PLUS.
+ *
+ * Un `Post` complet porte une identité d'auteur, des compteurs de j'aime et une date — dont la
+ * reprise n'a que faire. Le dire explicitement sert un second appelant : l'import de hand
+ * histories (cf. `src/import`) produit exactement cette forme, sans avoir à se fabriquer une
+ * identité qu'il n'a pas. Purement typologique : `Post` la satisfait telle quelle, donc rien ne
+ * change pour « Corriger la main ».
+ */
+export type SourceDeSeed = Pick<
+  Post,
+  'hand' | 'location' | 'tournamentName' | 'buyIn' | 'level'
+  | 'title' | 'description' | 'voteQuestion' | 'voteOptions' | 'visibility' | 'groupId'
+>;
+
 export interface CreatorSeed {
   context: ContextData;
   seats: Seat[];
@@ -19,6 +34,11 @@ export interface CreatorSeed {
   board2: Board;
   revealedCards: Record<string, (Card | undefined)[]>;
   revealShowdown: boolean;
+  /** Main née d'une hand history collée (cf. `Hand.imported`). Portée par le seed pour une seule
+   * raison, mais elle est décisive : corriger une main la REPUBLIE en rebâtissant `hand` depuis
+   * l'état du créateur — sans ce relais, une main importée puis corrigée perdrait sa provenance
+   * en silence. Aucun écran ne l'expose : elle traverse, elle ne se règle pas. */
+  imported: boolean;
   /** Siège sur lequel la main a été arrêtée, ou `null` si elle est allée à son terme (cf.
    * `Hand.stoppedAtSeatId`). */
   stoppedAtSeatId: string | null;
@@ -42,7 +62,7 @@ export interface CreatorSeed {
  *     il faut en plus dire lequel des straddles est celui du bouton — ce que la POSITION du siège
  *     dans l'ordre d'action suffit à trancher.
  */
-export function postToSeed(post: Post): CreatorSeed {
+export function postToSeed(post: SourceDeSeed): CreatorSeed {
   const hand = post.hand;
   const hero = hand.seats.find((s) => s.isHero);
   const bombPot = !!hand.bombPot;
@@ -142,6 +162,7 @@ export function postToSeed(post: Post): CreatorSeed {
     board2: hand.board2 ?? {},
     revealedCards,
     revealShowdown: !!hand.revealShowdown,
+    imported: !!hand.imported,
     stoppedAtSeatId: hand.stoppedAtSeatId ?? null,
     review: {
       title: post.title,
@@ -276,7 +297,7 @@ const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
  * service le plus faible : un piège, pas un raccourci. Elle reste évidemment la phase de
  * PUBLICATION à la fin de toute correction — c'est l'entrée qui disparaît, pas l'étape.
  */
-export function etapesCorrigibles(post: Post): { phase: Phase; label: string }[] {
+export function etapesCorrigibles(post: SourceDeSeed): { phase: Phase; label: string }[] {
   const jouees = seedHistory(postToSeed(post)).map((s) => s.phase);
   return jouees.map((phase) => ({ phase, label: LIBELLE_ETAPE[phase] ?? phase }));
 }

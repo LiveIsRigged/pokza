@@ -16,11 +16,13 @@
 //
 // Compiler d'abord (le `tsc` local, pas `npx tsc` — cf. mémoire projet) :
 //   pokza-app/node_modules/.bin/tsc pokza-app/src/utils/denomination.ts pokza-app/src/utils/buyIn.ts \
+//     pokza-app/src/utils/provenance.ts \
 //     --outDir scripts/cm --module commonjs --target es2020 --rootDir pokza-app/src --skipLibCheck
 // puis : node scripts/test-ligne-contexte.js
 
 const { formatContextLine } = require('./cm/utils/denomination.js');
 const { normaliserBuyIn } = require('./cm/utils/buyIn.js');
+const { lieuEtProvenance } = require('./cm/utils/provenance.js');
 
 let ko = 0;
 function cas(titre, obtenu, attendu) {
@@ -169,6 +171,26 @@ cas('Somme avec un mot en trop',        normaliserBuyIn('45$+5$ KO'), '45$+5$ KO
 cas('Deux devises différentes',         normaliserBuyIn('45€+5$'), '45€+5$');
 cas('Trois décimales : ambigu',         normaliserBuyIn('1,500'), '1,500');
 cas('Intervalle, pas une somme',        normaliserBuyIn('100-200'), '100-200');
+
+
+// ─── Le lieu et la provenance (ligne date/lieu) ────────────────────────────────────────────────
+// ⚠️ LA PARENTHÈSE EST UN SUFFIXE DU LIEU : pas de lieu, pas de parenthèse. C'est ce qui règle les
+// cas que la seule salle nommable ne couvre pas — Betclic n'écrit son nom nulle part, et un OUTIL
+// de suivi ne donne son nom à rien.
+console.log('\n─── Lieu et provenance ───');
+cas('Salle nommable, main importée',    lieuEtProvenance('Winamax', true), ' · Winamax (importée)');
+cas('Salle nommable, main saisie',      lieuEtProvenance('Winamax', false), ' · Winamax');
+// Le mot reste SEUL — décidé par Victor le 04/09 : « garde importée tout court quand la provenance
+// est inconnue ». C'est le cas d'une main Betclic, l'un de nos deux dialectes.
+cas('Provenance inconnue',              lieuEtProvenance(undefined, true), ' · importée');
+cas('Ni lieu ni import',                lieuEtProvenance(undefined, false), '');
+// Une main live passée par un outil de suivi : le lieu vient du fichier, pas de l'outil.
+cas('Lieu du fichier + import',         lieuEtProvenance('Club Circus', true), ' · Club Circus (importée)');
+// Un lieu vide ou blanc ne doit pas produire une parenthèse orpheline (« ·  (importée) »).
+cas('Lieu vide vaut pas de lieu',       lieuEtProvenance('', true), ' · importée');
+cas('Lieu tout en blancs',              lieuEtProvenance('   ', true), ' · importée');
+// Les mains publiées avant le 04/09 n'ont pas le drapeau : `undefined` vaut « saisie à la main ».
+cas('Drapeau absent = saisie',          lieuEtProvenance('Club Circus', undefined), ' · Club Circus');
 
 console.log(ko === 0 ? '\n✅ Tout est vert.' : `\n❌ ${ko} échec(s).`);
 process.exit(ko === 0 ? 0 : 1);

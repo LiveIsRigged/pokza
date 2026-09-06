@@ -1,0 +1,21 @@
+GAME #8704199933 Version:25.7.1.48 Uncalled:Y Texas Hold'em NL  Tournament 2025-12-19 11:28:11/GMT
+Table Info: Size: 3, Blinds: 10/20
+Table Flash Twister 5€, 1139183600, 1139183599 (Tournament: Flash Twister 5€ Buy-In: €4.65 + €0.35)
+Seat 3: 40118732 (€200.00 in chips)  DEALER
+Seat 6: JoueurBet (€200.00 in chips)
+Seat 10: capitainemiel7 (€200.00 in chips)
+JoueurBet: Post SB €10.00
+capitainemiel7: Post BB €20.00
+*** HOLE CARDS ***
+Dealt to JoueurBet [SJ DK]
+40118732: Fold
+JoueurBet: Raise (NF) €200.00
+capitainemiel7: Allin €180.00
+*** FLOP *** [C7 C4 HQ]
+*** TURN *** [H8]
+*** RIVER *** [C9]
+*** SUMMARY ***
+Total pot €400.00 Rake €0.00
+JoueurBet: Mucks [SJ DK] High Card, King
+capitainemiel7: Shows [CA S9] One Pair, Nines
+capitainemiel7: wins €400.00

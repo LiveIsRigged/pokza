@@ -1,0 +1,56 @@
+#Game No : 15584785940
+***** Hand History for Game 15584785940 *****
+NL Texas Hold'em €0.50 EUR Buy-in Trny:129592788 Level:22 Blinds-Antes(2 500/5 000 -500) - Wednesday, October 12, 15:12:22 CEST 2016
+Table 50€ Garantis Hyper Turbo Rebuy (129592788) Table #6 (Real Money)
+Seat 9 is the button
+Total number of players : 8/9
+Seat 7: Mercutio_1978 ( 77,261 )
+Seat 9: Blondin ( 66,056 )
+Seat 5: Marclecouteau ( 24,849 )
+Seat 8: PTITBAR318 ( 130,365 )
+Seat 3: NITRO7 ( 1,380 )
+Seat 2: Sylvainb27 ( 15,925 )
+Seat 4: martin23 ( 52,044 )
+Seat 1: pax42 ( 19,620 )
+Trny:129592788 Level:22
+Blinds-Antes(2 500/5 000 -500)
+pax42 posts ante [500]
+Sylvainb27 posts ante [500]
+NITRO7 posts ante [500]
+martin23 posts ante [500]
+Marclecouteau posts ante [500]
+Mercutio_1978 posts ante [500]
+PTITBAR318 posts ante [500]
+Blondin posts ante [500]
+pax42 posts small blind [2,500].
+Sylvainb27 posts big blind [5,000].
+** Dealing down cards **
+Dealt to Sylvainb27 [ 3d 9c ]
+NITRO7 is all-In [880]
+martin23 folds
+Marclecouteau calls [5,000]
+Mercutio_1978 folds
+PTITBAR318 calls [5,000]
+Blondin calls [5,000]
+pax42 folds
+Sylvainb27 checks
+** Dealing Flop ** [ Jd, Tc, 9d ]
+Sylvainb27 is all-In [10,425]
+Marclecouteau folds
+PTITBAR318 calls [10,425]
+Blondin raises [20,850]
+PTITBAR318 is all-In [114,440]
+Blondin is all-In [39,706]
+** Dealing Turn ** [ 6c ]
+** Dealing River ** [ 5c ]
+Blondin shows [ Qd, 8d ]a straight, Eight to Queen.
+Sylvainb27 shows [ 3d, 9c ]a pair of Nines.
+NITRO7 shows [ Th, Ad ]a pair of Tens.
+PTITBAR318 shows [ 8c, 7c ]a flush, Ten high.
+PTITBAR318 wins 64,309 chips from the side pot 3 with a flush, Ten high.
+PTITBAR318 wins 100,262 chips from the side pot 2 with a flush, Ten high.
+PTITBAR318 wins 49,375 chips from the side pot 1 with a flush, Ten high.
+PTITBAR318 wins 9,280 chips from the main pot with a flush, Ten high.
+Player NITRO7 finished in 8 place and received €4.03 EUR
+Player Sylvainb27 finished in 7 place and received €4.32 EUR
+Player Blondin finished in 6 place and received €4.60 EUR

@@ -1,0 +1,32 @@
+*** COMMUNITY CARDS ***
+Qs8s3s7s4s
+*** SEAT DRAW ***
+SB: Unknown
+BB: Unknown
+UTG1: Unknown
+UTG2: Fish
+LJ: Unknown
+HJ: Hero c/KsKc
+CO: Unknown
+BU: Reg 0 info s/2000
+*** PREFLOP ***
+SB: post SB 5
+BB: post BB 5
+UTG1: fold
+UTG2: call 5
+LJ: fold
+HJ: raise 25
+CO: fold
+BU: raise 90
+SB: fold
+BB: fold
+UTG2: fold
+HJ: raise 325
+BU: call 325
+*** FLOP ***
+HJ: bet 120
+BU: call 120
+*** TURN ***
+HJ: check
+BU: check
+*** RIVER ***

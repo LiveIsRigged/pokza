@@ -1,0 +1,55 @@
+PokerStars Hand #156605842579: Tournament #1618015625, $2.00+$2.00+$0.40 USD Hold'em No Limit - Level XVIII (300/600) - 2016/07/29 23:25:05 MSK [2016/07/29 16:25:05 ET]
+Table '1618015625 40' 9-max Seat #7 is the button
+Seat 1: mousson (22844 in chips) 
+Seat 2: Kr1v4NM (27895 in chips) 
+Seat 3: zoranllll (7005 in chips) 
+Seat 4: nunus7272 (18222 in chips) 
+Seat 5: T44paris (25318 in chips) 
+Seat 6: Hero (8240 in chips) 
+Seat 7: lucasco (8185 in chips) 
+Seat 8: bernardo5 (17912 in chips) 
+Seat 9: andrettt (50289 in chips) 
+mousson: posts the ante 90
+Kr1v4NM: posts the ante 90
+zoranllll: posts the ante 90
+nunus7272: posts the ante 90
+T44paris: posts the ante 90
+Hero: posts the ante 90
+lucasco: posts the ante 90
+bernardo5: posts the ante 90
+andrettt: posts the ante 90
+bernardo5: posts small blind 300
+andrettt: posts big blind 600
+*** HOLE CARDS ***
+Dealt to Hero [Jd Ac]
+mousson: raises 600 to 1200
+Kr1v4NM: folds 
+zoranllll: folds 
+nunus7272: folds 
+T44paris: folds 
+Hero: raises 6950 to 8150 and is all-in
+lucasco: folds 
+bernardo5: folds 
+andrettt: folds 
+mousson: calls 6950
+*** FLOP *** [7h 2h 5s]
+*** TURN *** [7h 2h 5s] [5d]
+*** RIVER *** [7h 2h 5s 5d] [4d]
+*** SHOW DOWN ***
+mousson: shows [Qd Ah] (a pair of Fives)
+Hero: shows [Jd Ac] (a pair of Fives - lower kicker)
+mousson collected 18010 from pot
+mousson wins $1 for eliminating Hero and their own bounty increases by $1 to $6
+Hero finished the tournament in 5028th place
+*** SUMMARY ***
+Total pot 18010 | Rake 0 
+Board [7h 2h 5s 5d 4d]
+Seat 1: mousson showed [Qd Ah] and won (18010) with a pair of Fives
+Seat 2: Kr1v4NM folded before Flop (didn't bet)
+Seat 3: zoranllll folded before Flop (didn't bet)
+Seat 4: nunus7272 folded before Flop (didn't bet)
+Seat 5: T44paris folded before Flop (didn't bet)
+Seat 6: Hero showed [Jd Ac] and lost with a pair of Fives
+Seat 7: lucasco (button) folded before Flop (didn't bet)
+Seat 8: bernardo5 (small blind) folded before Flop
+Seat 9: andrettt (big blind) folded before Flop

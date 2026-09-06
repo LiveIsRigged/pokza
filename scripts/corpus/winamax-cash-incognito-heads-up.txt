@@ -1,0 +1,29 @@
+Winamax Poker - CashGame - HandId: #21853741-783-1766564396 - Holdem no limit (1€/2€) - 2025/12/24 08:19:56 UTC
+Table: 'Zwolle 05' 3-max (real money) Seat #3 is the button
+Seat 1: Incognito 1 (382.46€)
+Seat 3: Grand Cerf (274.57€)
+Player Info: Seat1: P1-3b7c04d19af628e05c41d7ba98e3f26a
+*** ANTE/BLINDS ***
+Grand Cerf posts small blind 1€
+Incognito 1 posts big blind 2€
+Dealt to Grand Cerf [5s Kd]
+*** PRE-FLOP ***
+Grand Cerf raises 3€ to 5€
+Incognito 1 calls 3€
+*** FLOP *** [Ah Qc Tc]
+Incognito 1 checks
+Grand Cerf bets 3.30€
+Incognito 1 calls 3.30€
+*** TURN *** [Ah Qc Tc][6h]
+Incognito 1 checks
+Grand Cerf checks
+*** RIVER *** [Ah Qc Tc 6h][8c]
+Incognito 1 checks
+Grand Cerf checks
+*** SHOW DOWN ***
+Grand Cerf shows [5s Kd] (High card : Ace)
+Incognito 1 shows [2d Ad] (One pair : Aces)
+Incognito 1 collected 15.65€ from pot
+*** SUMMARY ***
+Total pot 15.65€ | Rake 0.95€
+Board: [Ah Qc Tc 6h 8c]

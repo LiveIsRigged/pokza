@@ -18,6 +18,7 @@ import { shareOrCopy, POKZA_WEB_ORIGIN } from '../../utils/share';
 import { formatContextLine } from '../../utils/denomination';
 import { formatRelativeDate } from '../../utils/relativeDate';
 import { wasEdited } from '../../utils/postEdited';
+import { lieuEtProvenance } from '../../utils/provenance';
 import { getOrCreateShareToken } from '../../data/shares';
 import { etapesCorrigibles } from '../../creator/rehydrate';
 import type { Phase } from '../../creator/types';
@@ -410,11 +411,18 @@ function PostCardInner({
               {/* « modifié » se glisse dans la ligne qui existe déjà : aucune hauteur ajoutée à une
                   carte qui en manque, et la mention reste plus discrète que « Julien a aimé cette
                   main » (qui, elle, occupe sa propre ligne). Collée au temps, qu'elle qualifie —
-                  le lieu ne se modifie pas moins que le reste, mais il ne se date pas. */}
+                  le lieu ne se modifie pas moins que le reste, mais il ne se date pas.
+                  « (importée) » suit la même règle et se colle au LIEU, qu'elle qualifie à son
+                  tour : la salle cesse d'être un endroit pour devenir une source (cf.
+                  `lieuEtProvenance`, qui gère aussi le cas où aucune salle n'est nommable).
+                  ⚠️ Cette ligne n'a pas de `numberOfLines` : elle passe sur deux hauteurs plutôt
+                  que de tronquer. Mesuré : 263 px utiles sur un iPhone SE, soit ~41 caractères en
+                  12 px — `il y a 3 semaines · modifié · Winamax (importée)` en fait 47 et déborde.
+                  Il faut une main à la fois vieille, modifiée ET importée pour y arriver. */}
               <Text style={[typography.dateLocation, styles.muted]}>
                 {formatRelativeDate(post.createdAt)}
                 {wasEdited(post) ? ' · modifié' : ''}
-                {post.location ? ` · ${post.location}` : ''}
+                {lieuEtProvenance(post.location, post.hand.imported)}
               </Text>
             </View>
           </Pressable>

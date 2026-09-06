@@ -1,0 +1,24 @@
+GAME #8712814185 Version:23.1.1.1 Uncalled:Y Texas Hold'em NL €5/€10 2025-12-23 23:53:51/GMT
+Table Info: Size: 5, Blinds: 5/10
+Table SHORT €5/€10 I, 1060378723
+Seat 1: villas27QJ (€360.25 in chips)
+Seat 5: abeille53 (€1,330.78 in chips)  DEALER
+Seat 7: Ludovic377 (€628.25 in chips)
+Seat 9: JoueurBet (€276.50 in chips)
+Ludovic377: Post SB €5.00
+JoueurBet: Post BB €10.00
+*** HOLE CARDS ***
+Dealt to JoueurBet [C8 C9]
+villas27QJ: Raise (NF) €20.00
+abeille53: Fold
+Ludovic377: Fold
+JoueurBet: Call €10.00
+*** FLOP *** [C5 C2 H9]
+JoueurBet: Check
+villas27QJ: Bet €45.00
+JoueurBet: Raise (NF) €120.00
+villas27QJ: Fold
+*** SUMMARY ***
+Total pot €132.50 Rake €2.50
+JoueurBet: Mucks [C8 C9]
+JoueurBet: wins €132.50

@@ -1,0 +1,47 @@
+Poker Hand #RC837124540: Hold'em No Limit ($0.1/$0.25) - 2022/05/05 17:38:47
+Table 'RushAndCash689800' 6-max Seat #1 is the button
+Seat 1: bf27d3a ($30.87 in chips)
+Seat 2: 10590328 ($22.84 in chips)
+Seat 3: eae5fe13 ($26.06 in chips)
+Seat 4: 5320473f ($20.76 in chips)
+Seat 5: 3d6f5359 ($25 in chips)
+Seat 6: Hero ($49.38 in chips)
+10590328: posts small blind $0.1
+eae5fe13: posts big blind $0.25
+*** HOLE CARDS ***
+Dealt to bf27d3a
+Dealt to 10590328
+Dealt to eae5fe13
+Dealt to 5320473f
+Dealt to 3d6f5359
+Dealt to Hero [Jh Jc]
+5320473f: raises $0.35 to $0.6
+3d6f5359: folds
+Hero: raises $1.37 to $1.97
+bf27d3a: folds
+10590328: folds
+eae5fe13: folds
+5320473f: raises $4.13 to $6.1
+Hero: calls $4.13
+*** FLOP *** [Qh 8s 2c]
+5320473f: bets $6.28
+Hero: raises $37 to $43.28 and is all-in
+5320473f: calls $8.38 and is all-in
+Uncalled bet ($28.62) returned to Hero
+Hero: shows [Jh Jc] (Pair of Jacks)
+5320473f: shows [Ah Kc] (Ace-High)
+Hero: Chooses to EV Cashout
+*** TURN *** [Qh 8s 2c] [Jd]
+Hero: Pays Cashout Risk ($10.09)
+*** RIVER *** [Qh 8s 2c Jd] [9s]
+*** SHOWDOWN ***
+Hero collected $40.75 from pot
+*** SUMMARY ***
+Total pot $41.87 | Rake $0.75 | Jackpot $0.37 | Bingo $0
+Board [Qh 8s 2c Jd 9s]
+Seat 1: bf27d3a (button) folded before Flop (didn't bet)
+Seat 2: 10590328 (small blind) folded before Flop
+Seat 3: eae5fe13 (big blind) folded before Flop
+Seat 4: 5320473f showed [Ah Kc] and lost with Ace-High
+Seat 5: 3d6f5359 folded before Flop (didn't bet)
+Seat 6: Hero showed [Jh Jc] and won ($40.75) with Three Jacks, Cashout Risk ($10.09)

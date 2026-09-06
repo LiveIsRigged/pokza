@@ -1,0 +1,38 @@
+*** COMMUNITY CARDS ***
+8h7h6dKc3h
+*** SEAT DRAW ***
+SB: Hero c/AhJd s/2000
+BB: Unknown
+UTG1: Unknown
+UTG2: Unknown
+LJ: Unknown
+HJ: Unknown
+CO: Unknown
+BU: Vilain s/2000
+*** PREFLOP ***
+SB: post SB 2
+BB: post BB 5
+UTG1: call 5
+UTG2: fold
+LJ: call 5
+HJ: fold
+CO: fold
+BU: raise 30
+SB: raise 130
+BB: fold
+UTG1: fold
+LJ: fold
+BU: call 130
+*** FLOP ***
+SB: check
+BU: bet 80
+SB: call 80
+*** TURN ***
+SB: bet 150
+BU: call 150
+*** RIVER ***
+SB: bet 420
+BU: fold
+*** SHOW DOWN ***
+SB: shows AhJd
+SB: won 1155

@@ -1,0 +1,31 @@
+Winamax Poker - CashGame - HandId: #21886411-2348-1767371978 - Holdem no limit (5€/10€) - 2026/01/02 16:39:38 UTC
+Table: 'SHORT TRACK 50 € 04' 5-max (real money) Seat #2 is the button
+Seat 1: Vaskomane (159€)
+Seat 2: onyvatous (140.16€)
+Seat 3: bonjelaifait (50€)
+Seat 4: Grande pile (436.81€)
+Seat 5: BriseGlacier (487.70€)
+*** ANTE/BLINDS ***
+bonjelaifait posts small blind 5€
+Grande pile posts big blind 10€
+Dealt to Grande pile [Ah As]
+*** PRE-FLOP ***
+BriseGlacier folds
+Vaskomane raises 149€ to 159€ and is all-in
+onyvatous folds
+bonjelaifait calls 45€ and is all-in
+Grande pile raises 149€ to 308€
+*** FLOP *** [6c 2d Qh]
+*** TURN *** [6c 2d Qh][4s]
+*** RIVER *** [6c 2d Qh 4s][4c]
+*** SHOW DOWN ***
+Vaskomane shows [Ks 9d] (One pair : 4)
+bonjelaifait shows [Ad Kd] (One pair : 4)
+Grande pile shows [Ah As] (Two pairs : Aces and 4)
+Grande pile collected 514€ from pot
+*** SUMMARY ***
+Total pot 514€ | Rake 3€
+Board: [6c 2d Qh 4s 4c]
+Seat 1: Vaskomane showed [Ks 9d] and lost with One pair : 4
+Seat 3: bonjelaifait (small blind) showed [Ad Kd] and lost with One pair : 4
+Seat 4: Grande pile (big blind) showed [Ah As] and won 514€ with Two pairs : Aces and 4

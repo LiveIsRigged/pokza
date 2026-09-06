@@ -115,6 +115,27 @@ export interface Hand {
    * (« À Hero de jouer »), et il n'y en a jamais aucun ou plusieurs — l'assistant ne propose
    * d'arrêter que lorsqu'un siège précis est en train de parler. */
   stoppedAtSeatId?: string;
+  /** Main née d'une hand history COLLÉE, et non saisie à la main (cf. `src/import`). Sert un seul
+   * affichage : la mention de provenance de la ligne date/lieu — `Winamax (importée)` quand la
+   * salle est nommable, `importée` seule quand elle ne l'est pas (Betclic n'écrit son nom nulle
+   * part, un OUTIL de suivi ne donne son nom à rien). Décidé par Victor le
+   * 04/09/2026, cf. `lieuEtProvenance`.
+   *
+   * ⚠️ POURQUOI UNE CLÉ DU JSONB ET NON UNE COLONNE, contrairement à `tournamentName` : ce nom-là
+   * devait pouvoir se CORRIGER après publication, donc vivre dans une colonne (`updatePost` ne
+   * touche jamais à `hand`). Celle-ci est l'inverse — un fait sur l'ORIGINE de la main, que rien
+   * ne doit pouvoir modifier. Le jsonb est donc le bon endroit, et il n'y a aucune migration.
+   *
+   * ABSENTE vaut « saisie à la main », et c'est ce que valent toutes les mains publiées avant le
+   * 04/09/2026. Même mécanique que `revealShowdown`.
+   *
+   * ⚠️ ELLE DOIT SURVIVRE À UNE CORRECTION. Corriger une main la REPUBLIE en rebâtissant `hand`
+   * depuis l'état du créateur : sans être portée par le seed puis reposée par `construitMain`,
+   * une main importée puis corrigée perdrait sa provenance en silence. Le lieu, lui, peut très
+   * bien être tapé APRÈS coup sur une main dont la salle n'était pas nommable — la mention s'y
+   * accroche alors d'elle-même, puisqu'elle se compose à l'affichage.
+   */
+  imported?: boolean;
   /** Contrôle QUAND les mains adverses saisies à l'abattage deviennent visibles dans le replayer.
    * Activé : cachées pendant tout le coup, révélées seulement à l'abattage (gagnant ou perdant).
    * Désactivé : visibles dès le début du replay, comme Hero. Sans effet sur un adversaire dont les

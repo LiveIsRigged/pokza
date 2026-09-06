@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../../components/ui/Pressable';
+import { CopyIcon } from '../../components/ui/icons';
 import { CurrencyPicker } from '../../components/ui/CurrencyPicker';
 import { LocationInput } from '../../components/ui/LocationInput';
 import { devise } from '../../utils/currency';
@@ -139,6 +140,13 @@ interface ContextStepProps {
    * enregistrées à cinq inconnus — et ça se relirait très bien.
    */
   enCorrection?: boolean;
+  /**
+   * Ouvre l'écran d'import d'une hand history. Absent = la ligne n'est pas offerte.
+   *
+   * L'étape DEMANDE, elle n'applique pas : poser une main lue remplace l'état entier du créateur
+   * et sa pile d'historique, ce que seul `LiveHandCreator` peut faire (cf. `appliquerImport`).
+   */
+  onImporter?: () => void;
 }
 
 export function ContextStep({
@@ -152,6 +160,7 @@ export function ContextStep({
   footerNote,
   nextBloque,
   enCorrection,
+  onImporter,
 }: ContextStepProps) {
   const availablePositions = POSITION_SETS[value.numPlayers] ?? POSITION_SETS[6];
   const heroValid = availablePositions.includes(value.heroPosition);
@@ -470,6 +479,48 @@ export function ContextStep({
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
+      /*
+        LA PORTE D'ENTRÉE DE L'IMPORT — UNE ICÔNE EN FACE DU TITRE, et rien de plus.
+        ═════════════════════════════════════════════════════════════════════════
+        Déplacée là par Victor le 06/09/2026, et la raison tient en une phrase : « beaucoup de
+        joueurs ne l'utiliseront jamais — les joueurs de live ». Une bifurcation que la MINORITÉ
+        emprunte ne doit pas coûter une ligne à la majorité.
+
+        ⚠️ ET ELLE NE COÛTE PLUS RIEN, littéralement : posée sur la rangée du titre, qui existe
+        déjà. La version d'avant (texte orange + filet, en tête du contenu défilant) valait une
+        soixantaine de pixels sur une colonne de 1172 — pas grand-chose en proportion, mais c'était
+        la PREMIÈRE chose que lisait quelqu'un venu remplir un formulaire, ce qui est exactement
+        l'inverse de la hiérarchie voulue. Le pied avait déjà été écarté pour la même raison, en
+        pire (~70 px retirés à la lucarne de TOUTES les étapes, en permanence).
+
+        Elle reste EN HAUT, et c'est le point qui n'a pas changé : celui qui arrive avec son texte
+        cherche en haut, et ne descendra pas 1172 px pour trouver la porte.
+
+        ⚠️ AVEC LE MOT, L'ICÔNE N'A PLUS À PORTER TOUT LE SENS — et c'est ce qui a fait préférer
+        « icône + Import » à l'icône seule (Victor, 06/09) : une icône muette oblige à taper pour
+        savoir ce qu'elle fait. Le mot rend aussi le CHOIX de l'icône sans enjeu.
+
+        ⚠️ ORANGE MAIS FIN (Victor) : la discrétion vient de la TAILLE et de la POSITION, pas de
+        l'effacement. L'orange est le seul repère « ceci se tape » de l'app — le gris l'aurait rendu
+        invisible à celui qui, justement, a une hand history à coller. La graisse normale le
+        distingue du « Étape 1/5 » juste au-dessus, qui est en 600.
+      */
+      actionTitre={
+        onImporter ? (
+          <Pressable
+            style={styles.importer}
+            onPress={onImporter}
+            // 12 px autour d'une cible de 20 de haut → 44, le minimum tapable d'iOS, SANS ajouter
+            // un pixel de hauteur à la rangée (`hitSlop` ne participe pas à la mise en page).
+            // C'est ce qui rend « discret » compatible avec « tapable ».
+            hitSlop={12}
+            accessibilityRole="button"
+          >
+            <CopyIcon size={18} color={colors.action} />
+            <Text style={styles.importerTexte}>Import</Text>
+          </Pressable>
+        ) : null
+      }
     >
       <View>
         <Text style={styles.label}>Type de partie</Text>
@@ -1023,6 +1074,20 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  // Un filet en dessous : la ligne n'appartient pas au formulaire, elle en sort. Même geste que
+  // la séparation du pied, à ceci près qu'ici elle ne coûte rien à la lucarne.
+  importer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  importerTexte: {
+    fontSize: 12,
+    // ⚠️ PAS DE `fontWeight` : la graisse normale, demandée par Victor. Le « Étape 1/5 » de la
+    // rangée du dessus est en 600 — les deux petits repères du coin haut-droit se distinguent donc
+    // par la graisse ET par la couleur, sans que ni l'un ni l'autre ne pèse.
+    color: colors.action,
   },
   row: {
     flexDirection: 'row',

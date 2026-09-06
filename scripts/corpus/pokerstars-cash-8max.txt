@@ -1,0 +1,44 @@
+PokerStars Hand #156632473469:  Hold'em No Limit ($0.05/$0.10 USD) - 2016/07/30 10:40:31 AT [2016/07/30 9:40:31 ET]
+Table 'Eltigen' 9-max Seat #8 is the button
+Seat 1: bolek27 ($10 in chips)
+Seat 2: zoli494 ($11 in chips)
+Seat 3: Hero ($10.10 in chips)
+Seat 4: 7bonjovix ($10.42 in chips)
+Seat 6: poulop ($10.15 in chips)
+Seat 7: crapotinho ($5.55 in chips)
+Seat 8: NavetPl ($15.46 in chips)
+Seat 9: sorcierebelE ($10.30 in chips)
+sorcierebelE: posts small blind $0.05
+bolek27: posts big blind $0.10
+*** HOLE CARDS ***
+Dealt to Hero [Jh Jc]
+zoli494: folds
+Hero: raises $0.20 to $0.30
+7bonjovix: folds
+poulop: raises $0.60 to $0.90
+crapotinho: folds
+NavetPl: folds
+sorcierebelE: folds
+bolek27: folds
+Hero: calls $0.60
+*** FLOP *** [7h 8d 5c]
+Hero: checks
+poulop: bets $1.30
+Hero: calls $1.30
+*** TURN *** [7h 8d 5c] [8c]
+Hero: checks
+poulop: bets $2.90
+Hero: folds
+Uncalled bet ($2.90) returned to poulop
+poulop collected $4.35 from pot
+*** SUMMARY ***
+Total pot $4.55 | Rake $0.20
+Board [7h 8d 5c 8c]
+Seat 1: bolek27 (big blind) folded before Flop
+Seat 2: zoli494 folded before Flop (didn't bet)
+Seat 3: Hero folded on the Turn
+Seat 4: 7bonjovix folded before Flop (didn't bet)
+Seat 6: poulop collected ($4.35)
+Seat 7: crapotinho folded before Flop (didn't bet)
+Seat 8: NavetPl (button) folded before Flop (didn't bet)
+Seat 9: sorcierebelE (small blind) folded before Flop

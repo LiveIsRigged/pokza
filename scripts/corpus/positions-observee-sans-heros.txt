@@ -1,0 +1,37 @@
+*** COMMUNITY CARDS ***
+6c5c4c2cAc
+*** SEAT DRAW ***
+: Unknown
+SB: Unknown
+BB: Unknown c/Tc9c
+UTG: Unknown c/QcQd
+LJ: Unknown
+HJ: Unknown
+CO: Unknown c/7dXx
+BU: Unknown c/4d3d
+*** PREFLOP ***
+SB: post SB 2
+BB: post BB 5
+UTG: raise 20
+LJ: fold
+HJ: fold
+CO: fold
+BU: fold
+SB: fold
+BB: call 20
+*** FLOP ***
+BB: check
+UTG: bet 11
+BB: raise 33
+UTG: call 33
+*** TURN ***
+BB: check
+UTG: check
+*** RIVER ***
+BB: check
+UTG: bet 250
+BB: call 250
+*** SHOW DOWN ***
+UTG: shows QcQd
+BB: mucked
+UTG: won 608

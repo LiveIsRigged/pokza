@@ -1,0 +1,46 @@
+Winamax Poker - Tournament "#5 - W SERIES - MILLION EVENT - KO - DAY 1" buyIn: 45€ + 5€ level: 12 - HandId: #4167240333031112738-190-1756674559 - Holdem no limit (160/700/1400) - 2025/08/31 21:09:19 UTC
+Table: '#5 - W SERIES - MILLION EVENT - KO - DAY 1(970261249)#0033' 6-max (real money) Seat #1 is the button
+Seat 1: KM7433BQLO (80213, 61.87€ bounty)
+Seat 2: Roi  faucon (176525, 84.37€ bounty)
+Seat 3: Sacha Reine (24531, 22.50€ bounty)
+Seat 4: bravitos (151325, 56.25€ bounty)
+Seat 5: Jeune croco (36440, 22.50€ bounty)
+Seat 6: AmiralPolska (195455, 98.43€ bounty)
+*** ANTE/BLINDS ***
+Roi  faucon posts ante 160
+Sacha Reine posts ante 160
+KM7433BQLO posts ante 160
+bravitos posts ante 160
+Jeune croco posts ante 160
+AmiralPolska posts ante 160
+Roi  faucon posts small blind 700
+Sacha Reine posts big blind 1400
+Dealt to Sacha Reine [3s 6s]
+*** PRE-FLOP ***
+bravitos folds
+Jeune croco raises 1400 to 2800
+AmiralPolska folds
+KM7433BQLO calls 2800
+Roi  faucon folds
+Sacha Reine calls 1400
+*** FLOP *** [Ad Ac Qh]
+Sacha Reine checks
+Jeune croco bets 2800
+KM7433BQLO calls 2800
+Sacha Reine folds
+*** TURN *** [Ad Ac Qh][Qc]
+Jeune croco checks
+KM7433BQLO checks
+*** RIVER *** [Ad Ac Qh Qc][7d]
+Jeune croco checks
+KM7433BQLO checks
+*** SHOW DOWN ***
+KM7433BQLO shows [Kh Ts] (Two pairs : Aces and Queens)
+Jeune croco shows [9h Kc] (Two pairs : Aces and Queens)
+Jeune croco collected 7830 from pot
+KM7433BQLO collected 7830 from pot
+*** SUMMARY ***
+Total pot 15660 | No rake
+Board: [Ad Ac Qh Qc 7d]
+Seat 1: KM7433BQLO (button) showed [Kh Ts] and won 7830 with Two pairs : Aces and Queens
+Seat 5: Jeune croco showed [9h Kc] and won 7830 with Two pairs : Aces and Queens

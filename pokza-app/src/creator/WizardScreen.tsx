@@ -71,6 +71,20 @@ interface WizardScreenProps {
    * ce `ScrollView` défilerait avec le contenu et serait rogné (cf. `EditPostScreen.tsx:310`), et
    * une table qui disparaît quand on descend chercher une carte ne sert à rien.
    */
+  /**
+   * UNE ACTION POSÉE EN FACE DU TITRE, à droite — donc à hauteur d'une ligne qui existe déjà, et
+   * **sans coûter un pixel de vertical**. C'est ce qui la distingue d'une ligne dans le contenu :
+   * la lucarne a `flex: 1`, et tout ce qu'on ajoute au-dessus lui est retiré.
+   *
+   * Réservée aux sorties qu'une MINORITÉ empruntera (Victor, 06/09/2026, à propos de l'import :
+   * « beaucoup de joueurs ne l'utiliseront jamais — les joueurs de live »). Une icône seule est
+   * volontairement discrète : elle ne dispute pas la lecture au formulaire, mais reste au même
+   * endroit sur toutes les étapes qui en offrent une.
+   *
+   * Un `ReactNode` et non une action typée, comme `zoneFixe`, `rangeeFixe` et `socle` : l'écran
+   * PLACE, l'étape DÉCIDE. C'est déjà la ligne de partage de ce composant.
+   */
+  actionTitre?: React.ReactNode;
   zoneFixe?: React.ReactNode;
   /**
    * La rangée qui suit immédiatement la zone fixe, elle aussi immobile : le libellé de ce qu'on est
@@ -99,6 +113,7 @@ export function WizardScreen({
   scrollRef,
   footerNote,
   footerLink,
+  actionTitre,
   zoneFixe,
   rangeeFixe,
   socle,
@@ -189,7 +204,12 @@ export function WizardScreen({
           </Text>
         ) : null}
       </View>
-      <Text style={[typography.postTitle, styles.title]}>{title}</Text>
+      {/* Le titre prend toute la place restante (`flex: 1`) : un titre long passe donc à la ligne
+          au lieu de pousser l'action hors de l'écran. */}
+      <View style={styles.titleRow}>
+        <Text style={[typography.postTitle, styles.title]}>{title}</Text>
+        {actionTitre}
+      </View>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       {/* La table déborde des marges de l'écran : elle va d'un bord à l'autre, comme dans le feed. */}
       {zoneFixe ? <View style={styles.zoneFixe}>{zoneFixe}</View> : null}
@@ -291,9 +311,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    // La marge d'avant, déplacée du titre à la rangée : rien ne change pour les étapes sans action.
+    marginBottom: 4,
+  },
   title: {
     color: colors.textPrimary,
-    marginBottom: 4,
+    flex: 1,
   },
   subtitle: {
     fontSize: 13,

@@ -1,0 +1,43 @@
+*** COMMUNITY CARDS ***
+KcJc4s3c8d
+*** SEAT DRAW ***
+SB: Unknown
+BB: Unknown
+UTG1: Zorg h/QhQd s/1700
+UTG2: Unknown
+UTG3: Hero c/QcQs
+MP: Unknown
+LJ: Unknown
+HJ: Unknown
+CO: Unknown
+BU: Unknown
+*** PREFLOP ***
+SB: post SB 2
+BB: post BB 4
+UTG1: post TB 8
+UTG2: fold
+UTG3: raise 24
+MP: fold
+LJ: fold
+HJ: fold
+CO: fold
+BU: fold
+SB: fold
+BB: call 24
+UTG1: raise 130
+UTG3: call 130
+BB: fold
+*** FLOP ***
+UTG1: bet 80
+UTG3: call 80
+*** TURN ***
+UTG1: bet 200
+UTG3: call 200
+*** RIVER ***
+UTG1: check
+UTG3: check
+*** SHOW DOWN ***
+UTG1: shows QhQd
+UTG3: shows QcQs
+UTG1: won 423
+UTG3: won 423

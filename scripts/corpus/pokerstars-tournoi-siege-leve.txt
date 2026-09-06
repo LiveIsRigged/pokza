@@ -1,0 +1,60 @@
+PokerStars Game #27738502010: Tournament #160417133, $0.25+$0.00 Hold'em No Limit - Level XV (250/500) - 2009/05/02 13:32:38 ET
+Table '160417133 3' 9-max Seat #8 is the button
+Seat 1: SAS 7Ans (9182 in chips) 
+Seat 2: 427tireur (25711 in chips) is sitting out
+Seat 3: censed2bRiche (21475 in chips) 
+Seat 4: OuI503 (60940 in chips) 
+Seat 5: Fernando X (18044 in chips) 
+Seat 6: ja93cfrais (8338 in chips) 
+Seat 7: bavarin007 (8353 in chips) 
+Seat 8: BelRoiFelin (4404 in chips) 
+Seat 9: Grimbal (23553 in chips) 
+SAS 7Ans: posts the ante 60
+427tireur: posts the ante 60
+censed2bRiche: posts the ante 60
+OuI503: posts the ante 60
+Fernando X: posts the ante 60
+ja93cfrais: posts the ante 60
+bavarin007: posts the ante 60
+BelRoiFelin: posts the ante 60
+Grimbal: posts the ante 60
+Grimbal: posts small blind 250
+SAS 7Ans: posts big blind 500
+*** HOLE CARDS ***
+Dealt to OuI503 [Qd Qc]
+427tireur: folds 
+censed2bRiche: folds 
+OuI503: raises 2000 to 2500
+Fernando X: raises 15484 to 17984 and is all-in
+ja93cfrais: folds 
+bavarin007: calls 8293 and is all-in
+BelRoiFelin: folds 
+Grimbal: calls 17734
+SAS 7Ans: folds 
+OuI503: raises 15484 to 33468
+Grimbal: calls 5509 and is all-in
+Uncalled bet (9975) returned to OuI503
+*** FLOP *** [2d 2c 3c]
+*** TURN *** [2d 2c 3c] [8h]
+*** RIVER *** [2d 2c 3c 8h] [4d]
+*** SHOW DOWN ***
+Grimbal: shows [9s 9h] (two pair, Nines and Deuces)
+OuI503: shows [Qd Qc] (two pair, Queens and Deuces)
+427tireur has returned
+OuI503 collected 11018 from side pot-2 
+Fernando X: shows [5d 5h] (two pair, Fives and Deuces)
+OuI503 collected 29073 from side pot-1 
+bavarin007: shows [Kh As] (a pair of Deuces)
+OuI503 collected 34212 from main pot
+*** SUMMARY ***
+Total pot 74303 Main pot 34212. Side pot-1 29073. Side pot-2 11018. | Rake 0 
+Board [2d 2c 3c 8h 4d]
+Seat 1: SAS 7Ans (big blind) folded before Flop
+Seat 2: 427tireur folded before Flop (didn't bet)
+Seat 3: censed2bRiche folded before Flop (didn't bet)
+Seat 4: OuI503 showed [Qd Qc] and won (74303) with two pair, Queens and Deuces
+Seat 5: Fernando X showed [5d 5h] and lost with two pair, Fives and Deuces
+Seat 6: ja93cfrais folded before Flop (didn't bet)
+Seat 7: bavarin007 showed [Kh As] and lost with a pair of Deuces
+Seat 8: BelRoiFelin (button) folded before Flop (didn't bet)
+Seat 9: Grimbal (small blind) showed [9s 9h] and lost with two pair, Nines and Deuces
