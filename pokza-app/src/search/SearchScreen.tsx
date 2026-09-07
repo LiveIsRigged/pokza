@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
@@ -9,7 +9,6 @@ import { fetchFriends } from '../data/friends';
 import { fetchGroupMembers } from '../data/groups';
 import { Popover } from '../components/ui/Popover';
 import { autoFocusUtile } from '../web/clavierVirtuel';
-import { amorceEnCours, relacherAmorce } from '../web/amorceClavier';
 
 interface SearchScreenProps {
   onBack: () => void;
@@ -108,25 +107,8 @@ export function SearchScreen({
   const showFriendsList = inviteMode && query.trim().length === 0;
   const displayed = (showFriendsList ? invitableFriends ?? [] : results).filter((p) => !invitedIds.has(p.id));
 
-  /**
-   * LE RELAIS DE L'AMORCE. Le clavier a été ouvert pendant le geste sur la loupe, sur un champ
-   * minuscule (cf. `amorceClavier.ts`) ; le vrai champ le reprend ici, et iOS le garde ouvert
-   * parce que le focus passe d'un champ à l'autre sans trou.
-   *
-   * ⚠️ SEULEMENT SI UNE AMORCE VIENT D'AVOIR LIEU. Sans elle, focaliser sur pointeur grossier
-   * rendrait la bande blanche : le champ prendrait le focus, iOS refuserait le clavier, et
-   * `AjusteurHauteur` réserverait sa place pour rien.
-   */
-  const champRef = useRef<TextInput>(null);
-  useEffect(() => {
-    if (!visible || !amorceEnCours()) return;
-    champRef.current?.focus();
-    relacherAmorce();
-  }, [visible]);
-
   const renderInput = (style: any) => (
     <TextInput
-      ref={champRef}
       autoComplete="off"
       style={style}
       value={query}
