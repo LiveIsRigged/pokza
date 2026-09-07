@@ -14,8 +14,6 @@ import { GABARIT_CONTEXTE, hauteurTableContexte } from '../../engine/layout';
 import { potDeReglage, siegesDeReglage } from '../tableReglage';
 import { useClavierOuvert } from '../clavier';
 import { WizardScreen } from '../WizardScreen';
-// ⚠️ TEMPORAIRE — à retirer avec `SondeAutoFill.tsx`.
-import { SondeAutoFill } from '../SondeAutoFill';
 import { POSITION_SETS } from '../positions';
 import { straddleAwarePositionLabel } from '../../engine/handEngine';
 import {
@@ -525,11 +523,6 @@ export function ContextStep({
       }
     >
       <View>
-        {/* ⚠️ TEMPORAIRE — sonde de diagnostic AutoFill, à retirer (cf. `SondeAutoFill.tsx`).
-            Posée ici parce que le contenu de l'étape 1 vit dans le ScrollView de `WizardScreen` :
-            l'écran d'import, lui, donne `flex: 1` à son champ et n'a aucun défilement. */}
-        <SondeAutoFill />
-
         <Text style={styles.label}>Type de partie</Text>
         {/* Le bomb pot tient sur la même ligne que Cash game / Tournoi : c'est une variation du type
             de partie, pas un réglage de plus. Format spécial et rare, il reste un interrupteur
