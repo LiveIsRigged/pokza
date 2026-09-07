@@ -70,6 +70,7 @@ import { AdminUserScreen } from './src/admin/AdminUserScreen';
 import { AdminAuditScreen } from './src/admin/AdminAuditScreen';
 import { clearDeepLinkFromUrl, readInitialDeepLink } from './src/navigation/deepLink';
 import { initAnalytics, resetAnalytics, trackEvent } from './src/analytics';
+import { amorcerClavier } from './src/web/amorceClavier';
 
 export default function App() {
   // `SafeAreaProvider` mesure les zones sûres (encoche / Dynamic Island / barre système) et les
@@ -1308,7 +1309,12 @@ function AppContent() {
         compact={headerCompact}
         onOpenMenu={() => setMenuOpen(true)}
         onCreate={() => openCreator()}
-        onSearch={() => setSearchOpen(true)}
+        onSearch={() => {
+          // ⚠️ AVANT `setSearchOpen`, ET SYNCHRONEMENT : iOS n'ouvre le clavier que si le focus
+          // part pendant le geste. Le champ de recherche, lui, n'existe pas encore.
+          amorcerClavier();
+          setSearchOpen(true);
+        }}
         onNotifications={() => setNotificationsOpen(true)}
         unreadCount={unreadNotificationCount}
       />
