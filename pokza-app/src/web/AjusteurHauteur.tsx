@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useClavierOuvert } from '../creator/clavier';
 import { hauteurAAppliquer, hauteurAnticipee, ECHELLE_MAX, RETRAIT_MINIMUM } from './hauteurVisible';
+import { clavierVirtuelPlausible } from './clavierVirtuel';
 
 /**
  * Pose `--hauteur-app` sur `<html>` pendant qu'un clavier virtuel est là, pour que l'app tienne
@@ -35,22 +36,6 @@ const DELAI_SECOURS_MS = 1000;
  */
 const DELAI_CONFIRMATION_MS = 400;
 
-/**
- * Cet appareil a-t-il un clavier VIRTUEL ? `(pointer: coarse)` interroge le pointeur PRINCIPAL :
- * un iPhone ou un iPad répond oui, un ordinateur non — y compris un portable tactile piloté à la
- * souris, qui n'ouvre pas de clavier virtuel quand on clique dans un champ.
- *
- * Faux en cas de doute : ne pas anticiper laisse au pire Safari faire glisser la page une fois
- * (l'ancien défaut, visible mais passager), là qu'anticiper à tort immobilise une bande de fond
- * pour toute la durée de la saisie.
- */
-function clavierVirtuelPlausible(): boolean {
-  try {
-    return window.matchMedia('(pointer: coarse)').matches;
-  } catch {
-    return false;
-  }
-}
 
 /** Dernière hauteur de clavier réellement mesurée sur CET appareil. */
 const CLE_CLAVIER = 'pokza-hauteur-clavier';

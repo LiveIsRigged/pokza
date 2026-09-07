@@ -8,6 +8,7 @@ import { searchProfiles, type ProfileSummary } from '../data/profiles';
 import { fetchFriends } from '../data/friends';
 import { fetchGroupMembers } from '../data/groups';
 import { Popover } from '../components/ui/Popover';
+import { autoFocusUtile } from '../web/clavierVirtuel';
 
 interface SearchScreenProps {
   onBack: () => void;
@@ -114,7 +115,7 @@ export function SearchScreen({
       onChangeText={setQuery}
       placeholder="Rechercher un utilisateur…"
       autoCapitalize="none"
-      autoFocus
+      autoFocus={autoFocusUtile()}
     />
   );
 

@@ -16,6 +16,7 @@ import { borders, colors, radius, spacing, tints } from '../../theme/theme';
 import { fetchTrendingGifs, searchGifs, type GifResult } from '../../data/gifs';
 import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
 import { LARGEUR_MAX } from '../ui/Colonne';
+import { autoFocusUtile } from '../../web/clavierVirtuel';
 
 interface GifPickerProps {
   visible: boolean;
@@ -80,7 +81,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
                 placeholder="Chercher un GIF…"
                 value={query}
                 onChangeText={handleQueryChange}
-                autoFocus
+                autoFocus={autoFocusUtile()}
               />
               <Pressable onPress={onClose} hitSlop={8}>
                 <Text style={styles.closeButton}>✕</Text>

@@ -4,6 +4,7 @@ import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing } from '../theme/theme';
 import { GROUP_NAME_MAX_LENGTH } from '../constants/limits';
 import { errorMessage } from '../utils/errorMessage';
+import { autoFocusUtile } from '../web/clavierVirtuel';
 
 interface NewGroupFormProps {
   /** Doit lever en cas d'échec : le message est alors affiché ici et la saisie est conservée. */
@@ -44,7 +45,7 @@ export function NewGroupForm({ onCreate, onCancel }: NewGroupFormProps) {
         value={name}
         onChangeText={(t) => setName(t.slice(0, GROUP_NAME_MAX_LENGTH))}
         maxLength={GROUP_NAME_MAX_LENGTH}
-        autoFocus
+        autoFocus={autoFocusUtile()}
       />
       <View style={styles.actions}>
         <Pressable style={styles.cancelButton} onPress={onCancel} hitSlop={hitSlopPairLeft}>

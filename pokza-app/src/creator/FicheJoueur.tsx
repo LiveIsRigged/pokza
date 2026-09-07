@@ -7,6 +7,7 @@ import { borders, colors, radius, spacing } from '../theme/theme';
 import type { GameType } from '../types/poker';
 import { formatChipInput } from '../utils/chipFormat';
 import { LARGEUR_MAX } from '../components/ui/Colonne';
+import { autoFocusUtile } from '../web/clavierVirtuel';
 
 interface FicheJoueurProps {
   visible: boolean;
@@ -97,7 +98,7 @@ export function FicheJoueur({
               maxLength={OPPONENT_NAME_MAX_LENGTH}
               value={nom}
               onChangeText={onNom}
-              autoFocus={!estHero && nom.length === 0}
+              autoFocus={autoFocusUtile() && !estHero && nom.length === 0}
             />
 
             <Text style={styles.label}>Tapis</Text>
