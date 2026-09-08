@@ -765,15 +765,6 @@ export function ContextStep({
           </>
         )}
 
-        <Text style={styles.label}>Stack effectif</Text>
-        <DecimalTextInput
-          style={styles.input}
-          placeholder="Stack"
-          value={value.effectiveStack}
-          gameType={value.gameType}
-          onChangeValue={(effectiveStack) => update({ effectiveStack })}
-        />
-
         <Text style={styles.label}>Nombre de joueurs</Text>
         {/* UNE SEULE LIGNE, EN LARGEURS ÉGALES (Victor, 02/09/2026).
             2 à 10 est un CONTINUUM, pas une liste. En pastilles à largeur libre, les neuf ne
@@ -883,6 +874,41 @@ export function ContextStep({
             </Pressable>
           </View>
         ) : null}
+        {/* LE DÉFAUT EST POSÉ SUR LA COLONNE QU'IL REMPLIT (Victor, 08/09/2026).
+            Ce champ s'appelait « Stack effectif » et vivait quatre blocs plus haut, entre les
+            blindes et le nombre de joueurs. Un testeur l'a signalé, et il avait deux torts :
+
+            1. LE NOM ÉTAIT DÉJÀ PRIS. Au poker, le stack effectif est le PLUS PETIT tapis encore en
+               jeu — ce qu'on peut réellement gagner ou perdre sur le coup. Ce champ, lui, ne dit que
+               ce que vaut un siège tant qu'on ne lui donne pas le sien. Dès qu'un siège recevait un
+               tapis plus petit à la main, l'étiquette affirmait quelque chose de faux, et elle le
+               disait avec un terme que le lecteur connaît déjà sous un autre sens.
+
+            2. SON EFFET ÉTAIT INVISIBLE. Chaque siège non renseigné affiche déjà ce défaut en
+               placeholder et suit ses changements — le comportement existait. Mais les sièges
+               étaient hors écran au moment où on saisissait le nombre : personne n'a jamais vu la
+               colonne bouger. Le rapprocher ne crée rien, ça rend visible ce qui était là.
+
+            D'où la géométrie, reprise pile sur `playerRow` : le vide de la colonne des sièges, le
+            libellé calé à droite, puis le champ DANS la colonne des tapis — la même que les lignes
+            en dessous. La position dit ce que le champ fait, sans une phrase d'explication.
+
+            ⚠️ NE PAS « REMPLIR » LES SIÈGES AVEC CETTE VALEUR. Le placeholder est gris exprès :
+            c'est lui qui sépare « hérité du défaut » de « choisi à la main ». Écrire la valeur en
+            dur dans chaque siège effacerait la distinction — et le défaut n'aurait plus rien à
+            mettre à jour. */}
+        <View style={styles.playerRow}>
+          <View style={styles.colonneSiegeVide} />
+          <Text style={styles.libelleDefaut}>Par défaut</Text>
+          <DecimalTextInput
+            style={[styles.input, styles.playerStackInput]}
+            placeholder="Stack"
+            value={value.effectiveStack}
+            gameType={value.gameType}
+            onChangeValue={(effectiveStack) => update({ effectiveStack })}
+          />
+        </View>
+
         {availablePositions.map((pos) => {
           const isHero = pos === value.heroPosition;
           const label = straddleLabelForPosition(pos);
@@ -1165,6 +1191,32 @@ const styles = StyleSheet.create({
   playerNameInput: {
     flex: 2,
     marginBottom: 0,
+  },
+  // Le vide de la colonne des sièges. C'est lui, et les gouttières de `playerRow`, qui font tomber
+  // le champ du défaut EXACTEMENT dans la colonne des tapis : sans ce fantôme, la place libérée
+  // repasse aux deux boîtes flexibles et le nombre glisse de 21,3 px vers la gauche (mesuré).
+  colonneSiegeVide: {
+    width: 56,
+  },
+  // Même largeur que la colonne des noms (`flex: 2`), mais calé à droite : le libellé vient toucher
+  // le champ qu'il nomme au lieu de flotter au milieu d'une rangée vide.
+  //
+  // ⚠️ LE PADDING ET LA BORDURE INVISIBLE NE SONT PAS DÉCORATIFS — sans eux la colonne des tapis
+  // se décale de 8,66 px entre cette rangée et celles des sièges, mesuré. `flex: 2` compile en
+  // `flex-basis: 0%`, et en `box-sizing: border-box` une base nulle remonte au minimum
+  // incompressible de la boîte : 26 px pour un champ (12 + 12 de padding, 1 + 1 de bordure), 0 pour
+  // un texte nu. Les bases diffèrent, le partage 2:1 ne tombe donc pas au même endroit, et le seul
+  // point de ce champ — être DANS la colonne qu'il remplit — était manqué. En reprenant la même
+  // boîte, l'écart est nul à 288, 343, 358 et 398 px de large (SE, 375, iPhone 14, 15 Pro Max).
+  libelleDefaut: {
+    flex: 2,
+    textAlign: 'right',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
   },
   playerStackInput: {
     flex: 1,
