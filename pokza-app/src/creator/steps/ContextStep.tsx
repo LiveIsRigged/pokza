@@ -889,17 +889,17 @@ export function ContextStep({
                étaient hors écran au moment où on saisissait le nombre : personne n'a jamais vu la
                colonne bouger. Le rapprocher ne crée rien, ça rend visible ce qui était là.
 
-            D'où la géométrie, reprise pile sur `playerRow` : le vide de la colonne des sièges, le
-            libellé calé à droite, puis le champ DANS la colonne des tapis — la même que les lignes
-            en dessous. La position dit ce que le champ fait, sans une phrase d'explication.
+            D'où la géométrie : le libellé couvre la colonne des positions ET celle des noms, donc
+            son bord gauche tombe sur BTN/CO/HJ, et le champ tombe DANS la colonne des tapis — la
+            même que les lignes en dessous. Une seule ligne de lecture à gauche, une seule colonne de
+            nombres à droite : la position dit ce que le champ fait, sans une phrase d'explication.
 
             ⚠️ NE PAS « REMPLIR » LES SIÈGES AVEC CETTE VALEUR. Le placeholder est gris exprès :
             c'est lui qui sépare « hérité du défaut » de « choisi à la main ». Écrire la valeur en
             dur dans chaque siège effacerait la distinction — et le défaut n'aurait plus rien à
             mettre à jour. */}
         <View style={styles.playerRow}>
-          <View style={styles.colonneSiegeVide} />
-          <Text style={styles.libelleDefaut}>Par défaut</Text>
+          <Text style={styles.libelleDefaut}>Stack par défaut</Text>
           <DecimalTextInput
             style={[styles.input, styles.playerStackInput]}
             placeholder="Stack"
@@ -1192,28 +1192,23 @@ const styles = StyleSheet.create({
     flex: 2,
     marginBottom: 0,
   },
-  // Le vide de la colonne des sièges. C'est lui, et les gouttières de `playerRow`, qui font tomber
-  // le champ du défaut EXACTEMENT dans la colonne des tapis : sans ce fantôme, la place libérée
-  // repasse aux deux boîtes flexibles et le nombre glisse de 21,3 px vers la gauche (mesuré).
-  colonneSiegeVide: {
-    width: 56,
-  },
-  // Même largeur que la colonne des noms (`flex: 2`), mais calé à droite : le libellé vient toucher
-  // le champ qu'il nomme au lieu de flotter au milieu d'une rangée vide.
+  // Le libellé couvre à lui seul la colonne des positions ET celle des noms : son bord gauche tombe
+  // donc pile sur BTN/CO/HJ (mesuré à 0 px d'écart), ce qui donne au bloc une seule ligne de lecture
+  // à gauche au lieu d'un libellé flottant au milieu d'une rangée vide.
   //
-  // ⚠️ LE PADDING ET LA BORDURE INVISIBLE NE SONT PAS DÉCORATIFS — sans eux la colonne des tapis
-  // se décale de 8,66 px entre cette rangée et celles des sièges, mesuré. `flex: 2` compile en
-  // `flex-basis: 0%`, et en `box-sizing: border-box` une base nulle remonte au minimum
-  // incompressible de la boîte : 26 px pour un champ (12 + 12 de padding, 1 + 1 de bordure), 0 pour
-  // un texte nu. Les bases diffèrent, le partage 2:1 ne tombe donc pas au même endroit, et le seul
-  // point de ce champ — être DANS la colonne qu'il remplit — était manqué. En reprenant la même
-  // boîte, l'écart est nul à 288, 343, 358 et 398 px de large (SE, 375, iPhone 14, 15 Pro Max).
+  // ⚠️ LES 90 PX NE SONT PAS UN RÉGLAGE À L'ŒIL — c'est la seule chose qui garde le nombre dans la
+  // colonne des tapis : 56 (colonne des positions) + 8 (gouttière) + 26 (la boîte d'un champ :
+  // 12 + 12 de padding, 1 + 1 de bordure) = 90. Le piège est que `flex: 2` compile en
+  // `flex-basis: 0%`, et qu'en `box-sizing: border-box` une base nulle remonte au minimum
+  // incompressible de la boîte : 26 px pour un champ, 0 pour un texte nu. UN LIBELLÉ N'OCCUPE DONC
+  // PAS LA MÊME PLACE QU'UN CHAMP À `flex` ÉGAL — la première version, écrite sur cette croyance,
+  // était décalée de 8,66 px. Avec cette base, l'écart est nul à 288, 343, 358 et 398 px de large
+  // (SE, 375, iPhone 14, 15 Pro Max), et le texte tient sur une ligne partout : 100 px de texte pour
+  // 199 disponibles sur le plus étroit.
   libelleDefaut: {
-    flex: 2,
-    textAlign: 'right',
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    flexGrow: 2,
+    flexShrink: 1,
+    flexBasis: 90,
     fontSize: 12,
     fontWeight: '700',
     color: colors.textSecondary,

@@ -101,7 +101,7 @@ export function FicheJoueur({
               autoFocus={autoFocusUtile() && !estHero && nom.length === 0}
             />
 
-            <Text style={styles.label}>Tapis</Text>
+            <Text style={styles.label}>Stack</Text>
             <OptionalDecimalTextInput
               style={styles.input}
               placeholder={formatChipInput(tapisParDefaut, gameType)}
