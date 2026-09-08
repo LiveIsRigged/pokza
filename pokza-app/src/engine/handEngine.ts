@@ -1,4 +1,5 @@
 import type { Action, Board, Card, Hand, Position, Seat, Street, Variant } from '../types/poker';
+import { holeCardCount } from '../types/poker';
 import { formatChipAmount, roundMoney } from '../utils/chipFormat';
 import { bestHandWinners } from './handEvaluator';
 import { equityIfImmediate, type EquityContender } from './equity';
@@ -34,6 +35,18 @@ function hasBoardDataFor(hand: Hand, street: Street): boolean {
  * (plus aucune action, juste les cartes restantes qui tombent) — les deux cas sont désormais
  * traités de façon uniforme.
  */
+/**
+ * LA MAIN DE HERO EST-ELLE TUE AU LECTEUR ?
+ * ─────────────────────────────────────────
+ * Vrai seulement si elle est à la fois RÉGLÉE comme cachée et CONNUE. La nuance n'est pas
+ * cosmétique : un Hero sans cartes saisies montre déjà des dos, mais parce qu'on ne sait rien de
+ * lui — il n'est alors contendant de rien, et l'équité entre les mains qui restent demeure
+ * parfaitement interprétable. La supprimer là serait retirer un chiffre juste.
+ */
+export function mainHeroCachee(hand: Hand): boolean {
+  return Boolean(hand.heroCardsVisibility) && hand.seats.some((s) => s.isHero && s.holeCards);
+}
+
 export function buildReplayEvents(hand: Hand): ReplayEvent[] {
   if (hand.actions.length === 0) return [];
 
@@ -61,7 +74,13 @@ export function buildReplayEvents(hand: Hand): ReplayEvent[] {
   // retournement (dos → face) est lui-même un step à part, AVANT "untel gagne" — sinon les cartes
   // se dévoilent et le pot part vers le vainqueur dans le même clic, alors que ce sont deux
   // moments distincts (d'abord on voit les mains, ensuite on voit qui gagne).
-  const hasHiddenReveal = Boolean(hand.revealShowdown) && hand.seats.some((s) => !s.isHero && s.holeCards);
+  // Hero peut désormais être du lot : « révélées à la fin » lui donne le même retournement qu'à un
+  // adversaire caché. Sans ce terme, ses cartes se seraient retournées AU MÊME step que l'annonce
+  // du gagnant — les deux moments confondus, ce que l'event existe précisément pour éviter.
+  const heroSeRetourne =
+    hand.heroCardsVisibility === 'end' && hand.seats.some((s) => s.isHero && s.holeCards);
+  const hasHiddenReveal =
+    (Boolean(hand.revealShowdown) && hand.seats.some((s) => !s.isHero && s.holeCards)) || heroSeRetourne;
   if (hasHiddenReveal) {
     events.push({ kind: 'revealCards' });
   }
@@ -572,6 +591,26 @@ export function determinePotAwards(hand: Hand): PotAward[] {
   if (notFoldedSeats.length === 1) {
     return [{ seatId: notFoldedSeats[0].id, fraction: 1 }];
   }
+
+  // ⚠️ HERO ENCORE DEBOUT SANS SA MAIN : PERSONNE NE GAGNE. Signalé par Victor le 08/09/2026 —
+  // il n'avait pas noté ses cartes, l'adversaire avait montré les siennes, et le replayer donnait
+  // tout le pot à l'adversaire.
+  //
+  // LA DIFFÉRENCE EST DANS CE QUE LE SILENCE VEUT DIRE, et elle n'est pas symétrique. Un adversaire
+  // encore en jeu dont les cartes n'ont pas été saisies a MUCKÉ : l'écran d'abattage les lui
+  // demande une par une, ne rien saisir est une réponse, et l'exclure est juste. Hero, lui, n'a
+  // jamais été interrogé là — ses cartes se donnent en début d'assistant, et depuis qu'il peut
+  // sauter l'étape, les taire ne veut plus dire « j'ai jeté », seulement « je ne les ai pas
+  // notées ». On ne peut donc rien conclure de l'abattage : le pot reste au milieu, comme quand
+  // personne n'a montré. Même parti pris que `stoppedAtSeatId` juste au-dessus.
+  //
+  // Le test porte sur des cartes COMPLÈTES, et pas sur la seule présence du tableau : `holeCards`
+  // à `[]` est `truthy` et passait le filtre des contendants juste en dessous — en Hold'em Hero
+  // jouait alors LE BOARD (il partageait un pot qu'il n'avait pas), en PLO `bestOmahaHandRank`
+  // levait une erreur et le replayer plantait. `construitMain` retire déjà la clé plutôt que de la
+  // poser vide ; ceci le double au cas où une main vienne d'ailleurs.
+  const heroDebout = notFoldedSeats.find((s) => s.isHero);
+  if (heroDebout && heroDebout.holeCards?.length !== holeCardCount(hand.variant)) return [];
 
   const contenders = notFoldedSeats.filter((s) => s.holeCards);
   if (contenders.length === 0) return [];

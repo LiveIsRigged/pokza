@@ -7,6 +7,7 @@ import {
   describeAction,
   expeditedFoldEventIndices,
   initialReplayStep,
+  mainHeroCachee,
   seatLabel,
   straddleSeatLabel,
   totalReplaySteps,
@@ -75,14 +76,15 @@ export function HandReplayer({ hand }: HandReplayerProps) {
 
   const totalSteps = totalReplaySteps(hand);
   const state = useMemo(() => computeHandState(hand, step), [hand, step]);
-  // `revealShowdown` supprime l'équité pour toute la main (cf. le commentaire sur `equityPct`
-  // plus bas) : inutile de lancer le moindre calcul dans ce cas.
-  const equityAsync = useEquityHorsRendu(hand.revealShowdown ? null : state.equityPending);
+  // Une main cachée — adverse (`revealShowdown`) comme celle de Hero — supprime l'équité pour tout
+  // le coup (cf. le commentaire sur `equityPct` plus bas) : inutile de lancer le moindre calcul.
+  const uneMainEstCachee = Boolean(hand.revealShowdown) || mainHeroCachee(hand);
+  const equityAsync = useEquityHorsRendu(uneMainEstCachee ? null : state.equityPending);
   const equities = state.equities ?? equityAsync;
   // "Calcul en cours" est un état À PART de "pas d'équité" : il doit rendre un vide, là où
   // l'absence d'équité retombe sur "ALL-IN". Sans cette distinction, le siège afficherait
   // "ALL-IN" pendant le calcul puis basculerait sur un pourcentage — un clignotement.
-  const equityEnCours = !hand.revealShowdown && state.equityPending !== null && equities === null;
+  const equityEnCours = !uneMainEstCachee && state.equityPending !== null && equities === null;
 
   const expeditedFolds = useMemo(() => expeditedFoldEventIndices(hand), [hand]);
   // La durée d'un step, c'est le temps pendant lequel l'event DÉJÀ appliqué reste à l'écran : au
@@ -174,7 +176,16 @@ export function HandReplayer({ hand }: HandReplayerProps) {
     // qu'au showdown (`hand.revealShowdown`) — dos de carte jusqu'à l'event `revealCards`, UN CRAN
     // AVANT que le gagnant ne soit désigné : les mains se dévoilent d'abord, le pot part vers le
     // vainqueur ensuite, deux steps distincts. Désactivé : vraie carte visible dès le début.
-    const showCardBacks = villainKnownCards && Boolean(hand.revealShowdown) && !state.cardsRevealed;
+    // Hero dont la main est tue : dos de carte. Sous « cachées » pour toujours, sous « révélées à
+    // la fin » jusqu'au retournement — le même instant que les adversaires cachés. Poser le drapeau
+    // sur un Hero SANS cartes ne change rien (`SeatView` dessine déjà des dos faute de main), et
+    // c'est voulu : côté lecteur, « caché » et « pas rentré » ne se distinguent pas.
+    const heroTu =
+      seat.isHero &&
+      Boolean(hand.heroCardsVisibility) &&
+      (hand.heroCardsVisibility === 'never' || !state.cardsRevealed);
+    const showCardBacks =
+      (villainKnownCards && Boolean(hand.revealShowdown) && !state.cardsRevealed) || heroTu;
 
     return {
       seat,
@@ -199,7 +210,13 @@ export function HandReplayer({ hand }: HandReplayerProps) {
       // Hero, dont le chiffre dépend justement de la main cachée pour avoir un sens. Supprimé pour
       // tout le monde, pas seulement le siège caché. Retombe sur "ALL-IN" (un fait neutre sur le
       // stack, pas sur la main).
-      equityPct: hand.revealShowdown ? undefined : equities?.[seat.id],
+      // ⚠️ `uneMainEstCachee` ET NON `hand.revealShowdown` SEUL. `equities` a deux sources : le
+      // calcul hors rendu (déjà coupé plus haut) mais AUSSI `state.equities`, que `computeHandState`
+      // renvoie synchroniquement dès que la situation est assez petite — turn et river. Ne tester
+      // que le drapeau des adversaires laissait donc réapparaître un pourcentage sur ces streets-là
+      // alors que la main de Hero était tue : le chiffre le plus bavard de l'écran, au moment précis
+      // où l'on ne veut rien dire.
+      equityPct: uneMainEstCachee ? undefined : equities?.[seat.id],
       straddleLabel: straddleSeatLabel(hand.seats, hand.actions, seat.id),
     };
   });
@@ -213,12 +230,13 @@ export function HandReplayer({ hand }: HandReplayerProps) {
         pot={state.potTotal}
         gagnants={state.winningSeatIds}
         potAwards={state.potAwards}
-        // Le board ne parle plus que de L'AUTRE fin sans vainqueur : la main est allée à son terme
-        // et personne n'a montré. `!texteArret` est indispensable — sans lui, une main arrêtée
-        // retomberait ici et s'annoncerait « Mains non révélées », ce qui n'est pas ce qu'elle raconte.
-        unresolvedNote={
-          step >= totalSteps && state.winningSeatIds.length === 0 && !texteArret ? 'Mains non révélées' : null
-        }
+        // ⚠️ PLUS AUCUNE MENTION SOUS LE BOARD (Victor, 08/09/2026, en la voyant). « Mains non
+        // révélées » s'affichait quand la main allait à son terme sans vainqueur désignable. Depuis
+        // que l'auteur peut taire sa propre main, c'est devenu la fin NORMALE d'une main qu'on
+        // publie exprès pour faire deviner : la phrase énonçait alors ce que les dos de carte
+        // disent déjà, au milieu du feutre. Retiré volontairement, ce n'est pas un oubli — le
+        // canal `unresolvedNote` reste branché de `TableVue` à `BoardView` si une autre phrase
+        // devait un jour s'y poser.
         // "Calcul en cours" est un état À PART de "pas d'équité" : il doit rendre un vide, là où
         // l'absence d'équité retombe sur "ALL-IN". Sans cette distinction, le siège afficherait
         // "ALL-IN" pendant le calcul puis basculerait sur un pourcentage — un clignotement.

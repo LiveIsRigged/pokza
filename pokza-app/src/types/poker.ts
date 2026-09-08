@@ -145,7 +145,34 @@ export interface Hand {
    * 01/09/2026. Ne pas confondre avec le défaut de l'ÉCRAN de création, qui propose l'inverse
    * depuis cette date (cf. `LiveHandCreator`) — une main reprise garde toujours le sien. */
   revealShowdown?: boolean;
+  /**
+   * CE QUE LE LECTEUR VOIT DES CARTES DE HERO, ET QUAND. Demandé par Victor le 08/09/2026, pour
+   * deux besoins qu'un même réglage couvre : « j'étais à table mais pas dans le coup » (les cartes
+   * ne comptent pas, on ne les note pas) et « devine ce que j'avais ».
+   *
+   *   • ABSENT — visibles dès le début du replay. C'est ce que valent toutes les mains publiées
+   *     avant cette date, et l'immense majorité de celles d'après : rien de neuf ne part alors dans
+   *     le jsonb, comme pour `bombPot`, `stoppedAtSeatId` et `imported`.
+   *   • `end`   — dos de carte pendant tout le coup, retournées au DERNIER step du replay. Ce step
+   *     existe sur toutes les mains, y compris celles qui finissent sur un fold : la promesse est
+   *     donc toujours tenue (cf. `buildReplayEvents`, où `showdown` est poussé sans condition).
+   *   • `never` — dos de carte pour toujours.
+   *
+   * ⚠️ CE DRAPEAU NE DIT RIEN DE CE QUE LE MOTEUR SAIT. Sous `never`, les cartes peuvent très bien
+   * être saisies : elles servent alors à départager l'abattage sans jamais s'afficher. C'est
+   * `Seat.holeCards` qui dit ce que le moteur sait ; celui-ci ne parle que de l'affichage. Une main
+   * dont l'auteur n'a PAS rentré ses cartes est donc `never` avec un siège Hero sans `holeCards` —
+   * côté lecteur les deux sont indiscernables, et c'est voulu.
+   *
+   * Ne pas confondre avec `revealShowdown`, qui ne concerne QUE les adversaires et n'a jamais eu
+   * d'effet sur Hero.
+   */
+  heroCardsVisibility?: 'end' | 'never';
 }
+
+/** Le réglage tel que le créateur le manipule — `visible` y est un choix explicite, là où la main
+ * publiée l'écrit par l'ABSENCE du champ (cf. `Hand.heroCardsVisibility`). */
+export type HeroCardsVisibility = 'visible' | 'end' | 'never';
 
 export interface Post {
   id: string;

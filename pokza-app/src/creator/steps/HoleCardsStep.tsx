@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { Card } from '../../types/poker';
+import type { Card, HeroCardsVisibility } from '../../types/poker';
+import { Chip } from '../Chip';
 import { MultiCardPicker } from '../MultiCardPicker';
 import { WizardScreen } from '../WizardScreen';
 import { TableVue } from '../../components/table/TableVue';
@@ -25,7 +26,42 @@ interface HoleCardsStepProps {
   nextBloque?: boolean;
   /** La table réglée à l'étape précédente : les cartes choisies ici s'y posent devant Hero. */
   context: ContextData;
+  /** Ce que le lecteur verra de cette main, et quand (cf. `Hand.heroCardsVisibility`). */
+  visibility: HeroCardsVisibility;
+  onChangeVisibility: (v: HeroCardsVisibility) => void;
 }
+
+/**
+ * TROIS ÉTATS, PAS DEUX INTERRUPTEURS (Victor, 08/09/2026).
+ * ────────────────────────────────────────────────────────
+ * Deux besoins ont donné cet écran : « j'étais à table mais pas dans le coup » — les cartes ne
+ * comptent pas, on ne veut pas les chercher — et « devine ce que j'avais ». La première version
+ * proposait deux boutons (« ne pas rentrer » / « cacher »), qui s'excluaient l'un l'autre : quatre
+ * combinaisons pour trois états valides, plus un état illégal à empêcher. C'est une question
+ * unique — QU'EST-CE QUE LE LECTEUR VOIT DE TA MAIN ? — et elle se pose en une rangée.
+ *
+ * ⚠️ « NE PAS RENTRER SES CARTES » N'EST PAS UNE QUATRIÈME PASTILLE, et ce n'est pas un oubli. Du
+ * point de vue du LECTEUR, « cachées » et « pas rentrées » sont rigoureusement la même chose : dos
+ * de carte, pour toujours. La seule différence est côté moteur — avec les cartes, l'abattage se
+ * départage ; sans elles, non. D'où : sous « Cachées », le sélecteur devient FACULTATIF, et
+ * remplir sans montrer devient un vrai gain plutôt qu'un pis-aller.
+ *
+ * L'ordre va du plus montré au moins montré — la rangée se lit comme un variateur — et la première
+ * pastille reste celle qu'on veut presque toujours, ce qui est la leçon déjà payée sur l'écran
+ * d'abattage : qui lit vite prend la première.
+ *
+ * AUCUNE PHRASE D'EXPLICATION SOUS LA RANGÉE, et ce n'est pas un oubli (Victor, 08/09/2026). Il y
+ * en avait une par choix ; deux répétaient leur étiquette mot pour mot (« Visibles » → « visibles
+ * dès le début », « Cachées » → « personne ne les verra »). Le seul fait qui ne se devine pas —
+ * que le sélecteur devienne FACULTATIF sous « Cachées » — est porté par le sous-titre, qui passe
+ * alors à « ou laisse vide ». Une phrase de plus n'aurait rien dit et aurait coûté une ligne sur
+ * un écran qui n'en a pas à donner.
+ */
+const CHOIX: { valeur: HeroCardsVisibility; libelle: string }[] = [
+  { valeur: 'visible', libelle: 'Visibles' },
+  { valeur: 'end', libelle: 'Révélées à la fin' },
+  { valeur: 'never', libelle: 'Cachées' },
+];
 
 export function HoleCardsStep({
   count,
@@ -39,9 +75,13 @@ export function HoleCardsStep({
   footerNote,
   nextBloque,
   context,
+  visibility,
+  onChangeVisibility,
 }: HoleCardsStepProps) {
   const chosenCount = cards.filter(Boolean).length;
-  const canContinue = chosenCount === count;
+  // Sous « Cachées » seulement, la main vide est un choix : 0 ou toutes. Une seule carte sur deux
+  // reste bloquée dans tous les cas — ça, ce n'est pas un choix, c'est une saisie interrompue.
+  const canContinue = chosenCount === count || (visibility === 'never' && chosenCount === 0);
   // Les cartes se posent devant Hero À MESURE qu'on les choisit, et pas seulement une fois les
   // deux (ou quatre, ou cinq) réunies : c'est le seul écran où l'on voit sa propre main arriver.
   const choisies = cards.filter(Boolean) as Card[];
@@ -55,7 +95,11 @@ export function HoleCardsStep({
           // Les cartes pas encore choisies se dessinent en pointillés devant Hero, à leur place.
           // Deux dos de carte diraient « il a une main qu'on ne connaît pas » — l'inverse de ce
           // qui se passe ici, où on attend justement qu'il la choisisse.
-          cartesAttendues: true,
+          //
+          // SAUF SOUS « CACHÉES », où c'est exactement l'inverse qui devient vrai : plus personne
+          // n'attend rien, et « une main qu'on ne connaît pas » est précisément ce que la table
+          // doit dire. Le feutre montre donc tout de suite ce que le choix produira.
+          cartesAttendues: visibility !== 'never',
           onCartePress: (i: number) => onChange(choisies.filter((_, j) => j !== i)),
         }
       : s
@@ -64,7 +108,9 @@ export function HoleCardsStep({
   return (
     <WizardScreen
       title="Tes cartes"
-      subtitle={`Choisis tes ${count} cartes`}
+      subtitle={
+        visibility === 'never' ? `Choisis tes ${count} cartes, ou laisse vide` : `Choisis tes ${count} cartes`
+      }
       onNext={onNext}
       nextLabel={nextLabel}
       footerNote={footerNote}
@@ -93,6 +139,16 @@ export function HoleCardsStep({
           46 px — occupés chez eux par la rangée « À X de jouer ». Cet écran n'a rien à y mettre :
           on reprend donc seulement l'espacement de cette rangée (12 px de rembourrage haut, 6 de
           marge basse), pas la bande vide de 40 px qu'elle réserve pour son contenu. */}
+      <View style={styles.rangeeVisibilite}>
+        {CHOIX.map((c) => (
+          <Chip
+            key={c.valeur}
+            label={c.libelle}
+            selected={visibility === c.valeur}
+            onPress={() => onChangeVisibility(c.valeur)}
+          />
+        ))}
+      </View>
       <View style={styles.selecteur}>
         <MultiCardPicker count={count} selected={cards} onChange={onChange} sansApercu />
       </View>
@@ -101,7 +157,16 @@ export function HoleCardsStep({
 }
 
 const styles = StyleSheet.create({
+  rangeeVisibilite: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  // 18 px séparaient la table du sélecteur quand rien ne s'intercalait (mesure du 02/09). La rangée
+  // s'est glissée entre les deux : on redonne ce même 18 sous elle, pour que le sélecteur garde
+  // l'espace qu'il avait au-dessus de lui plutôt que de se coller à ce qui vient d'arriver.
   selecteur: {
-    paddingTop: 18,
+    paddingTop: 12,
   },
 });

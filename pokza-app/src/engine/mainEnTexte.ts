@@ -119,7 +119,13 @@ export function mainEnTexte(partie: PartieDecrite): string {
   // Les tapis de départ, un par ligne, dans l'ordre des sièges. La main de Hero se pose au bout de
   // la sienne : c'est la seule connue d'emblée, et la chercher plus bas ferait relire le bloc.
   for (const seat of hand.seats) {
-    const cartes = seat.isHero && seat.holeCards?.length ? ` — ${cartesEnTexte(seat.holeCards)}` : '';
+    // ⚠️ UNE MAIN TUE NE S'ÉCRIT PAS ICI. Ce texte est fait pour être collé ailleurs — c'est
+    // justement le seul endroit où le réglage d'affichage ne suffit pas à protéger le secret, et où
+    // l'oublier le trahirait en entier, d'un copier-coller.
+    const cartes =
+      seat.isHero && seat.holeCards?.length && !hand.heroCardsVisibility
+        ? ` — ${cartesEnTexte(seat.holeCards)}`
+        : '';
     lignes.push(`${etiquetteSiege(hand, seat)} ${montant(seat.startingStack)}${cartes}`);
   }
 

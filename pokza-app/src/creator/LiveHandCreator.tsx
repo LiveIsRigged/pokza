@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Action, Board, Card, Hand, Post, Seat, Street } from '../types/poker';
+import type { Action, Board, Card, Hand, HeroCardsVisibility, Post, Seat, Street } from '../types/poker';
 import { holeCardCount } from '../types/poker';
 import type { Group } from '../data/groups';
 import { ContextStep } from './steps/ContextStep';
@@ -191,6 +191,11 @@ export function LiveHandCreator({
   // rend toujours un booléen (`!!hand.revealShowdown`), donc jamais `undefined`, et une main
   // publiée avant ce jour ne se met pas à cacher ce qu'elle montrait.
   const [revealShowdown, setRevealShowdown] = useState(initial?.revealShowdown ?? true);
+  // Ce que le lecteur verra des cartes de Hero (cf. `Hand.heroCardsVisibility`). Hors de
+  // l'instantané, comme `revealShowdown` et pour la même raison : c'est une préférence d'affichage,
+  // pas une conséquence du déroulé — revenir en arrière n'a aucune raison de la défaire.
+  const [heroCardsVisibility, setHeroCardsVisibility] =
+    useState<HeroCardsVisibility>(initial?.heroCardsVisibility ?? 'visible');
   /**
    * Provenance de la main (cf. `Hand.imported`). Deux sources, et deux seulement : une main
    * REPRISE la porte déjà (`initial`), et `appliquerImport` la pose. Aucun écran ne la règle — ce
@@ -372,6 +377,7 @@ export function LiveHandCreator({
     setBoard2(seed.board2);
     setRevealedCards(seed.revealedCards);
     setRevealShowdown(seed.revealShowdown);
+    setHeroCardsVisibility(seed.heroCardsVisibility);
     setStoppedAtSeatId(seed.stoppedAtSeatId);
     setImportee(true);
     setHistory(debut.history);
@@ -497,7 +503,21 @@ export function LiveHandCreator({
     // traite alors comme mucked, exactement comme au Hold'em où il fallait les 2 cartes.
     const cardCount = holeCardCount(ctx.variant);
     const seatsWithCards = sts.map((s) => {
-      if (s.isHero) return { ...s, holeCards: hc.filter(Boolean) as Card[] };
+      if (s.isHero) {
+        // ⚠️ LES CARTES DE HERO N'ENTRENT QUE COMPLÈTES, exactement comme celles d'un adversaire —
+        // et ce n'est pas une symétrie de confort. La branche précédente posait `holeCards` SANS
+        // condition : un tableau vide, qui est `truthy`, et `determinePotAwards` le lisait donc
+        // comme un contendant. Mesuré sur le vrai évaluateur : en Hold'em, Hero JOUAIT LE BOARD
+        // (il partage le pot quand le board joue, il perd sinon — l'app lui inventait une main) ;
+        // en PLO, `bestOmahaHandRank` LEVAIT UNE ERREUR (« requires >= 2 hole cards »), donc le
+        // replayer plantait. Le défaut dormait depuis toujours et n'attendait qu'une main au siège
+        // Hero incomplet — ce que « ne pas rentrer ses cartes » rend possible.
+        // On retire la clé plutôt que de la poser à `undefined` : en correction, le siège arrive
+        // avec les cartes de la main publiée, et les garder serait pire que tout.
+        const siennes = hc.filter(Boolean) as Card[];
+        const { holeCards: _sansSuite, ...sansCartes } = s;
+        return siennes.length === cardCount ? { ...s, holeCards: siennes } : sansCartes;
+      }
       const cartesMontrees = (rc[s.id] ?? []).filter(Boolean) as Card[];
       if (cartesMontrees.length === cardCount) return { ...s, holeCards: cartesMontrees };
       return s;
@@ -531,6 +551,9 @@ export function LiveHandCreator({
       // qu'elle s'écrive exactement comme avant (rien de nouveau dans le jsonb publié).
       stoppedAtSeatId: stoppedAtSeatId ?? undefined,
       revealShowdown,
+      // `visible` s'écrit par l'ABSENCE du champ : rien de neuf ne part alors dans le jsonb publié,
+      // et une main d'avant ce réglage se relit exactement comme avant (cf. `Hand`).
+      heroCardsVisibility: heroCardsVisibility === 'visible' ? undefined : heroCardsVisibility,
       // `undefined` et non `false` sur une main saisie à la main : rien de neuf ne part alors dans
       // le jsonb publié, exactement comme pour `bombPot` et `stoppedAtSeatId`.
       imported: importee || undefined,
@@ -679,7 +702,8 @@ export function LiveHandCreator({
   const invalidants = initial ? champsInvalidants(initial.context, context, seats, actions) : [];
   const contexteModifie = initial ? JSON.stringify(initial.context) !== JSON.stringify(context) : false;
   const cartesHeroModifiees = initial
-    ? JSON.stringify(initial.heroCards.filter(Boolean)) !== JSON.stringify(heroCards.filter(Boolean))
+    ? JSON.stringify(initial.heroCards.filter(Boolean)) !== JSON.stringify(heroCards.filter(Boolean)) ||
+      initial.heroCardsVisibility !== heroCardsVisibility
     : false;
   const abattageModifie = initial
     ? JSON.stringify(initial.revealedCards) !== JSON.stringify(revealedCards) ||
@@ -908,6 +932,8 @@ export function LiveHandCreator({
           context={context}
           cards={heroCards}
           onChange={setHeroCards}
+          visibility={heroCardsVisibility}
+          onChangeVisibility={setHeroCardsVisibility}
           step={step}
           totalSteps={totalSteps}
           onBack={goBack}

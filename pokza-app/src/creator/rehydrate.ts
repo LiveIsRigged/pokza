@@ -1,4 +1,4 @@
-import type { Action, Board, Card, Position, Post, Seat, Street } from '../types/poker';
+import type { Action, Board, Card, HeroCardsVisibility, Position, Post, Seat, Street } from '../types/poker';
 import type { AnteType, ContextData, Phase, ReviewData, Snapshot } from './types';
 import { DEFAULT_CONTEXT } from './types';
 import { chainStraddleCount } from '../engine/handEngine';
@@ -34,6 +34,9 @@ export interface CreatorSeed {
   board2: Board;
   revealedCards: Record<string, (Card | undefined)[]>;
   revealShowdown: boolean;
+  /** Ce que le lecteur voit des cartes de Hero (cf. `Hand.heroCardsVisibility`). Une main publiée
+   * l'écrit par l'absence du champ ; le créateur, lui, a besoin des trois choix. */
+  heroCardsVisibility: HeroCardsVisibility;
   /** Main née d'une hand history collée (cf. `Hand.imported`). Portée par le seed pour une seule
    * raison, mais elle est décisive : corriger une main la REPUBLIE en rebâtissant `hand` depuis
    * l'état du créateur — sans ce relais, une main importée puis corrigée perdrait sa provenance
@@ -162,6 +165,7 @@ export function postToSeed(post: SourceDeSeed): CreatorSeed {
     board2: hand.board2 ?? {},
     revealedCards,
     revealShowdown: !!hand.revealShowdown,
+    heroCardsVisibility: hand.heroCardsVisibility ?? 'visible',
     imported: !!hand.imported,
     stoppedAtSeatId: hand.stoppedAtSeatId ?? null,
     review: {
