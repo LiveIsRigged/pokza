@@ -446,6 +446,20 @@ export function CommentsSection({
             </Pressable>
             <TextInput
               autoComplete="off"
+              // NOMMER LE CHAMP, SINON SAFARI LE DEVINE — signalé par Victor le 09/09/2026 : dans les
+              // commentaires, iOS ne met pas de majuscule, ne corrige pas, ne propose aucun mot, et
+              // offre une carte bancaire. Mesuré sur la production : le champ demande pourtant tout
+              // (`autocorrect=on`, `spellcheck=true`, `autocapitalize=sentences`). Ce qui lui manque,
+              // c'est un NOM : ni libellé au-dessus, ni `name`, ni `aria-label`. Safari se rabat
+              // alors sur le texte de la page pour deviner — et la page, c'est le fil, un mur
+              // d'euros. Classé « moyen de paiement », le champ perd majuscule, correction et
+              // suggestions, par construction : on ne corrige pas un numéro de carte.
+              //
+              // Établi par élimination sur huit champs réels : les deux seuls cassés (celui-ci et la
+              // recherche) sont les deux seuls `<input>` sans nom accessible ouverts par-dessus le
+              // fil. Le même champ, ouvert depuis une notification — donc sans le fil derrière —
+              // fonctionne. `react-native-web` transmet `aria-label` (`forwardedProps`), pas `name`.
+              aria-label={replyingTo ? 'Écrire une réponse' : 'Ajouter un commentaire'}
               style={styles.input}
               placeholder={replyingTo ? 'Écrire une réponse…' : 'Ajouter un commentaire…'}
               maxLength={COMMENT_MAX_LENGTH}

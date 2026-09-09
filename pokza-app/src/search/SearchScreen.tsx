@@ -110,6 +110,9 @@ export function SearchScreen({
   const renderInput = (style: any) => (
     <TextInput
       autoComplete="off"
+      // Même défaut que le champ de commentaire, cf. `CommentsSection` : sans nom accessible, iOS
+      // classe ce champ ouvert au-dessus du fil et lui retire la correction automatique.
+      aria-label="Rechercher un utilisateur"
       style={style}
       value={query}
       onChangeText={setQuery}
