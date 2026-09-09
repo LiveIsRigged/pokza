@@ -116,6 +116,13 @@ export function SearchScreen({
       // 09/09/2026. Même choix que la recherche de groupe et le sélecteur de pays.
       autoCorrect={false}
       spellCheck={false}
+      // SE DECLARER, SINON SAFARI DEVINE — il proposait une carte bancaire ici et dans les
+      // commentaires, et nulle part ailleurs. `inputMode="search"` fait rendre un
+      // `<input type="search">` (`TextInput/index.js:141`) : c'est la déclaration la plus forte
+      // qu'on puisse faire, et elle est vraie. Effet visible assumé : la touche de retour du
+      // clavier iOS devient une touche de recherche.
+      inputMode="search"
+      id="search"
       style={style}
       value={query}
       onChangeText={setQuery}

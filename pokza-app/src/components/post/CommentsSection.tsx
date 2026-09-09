@@ -466,6 +466,11 @@ export function CommentsSection({
               // `numberOfLines={1}` garde une seule ligne (RNW en fait son attribut `rows`, cf.
               // `TextInput/index.js:377`), et `blurOnSubmit` garde « Entrée envoie » :
               // `handleKeyDown` ne déclenche `onSubmitEditing` que si `blurOnSubmit || !multiline`.
+              // Un champ de commentaire n'a pas de `type` qui le dise ; `id="comment"` est
+              // l'identifiant canonique du web pour ça, et c'est le `id`/`name` que regardent les
+              // heuristiques de Safari — pas l'`aria-label`, qui n'a rien changé (`e7cc9bb`).
+              // Sans risque de collision : une seule feuille de commentaires est montée à la fois.
+              id="comment"
               multiline
               numberOfLines={1}
               blurOnSubmit
