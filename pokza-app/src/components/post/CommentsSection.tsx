@@ -460,6 +460,15 @@ export function CommentsSection({
               // fil. Le même champ, ouvert depuis une notification — donc sans le fil derrière —
               // fonctionne. `react-native-web` transmet `aria-label` (`forwardedProps`), pas `name`.
               aria-label={replyingTo ? 'Écrire une réponse' : 'Ajouter un commentaire'}
+              // `multiline` REND UN <textarea> ET NON UN <input> (`TextInput/index.js:323`), et
+              // c'est tout l'objet du changement : au-dessus du fil, les deux `<input>` de l'app
+              // perdent majuscule et correction, le `<textarea>` de la feuille de signalement non.
+              // `numberOfLines={1}` garde une seule ligne (RNW en fait son attribut `rows`, cf.
+              // `TextInput/index.js:377`), et `blurOnSubmit` garde « Entrée envoie » :
+              // `handleKeyDown` ne déclenche `onSubmitEditing` que si `blurOnSubmit || !multiline`.
+              multiline
+              numberOfLines={1}
+              blurOnSubmit
               style={styles.input}
               placeholder={replyingTo ? 'Écrire une réponse…' : 'Ajouter un commentaire…'}
               maxLength={COMMENT_MAX_LENGTH}

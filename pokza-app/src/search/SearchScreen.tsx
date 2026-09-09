@@ -110,9 +110,12 @@ export function SearchScreen({
   const renderInput = (style: any) => (
     <TextInput
       autoComplete="off"
-      // Même défaut que le champ de commentaire, cf. `CommentsSection` : sans nom accessible, iOS
-      // classe ce champ ouvert au-dessus du fil et lui retire la correction automatique.
       aria-label="Rechercher un utilisateur"
+      // On cherche un PSEUDO, qui n'est le plus souvent pas un mot de la langue : la correction
+      // automatique n'a rien a y faire, elle ne peut que dégrader la saisie. Tranché par Victor le
+      // 09/09/2026. Même choix que la recherche de groupe et le sélecteur de pays.
+      autoCorrect={false}
+      spellCheck={false}
       style={style}
       value={query}
       onChangeText={setQuery}
