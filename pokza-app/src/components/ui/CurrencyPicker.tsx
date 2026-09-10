@@ -4,6 +4,7 @@ import { Pressable } from './Pressable';
 import { borders, colors, radius, spacing } from '../../theme/theme';
 import { DEVISES, type CodeDevise, type Devise } from '../../utils/currency';
 import { LARGEUR_MAX } from './Colonne';
+import { useT } from '../../i18n';
 
 interface CurrencyPickerProps {
   visible: boolean;
@@ -23,12 +24,13 @@ interface CurrencyPickerProps {
  * Aucune ligne « ne pas indiquer », contrairement au pays : une main a toujours une devise.
  */
 export function CurrencyPicker({ visible, selectedCode, onSelect, onClose }: CurrencyPickerProps) {
+  const t = useT();
   const renderItem = ({ item }: { item: Devise }) => {
     const selected = item.code === selectedCode;
     return (
       <Pressable style={[styles.row, selected && styles.rowSelected]} onPress={() => onSelect(item.code)}>
         <Text style={styles.sigle}>{item.sigle}</Text>
-        <Text style={[styles.nom, selected && styles.nomSelected]}>{item.nom}</Text>
+        <Text style={[styles.nom, selected && styles.nomSelected]}>{t(item.cle)}</Text>
         {selected && <Text style={styles.check}>✓</Text>}
       </Pressable>
     );

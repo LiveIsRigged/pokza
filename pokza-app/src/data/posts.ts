@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
 import { attachFriendEchoes } from './friendEcho';
 import type { Hand, ModStatus, Post, Visibility } from '../types/poker';
+import { t } from '../i18n/traduire';
 
 // Forme exacte renvoyée par la vue `posts_feed` (cf. script SQL) : author_name/avatar déjà résolus
 // côté base via `get_display_name`, pas besoin de refaire cette logique ici.
@@ -342,7 +343,7 @@ export async function createPost(
 export async function deletePost(postId: string): Promise<void> {
   const { data, error } = await supabase.from('posts').delete().eq('id', postId).select('id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("La main n'a pas été supprimée"));
+  assertWritten(data, refusedMessage(t('erreur.main_supprimee')));
 }
 
 export interface PostEditInput {
@@ -385,7 +386,7 @@ export async function updatePost(postId: string, edits: PostEditInput): Promise<
     .eq('id', postId)
     .select('id, edited_at');
   if (error) throw error;
-  assertWritten(data, refusedMessage("Les modifications n'ont pas été enregistrées"));
+  assertWritten(data, refusedMessage(t('erreur.modifications_enregistrees')));
   return (data?.[0] as { edited_at: string | null } | undefined)?.edited_at ?? null;
 }
 
@@ -402,7 +403,7 @@ export async function setLiked(postId: string, userId: string, liked: boolean): 
       .eq('user_id', userId)
       .select('post_id');
     if (error) throw error;
-    assertWritten(data, refusedMessage("Le like n'a pas été retiré"));
+    assertWritten(data, refusedMessage(t('erreur.like_retire')));
   }
 }
 
@@ -421,5 +422,5 @@ export async function retractVote(postId: string, userId: string): Promise<void>
     .eq('user_id', userId)
     .select('post_id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("Le vote n'a pas été retiré"));
+  assertWritten(data, refusedMessage(t('erreur.vote_retire')));
 }

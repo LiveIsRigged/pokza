@@ -1,3 +1,5 @@
+import { t } from '../i18n/traduire';
+
 /**
  * LE LIEU ET LA PROVENANCE, SUR LA MÊME LIGNE.
  * ═══════════════════════════════════════════
@@ -32,6 +34,6 @@
  */
 export function lieuEtProvenance(lieu?: string, importee?: boolean): string {
   const nom = lieu?.trim();
-  if (nom) return importee ? ` · ${nom} (importée)` : ` · ${nom}`;
-  return importee ? ' · importée' : '';
+  if (nom) return importee ? t('post.provenance_lieu_importee', { lieu: nom }) : t('post.provenance_lieu', { lieu: nom });
+  return importee ? t('post.provenance_importee') : '';
 }

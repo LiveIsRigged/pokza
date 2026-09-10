@@ -823,7 +823,7 @@ export function LiveHandCreator({
             !aLEntree
               ? null
               : invalidants.length > 0
-                ? `Changer ${enumerer(invalidants)} fait ressaisir tout le déroulé.`
+                ? t('createur.changer_ressaisir', { quoi: enumerer(invalidants) })
                 : RIEN_A_RESSAISIR
           }
           onNext={() => {

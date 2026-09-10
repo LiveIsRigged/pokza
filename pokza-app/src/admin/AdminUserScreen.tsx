@@ -8,11 +8,12 @@ import {
   liftSanction,
   setAgeConfirmed,
   isSanctionActive,
-  SANCTION_TYPE_LABEL,
+  SANCTION_TYPE_CLE,
   type UserModerationContext,
 } from '../data/admin';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { WarningIcon } from '../components/ui/icons';
+import { useT } from '../i18n';
 
 interface AdminUserScreenProps {
   userId: string;
@@ -36,6 +37,7 @@ function formatDateTime(iso: string): string {
  * le statut mineur.
  */
 export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
+  const t = useT();
   const [ctx, setCtx] = useState<UserModerationContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +93,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Fiche de modération</Text>
+        <Text style={styles.title}>{t('admin.fiche_titre')}</Text>
       </View>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
@@ -117,12 +119,12 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
           </View>
 
           {/* Verrou monétisation / âge */}
-          <Text style={styles.sectionTitle}>Confirmation d'âge (7.3/7.4)</Text>
+          <Text style={styles.sectionTitle}>{t('admin.confirmation_age')}</Text>
           <View style={styles.card}>
             <Text style={styles.metaLine}>
               {profile.ageConfirmed
-                ? 'Âge confirmé — le compte est traité comme majeur.'
-                : '⚠️ Âge NON confirmé — compte soupçonné mineur, monétisation bloquée.'}
+                ? t('admin.age_confirme')
+                : t('admin.age_non_confirme')}
             </Text>
             {profile.ageConfirmed ? (
               <Pressable
@@ -130,15 +132,15 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
                 disabled={busy}
                 onPress={() => setConfirmingMinorFlag(true)}
               >
-                <Text style={[styles.actionBtnText, styles.actionDangerText]}>Marquer « mineur soupçonné »</Text>
+                <Text style={[styles.actionBtnText, styles.actionDangerText]}>{t('admin.marquer_mineur')}</Text>
               </Pressable>
             ) : (
               <Pressable
                 style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
                 disabled={busy}
-                onPress={() => run("Confirmation d'âge rétablie", () => setAgeConfirmed(userId, true))}
+                onPress={() => run(t('admin.age_retablie'), () => setAgeConfirmed(userId, true))}
               >
-                <Text style={styles.actionBtnText}>Rétablir la confirmation d'âge</Text>
+                <Text style={styles.actionBtnText}>{t('admin.retablir_age')}</Text>
               </Pressable>
             )}
           </View>
@@ -147,7 +149,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
           <Text style={styles.sectionTitle}>Sanctions</Text>
           {ctx.sanctions.length === 0 ? (
             <View style={styles.card}>
-              <Text style={styles.metaLine}>Aucune sanction enregistrée.</Text>
+              <Text style={styles.metaLine}>{t('admin.aucune_sanction')}</Text>
             </View>
           ) : (
             ctx.sanctions.map((s) => {
@@ -155,9 +157,9 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
               return (
                 <View key={s.id} style={styles.card}>
                   <View style={styles.sanctionHeader}>
-                    <Text style={styles.sanctionType}>{SANCTION_TYPE_LABEL[s.type]}</Text>
+                    <Text style={styles.sanctionType}>{t(SANCTION_TYPE_CLE[s.type])}</Text>
                     <Text style={[styles.sanctionState, active ? styles.stateActive : styles.stateInactive]}>
-                      {active ? 'Active' : s.liftedAt ? 'Levée' : 'Expirée'}
+                      {t(active ? 'admin.sanction_active' : s.liftedAt ? 'admin.sanction_levee_court' : 'admin.sanction_expiree')}
                     </Text>
                   </View>
                   {s.reason ? <Text style={styles.metaLine}>« {s.reason} »</Text> : null}
@@ -167,7 +169,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
                     <Pressable
                       style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
                       disabled={busy}
-                      onPress={() => run('Sanction levée', () => liftSanction(s.id))}
+                      onPress={() => run(t('admin.action_sanction_levee'), () => liftSanction(s.id))}
                     >
                       <Text style={styles.actionBtnText}>Lever la sanction</Text>
                     </Pressable>
@@ -184,13 +186,13 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
       <ConfirmSheet
         visible={confirmingMinorFlag}
         icon={WarningIcon}
-        title="Marquer ce compte « mineur soupçonné » ?"
-        message="Sa monétisation sera bloquée jusqu'à ce que la confirmation d'âge soit rétablie."
-        confirmLabel="Marquer"
+        title={t('admin.marquer_mineur_titre')}
+        message={t('admin.marquer_mineur_message')}
+        confirmLabel={t('admin.marquer')}
         loading={busy}
         onCancel={() => setConfirmingMinorFlag(false)}
         onConfirm={async () => {
-          await run('Marqué comme mineur soupçonné', () => setAgeConfirmed(userId, false));
+          await run(t('admin.marque_mineur'), () => setAgeConfirmed(userId, false));
           setConfirmingMinorFlag(false);
         }}
       />

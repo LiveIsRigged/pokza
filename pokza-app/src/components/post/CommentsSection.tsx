@@ -531,7 +531,7 @@ export function CommentsSection({
         reporterId={currentUserId}
         targetType="comment"
         targetId={reportingComment?.id ?? ''}
-        targetLabel="ce commentaire"
+        targetLabel={t('signalement.cible_commentaire')}
       />
     </Modal>
   );

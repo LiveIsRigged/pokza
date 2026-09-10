@@ -135,7 +135,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
         <Pressable onPress={load} hitSlop={8} disabled={loading}>
-          <Text style={styles.refresh}>{loading ? '…' : '↻ Rafraîchir'}</Text>
+          <Text style={styles.refresh}>{loading ? '…' : t('stats.rafraichir')}</Text>
         </Pressable>
       </View>
 
@@ -190,7 +190,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
             </Tiles>
             <Text style={styles.miniTitle}>{t('stats.par_variante')}</Text>
             <Breakdown entries={toEntries(stats.contenu.parVariante, varianteLabel)} />
-            <MiniBars data={stats.contenu.parJour} caption="Mains postées · 14 derniers jours" />
+            <MiniBars data={stats.contenu.parJour} caption={t('stats.mains_14_jours')} />
           </Section>
 
           <Section title={t('stats.engagement')}>

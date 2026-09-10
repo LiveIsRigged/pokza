@@ -122,7 +122,7 @@ export function StreetCorrectionStep({
       }
       nextLabel="Valider"
       nextDisabled={!complet || rienNAChange}
-      footerNote={rienNAChange ? null : "Rien d'autre ne sera à ressaisir."}
+      footerNote={rienNAChange ? null : t('createur.rien_a_ressaisir')}
       onBack={onBack}
     >
       <View>
@@ -160,7 +160,7 @@ export function StreetCorrectionStep({
 
         <Text style={styles.label}>Mises de cette street</Text>
         {mises.length === 0 ? (
-          <Text style={styles.vide}>Personne n'a parlé sur cette street.</Text>
+          <Text style={styles.vide}>{t('createur.personne_na_parle')}</Text>
         ) : (
           mises.map((a, i) => (
             <Text key={`${a.seatId}-${a.order ?? i}`} style={styles.mise}>

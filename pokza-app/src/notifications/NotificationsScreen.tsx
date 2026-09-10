@@ -294,7 +294,7 @@ export function NotificationsScreen({
           <BellIcon size={15} color={colors.action} />
           <Text style={styles.pushBannerText}>
             {perm === 'denied'
-              ? 'Notifications bloquées — réactive-les dans les réglages de ton navigateur.'
+              ? t('notif.bloquees_message')
               : enabling
                 ? t('notif.activation_en_cours')
                 : t('notif.activer_sur_appareil')}

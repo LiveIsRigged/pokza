@@ -980,7 +980,7 @@ function AppContent() {
               // La correction EST publiée : on ne la présente pas comme un échec. On dit seulement
               // que l'ancienne version est encore là, ce que l'auteur peut corriger lui-même.
               setPostsError(
-                "La main corrigée est publiée, mais l'ancienne version n'a pas pu être supprimée — retire-la depuis son menu ⋯."
+                t('post.correction_publiee_erreur')
               );
             }
             setPosts((p) => [saved, ...p.filter((x) => x.id !== ancien.id)]);
@@ -1409,7 +1409,7 @@ function AppContent() {
         {postsLoading ? (
           <Text style={styles.statusText}>Chargement des mains…</Text>
         ) : posts.length === 0 ? (
-          <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
+          <Text style={styles.statusText}>{t('profil.aucune_main')}</Text>
         ) : (
           posts.map((post) => (
             <PostCard

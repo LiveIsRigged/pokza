@@ -2,6 +2,7 @@ import { toByteArray } from 'base64-js';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
+import { t } from '../i18n/traduire';
 
 export interface PickedImage {
   uri: string;
@@ -27,7 +28,7 @@ export interface CropRegion {
 export async function pickImage(): Promise<PickedImage | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    throw new Error("Pokza a besoin d'accéder à tes photos.");
+    throw new Error(t('erreur.acces_photos'));
   }
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
@@ -46,7 +47,7 @@ export async function pickImage(): Promise<PickedImage | null> {
 export async function pickImageFromCamera(): Promise<PickedImage | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) {
-    throw new Error("Pokza a besoin d'accéder à ton appareil photo.");
+    throw new Error(t('erreur.acces_appareil_photo'));
   }
   const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
   if (result.canceled) return null;
@@ -66,7 +67,7 @@ export async function cropAndResizeToBase64(uri: string, region: CropRegion, max
   context.resize({ width: maxSize, height: maxSize });
   const rendered = await context.renderAsync();
   const result = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.8, base64: true });
-  if (!result.base64) throw new Error("L'image n'a pas pu être préparée pour l'envoi.");
+  if (!result.base64) throw new Error(t('erreur.image_preparation'));
   return result.base64;
 }
 
@@ -94,7 +95,7 @@ export async function resizeToBase64(image: PickedImage, maxDimension: number): 
   }
   const rendered = await context.renderAsync();
   const result = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
-  if (!result.base64) throw new Error("L'image n'a pas pu être préparée pour l'envoi.");
+  if (!result.base64) throw new Error(t('erreur.image_preparation'));
   return { base64: result.base64, width: result.width, height: result.height };
 }
 

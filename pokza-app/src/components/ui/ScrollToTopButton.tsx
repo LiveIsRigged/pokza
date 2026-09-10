@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable } from './Pressable';
 import { borders, colors, iconMuted, radius } from '../../theme/theme';
 import { ArrowUpIcon } from './icons';
+import { useT } from '../../i18n';
 
 interface ScrollToTopButtonProps {
   /** Piloté par la distance déjà parcourue dans le feed (cf. `handleFeedScroll` dans App). */
@@ -28,6 +29,7 @@ interface ScrollToTopButtonProps {
  * mangerait le coin de la dernière main affichée.
  */
 export function ScrollToTopButton({ visible, onPress }: ScrollToTopButtonProps) {
+  const t = useT();
   const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -44,7 +46,7 @@ export function ScrollToTopButton({ visible, onPress }: ScrollToTopButtonProps) 
       style={[styles.wrapper, { opacity, bottom: insets.bottom + 16 }]}
       pointerEvents={visible ? 'auto' : 'none'}
     >
-      <Pressable style={styles.button} onPress={onPress} accessibilityLabel="Remonter en haut du feed et rafraîchir">
+      <Pressable style={styles.button} onPress={onPress} accessibilityLabel={t('feed.remonter')}>
         <ArrowUpIcon size={18} color={iconMuted} />
       </Pressable>
     </Animated.View>

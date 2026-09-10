@@ -95,7 +95,7 @@ export function CountryPicker({ visible, selectedCode, onSelect, onClose, allowC
                 </Pressable>
               ) : null
             }
-            ListEmptyComponent={<Text style={styles.emptyText}>Aucun pays trouvé.</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>{t('pays.aucun_trouve')}</Text>}
           />
         </View>
       </View>

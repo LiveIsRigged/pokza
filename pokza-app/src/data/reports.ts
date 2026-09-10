@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../analytics';
+import { t, type Cle } from '../i18n/traduire';
 
 /** Cible d'un signalement : une main, un commentaire ou un compte. Un seul mécanisme, trois cibles
  * (cf. table `reports`, colonne polymorphe `target_type`/`target_id`). */
@@ -21,26 +22,27 @@ export type ReportReason =
 
 /** Libellés affichés dans le sélecteur de motif, dans l'ordre où on veut les proposer. La valeur
  * envoyée en base est `value`, jamais le libellé. */
-export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
-  { value: 'insultes_harcelement', label: 'Insultes ou harcèlement' },
-  { value: 'haine_discrimination', label: 'Haine ou discrimination' },
-  { value: 'sexuel_choquant', label: 'Contenu sexuel ou choquant' },
-  { value: 'usurpation_identite', label: "Usurpation d'identité" },
-  { value: 'spam', label: 'Spam' },
-  { value: 'operateur_illegal', label: "Opérateur illégal / jeu d'argent non autorisé" },
-  { value: 'arnaque', label: 'Arnaque ou escroquerie' },
-  { value: 'sollicitation_commerciale', label: 'Sollicitation commerciale' },
-  { value: 'compte_mineur', label: 'Compte de mineur (moins de 18 ans)' },
+export const REPORT_REASONS: { value: ReportReason; cle: Cle }[] = [
+  { value: 'insultes_harcelement', cle: 'signalement.insultes_harcelement' },
+  { value: 'haine_discrimination', cle: 'signalement.haine_discrimination' },
+  { value: 'sexuel_choquant', cle: 'signalement.sexuel_choquant' },
+  { value: 'usurpation_identite', cle: 'signalement.usurpation_identite' },
+  { value: 'spam', cle: 'signalement.spam' },
+  { value: 'operateur_illegal', cle: 'signalement.operateur_illegal' },
+  { value: 'arnaque', cle: 'signalement.arnaque' },
+  { value: 'sollicitation_commerciale', cle: 'signalement.sollicitation_commerciale' },
+  { value: 'compte_mineur', cle: 'signalement.compte_mineur' },
 ];
 
-const REASON_LABEL: Record<ReportReason, string> = Object.fromEntries(
-  REPORT_REASONS.map((r) => [r.value, r.label])
-) as Record<ReportReason, string>;
+const REASON_CLE: Record<ReportReason, Cle> = Object.fromEntries(
+  REPORT_REASONS.map((r) => [r.value, r.cle])
+) as Record<ReportReason, Cle>;
 
 /** Libellé lisible d'un motif — utilisé aussi côté back-office admin. Tolérant à une valeur inconnue
  * (motif ajouté en base mais pas encore côté client) plutôt que de renvoyer `undefined`. */
 export function reportReasonLabel(reason: string): string {
-  return REASON_LABEL[reason as ReportReason] ?? reason;
+  const cle = REASON_CLE[reason as ReportReason];
+  return cle ? t(cle) : reason;
 }
 
 export interface SubmitReportInput {
@@ -70,7 +72,7 @@ export async function submitReport(input: SubmitReportInput): Promise<void> {
   if (error) {
     // 23505 = violation d'unicité → cette cible a déjà été signalée par ce compte.
     if (error.code === '23505') {
-      throw new Error('Tu as déjà signalé ce contenu.');
+      throw new Error(t('signalement.deja_signale'));
     }
     throw error;
   }

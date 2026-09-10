@@ -1,3 +1,5 @@
+import { t } from '../i18n/traduire';
+
 // Signatures d'échec réseau selon le navigateur/environnement — le message brut d'un fetch qui
 // n'a pas pu atteindre le serveur (pas de connexion, DNS, etc.), pas une erreur métier renvoyée
 // par Supabase. Comparaison insensible à la casse.
@@ -31,12 +33,12 @@ export function errorMessage(err: unknown): string {
   // il a voté ou liké depuis un autre écran / un autre appareil, et cette vue-ci n'est plus à jour.
   // Sans traduction, il lisait `duplicate key value violates unique constraint "votes_pkey"`.
   if (errorCode(err) === '23505') {
-    return "C'est déjà enregistré de ton côté — actualise pour voir l'état à jour.";
+    return t('erreur.deja_enregistre');
   }
   const raw = err instanceof Error ? err.message : hasMessage(err) ? err.message : String(err);
   const lower = raw.toLowerCase();
   if (NETWORK_ERROR_PATTERNS.some((pattern) => lower.includes(pattern))) {
-    return 'Connexion internet indisponible — vérifie ta connexion et réessaie.';
+    return t('erreur.connexion_indisponible');
   }
   return raw;
 }

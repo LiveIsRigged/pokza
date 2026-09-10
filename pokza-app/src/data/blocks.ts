@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
+import { t } from '../i18n/traduire';
 
 /**
  * Bloquer quelqu'un. Relation orientée en base (`blocker_id`/`blocked_id`) mais le masquage est
@@ -22,7 +23,7 @@ export async function unblockUser(blockerId: string, blockedId: string): Promise
     .eq('blocked_id', blockedId)
     .select('blocker_id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("Le compte n'a pas été débloqué"));
+  assertWritten(data, refusedMessage(t('erreur.compte_debloque')));
 }
 
 /** Vrai si `blockerId` a bloqué `blockedId`. La RLS de `blocks` ne laisse lire QUE ses propres

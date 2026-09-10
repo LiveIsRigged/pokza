@@ -20,6 +20,7 @@ interface ReportModalProps {
 
 import { REPORT_DETAILS_MAX_LENGTH as DETAILS_MAX } from '../../constants/limits';
 import { LARGEUR_MAX } from '../ui/Colonne';
+import { useT } from '../../i18n';
 
 /**
  * Feuille de signalement : choix d'un motif (obligatoire) + précision libre facultative. Le contenu
@@ -36,6 +37,7 @@ export function ReportModal({
   targetLabel,
   onSubmitted,
 }: ReportModalProps) {
+  const t = useT();
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -84,26 +86,26 @@ export function ReportModal({
 
           {done ? (
             <View style={styles.doneWrap}>
-              <Text style={styles.doneTitle}>Merci, c'est envoyé</Text>
+              <Text style={styles.doneTitle}>{t('signalement.merci')}</Text>
               <Text style={styles.doneText}>
                 Ton signalement a été transmis à la modération. Nous examinons chaque signalement et
                 agissons quand une règle n'est pas respectée.
               </Text>
               <Pressable style={styles.submitButton} onPress={onClose}>
-                <Text style={styles.submitButtonText}>Fermer</Text>
+                <Text style={styles.submitButtonText}>{t('commun.fermer')}</Text>
               </Pressable>
             </View>
           ) : (
             <>
               <View style={styles.header}>
-                <Text style={styles.headerTitle}>Signaler {targetLabel}</Text>
+                <Text style={styles.headerTitle}>{t('signalement.titre', { cible: targetLabel })}</Text>
                 <Pressable onPress={onClose} hitSlop={8}>
                   <Text style={styles.closeButton}>✕</Text>
                 </Pressable>
               </View>
 
               <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-                <Text style={styles.sectionLabel}>Pourquoi signales-tu ce contenu ?</Text>
+                <Text style={styles.sectionLabel}>{t('signalement.pourquoi')}</Text>
                 {REPORT_REASONS.map((r) => {
                   const selected = reason === r.value;
                   return (
@@ -115,16 +117,16 @@ export function ReportModal({
                       <View style={[styles.radio, selected && styles.radioSelected]}>
                         {selected && <View style={styles.radioDot} />}
                       </View>
-                      <Text style={[styles.reasonLabel, selected && styles.reasonLabelSelected]}>{r.label}</Text>
+                      <Text style={[styles.reasonLabel, selected && styles.reasonLabelSelected]}>{t(r.cle)}</Text>
                     </Pressable>
                   );
                 })}
 
-                <Text style={[styles.sectionLabel, styles.detailsLabel]}>Précision (facultatif)</Text>
+                <Text style={[styles.sectionLabel, styles.detailsLabel]}>{t('signalement.precision')}</Text>
                 <TextInput
                   autoComplete="off"
                   style={styles.detailsInput}
-                  placeholder="Ajoute un détail utile à la modération…"
+                  placeholder={t('signalement.precision_placeholder')}
                   value={details}
                   onChangeText={(t) => setDetails(t.slice(0, DETAILS_MAX))}
                   multiline
@@ -140,7 +142,7 @@ export function ReportModal({
                   onPress={handleSubmit}
                   disabled={!reason || submitting}
                 >
-                  <Text style={styles.submitButtonText}>{submitting ? 'Envoi…' : 'Envoyer le signalement'}</Text>
+                  <Text style={styles.submitButtonText}>{t(submitting ? 'signalement.envoi_en_cours' : 'signalement.envoyer')}</Text>
                 </Pressable>
               </View>
             </>

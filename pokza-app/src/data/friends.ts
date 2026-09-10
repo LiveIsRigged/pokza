@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
 import { fetchDisplayNames } from './profiles';
+import { t } from '../i18n/traduire';
 
 export type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends';
 
@@ -56,7 +57,7 @@ export async function acceptFriendRequest(senderId: string, receiverId: string):
     .eq('receiver_id', receiverId)
     .select('sender_id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("La demande d'ami n'a pas été acceptée"));
+  assertWritten(data, refusedMessage(t('erreur.demande_ami_acceptee')));
 }
 
 /** Sert à la fois à refuser une demande reçue, annuler une demande envoyée, et retirer un ami —
@@ -70,7 +71,7 @@ export async function deleteFriendRelation(userId: string, otherUserId: string):
     )
     .select('sender_id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("La relation n'a pas été modifiée"));
+  assertWritten(data, refusedMessage(t('erreur.relation_modifiee')));
 }
 
 export interface Friend {

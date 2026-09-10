@@ -6,6 +6,7 @@ import { mainEnTexte, scinderSignature } from '../../engine/mainEnTexte';
 import type { PartieDecrite } from '../../utils/denomination';
 import { borders, colors, radius, spacing, typography } from '../../theme/theme';
 import { LARGEUR_MAX } from '../ui/Colonne';
+import { useT } from '../../i18n';
 
 interface MainEnTexteScreenProps {
   visible: boolean;
@@ -32,6 +33,7 @@ const DUREE_CONFIRMATION_MS = 2000;
  * bloc qu'on ne peut pas sélectionner donne l'impression d'une image.
  */
 export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScreenProps) {
+  const t = useT();
   /** 'copie' après un succès, 'refus' quand le presse-papier du navigateur nous ferme la porte. */
   const [issue, setIssue] = useState<null | 'copie' | 'refus'>(null);
   // Le texte n'est bâti qu'à l'ouverture, et refait si la main change : il rejoue toute la main
@@ -91,7 +93,7 @@ export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScre
             >
               <Text style={styles.boutonTexte}>
                 {issue === 'copie'
-                  ? 'Copié ✓'
+                  ? t('commun.copie')
                   : issue === 'refus'
                     ? 'Sélectionne le texte pour le copier'
                     : 'Copier le texte'}

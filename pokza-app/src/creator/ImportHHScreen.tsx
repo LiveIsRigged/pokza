@@ -173,7 +173,7 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
     try {
       const colle = await Clipboard.getStringAsync();
       if (!colle.trim()) {
-        setRefus({ message: messageDeRefus('texte-vide'), detail: 'presse-papier vide' });
+        setRefus({ message: messageDeRefus('texte-vide'), detail: t('import.presse_papier_vide') });
         return;
       }
       // Le champ est rempli MÊME en cas de refus : l'auteur voit ce qui a été lu, peut le corriger
@@ -184,7 +184,7 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
       // Le presse-papier a fermé la porte. Le champ reste la sortie, et c'est celle qu'on indique.
       setRefus({
         message: 'Ton navigateur ne laisse pas Pokza lire le presse-papier. Colle le texte dans le champ.',
-        detail: 'presse-papier refusé',
+        detail: t('import.presse_papier_refuse'),
       });
     }
   };

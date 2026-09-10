@@ -5,6 +5,7 @@ import { Pressable } from '../ui/Pressable';
 import { borders, colors, radius, spacing, tints, typography } from '../../theme/theme';
 import { castVote, retractVote } from '../../data/posts';
 import { VotersSheet } from './VotersSheet';
+import { useT } from '../../i18n';
 
 interface VotePollProps {
   postId: string;
@@ -47,6 +48,7 @@ export function VotePoll({
   isAuthor,
   onSelectProfile,
 }: VotePollProps) {
+  const t = useT();
   const [voted, setVoted] = useState<string | null>(myVote ?? null);
   const [votersOpen, setVotersOpen] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>(() => {
@@ -224,7 +226,7 @@ export function VotePoll({
             </Text>
             {canSeeVoters && totalVotes > 0 && (
               <Pressable onPress={() => setVotersOpen(true)} hitSlop={6}>
-                <Text style={styles.votersLink}>Qui a voté quoi</Text>
+                <Text style={styles.votersLink}>{t('vote.qui_a_vote_quoi')}</Text>
               </Pressable>
             )}
           </View>

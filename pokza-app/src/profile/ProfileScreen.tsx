@@ -684,7 +684,7 @@ export function ProfileScreen({
         reporterId={currentUserId}
         targetType="user"
         targetId={profileId}
-        targetLabel={profile?.displayName ?? 'ce joueur'}
+        targetLabel={profile?.displayName ?? t('profil.ce_joueur')}
       />
       {cropTarget && (
         <AvatarCropper

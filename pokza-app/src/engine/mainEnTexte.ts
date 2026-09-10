@@ -1,6 +1,7 @@
 import type { Card, Hand, Seat, Street } from '../types/poker';
 import { formatChipAmount } from '../utils/chipFormat';
 import { formatContextLine, type PartieDecrite } from '../utils/denomination';
+import { t } from '../i18n/traduire';
 import {
   computeHandState,
   describeAction,
@@ -50,7 +51,7 @@ import {
  * jour, l'écrire EN DUR et surtout pas via `webOrigin()` — cette fonction rend l'origine réelle,
  * donc `http://localhost:8081` pour tout texte copié depuis un serveur de développement.
  */
-const SIGNATURE = 'Main partagée sur Pokza';
+const signature = () => t('maintexte.signature');
 
 /**
  * Le texte scindé pour l'AFFICHAGE seulement : le déroulé d'un côté, la signature de l'autre, que
@@ -62,7 +63,7 @@ const SIGNATURE = 'Main partagée sur Pokza';
  * visible ici.
  */
 export function scinderSignature(texte: string): { corps: string; signature: string } {
-  const i = texte.lastIndexOf(`\n${SIGNATURE}`);
+  const i = texte.lastIndexOf(`\n${signature()}`);
   if (i === -1) return { corps: texte, signature: '' };
   // Le `\n` trouvé appartient au CORPS : c'est lui qui pose la ligne vide de séparation, et le
   // garder du côté gris ferait commencer la signature par un saut de ligne italique.
@@ -180,7 +181,7 @@ export function mainEnTexte(partie: PartieDecrite): string {
   // Le `trimEnd` avant la signature, et non après : une main arrêtée par son auteur peut n'avoir
   // aucune conclusion à écrire, et sans lui la signature se retrouverait à deux lignes vides du
   // déroulé. Elle en garde exactement une, quoi qu'il précède.
-  return `${lignes.join('\n').trimEnd()}\n\n${SIGNATURE}\n`;
+  return `${lignes.join('\n').trimEnd()}\n\n${signature()}\n`;
 }
 
 /** « FLOP  Ks 7d 2c  (pot 137€) » — les cartes qui VIENNENT de tomber, pas le board entier. */
@@ -217,8 +218,8 @@ function conclusion(hand: Hand, montant: (n: number) => string): string[] {
   if (hand.stoppedAtSeatId) {
     const seat = hand.seats.find((s) => s.id === hand.stoppedAtSeatId);
     return seat
-      ? [`La main s'arrête ici — à ${etiquetteSiege(hand, seat)} de jouer.`]
-      : ["La main s'arrête ici."];
+      ? [t('maintexte.arret_siege', { siege: etiquetteSiege(hand, seat) })]
+      : [t('maintexte.arret')];
   }
 
   if (fin.potAwards.length === 0) return [];

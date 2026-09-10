@@ -91,7 +91,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
     // Doublon volontaire de la garde `canSubmit` : le bouton est déjà désactivé, mais un
     // consentement ne doit jamais pouvoir être contourné par un chemin d'appel oublié.
     if (!identityConsent) {
-      setError("Pour valider ton profil, tu dois consentir au traitement de ton prénom, de ton nom et de ta date de naissance.");
+      setError(t('profil.consentement_requis'));
       return;
     }
     const dateNaissance = parseBirthDate(day, month, year);
@@ -247,7 +247,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             maxLength={4}
           />
         </View>
-        <Text style={styles.reassurance}>Ta date de naissance reste privée — elle n'est jamais affichée, quel que soit ton choix ci-dessus.</Text>
+        <Text style={styles.reassurance}>{t('profil.date_privee')}</Text>
 
         <Pressable style={styles.consentBox} onPress={() => setIdentityConsent((v) => !v)}>
           <View style={[styles.checkbox, identityConsent && styles.checkboxChecked]}>

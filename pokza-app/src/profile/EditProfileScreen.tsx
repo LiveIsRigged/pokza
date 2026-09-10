@@ -56,7 +56,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
       onSaved(updated);
     } catch (err) {
       const code = (err as { code?: string })?.code;
-      setError(code === '23505' ? 'Ce pseudo est déjà pris, choisis-en un autre.' : errorMessage(err));
+      setError(code === '23505' ? t('profil.erreur_pseudo_pris') : errorMessage(err));
     } finally {
       setSubmitting(false);
     }

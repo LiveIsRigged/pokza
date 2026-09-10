@@ -118,7 +118,13 @@ const code = fichiers.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
 // ternaire (`t(x ? 'a' : 'b')`) ou par une table de correspondance. Chercher `t('...')` seul
 // déclarait neuf clés mortes qui étaient bien vivantes — un garde-fou qui crie à tort finit ignoré.
 // Les clés sont préfixées et pointées, une collision fortuite avec une autre chaîne est exclue.
+// DEUX lectures réunies, parce que chacune rate ce que l'autre attrape :
+//  · `t('clé')` explicitement — l'appariement naïf des guillemets se décale dès qu'une ligne
+//    contient une chaîne vide ou une apostrophe, et avale alors le guillemet ouvrant de la clé
+//    (vu sur ` ${t('admin.levee_expiree')}` précédé d'un `''`) ;
+//  · toute chaîne littérale — pour les clés qui passent par un ternaire ou une table.
 const litterales = new Set();
+for (const m of code.matchAll(/\bt\(\s*'([^'\n]+)'/g)) litterales.add(m[1]);
 for (const m of code.matchAll(/'([^'\n]+)'/g)) litterales.add(m[1]);
 for (const m of code.matchAll(/"([^"\n]+)"/g)) litterales.add(m[1]);
 const jamais = Object.keys(fr).filter((c) => !litterales.has(c));
@@ -142,6 +148,12 @@ const HORS_PERIMETRE = [
   'src/import/verification.ts',     // diagnostics affichés sous un refus, écrits pour diagnostiquer
   'src/import/montage.ts',
   'src/import/dialectes/',          // motifs de lecture des rooms : les traduire casserait l'import
+  // Ces deux-là ne sont PAS des oublis, et c'est pour ça qu'ils sont nommés ici plutôt que tolérés
+  // en silence :
+  'src/engine/handEngine.ts',       // porte DÉJÀ ses deux langues en clair (`en ? … : …`) — la
+                                    // branche française n'est pas du texte non traduit
+  'src/lib/supabase.ts',            // message de démarrage adressé au développeur (.env manquant),
+                                    // jamais vu par un joueur
 ];
 const accent = /[éèêàçùôîûëïÉÈÀÇÊÎÔÛ]/;
 const commentaire = /^\s*(\*|\/\/|\/\*)/;

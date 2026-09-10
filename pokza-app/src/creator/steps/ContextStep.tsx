@@ -1010,7 +1010,7 @@ export function ContextStep({
             <Text style={styles.label}>{t('createur.devise')}</Text>
             <Pressable style={styles.selector} onPress={() => setDeviseOuverte(true)}>
               <Text style={styles.selectorValue}>
-                {devise(value.currency).sigle}  {devise(value.currency).nom}
+                {devise(value.currency).sigle}  {t(devise(value.currency).cle)}
               </Text>
               <Text style={styles.selectorChevron}>›</Text>
             </Pressable>

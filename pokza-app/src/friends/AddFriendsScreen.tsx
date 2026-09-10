@@ -41,7 +41,7 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
       message: 'Ajoute-moi sur Pokza pour suivre mes mains et en discuter !',
       url: `${POKZA_WEB_ORIGIN}/invite/${currentUserId}`,
     });
-    if (outcome === 'copied') setShareFeedback('Lien copié dans le presse-papiers !');
+    if (outcome === 'copied') setShareFeedback(t('post.lien_copie'));
     else if (outcome === 'unavailable') setShareFeedback("Le partage n'est pas disponible ici.");
     if (outcome === 'copied' || outcome === 'unavailable') setTimeout(() => setShareFeedback(null), 2500);
   };

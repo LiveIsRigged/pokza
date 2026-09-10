@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
+import { t } from '../i18n/traduire';
 
 export interface Group {
   id: string;
@@ -113,13 +114,13 @@ export async function updateGroupDescription(groupId: string, description: strin
     .eq('id', groupId)
     .select('id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("La description n'a pas été enregistrée"));
+  assertWritten(data, refusedMessage(t('erreur.description_enregistree')));
 }
 
 export async function deleteGroup(groupId: string): Promise<void> {
   const { data, error } = await supabase.from('groups').delete().eq('id', groupId).select('id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("Le groupe n'a pas été supprimé"));
+  assertWritten(data, refusedMessage(t('erreur.groupe_supprime')));
 }
 
 export async function fetchGroupMembers(groupId: string): Promise<GroupMember[]> {
@@ -163,7 +164,7 @@ export async function acceptGroupInvite(groupId: string, userId: string): Promis
     .eq('user_id', userId)
     .select('group_id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("L'invitation n'a pas été acceptée"));
+  assertWritten(data, refusedMessage(t('erreur.invitation_acceptee')));
 }
 
 /** Refuser une invitation, quitter un groupe, ou (côté créateur) retirer un membre / annuler une
@@ -176,7 +177,7 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
     .eq('user_id', userId)
     .select('group_id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("L'appartenance au groupe n'a pas été modifiée"));
+  assertWritten(data, refusedMessage(t('erreur.appartenance_groupe')));
 }
 
 export interface PendingGroupInvite {

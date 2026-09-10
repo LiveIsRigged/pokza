@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
 import { cropAndResizeToBase64, uploadImageToBucket, type CropRegion } from './images';
+import { t } from '../i18n/traduire';
 
 export type { CropRegion };
 
@@ -30,7 +31,7 @@ async function saveGroupAvatarUrl(groupId: string, url: string | null): Promise<
   // ligne, ne renvoyait aucune erreur, et le logo semblait changé jusqu'au rechargement.
   const { data, error } = await supabase.from('groups').update({ avatar_url: url }).eq('id', groupId).select('id');
   if (error) throw error;
-  assertWritten(data, refusedMessage(url ? "Le logo du groupe n'a pas été enregistré" : "Le logo du groupe n'a pas été retiré"));
+  assertWritten(data, refusedMessage(t(url ? 'erreur.logo_groupe_enregistre' : 'erreur.logo_groupe_retire')));
 }
 
 /** Retire la photo — même ordre (référence d'abord, fichier ensuite) que pour un avatar

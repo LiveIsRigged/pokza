@@ -17,6 +17,7 @@ import { fetchTrendingGifs, searchGifs, type GifResult } from '../../data/gifs';
 import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
 import { LARGEUR_MAX } from '../ui/Colonne';
 import { autoFocusUtile } from '../../web/clavierVirtuel';
+import { useT } from '../../i18n';
 
 interface GifPickerProps {
   visible: boolean;
@@ -30,6 +31,7 @@ const SEARCH_DEBOUNCE_MS = 400;
  * La recherche est retardée de 400ms après la dernière frappe pour ne pas interroger l'API à
  * chaque lettre tapée. */
 export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GifResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +97,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
             <ActivityIndicator color={colors.textSecondary} style={styles.loader} />
           ) : (
             <ScrollView contentContainerStyle={styles.grid}>
-              {results.length === 0 && <Text style={styles.empty}>Aucun résultat.</Text>}
+              {results.length === 0 && <Text style={styles.empty}>{t('commun.aucun_resultat')}</Text>}
               {results.map((gif) => (
                 <Pressable key={gif.id} style={styles.gifWrap} onPress={() => onSelect(gif)}>
                   <Image source={{ uri: gif.previewUrl }} style={styles.gifThumb} resizeMode="cover" />

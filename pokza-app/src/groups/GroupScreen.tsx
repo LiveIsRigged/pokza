@@ -516,9 +516,9 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
       <ConfirmSheet
         visible={confirmingLeave}
         icon={isOwner ? TrashIcon : ExitIcon}
-        title={isOwner ? 'Supprimer ce groupe privé ?' : 'Quitter ce groupe privé ?'}
-        message={isOwner ? 'Le groupe et ses mains partagées disparaîtront pour tout le monde.' : undefined}
-        confirmLabel={isOwner ? 'Supprimer' : 'Quitter'}
+        title={t(isOwner ? 'groupe.supprimer_titre' : 'groupe.quitter_titre')}
+        message={isOwner ? t('groupe.supprimer_message') : undefined}
+        confirmLabel={t(isOwner ? 'commun.supprimer' : 'groupe.quitter_court')}
         loading={leavingGroup}
         onCancel={() => setConfirmingLeave(false)}
         onConfirm={handleLeaveOrDelete}

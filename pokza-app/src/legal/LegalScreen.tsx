@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, radius, spacing } from '../theme/theme';
 import { LEGAL_DOCS, LEGAL_DRAFT, LEGAL_UPDATED, getLegalDoc, type LegalDoc, type LegalDocId } from './legalContent';
+import { useT } from '../i18n';
 
 interface LegalScreenProps {
   /** Ouvrir directement un document (depuis un lien d'inscription) ; sinon on affiche l'index. */
@@ -16,6 +17,7 @@ interface LegalScreenProps {
  * Un seul composant, pour que le texte reste à un seul endroit ([legalContent.ts](legalContent.ts)).
  */
 export function LegalScreen({ initialDocId, onBack }: LegalScreenProps) {
+  const t = useT();
   const [docId, setDocId] = useState<LegalDocId | null>(initialDocId ?? null);
   const doc = docId ? getLegalDoc(docId) : null;
   // Arrivé via l'index (pas de doc imposé) : le retour depuis un document ramène à l'index.
@@ -33,7 +35,7 @@ export function LegalScreen({ initialDocId, onBack }: LegalScreenProps) {
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {doc ? doc.shortTitle : 'Informations légales'}
+          {doc ? doc.shortTitle : t('legal.titre')}
         </Text>
       </View>
 

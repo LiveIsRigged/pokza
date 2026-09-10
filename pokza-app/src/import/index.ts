@@ -7,6 +7,7 @@ import { positions } from './dialectes/positions';
 import { generique } from './dialectes/generique';
 import { monter } from './montage';
 import { verifier, type Controle } from './verification';
+import { t } from '../i18n/traduire';
 
 /**
  * « COLLER UNE MAIN » — LE PIPELINE, D'UN BOUT À L'AUTRE.
@@ -76,7 +77,7 @@ export type ResultatImport =
 export function importerMain(texteBrut: string): ResultatImport {
   const texte = sansMarqueDOctets(texteBrut);
   if (!texte.trim()) {
-    return { ok: false, code: 'texte-vide', message: 'Rien à lire.' };
+    return { ok: false, code: 'texte-vide', message: t('import.rien_a_lire') };
   }
 
   const dialecte = DIALECTES.find((d) => d.reconnait(texte));
@@ -97,12 +98,12 @@ export function importerMain(texteBrut: string): ResultatImport {
   // élément — l'auteur doit savoir laquelle des mains part.
   const mains = dialecte.decoupe(texte);
   if (mains.length === 0) {
-    return { ok: false, code: 'format-inconnu', message: "Aucune main dans ce texte.", dialecte: dialecte.id };
+    return { ok: false, code: 'format-inconnu', message: t('import.diag_aucune_main'), dialecte: dialecte.id };
   }
   if (mains.length > 1) {
     return {
       ok: false, code: 'plusieurs-mains', dialecte: dialecte.id,
-      message: `${mains.length} mains dans ce texte : Pokza n'en importe qu'une à la fois.`,
+      message: t('import.diag_plusieurs_mains', { n: mains.length }),
     };
   }
 

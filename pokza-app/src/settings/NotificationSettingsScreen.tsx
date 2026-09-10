@@ -5,14 +5,15 @@ import { borders, colors, spacing, tints } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { enablePush, disablePush, isDeviceSubscribed, pushState, pushSupported, type PushState } from '../web/push';
 import { fetchNotificationPrefs, updateNotificationPrefs, type NotificationPrefs } from '../data/notificationPrefs';
+import { useT, type Cle } from '../i18n';
 
-const FAMILY_ROWS: { key: keyof NotificationPrefs; label: string }[] = [
-  { key: 'likes', label: "J'aime" },
-  { key: 'comments', label: 'Commentaires et réponses' },
-  { key: 'friends', label: 'Amis (demandes et acceptations)' },
-  { key: 'groups', label: 'Groupes (invitations et acceptations)' },
-  { key: 'posted', label: 'Mains de mes amis' },
-  { key: 'posted_groups', label: 'Mains de mes groupes' },
+const FAMILY_ROWS: { key: keyof NotificationPrefs; cle: Cle }[] = [
+  { key: 'likes', cle: 'notif.famille_jaime' },
+  { key: 'comments', cle: 'notif.commentaires_reponses' },
+  { key: 'friends', cle: 'notif.famille_amis' },
+  { key: 'groups', cle: 'notif.famille_groupes' },
+  { key: 'posted', cle: 'notif.famille_mains_amis' },
+  { key: 'posted_groups', cle: 'notif.famille_mains_groupes' },
 ];
 
 interface NotificationSettingsScreenProps {
@@ -27,6 +28,7 @@ interface NotificationSettingsScreenProps {
  * (ni ses deux appels réseau) tant qu'on ne l'ouvre pas.
  */
 export function NotificationSettingsScreen({ userId, onBack }: NotificationSettingsScreenProps) {
+  const t = useT();
   const [perm, setPerm] = useState<PushState>(() => pushState());
   // `null` = encore en cours de lecture de l'abonnement réel (cf. `isDeviceSubscribed`) : distinct
   // de la permission navigateur, qui elle ne redescend JAMAIS à `false` depuis le code.
@@ -111,7 +113,7 @@ export function NotificationSettingsScreen({ userId, onBack }: NotificationSetti
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Notifications sur cet appareil</Text>
               {perm === 'denied' ? (
-                <Text style={styles.deniedHint}>Bloquées</Text>
+                <Text style={styles.deniedHint}>{t('notif.bloquees')}</Text>
               ) : (
                 <Switch
                   value={!!deviceOn}
@@ -133,7 +135,7 @@ export function NotificationSettingsScreen({ userId, onBack }: NotificationSetti
             <Text style={styles.subLabel}>Recevoir un push pour…</Text>
             {FAMILY_ROWS.map((f) => (
               <View key={f.key} style={[styles.row, !deviceOn && styles.rowMuted]}>
-                <Text style={styles.rowLabel}>{f.label}</Text>
+                <Text style={styles.rowLabel}>{t(f.cle)}</Text>
                 <Switch
                   value={prefs ? prefs[f.key] : true}
                   onValueChange={(v) => handleToggleFamily(f.key, v)}

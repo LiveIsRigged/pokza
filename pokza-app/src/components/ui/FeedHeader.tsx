@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { borders, colors, hitSlopPairLeft, hitSlopPairRight, tints } from '../../theme/theme';
 import { ChipStackIcon } from './ChipStackIcon';
 import { BellIcon, SearchIcon } from './icons';
+import { useT } from '../../i18n';
 
 interface FeedHeaderProps {
   /** 0 = déployé (haut du feed), 1 = compact (feed défilé). Piloté par le scroll dans App. */
@@ -28,6 +29,7 @@ interface FeedHeaderProps {
  * plus naturel sur mobile.
  */
 export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifications, unreadCount }: FeedHeaderProps) {
+  const t = useT();
   // On décolle la barre de la zone système avec l'inset réel (0 sur le web / la PWA en bande blanche,
   // > 0 en natif), plus un petit confort visuel (22 déployé, 14 une fois défilé).
   const insets = useSafeAreaInsets();
@@ -42,7 +44,7 @@ export function FeedHeader({ compact, onOpenMenu, onCreate, onSearch, onNotifica
           <ChipStackIcon />
         </Pressable>
         <Pressable style={styles.createButton} onPress={onCreate}>
-          <Text style={styles.createButtonText}>+ Créer une main</Text>
+          <Text style={styles.createButtonText}>{t('feed.creer_une_main')}</Text>
         </Pressable>
         <Pressable style={styles.iconButton} onPress={onSearch} hitSlop={hitSlopPairLeft}>
           <SearchIcon size={20} color={colors.textPrimary} />

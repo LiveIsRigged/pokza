@@ -3,8 +3,9 @@ import { errorMessage } from '../utils/errorMessage';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, radius, spacing, tints } from '../theme/theme';
-import { listReports, REPORT_STATUS_LABEL, type AdminReport, type ReportStatus } from '../data/admin';
+import { listReports, REPORT_STATUS_CLE, type AdminReport, type ReportStatus } from '../data/admin';
 import { reportReasonLabel } from '../data/reports';
+import { useT, type Cle } from '../i18n';
 
 interface AdminReportsScreenProps {
   onBack: () => void;
@@ -17,12 +18,12 @@ const TARGET_LABEL: Record<string, string> = { post: 'Main', comment: 'Commentai
 
 // Onglets de statut. `null` = tout. Ordre pensé pour le travail quotidien : ce qui reste à traiter
 // en premier.
-const TABS: { key: ReportStatus | null; label: string }[] = [
-  { key: 'open', label: 'À traiter' },
-  { key: 'reviewing', label: 'En cours' },
-  { key: 'actioned', label: 'Sanctionnés' },
-  { key: 'dismissed', label: 'Rejetés' },
-  { key: null, label: 'Tout' },
+const TABS: { key: ReportStatus | null; cle: Cle }[] = [
+  { key: 'open', cle: 'admin.onglet_a_traiter' },
+  { key: 'reviewing', cle: 'admin.en_cours' },
+  { key: 'actioned', cle: 'admin.onglet_sanctionnes' },
+  { key: 'dismissed', cle: 'admin.onglet_rejetes' },
+  { key: null, cle: 'admin.onglet_tout' },
 ];
 
 function timeAgo(iso: string): string {
@@ -36,6 +37,7 @@ function timeAgo(iso: string): string {
 }
 
 export function AdminReportsScreen({ onBack, onOpenReport, reloadKey }: AdminReportsScreenProps) {
+  const t = useT();
   const [tab, setTab] = useState<ReportStatus | null>('open');
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,15 +76,15 @@ export function AdminReportsScreen({ onBack, onOpenReport, reloadKey }: AdminRep
 
       <View style={styles.tabsWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-          {TABS.map((t) => {
-            const active = t.key === tab;
+          {TABS.map((onglet) => {
+            const active = onglet.key === tab;
             return (
               <Pressable
-                key={t.label}
+                key={onglet.cle}
                 style={[styles.tab, active && styles.tabActive]}
-                onPress={() => setTab(t.key)}
+                onPress={() => setTab(onglet.key)}
               >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{t.label}</Text>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{t(onglet.cle)}</Text>
               </Pressable>
             );
           })}
@@ -95,7 +97,7 @@ export function AdminReportsScreen({ onBack, onOpenReport, reloadKey }: AdminRep
         {loading ? (
           <Text style={styles.statusText}>Chargement…</Text>
         ) : reports.length === 0 ? (
-          <Text style={styles.statusText}>Aucun signalement dans cette catégorie.</Text>
+          <Text style={styles.statusText}>{t('admin.aucun_signalement')}</Text>
         ) : (
           reports.map((r) => (
             <Pressable key={r.id} style={styles.row} onPress={() => onOpenReport(r.id)}>
@@ -104,7 +106,7 @@ export function AdminReportsScreen({ onBack, onOpenReport, reloadKey }: AdminRep
                 <Text style={styles.targetBadge}>{TARGET_LABEL[r.targetType] ?? r.targetType}</Text>
                 {r.reportsOnTarget > 1 && <Text style={styles.multiBadge}>×{r.reportsOnTarget}</Text>}
                 <View style={styles.grow} />
-                <Text style={styles.statusBadge}>{REPORT_STATUS_LABEL[r.status]}</Text>
+                <Text style={styles.statusBadge}>{t(REPORT_STATUS_CLE[r.status])}</Text>
               </View>
               <Text style={styles.reason}>{reportReasonLabel(r.reason)}</Text>
               {r.details ? (

@@ -3,6 +3,7 @@ import { holeCardCount } from '../types/poker';
 import { formatChipAmount, roundMoney } from '../utils/chipFormat';
 import { bestHandWinners } from './handEvaluator';
 import { equityIfImmediate, type EquityContender } from './equity';
+import { langueCourante } from '../i18n/traduire';
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river'];
 
@@ -725,7 +726,11 @@ export function describeAction(
   action: Action,
   options: OptionsDeLibelle = {}
 ): string {
-  const { isAllIn = false, useBB = false, etiquette, langue = 'fr' } = options;
+  // Par défaut, la langue de l'app : le commentaire du replayer se lit là où l'interface se lit.
+  // Le français pour le français, l'anglais pour tout le reste — la règle de repli de l'app. Cette
+  // fonction ne connaît que ces deux langues ; `mainEnTexte` passe 'en' explicitement, parce que
+  // les verbes des hand histories sont anglais quoi qu'il arrive (décision du 01/09).
+  const { isAllIn = false, useBB = false, etiquette, langue = langueCourante() === 'fr' ? 'fr' : 'en' } = options;
   const en = langue === 'en';
   const who = etiquette ? etiquette(action.seatId) : seatLabel(hand, action.seatId);
   const amount =

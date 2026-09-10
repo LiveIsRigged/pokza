@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { Comment, ModStatus } from '../types/poker';
 import { resizeToBase64, uploadPrivateImage, type PickedImage } from './images';
 import { assertWritten, refusedMessage } from './writeGuard';
+import { t } from '../i18n/traduire';
 
 const COMMENT_PHOTO_BUCKET = 'comment-photos';
 /** Une photo de commentaire s'affiche en petit dans le fil ; 1024px de long côté couvre large les
@@ -179,7 +180,7 @@ export async function createComment(input: NewCommentInput): Promise<Comment> {
     // juste en dessous, et l'image disparaissait au rechargement suivant — la ligne n'ayant jamais
     // reçu son `image_path`. Ici l'échec est rattrapable : le `catch` supprime le commentaire tout
     // juste créé, la personne peut réessayer au lieu de garder un commentaire amputé.
-    assertWritten(updated, refusedMessage("La photo du commentaire n'a pas été enregistrée"));
+    assertWritten(updated, refusedMessage(t('erreur.photo_commentaire')));
     const { data: signed, error: signError } = await supabase.storage
       .from(COMMENT_PHOTO_BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
@@ -200,7 +201,7 @@ export async function createComment(input: NewCommentInput): Promise<Comment> {
 export async function deleteComment(commentId: string): Promise<void> {
   const { data, error } = await supabase.from('comments').delete().eq('id', commentId).select('id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("Le commentaire n'a pas été supprimé"));
+  assertWritten(data, refusedMessage(t('erreur.commentaire_supprime')));
 }
 
 /** `comments.like_count` est maintenu par un trigger côté base. */
@@ -216,6 +217,6 @@ export async function setCommentLiked(commentId: string, userId: string, liked: 
       .eq('user_id', userId)
       .select('comment_id');
     if (error) throw error;
-    assertWritten(data, refusedMessage("Le like n'a pas été retiré"));
+    assertWritten(data, refusedMessage(t('erreur.like_retire')));
   }
 }

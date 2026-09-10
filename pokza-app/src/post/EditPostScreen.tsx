@@ -20,6 +20,7 @@ import {
 import { normaliserBuyIn } from '../utils/buyIn';
 import { borders, colors } from '../theme/theme';
 import { useT } from '../i18n';
+import { t } from '../i18n/traduire';
 
 export interface PostEdits {
   title: string;
@@ -57,10 +58,10 @@ interface EditPostScreenProps {
  *  qui permet de décider s'il vaut le coup de la dupliquer ailleurs. */
 function visibilityLabel(post: Post): string {
   if (post.visibility === 'group') {
-    return post.groupName ? `Groupe privé « ${post.groupName} »` : 'Groupe privé';
+    return post.groupName ? t('post.audience_groupe', { nom: post.groupName }) : t('createur.groupe_prive');
   }
-  if (post.visibility === 'private') return 'Privée';
-  return 'Publique';
+  if (post.visibility === 'private') return t('post.audience_privee');
+  return t('post.audience_publique');
 }
 
 export interface EditPostScreenHandle {
@@ -177,8 +178,8 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
         title={mode === 'duplicate' ? 'Dupliquer la main' : 'Modifier le post'}
         subtitle={
           mode === 'duplicate'
-            ? 'Une nouvelle main, avec le même déroulé et l’audience de ton choix'
-            : 'Le déroulé de la main ne change pas, seulement le texte'
+            ? t('post.dupliquer_aide')
+            : t('post.modifier_aide')
         }
         onNext={handleSave}
         nextLabel={mode === 'duplicate' ? 'Republier' : 'Enregistrer'}

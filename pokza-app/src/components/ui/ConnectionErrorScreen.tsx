@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from './Pressable';
 import { colors, radius, spacing } from '../../theme/theme';
 import { PokzaLogo } from './authIcons';
+import { useT } from '../../i18n';
 
 interface ConnectionErrorScreenProps {
   /** Déjà mis en forme par `errorMessage()` — pas de texte technique brut ici. */
@@ -19,6 +20,7 @@ interface ConnectionErrorScreenProps {
  * toucher à rien. Le bouton ne fait qu'abréger l'attente pour qui n'a pas envie de patienter.
  */
 export function ConnectionErrorScreen({ message, onRetry }: ConnectionErrorScreenProps) {
+  const t = useT();
   return (
     <View style={styles.container}>
       <PokzaLogo size={92} />
@@ -28,7 +30,7 @@ export function ConnectionErrorScreen({ message, onRetry }: ConnectionErrorScree
         onPress={onRetry}
         accessibilityRole="button"
       >
-        <Text style={styles.buttonText}>Réessayer</Text>
+        <Text style={styles.buttonText}>{t('commun.reessayer')}</Text>
       </Pressable>
     </View>
   );

@@ -3,6 +3,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/theme';
+import { useT } from '../i18n';
 
 /**
  * Bandeau « Installe Pokza » — web uniquement. Sur natif l'app est déjà installée : on ne rend rien.
@@ -58,6 +59,7 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
 }
 
 function InstallPromptWeb({ children }: { children: React.ReactNode }) {
+  const t = useT();
   const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
   const [mode, setMode] = useState<Mode>('ios');
@@ -134,10 +136,10 @@ function InstallPromptWeb({ children }: { children: React.ReactNode }) {
 
   const message =
     mode === 'android'
-      ? "Ajoute Pokza à ton écran d'accueil en un tap."
+      ? t('web.installer_android')
       : mode === 'inapp'
-        ? 'Ouvre ce lien dans Safari (ou Chrome) pour installer Pokza.'
-        : 'Appuie sur le bouton Partager de Safari, puis « Sur l’écran d’accueil ».';
+        ? t('web.installer_inapp')
+        : t('web.installer_aide');
 
   // Distance entre le bas de l'écran et le bas de la carte.
   const gap = insets.bottom + 12;
@@ -172,12 +174,12 @@ function InstallPromptWeb({ children }: { children: React.ReactNode }) {
           <View nativeID={cardId} style={styles.card}>
             <Text style={styles.icon}>📲</Text>
             <View style={styles.body}>
-              <Text style={styles.title}>Installe Pokza</Text>
+              <Text style={styles.title}>{t('web.installer_titre')}</Text>
               <Text style={styles.text}>{message}</Text>
             </View>
             {mode === 'android' ? (
               <Pressable style={styles.cta} onPress={install}>
-                <Text style={styles.ctaText}>Installer</Text>
+                <Text style={styles.ctaText}>{t('web.installer_bouton')}</Text>
               </Pressable>
             ) : null}
             <Pressable style={styles.close} onPress={dismiss} hitSlop={8}>

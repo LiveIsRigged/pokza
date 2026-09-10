@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { ReportTargetType } from './reports';
+import { t, type Cle } from '../i18n/traduire';
 
 // ============================================================================
 // Couche data du back-office admin. TOUT passe par des RPC SECURITY DEFINER
@@ -12,17 +13,17 @@ export type ReportStatus = 'open' | 'reviewing' | 'actioned' | 'dismissed';
 export type ContentStatus = 'visible' | 'hidden' | 'removed';
 export type SanctionType = 'warning' | 'suspended' | 'banned';
 
-export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
-  open: 'À traiter',
-  reviewing: 'En cours',
-  actioned: 'Sanctionné',
-  dismissed: 'Rejeté',
+export const REPORT_STATUS_CLE: Record<ReportStatus, Cle> = {
+  open: 'admin.statut_a_traiter',
+  reviewing: 'admin.statut_en_cours',
+  actioned: 'admin.statut_sanctionne',
+  dismissed: 'admin.statut_rejete',
 };
 
-export const SANCTION_TYPE_LABEL: Record<SanctionType, string> = {
-  warning: 'Avertissement',
-  suspended: 'Suspension',
-  banned: 'Bannissement',
+export const SANCTION_TYPE_CLE: Record<SanctionType, Cle> = {
+  warning: 'admin.sanction_avertissement',
+  suspended: 'admin.sanction_suspension',
+  banned: 'admin.sanction_bannissement',
 };
 
 // ── File des signalements (RPC admin_list_reports) ───────────────────────────
@@ -260,7 +261,7 @@ export async function listAuditLog(limit = 100): Promise<AuditEntry[]> {
   if (error) throw error;
   return (data as AuditRpcRow[]).map((row) => ({
     id: row.id,
-    adminName: row.admin_name ?? '(admin supprimé)',
+    adminName: row.admin_name ?? t('admin.admin_supprime'),
     action: row.action,
     targetType: row.target_type ?? undefined,
     targetId: row.target_id ?? undefined,

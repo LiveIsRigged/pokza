@@ -7,6 +7,7 @@ import { useSheetDismiss, sheetGrabStyle } from '../ui/useSheetDismiss';
 import { fetchVoters, type Voter } from '../../data/votes';
 import { errorMessage } from '../../utils/errorMessage';
 import { LARGEUR_MAX } from '../ui/Colonne';
+import { useT } from '../../i18n';
 
 interface VotersSheetProps {
   visible: boolean;
@@ -26,6 +27,7 @@ interface VotersSheetProps {
  * zéro — son absence se lirait comme un oubli.
  */
 export function VotersSheet({ visible, onClose, postId, options, onSelectProfile }: VotersSheetProps) {
+  const t = useT();
   const { dragY, grabHandlers } = useSheetDismiss(visible, onClose);
   const [voters, setVoters] = useState<Voter[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ export function VotersSheet({ visible, onClose, postId, options, onSelectProfile
               <View style={styles.handle} />
             </View>
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Qui a voté quoi</Text>
+              <Text style={styles.headerTitle}>{t('vote.qui_a_vote_quoi')}</Text>
               <Pressable onPress={onClose} hitSlop={8}>
                 <Text style={styles.closeButton}>✕</Text>
               </Pressable>

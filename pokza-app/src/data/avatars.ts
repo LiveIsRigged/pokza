@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
+import { t } from '../i18n/traduire';
 import {
   cropAndResizeToBase64,
   pickImage,
@@ -44,7 +45,7 @@ async function saveAvatarUrl(userId: string, url: string | null): Promise<void> 
   // (cf. l'analyse policy par policy dans `writeGuard.ts`), le `.select()` est donc sûr ici.
   const { data, error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', userId).select('id');
   if (error) throw error;
-  assertWritten(data, refusedMessage(url ? "La photo de profil n'a pas été enregistrée" : "La photo de profil n'a pas été retirée"));
+  assertWritten(data, refusedMessage(t(url ? 'erreur.photo_profil_enregistree' : 'erreur.photo_profil_retiree')));
 }
 
 /**

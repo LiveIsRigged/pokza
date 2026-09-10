@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { removeAvatar } from './avatars';
 import { assertWritten, refusedMessage } from './writeGuard';
 import { resetAnalytics } from '../analytics';
+import { t } from '../i18n/traduire';
 
 /**
  * Une personne, telle qu'elle s'affiche dans une liste.
@@ -142,7 +143,7 @@ export async function updateProfile(userId: string, edits: ProfileEditInput): Pr
     .eq('id', userId)
     .select('id');
   if (error) throw error;
-  assertWritten(data, refusedMessage("Le profil n'a pas été enregistré"));
+  assertWritten(data, refusedMessage(t('erreur.profil_enregistre')));
   return fetchProfile(userId);
 }
 

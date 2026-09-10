@@ -9,13 +9,14 @@ import {
   sanctionUser,
   setContentStatus,
   isSanctionActive,
-  REPORT_STATUS_LABEL,
-  SANCTION_TYPE_LABEL,
+  REPORT_STATUS_CLE,
+  SANCTION_TYPE_CLE,
   type ReportContext,
 } from '../data/admin';
 import { reportReasonLabel } from '../data/reports';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { BlockIcon, ClockIcon, TrashIcon, WarningIcon, type IconProps } from '../components/ui/icons';
+import { useT } from '../i18n';
 
 interface AdminReportDetailScreenProps {
   reportId: string;
@@ -36,6 +37,7 @@ function formatDateTime(iso: string): string {
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminReportDetailScreenProps) {
+  const t = useT();
   const [ctx, setCtx] = useState<ReportContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +105,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Détail du signalement</Text>
+        <Text style={styles.title}>{t('admin.detail_titre')}</Text>
       </View>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
@@ -119,7 +121,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
               <Text style={styles.reason}>{reportReasonLabel(ctx.report.reason)}</Text>
               {ctx.report.severity === 'priority' && <Text style={styles.priorityBadge}>⚠️ Prioritaire</Text>}
             </View>
-            <Text style={styles.metaLine}>Statut : {REPORT_STATUS_LABEL[ctx.report.status]}</Text>
+            <Text style={styles.metaLine}>{t('admin.statut_ligne', { statut: t(REPORT_STATUS_CLE[ctx.report.status]) })}</Text>
             <Text style={styles.metaLine}>Reçu le {formatDateTime(ctx.report.createdAt)}</Text>
             {ctx.report.reporterEmail ? (
               <Text style={styles.metaLine}>Signaleur : {ctx.report.reporterEmail}</Text>
@@ -132,7 +134,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
           </View>
 
           {/* Contenu visé */}
-          <Text style={styles.sectionTitle}>Contenu signalé</Text>
+          <Text style={styles.sectionTitle}>{t('admin.contenu_signale')}</Text>
           <View style={styles.card}>
             {targetType === 'post' && (
               <>
@@ -146,7 +148,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
             {targetType === 'user' && (
               <Text style={styles.contentTitle}>@{(target?.pseudo as string) || '?'}</Text>
             )}
-            {target == null && <Text style={styles.contentBody}>Contenu introuvable (déjà supprimé ?)</Text>}
+            {target == null && <Text style={styles.contentBody}>{t('admin.contenu_introuvable')}</Text>}
             {contentModStatus && (
               <Text style={styles.modStatusBadge}>État de modération : {contentModStatus}</Text>
             )}
@@ -161,7 +163,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
                   disabled={busy}
                   onPress={() =>
-                    run('Contenu masqué', () => setContentStatus(targetType, ctx.report.targetId, 'hidden', note || undefined))
+                    run(t('admin.contenu_masque'), () => setContentStatus(targetType, ctx.report.targetId, 'hidden', note || undefined))
                   }
                 >
                   <Text style={styles.actionBtnText}>Masquer</Text>
@@ -176,7 +178,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                       message: "Il ne sera plus visible par personne, seul l'auteur continuera de le voir.",
                       confirmLabel: 'Retirer',
                       execute: () =>
-                        run('Contenu retiré', () =>
+                        run(t('admin.contenu_retire'), () =>
                           setContentStatus(targetType, ctx.report.targetId, 'removed', note || undefined)
                         ),
                     })
@@ -188,10 +190,10 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
                   disabled={busy}
                   onPress={() =>
-                    run('Contenu rétabli', () => setContentStatus(targetType, ctx.report.targetId, 'visible'))
+                    run(t('admin.contenu_retabli'), () => setContentStatus(targetType, ctx.report.targetId, 'visible'))
                   }
                 >
-                  <Text style={styles.actionBtnText}>Rétablir</Text>
+                  <Text style={styles.actionBtnText}>{t('admin.retablir')}</Text>
                 </Pressable>
               </View>
             </>
@@ -203,20 +205,20 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
               <Text style={styles.sectionTitle}>Auteur</Text>
               <View style={styles.card}>
                 {ctx.authorSanctions.length === 0 ? (
-                  <Text style={styles.metaLine}>Aucune sanction enregistrée.</Text>
+                  <Text style={styles.metaLine}>{t('admin.aucune_sanction')}</Text>
                 ) : (
                   ctx.authorSanctions.map((s) => (
                     <View key={s.id} style={styles.sanctionRow}>
                       <Text style={styles.sanctionType}>
-                        {SANCTION_TYPE_LABEL[s.type]}
-                        {isSanctionActive(s) ? '' : ' (levée/expirée)'}
+                        {t(SANCTION_TYPE_CLE[s.type])}
+                        {isSanctionActive(s) ? '' : ` ${t('admin.levee_expiree')}`}
                       </Text>
                       <Text style={styles.metaLine}>{formatDateTime(s.createdAt)}</Text>
                     </View>
                   ))
                 )}
                 <Pressable style={styles.linkBtn} onPress={() => onOpenUser(authorId)}>
-                  <Text style={styles.linkBtnText}>Voir la fiche de modération →</Text>
+                  <Text style={styles.linkBtnText}>{t('admin.voir_fiche')}</Text>
                 </Pressable>
               </View>
 
@@ -228,10 +230,10 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   onPress={() =>
                     setPendingAction({
                       icon: WarningIcon,
-                      title: "Avertir l'auteur ?",
-                      confirmLabel: 'Avertir',
+                      title: t('admin.avertir_titre'),
+                      confirmLabel: t('admin.avertir'),
                       execute: () =>
-                        run('Avertissement envoyé', () => sanctionUser(authorId, 'warning', note || undefined)),
+                        run(t('admin.avertissement_envoye'), () => sanctionUser(authorId, 'warning', note || undefined)),
                     })
                   }
                 >
@@ -266,7 +268,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                     setPendingAction({
                       icon: BlockIcon,
                       title: 'Bannir ce compte ?',
-                      message: 'Le bannissement est définitif.',
+                      message: t('admin.bannissement_definitif'),
                       confirmLabel: 'Bannir',
                       execute: () => run('Compte banni', () => sanctionUser(authorId, 'banned', note || undefined)),
                     })
@@ -283,35 +285,35 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
           <TextInput
             autoComplete="off"
             style={styles.noteInput}
-            placeholder="Utilisé comme motif de sanction ou de rejet…"
+            placeholder={t('admin.note_placeholder')}
             value={note}
             onChangeText={setNote}
             multiline
           />
 
           {/* Clôture du signalement */}
-          <Text style={styles.sectionTitle}>Clôturer le signalement</Text>
+          <Text style={styles.sectionTitle}>{t('admin.cloturer')}</Text>
           <View style={styles.actionsRow}>
             <Pressable
               style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
               disabled={busy}
-              onPress={() => run('Marqué en cours', () => resolveReport(reportId, 'reviewing', note || undefined))}
+              onPress={() => run(t('admin.marque_en_cours'), () => resolveReport(reportId, 'reviewing', note || undefined))}
             >
-              <Text style={styles.actionBtnText}>En cours</Text>
+              <Text style={styles.actionBtnText}>{t('admin.en_cours')}</Text>
             </Pressable>
             <Pressable
               style={[styles.actionBtn, styles.actionPrimary, busy && styles.actionBtnDisabled]}
               disabled={busy}
-              onPress={() => run('Signalement traité', () => resolveReport(reportId, 'actioned', note || undefined))}
+              onPress={() => run(t('admin.signalement_traite'), () => resolveReport(reportId, 'actioned', note || undefined))}
             >
-              <Text style={[styles.actionBtnText, styles.actionPrimaryText]}>Traité</Text>
+              <Text style={[styles.actionBtnText, styles.actionPrimaryText]}>{t('admin.traite')}</Text>
             </Pressable>
             <Pressable
               style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
               disabled={busy}
-              onPress={() => run('Signalement rejeté', () => resolveReport(reportId, 'dismissed', note || undefined))}
+              onPress={() => run(t('admin.signalement_rejete'), () => resolveReport(reportId, 'dismissed', note || undefined))}
             >
-              <Text style={styles.actionBtnText}>Rejeter</Text>
+              <Text style={styles.actionBtnText}>{t('admin.rejeter')}</Text>
             </Pressable>
           </View>
 

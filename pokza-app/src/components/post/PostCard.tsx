@@ -641,7 +641,7 @@ function PostCardInner({
         reporterId={currentUserId}
         targetType="post"
         targetId={post.id}
-        targetLabel="cette main"
+        targetLabel={t('signalement.cible_main')}
       />
     </View>
   );

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { t } from '../i18n/traduire';
 
 /**
  * Lien de partage d'une main vers l'extérieur de Pokza.
@@ -32,5 +33,5 @@ export async function getOrCreateShareToken(postId: string, authorId: string): P
 
   const again = await supabase.from('post_shares').select('token').eq('post_id', postId).maybeSingle();
   if (again.data?.token) return again.data.token as string;
-  throw created.error ?? new Error("Le lien de partage n'a pas pu être créé.");
+  throw created.error ?? new Error(t('erreur.lien_partage'));
 }

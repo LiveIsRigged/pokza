@@ -1,3 +1,5 @@
+import { t } from '../i18n/traduire';
+
 /**
  * Garde-fou contre les faux succès d'écriture (constat F-15 de l'audit du 14/08/2026).
  *
@@ -46,5 +48,5 @@ export function assertWritten<T>(rows: T[] | null | undefined, message: string):
 /** Formule commune : les deux causes possibles sont indiscernables côté client, donc on les nomme
  * toutes les deux plutôt que d'en deviner une. */
 export function refusedMessage(subject: string): string {
-  return `${subject} — soit le contenu n'existe plus, soit tu n'as pas les droits nécessaires. Recharge la page.`;
+  return t('erreur.refus', { sujet: subject });
 }

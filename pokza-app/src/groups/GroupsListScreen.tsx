@@ -9,6 +9,7 @@ import { NewGroupForm } from './NewGroupForm';
 import { formatRelativeDate } from '../utils/relativeDate';
 import { formatBadgeCount } from '../components/ui/SideMenu';
 import { useT } from '../i18n';
+import { t } from '../i18n/traduire';
 
 /**
  * Nombre de groupes à partir duquel le champ de recherche apparaît. Une ligne fait 64 pt et
@@ -27,7 +28,7 @@ function lowerFirst(text: string): string {
 function subtitle(group: Group): string {
   const members = group.memberCount ?? 0;
   const membersLabel = `${members} membre${members > 1 ? 's' : ''}`;
-  const activity = group.lastPostAt ? `dernière main ${lowerFirst(formatRelativeDate(group.lastPostAt))}` : 'aucune main';
+  const activity = group.lastPostAt ? t('groupe.derniere_main', { quand: lowerFirst(formatRelativeDate(group.lastPostAt)) }) : 'aucune main';
   return `${membersLabel} · ${activity}`;
 }
 
@@ -115,8 +116,8 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
             {loading
               ? 'Chargement…'
               : query.trim()
-                ? 'Aucun groupe ne porte ce nom.'
-                : "Aucun groupe privé pour l'instant."}
+                ? t('groupe.aucun_resultat')
+                : t('groupe.aucun_groupe')}
           </Text>
         }
         renderItem={({ item }) => (

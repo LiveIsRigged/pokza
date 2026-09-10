@@ -151,10 +151,10 @@ export function SearchScreen({
               ? invitableFriends === null
                 ? 'Chargement…'
                 : friendCount === 0
-                ? "Tu n'as pas encore d'amis sur Pokza. Recherche quelqu'un pour l'inviter."
-                : "Tous tes amis sont déjà dans le groupe. Recherche quelqu'un d'autre pour l'inviter."
+                ? t('recherche.aucun_ami')
+                : t('recherche.tous_amis_dans_groupe')
               : query.trim().length > 0
-              ? 'Personne ne correspond.'
+              ? t('recherche.personne')
               : ''}
           </Text>
         ) : (

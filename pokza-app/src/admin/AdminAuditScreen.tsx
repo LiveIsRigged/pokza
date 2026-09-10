@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, radius, spacing } from '../theme/theme';
 import { listAuditLog, type AuditEntry } from '../data/admin';
+import { useT, type Cle } from '../i18n';
 
 interface AdminAuditScreenProps {
   onBack: () => void;
@@ -20,12 +21,12 @@ function formatDateTime(iso: string): string {
 }
 
 // Libellés lisibles des actions journalisées côté base (colonne `action`).
-const ACTION_LABEL: Record<string, string> = {
-  set_content_status: 'Statut de contenu modifié',
-  sanction_user: 'Sanction appliquée',
-  lift_sanction: 'Sanction levée',
-  resolve_report: 'Signalement clôturé',
-  set_age_confirmed: "Confirmation d'âge modifiée",
+const ACTION_CLE: Record<string, Cle> = {
+  set_content_status: 'admin.action_statut_contenu',
+  sanction_user: 'admin.action_sanction_appliquee',
+  lift_sanction: 'admin.action_sanction_levee',
+  resolve_report: 'admin.action_signalement_cloture',
+  set_age_confirmed: 'admin.action_age_modifie',
 };
 
 function summarizeDetails(details?: Record<string, unknown>): string {
@@ -39,6 +40,7 @@ function summarizeDetails(details?: Record<string, unknown>): string {
 /** Journal d'audit en lecture seule (1.8) : toute action admin est tracée côté base et relue ici via
  * une RPC dédiée (la table `admin_audit_log` n'est jamais lisible en direct par le client). */
 export function AdminAuditScreen({ onBack }: AdminAuditScreenProps) {
+  const t = useT();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,12 +78,12 @@ export function AdminAuditScreen({ onBack }: AdminAuditScreenProps) {
         {loading ? (
           <Text style={styles.statusText}>Chargement…</Text>
         ) : entries.length === 0 ? (
-          <Text style={styles.statusText}>Aucune action enregistrée.</Text>
+          <Text style={styles.statusText}>{t('admin.aucune_action')}</Text>
         ) : (
           entries.map((e) => (
             <View key={e.id} style={styles.row}>
               <View style={styles.rowHeader}>
-                <Text style={styles.action}>{ACTION_LABEL[e.action] ?? e.action}</Text>
+                <Text style={styles.action}>{ACTION_CLE[e.action] ? t(ACTION_CLE[e.action]) : e.action}</Text>
                 <Text style={styles.time}>{formatDateTime(e.createdAt)}</Text>
               </View>
               <Text style={styles.meta}>Par {e.adminName}</Text>

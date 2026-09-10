@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { t } from '../i18n/traduire';
 
 /**
  * La recherche de GIF passe par la fonction serveur `giphy` (F-16 de l'audit).
@@ -26,7 +27,7 @@ export interface GifResult {
 
 async function giphyInvoke(path: 'trending' | 'search', q?: string): Promise<GifResult[]> {
   const { data, error } = await supabase.functions.invoke('giphy', { body: { path, q } });
-  if (error) throw new Error('La recherche de GIF a échoué.');
+  if (error) throw new Error(t('erreur.recherche_gif'));
   // La fonction renvoie déjà les cinq champs utiles, aucun remodelage à faire ici.
   return (data?.gifs ?? []) as GifResult[];
 }

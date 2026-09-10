@@ -875,7 +875,7 @@ export function StreetStep({
     const amount = Math.min(amountSaisi, currentRemaining);
     if (amount <= betAmount && amount < currentRemaining) {
       // Deuxième sortie autrefois silencieuse : relance insuffisante, sauf si c'est un tapis.
-      setAmountError(`Il faut dépasser ${fmt(betAmount)} pour relancer, ou faire tapis.`);
+      setAmountError(t('createur.depasser_pour_relancer', { montant: fmt(betAmount) }));
       return;
     }
     setAmountError(null);
