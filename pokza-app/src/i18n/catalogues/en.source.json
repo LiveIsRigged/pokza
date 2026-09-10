@@ -64,5 +64,41 @@
   "date.a_l_instant": "à l'instant",
   "date.il_y_a_minutes": "il y a {count} mn",
   "date.il_y_a_heures": "il y a {count}h",
-  "date.hier": "Hier"
+  "date.hier": "Hier",
+  "post.voir_plus": "… voir plus",
+  "post.voir_moins": "voir moins",
+  "post.menu_modifier_post": "Modifier le post",
+  "post.menu_corriger_main": "Corriger la main",
+  "post.menu_dupliquer_main": "Dupliquer la main",
+  "post.menu_main_en_texte": "La main en texte",
+  "post.menu_supprimer_main": "Supprimer la main",
+  "post.menu_signaler_main": "Signaler cette main",
+  "post.menu_bloquer": "Bloquer {nom}",
+  "post.badge_prive": "🔒 Privé",
+  "post.modifie": " · modifié",
+  "post.moderation_retire_titre": "🚫 Retiré par la modération",
+  "post.moderation_masque_titre": "🙈 Masqué par la modération",
+  "post.moderation_retire_texte": "Cette main a été retirée car elle ne respecte pas nos règles. Toi seul vois encore ce bandeau — elle n'est plus visible par les autres joueurs.",
+  "post.moderation_masque_texte": "Cette main a été masquée par la modération. Elle n'est plus visible par les autres joueurs.",
+  "post.correction_titre": "Corriger cette main ?",
+  "post.correction_message": "Corriger une main, c'est la republier : elle repart à zéro dans le fil. Les anciens j'aime, commentaires et votes seront perdus.",
+  "post.correction_bouton": "Corriger",
+  "post.suppression_titre": "Supprimer cette main ?",
+  "post.suppression_message": "Cette action est définitive.",
+  "post.blocage_titre": "Bloquer {nom} ?",
+  "post.blocage_message": "Tu ne verras plus ses mains, et il ne pourra plus t'envoyer de demande d'ami.",
+  "post.lien_copie": "Lien copié dans le presse-papiers !",
+  "post.partage_indisponible": "Le partage n'est pas disponible ici.",
+  "commun.supprimer": "Supprimer",
+  "commun.bloquer": "Bloquer",
+  "echo.aime_seul": "{nom} a aimé cette main",
+  "echo.commente_seul": "{nom} a commenté cette main",
+  "echo.aime_groupe": {
+    "one": "{nom} et un autre ami ont aimé cette main",
+    "other": "{nom} et {count} autres amis ont aimé cette main"
+  },
+  "echo.commente_groupe": {
+    "one": "{nom} et un autre ami ont commenté cette main",
+    "other": "{nom} et {count} autres amis ont commenté cette main"
+  }
 }

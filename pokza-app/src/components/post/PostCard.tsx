@@ -23,6 +23,7 @@ import { getOrCreateShareToken } from '../../data/shares';
 import { etapesCorrigibles } from '../../creator/rehydrate';
 import type { Phase } from '../../creator/types';
 import { friendEchoLabel } from '../../utils/friendEchoLabel';
+import { useT } from '../../i18n';
 import { BlockIcon, CommentIcon, CopyIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, SpadeIcon, TextLinesIcon, TrashIcon } from '../ui/icons';
 import { MainEnTexteScreen } from './MainEnTexteScreen';
 
@@ -86,6 +87,7 @@ interface PostCardProps {
 // (onLayout) et on la compare à la hauteur du texte tronqué à 3 lignes. `onTextLayout` n'est pas
 // implémenté par react-native-web, donc inutilisable ici.
 function ExpandableDescription({ text }: { text: string }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const [truncated, setTruncated] = useState(false);
   const fullHeight = useRef<number | null>(null);
@@ -123,12 +125,12 @@ function ExpandableDescription({ text }: { text: string }) {
       </Text>
       {truncated && !expanded && (
         <Pressable style={styles.moreOverlay} onPress={() => setExpanded(true)} hitSlop={8}>
-          <Text style={styles.moreLink}>… voir plus</Text>
+          <Text style={styles.moreLink}>{t('post.voir_plus')}</Text>
         </Pressable>
       )}
       {expanded && (
         <Pressable onPress={() => setExpanded(false)} hitSlop={8}>
-          <Text style={styles.moreLink}>voir moins</Text>
+          <Text style={styles.moreLink}>{t('post.voir_moins')}</Text>
         </Pressable>
       )}
     </View>
@@ -178,6 +180,7 @@ function PostCardInner({
   onMeasure,
   onDeroule,
 }: PostCardProps) {
+  const t = useT();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingCorrect, setConfirmingCorrect] = useState(false);
   // Calculées à l'ouverture de la feuille, pas à chaque rendu de carte : redémonter la main pour
@@ -242,14 +245,12 @@ function PostCardInner({
    * position fait ressaisir tout le déroulé. », cf. `LiveHandCreator`). Et rien ne peut se perdre
    * dans l'intervalle : entrer dans une étape n'efface plus rien.
    */
-  const correctionWarning =
-    "Corriger une main, c'est la republier : elle repart à zéro dans le fil. " +
-    'Les anciens j\'aime, commentaires et votes seront perdus.';
+  const correctionWarning = t('post.correction_message');
 
   const envoyer = async (url: string) => {
     const outcome = await shareOrCopy(buildShareContent(post, url));
-    if (outcome === 'copied') setShareFeedback('Lien copié dans le presse-papiers !');
-    else if (outcome === 'unavailable') setShareFeedback("Le partage n'est pas disponible ici.");
+    if (outcome === 'copied') setShareFeedback(t('post.lien_copie'));
+    else if (outcome === 'unavailable') setShareFeedback(t('post.partage_indisponible'));
     if (outcome === 'copied' || outcome === 'unavailable') setTimeout(() => setShareFeedback(null), 2500);
   };
 
@@ -315,10 +316,10 @@ function PostCardInner({
   // trois.
   const menuItems: OverflowMenuItem[] = isOwnPost
     ? [
-        ...(onEdit ? [{ label: 'Modifier le post', icon: PencilIcon, onPress: onEdit }] : []),
+        ...(onEdit ? [{ label: t('post.menu_modifier_post'), icon: PencilIcon, onPress: onEdit }] : []),
         ...(onCorrect
           ? [{
-              label: 'Corriger la main',
+              label: t('post.menu_corriger_main'),
               icon: SpadeIcon,
               onPress: () => {
                 const liste = etapesCorrigibles(post);
@@ -333,19 +334,19 @@ function PostCardInner({
               },
             }]
           : []),
-        ...(onDuplicate ? [{ label: 'Dupliquer la main', icon: CopyIcon, onPress: onDuplicate }] : []),
-        { label: 'La main en texte', icon: TextLinesIcon, onPress: () => setTexteOuvert(true) },
+        ...(onDuplicate ? [{ label: t('post.menu_dupliquer_main'), icon: CopyIcon, onPress: onDuplicate }] : []),
+        { label: t('post.menu_main_en_texte'), icon: TextLinesIcon, onPress: () => setTexteOuvert(true) },
         ...(onDelete
-          ? [{ label: 'Supprimer la main', icon: TrashIcon, destructive: true, onPress: () => setConfirmingDelete(true) }]
+          ? [{ label: t('post.menu_supprimer_main'), icon: TrashIcon, destructive: true, onPress: () => setConfirmingDelete(true) }]
           : []),
       ]
     : [
-        { label: 'La main en texte', icon: TextLinesIcon, onPress: () => setTexteOuvert(true) },
-        { label: 'Signaler cette main', icon: FlagIcon, onPress: () => setReportOpen(true) },
+        { label: t('post.menu_main_en_texte'), icon: TextLinesIcon, onPress: () => setTexteOuvert(true) },
+        { label: t('post.menu_signaler_main'), icon: FlagIcon, onPress: () => setReportOpen(true) },
         ...(onBlockAuthor
           ? [
               {
-                label: `Bloquer ${post.authorName}`,
+                label: t('post.menu_bloquer', { nom: post.authorName }),
                 icon: BlockIcon,
                 destructive: true,
                 onPress: () => setConfirmingBlock(true),
@@ -374,12 +375,10 @@ function PostCardInner({
         </View>
         <View style={styles.moderationBanner}>
           <Text style={styles.moderationBannerTitle}>
-            {removed ? '🚫 Retiré par la modération' : '🙈 Masqué par la modération'}
+            {t(removed ? 'post.moderation_retire_titre' : 'post.moderation_masque_titre')}
           </Text>
           <Text style={styles.moderationBannerText}>
-            {removed
-              ? "Cette main a été retirée car elle ne respecte pas nos règles. Toi seul vois encore ce bandeau — elle n'est plus visible par les autres joueurs."
-              : "Cette main a été masquée par la modération. Elle n'est plus visible par les autres joueurs."}
+            {t(removed ? 'post.moderation_retire_texte' : 'post.moderation_masque_texte')}
           </Text>
         </View>
       </View>
@@ -435,7 +434,7 @@ function PostCardInner({
                   Il faut une main à la fois vieille, modifiée ET importée pour y arriver. */}
               <Text style={[typography.dateLocation, styles.muted]}>
                 {formatRelativeDate(post.createdAt)}
-                {wasEdited(post) ? ' · modifié' : ''}
+                {wasEdited(post) ? t('post.modifie') : ''}
                 {lieuEtProvenance(post.location, post.hand.imported)}
               </Text>
             </View>
@@ -443,7 +442,7 @@ function PostCardInner({
         </View>
         {post.visibility === 'private' && (
           <View style={styles.visibilityBadge}>
-            <Text style={styles.visibilityBadgeText}>🔒 Privé</Text>
+            <Text style={styles.visibilityBadgeText}>{t('post.badge_prive')}</Text>
           </View>
         )}
         {post.visibility === 'group' && post.groupName && (
@@ -583,9 +582,9 @@ function PostCardInner({
         <ConfirmSheet
           visible={confirmingCorrect}
           icon={SpadeIcon}
-          title="Corriger cette main ?"
+          title={t('post.correction_titre')}
           message={correctionWarning}
-          confirmLabel="Corriger"
+          confirmLabel={t('post.correction_bouton')}
           onCancel={() => setConfirmingCorrect(false)}
           onConfirm={() => {
             setConfirmingCorrect(false);
@@ -612,9 +611,9 @@ function PostCardInner({
         <ConfirmSheet
           visible={confirmingDelete}
           icon={TrashIcon}
-          title="Supprimer cette main ?"
-          message="Cette action est définitive."
-          confirmLabel="Supprimer"
+          title={t('post.suppression_titre')}
+          message={t('post.suppression_message')}
+          confirmLabel={t('commun.supprimer')}
           onCancel={() => setConfirmingDelete(false)}
           onConfirm={() => {
             setConfirmingDelete(false);
@@ -626,9 +625,9 @@ function PostCardInner({
         <ConfirmSheet
           visible={confirmingBlock}
           icon={BlockIcon}
-          title={`Bloquer ${post.authorName} ?`}
-          message="Tu ne verras plus ses mains, et il ne pourra plus t'envoyer de demande d'ami."
-          confirmLabel="Bloquer"
+          title={t('post.blocage_titre', { nom: post.authorName })}
+          message={t('post.blocage_message')}
+          confirmLabel={t('commun.bloquer')}
           onCancel={() => setConfirmingBlock(false)}
           onConfirm={() => {
             setConfirmingBlock(false);

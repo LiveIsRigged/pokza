@@ -42,6 +42,24 @@ table. Tu es le seul à savoir où passe la ligne pour ta langue — ne recopie 
 | réglages | settings | |
 | comptes bloqués | blocked accounts | |
 | informations légales | legal information | |
+| corriger (une main) | correct | republier après correction, pas « edit » |
+| dupliquer | duplicate | |
+| bloquer (quelqu'un) | block | |
+| masquer / retirer | hide / remove | deux mesures de modération DISTINCTES, ne pas confondre |
+| voir plus / voir moins | see more / see less | |
+| à l'instant | just now | |
+| j'aime (nom) | like | |
+
+## Ce qui ne passe pas par le catalogue
+
+| Quoi | Où | Pourquoi |
+|---|---|---|
+| jours de la semaine, mois, dates longues | `utils/relativeDate.ts` | `Intl` les connaît dans toutes les langues — 19 entrées de moins à ressaisir par langue |
+| motifs des analyseurs d'import | `import/dialectes/` | ils reconnaissent l'anglais des rooms (`PRE-FLOP`, `SHOW DOWN`) : les traduire casserait l'import |
+| « Pokza » | partout | nom du produit |
+
+**Piège mesuré** : `Intl` rend « lundi » en minuscule alors que l'app affiche « Lundi ». On remet
+la majuscule initiale — sans quoi traduire ferait régresser le français.
 
 ## Ton
 

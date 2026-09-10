@@ -64,5 +64,41 @@
   "date.a_l_instant": "just now",
   "date.il_y_a_minutes": "{count} min ago",
   "date.il_y_a_heures": "{count}h ago",
-  "date.hier": "Yesterday"
+  "date.hier": "Yesterday",
+  "post.voir_plus": "… see more",
+  "post.voir_moins": "see less",
+  "post.menu_modifier_post": "Edit post",
+  "post.menu_corriger_main": "Correct the hand",
+  "post.menu_dupliquer_main": "Duplicate the hand",
+  "post.menu_main_en_texte": "The hand as text",
+  "post.menu_supprimer_main": "Delete the hand",
+  "post.menu_signaler_main": "Report this hand",
+  "post.menu_bloquer": "Block {nom}",
+  "post.badge_prive": "🔒 Private",
+  "post.modifie": " · edited",
+  "post.moderation_retire_titre": "🚫 Removed by moderation",
+  "post.moderation_masque_titre": "🙈 Hidden by moderation",
+  "post.moderation_retire_texte": "This hand was removed because it breaks our rules. You alone still see this banner — it is no longer visible to other players.",
+  "post.moderation_masque_texte": "This hand was hidden by moderation. It is no longer visible to other players.",
+  "post.correction_titre": "Correct this hand?",
+  "post.correction_message": "Correcting a hand means republishing it: it starts over in the feed. The old likes, comments and votes will be lost.",
+  "post.correction_bouton": "Correct",
+  "post.suppression_titre": "Delete this hand?",
+  "post.suppression_message": "This cannot be undone.",
+  "post.blocage_titre": "Block {nom}?",
+  "post.blocage_message": "You will no longer see their hands, and they will no longer be able to send you a friend request.",
+  "post.lien_copie": "Link copied to the clipboard!",
+  "post.partage_indisponible": "Sharing isn't available here.",
+  "commun.supprimer": "Delete",
+  "commun.bloquer": "Block",
+  "echo.aime_seul": "{nom} liked this hand",
+  "echo.commente_seul": "{nom} commented on this hand",
+  "echo.aime_groupe": {
+    "one": "{nom} and one other friend liked this hand",
+    "other": "{nom} and {count} other friends liked this hand"
+  },
+  "echo.commente_groupe": {
+    "one": "{nom} and one other friend commented on this hand",
+    "other": "{nom} and {count} other friends commented on this hand"
+  }
 }
