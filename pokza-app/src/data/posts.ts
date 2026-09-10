@@ -80,18 +80,54 @@ function rowToPost(row: PostFeedRow): Post {
 export const FEED_PAGE_SIZE = 10;
 
 /**
- * Feed principal : classé par affinité sociale (vue `posts_ranked`), pas par date. Un post d'ami
- * ou de quelqu'un avec beaucoup d'amis en commun remonte, sans jamais faire disparaître les
- * inconnus — sinon découvrir de nouvelles personnes deviendrait impossible sur une app qui démarre.
+ * ORDRE COMPOSÉ DU FIL — la liste des identifiants, dans l'ordre, et rien d'autre.
+ * ──────────────────────────────────────────────────────────────────────────────
+ * Trois règles que `posts_ranked` ne peut pas porter seule vivent dans `feed_order()` en base :
+ * la partition (aucune main jamais lue n'est masquée par une main déjà lue), la priorité aux
+ * mains d'amis de moins de 48 h non lues, et le plancher de découverte. Un score ne garantit
+ * jamais rien — il est toujours dominé par son plus gros terme.
  *
- * Le tri secondaire par date n'est pas cosmétique : `affinity_score` produit beaucoup d'ex æquo
- * (tous les inconnus sans ami commun ont le même score), et sans départage stable Postgres est
- * libre de renvoyer ces lignes dans un ordre différent d'un appel à l'autre — une même main
- * pourrait alors apparaître sur deux pages, ou aucune.
+ * ⚠️ POURQUOI ON FIGE LA LISTE. La pagination par `offset` sur une vue reclassée est instable par
+ * nature, et elle l'est BEAUCOUP plus depuis que lire une main change son rang : dérouler le fil
+ * le réordonnerait sous le pouce, et la page 2 sauterait des mains. On demande donc l'ordre UNE
+ * fois, on le garde, et on pagine dedans.
  *
- * `viewerId` absent → pas de mention « Julien a aimé cette main » (cf. `attachFriendEchoes`), le
- * reste du feed est identique. Le plafond de mentions s'applique PAR APPEL, donc par page : c'est
- * bien ce qu'on veut, chaque page en porte au plus trois.
+ * Renvoie `null` — et non une erreur — quand la fonction n'existe pas encore en base. Le fil
+ * retombe alors sur `fetchFeed`, l'ancien chemin. C'est ce qui permet de déployer l'app sans que
+ * l'ordre de passage des migrations puisse casser l'écran d'accueil.
+ */
+export async function fetchFeedOrder(): Promise<string[] | null> {
+  const { data, error } = await supabase.rpc('feed_order');
+  if (error) return null;
+  return (data as { post_id: string }[] | null)?.map((row) => row.post_id) ?? [];
+}
+
+/**
+ * Les mains d'une page, dans l'ordre exact demandé.
+ *
+ * `in('id', …)` ne promet AUCUN ordre : sans la remise en ordre ci-dessous, la page s'afficherait
+ * dans l'ordre où Postgres a trouvé les lignes, c'est-à-dire n'importe lequel. Et une main peut
+ * manquer à l'appel (supprimée ou masquée entre l'appel à `feed_order()` et celui-ci) : on la
+ * saute, la page est simplement plus courte.
+ */
+export async function fetchPostsByIds(ids: string[], viewerId?: string): Promise<Post[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from('posts_ranked').select('*').in('id', ids);
+  if (error) throw error;
+  const parId = new Map((data as PostFeedRow[]).map((row) => [row.id, rowToPost(row)]));
+  const posts = ids.map((id) => parId.get(id)).filter((post): post is Post => post !== undefined);
+  return viewerId ? attachFriendEchoes(posts, viewerId) : posts;
+}
+
+/**
+ * CHEMIN DE REPLI, utilisé seulement tant que `feed_order()` n'est pas en base — classement par
+ * `affinity_score` décroissant, c'est-à-dire l'ancien barème (ami +30, ami commun +3 plafonné à
+ * 24, format +5, −1 par jour). Il enterrait les inconnus et rendait le fil identique trois jours
+ * plus tard ; c'est tout le sujet du chantier qui l'a remplacé.
+ *
+ * Le tri secondaire par date n'est pas cosmétique : `affinity_score` produit beaucoup d'ex æquo,
+ * et sans départage stable Postgres est libre de renvoyer ces lignes dans un ordre différent d'un
+ * appel à l'autre — une même main pourrait alors apparaître sur deux pages, ou aucune.
  */
 export async function fetchFeed(offset = 0, viewerId?: string): Promise<Post[]> {
   const { data, error } = await supabase

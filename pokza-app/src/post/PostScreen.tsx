@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { colors, spacing } from '../theme/theme';
 import { deletePost, fetchPost, setLiked } from '../data/posts';
+import { markPostRead } from '../data/postViews';
 import type { Post } from '../types/poker';
 import { PostCard } from '../components/post/PostCard';
 
@@ -57,6 +58,10 @@ export function PostScreen({
       .then((data) => {
         if (cancelled) return;
         setPost(data);
+        // « Toutes les surfaces valent une lecture » : arriver ici est délibéré, la main occupe
+        // l'écran entier et rien d'autre. L'anti-rebond de 12 h fait que voir la carte dans le
+        // fil PUIS ouvrir sa page ne compte qu'une fois — c'est exactement son métier.
+        if (data) void markPostRead(data.id);
         onLoaded?.(data);
         setLoading(false);
       })

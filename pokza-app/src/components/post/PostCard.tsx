@@ -73,6 +73,11 @@ interface PostCardProps {
    * cliquables dans la section commentaires). Le clic sur l'auteur DE LA MAIN passe, lui, par
    * `onPressAuthor` (sans argument). */
   onSelectProfile?: (profileId: string) => void;
+  /** Position et hauteur de la carte DANS le contenu défilant, remontées à chaque `onLayout`.
+   * Le fil s'en sert pour savoir ce qui est réellement à l'écran, et donc ce qui est lu. */
+  onMeasure?: (postId: string, y: number, height: number) => void;
+  /** Le replayer de cette carte vient d'être déroulé — la main est lue, sans attendre les 8 s. */
+  onDeroule?: (postId: string) => void;
 }
 
 // Tronque la description à 3 lignes avec "… voir plus" collé à la fin de la 3e ligne. Le nombre
@@ -170,6 +175,8 @@ function PostCardInner({
   onOpenGroup,
   onBlockAuthor,
   onSelectProfile,
+  onMeasure,
+  onDeroule,
 }: PostCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingCorrect, setConfirmingCorrect] = useState(false);
@@ -380,7 +387,14 @@ function PostCardInner({
   }
 
   return (
-    <View style={styles.card}>
+    <View
+      style={styles.card}
+      onLayout={
+        onMeasure
+          ? (e) => onMeasure(post.id, e.nativeEvent.layout.y, e.nativeEvent.layout.height)
+          : undefined
+      }
+    >
       {/* Au-dessus de l'auteur, comme partout ailleurs : la ligne répond à « pourquoi cette main
           d'inconnu est-elle dans mon fil ? », elle doit donc se lire AVANT la main elle-même.
           Non cliquable à dessein — le compteur de likes ouvre déjà la liste de ceux qui ont aimé,
@@ -473,7 +487,7 @@ function PostCardInner({
       {post.description && <ExpandableDescription text={post.description} />}
 
       <View style={styles.replayerWrapper}>
-        <HandReplayer hand={post.hand} />
+        <HandReplayer hand={post.hand} onDeroule={onDeroule ? () => onDeroule(post.id) : undefined} />
       </View>
 
       {post.voteQuestion && (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { errorMessage } from './src/utils/errorMessage';
 import { StatusBar } from 'expo-status-bar';
 // Import par graisse, et non depuis la racine de `@expo-google-fonts/fraunces` : son index.js fait
@@ -19,7 +19,19 @@ import { Colonne } from './src/components/ui/Colonne';
 import { LiveHandCreator } from './src/creator/LiveHandCreator';
 import { postToSeed } from './src/creator/rehydrate';
 import type { Phase } from './src/creator/types';
-import { createPost, deletePost, fetchFeed, fetchPost, FEED_PAGE_SIZE, setLiked, updatePost } from './src/data/posts';
+import {
+  createPost,
+  deletePost,
+  fetchFeed,
+  fetchFeedOrder,
+  fetchPost,
+  fetchPostsByIds,
+  FEED_PAGE_SIZE,
+  setLiked,
+  updatePost,
+} from './src/data/posts';
+import { resetLecturesLocales } from './src/data/postViews';
+import { useReadTracking } from './src/post/readTracking';
 import { colors } from './src/theme/theme';
 import type { Post } from './src/types/poker';
 import { DisplayUnitProvider } from './src/state/displayUnit';
@@ -214,6 +226,15 @@ function AppContent() {
   const [loadingMore, setLoadingMore] = useState(false);
   // Verrou synchrone du chargement automatique (cf. `handleFeedScroll`).
   const loadingMoreRef = useRef(false);
+  // ORDRE FIGÉ DU FIL. `feed_order()` rend la liste complète des identifiants une fois, à
+  // l'ouverture ; on pagine dedans. Sans ce gel, dérouler le fil le réordonnerait sous le pouce —
+  // lire une main change son rang, donc la page 2 sauterait des mains et en répéterait d'autres.
+  // `null` = la migration n'est pas passée, on retombe sur l'ancienne pagination par offset.
+  const feedOrderRef = useRef<string[] | null>(null);
+  // Combien d'identifiants ont été CONSOMMÉS, ce qui n'est pas le nombre de mains affichées : une
+  // main supprimée ou masquée entre les deux appels ne rend pas de ligne, et sauter son
+  // identifiant est exactement ce qu'il faut faire.
+  const feedCursorRef = useRef(0);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -247,8 +268,18 @@ function AppContent() {
   // 3 200 px sur un iPhone, soit trois à quatre mains : là, le retour en haut est un vrai trajet.
   const SCROLL_TOP_SCREENS = 4.5;
 
+  // SUIVI DE LECTURE. Actif seulement quand le fil est réellement à l'écran : sur une page de
+  // profil, dans le créateur ou sous une feuille de notifications, les cartes du fil restent
+  // montées derrière et leurs `onLayout` sont périmés — les compter serait faux.
+  const postIds = useMemo(() => posts.map((post) => post.id), [posts]);
+  const { mesurer, suivreDefilement, marquerDeroule } = useReadTracking(
+    postIds,
+    Boolean(hasProfile) && mode === 'feed' && !notificationsOpen && !searchOpen && !menuOpen
+  );
+
   const handleFeedScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    suivreDefilement(contentOffset.y, layoutMeasurement.height);
 
     // Le bas du feed approche : on charge sans attendre un tap. `loadingMoreRef` plutôt que l'état
     // `loadingMore` — l'état ne devient vrai qu'au rendu suivant, et un défilement continu émet
@@ -316,17 +347,19 @@ function AppContent() {
   // veut qu'il change quand on quitte un compte — sinon deux personnes sur le même appareil
   // partageraient le même. Ne PAS réintroduire d'identification sans bandeau de consentement.
   useEffect(() => {
-    if (!session?.user?.id) resetAnalytics();
+    if (!session?.user?.id) {
+      resetAnalytics();
+      resetLecturesLocales();
+    }
   }, [session?.user?.id]);
 
   useEffect(() => {
     if (!hasProfile) return;
     let cancelled = false;
-    fetchFeed(0, session?.user?.id)
+    chargerPremierePage()
       .then((data) => {
         if (cancelled) return;
         setPosts(data);
-        setHasMorePosts(data.length === FEED_PAGE_SIZE);
         setPostsLoading(false);
       })
       .catch((err) => {
@@ -337,6 +370,7 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasProfile]);
 
   const refreshUnreadNotificationCount = () => {
@@ -455,11 +489,34 @@ function AppContent() {
     }
   };
 
+  /**
+   * Première page du fil : on demande l'ordre composé, on le fige, on en prend les dix premiers.
+   *
+   * `feed_order()` absente de la base → `null`, et on retombe sur l'ancienne pagination par
+   * offset. C'est ce qui permet de déployer l'app sans que l'ordre de passage des migrations
+   * puisse vider l'écran d'accueil — et ça protège aussi une PWA restée en cache.
+   */
+  const chargerPremierePage = async (): Promise<Post[]> => {
+    const ordre = await fetchFeedOrder();
+    feedOrderRef.current = ordre;
+    if (!ordre) {
+      const page = await fetchFeed(0, session?.user?.id);
+      feedCursorRef.current = page.length;
+      setHasMorePosts(page.length === FEED_PAGE_SIZE);
+      return page;
+    }
+    const debut = ordre.slice(0, FEED_PAGE_SIZE);
+    feedCursorRef.current = debut.length;
+    setHasMorePosts(feedCursorRef.current < ordre.length);
+    return fetchPostsByIds(debut, session?.user?.id);
+  };
+
   // En revenant d'un profil consulté, le feed peut être périmé (like/suppression faits là-bas) —
-  // on le recharge plutôt que de laisser un état obsolète affiché.
+  // on le recharge plutôt que de laisser un état obsolète affiché. Le rafraîchissement REFAIT
+  // l'ordre : c'est le seul moment où le fil a le droit de se réordonner sous les yeux.
   const refreshFeed = async () => {
     try {
-      const fresh = await fetchFeed(0, session?.user?.id);
+      const fresh = await chargerPremierePage();
       setPosts((current) => {
         if (current.length <= fresh.length) return fresh;
         // L'utilisateur avait déjà chargé plusieurs pages : on remet à jour celles du haut sans
@@ -481,17 +538,38 @@ function AppContent() {
   };
 
   const handleLoadMore = async () => {
+    const ordre = feedOrderRef.current;
     loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      const older = await fetchFeed(posts.length, session?.user?.id);
-      setPosts((current) => {
-        // Une main publiée entre deux pages décale la fenêtre et peut renvoyer une main déjà
-        // affichée — deux cartes identiques feraient planter le rendu (clés React en double).
-        const seen = new Set(current.map((p) => p.id));
-        return [...current, ...older.filter((p) => !seen.has(p.id))];
-      });
-      setHasMorePosts(older.length === FEED_PAGE_SIZE);
+      if (ordre) {
+        // On avance dans la liste FIGÉE en sautant ce qui est déjà à l'écran : après un
+        // rafraîchissement, le bas du fil vient de l'ordre précédent et ses mains peuvent
+        // reparaître plus loin dans le nouveau. Sauter ici plutôt que dédupliquer après évite
+        // aussi une page vide qui bloquerait le chargement automatique.
+        const affiches = new Set(posts.map((p) => p.id));
+        const suite: string[] = [];
+        while (feedCursorRef.current < ordre.length && suite.length < FEED_PAGE_SIZE) {
+          const id = ordre[feedCursorRef.current];
+          feedCursorRef.current += 1;
+          if (!affiches.has(id)) suite.push(id);
+        }
+        const older = await fetchPostsByIds(suite, session?.user?.id);
+        setPosts((current) => {
+          const seen = new Set(current.map((p) => p.id));
+          return [...current, ...older.filter((p) => !seen.has(p.id))];
+        });
+        setHasMorePosts(feedCursorRef.current < ordre.length);
+      } else {
+        const older = await fetchFeed(posts.length, session?.user?.id);
+        setPosts((current) => {
+          // Une main publiée entre deux pages décale la fenêtre et peut renvoyer une main déjà
+          // affichée — deux cartes identiques feraient planter le rendu (clés React en double).
+          const seen = new Set(current.map((p) => p.id));
+          return [...current, ...older.filter((p) => !seen.has(p.id))];
+        });
+        setHasMorePosts(older.length === FEED_PAGE_SIZE);
+      }
     } catch (err) {
       setPostsError(errorMessage(err));
     } finally {
@@ -1352,6 +1430,8 @@ function AppContent() {
                 setMode('group');
               }}
               onBlockAuthor={handleBlockAuthorInFeed}
+              onMeasure={mesurer}
+              onDeroule={marquerDeroule}
             />
           ))
         )}

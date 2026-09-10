@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Hand } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
@@ -30,6 +30,10 @@ const AUTOPLAY_FOLD_INTERVAL_MS = 500;
 
 interface HandReplayerProps {
   hand: Hand;
+  /** Appelé LA PREMIÈRE FOIS que le lecteur fait bouger le replayer — avance, recule ou lance la
+   * lecture automatique. C'est ce qui fait du déroulé une preuve de lecture sans quitter le fil
+   * (cf. `readTracking`), et pas seulement un proxy : le replayer est monté DANS la carte. */
+  onDeroule?: () => void;
 }
 
 /**
@@ -68,11 +72,21 @@ function useEquityHorsRendu(pending: EquitySituation | null): Record<string, num
   return cle !== null && fini?.cle === cle ? fini.valeurs : null;
 }
 
-export function HandReplayer({ hand }: HandReplayerProps) {
+export function HandReplayer({ hand, onDeroule }: HandReplayerProps) {
   const { useBB, toggleUseBB } = useDisplayUnit();
   const initialStep = useMemo(() => initialReplayStep(hand), [hand]);
   const [step, setStep] = useState(initialStep);
   const [playing, setPlaying] = useState(false);
+
+  // Une seule fois par carte : la suite est de toute façon absorbée par l'anti-rebond de 12 h,
+  // mais autant ne pas appeler le serveur à chaque tape sur « suivant ».
+  const derouleSignale = useRef(false);
+  useEffect(() => {
+    if (derouleSignale.current) return;
+    if (step === initialStep && !playing) return;
+    derouleSignale.current = true;
+    onDeroule?.();
+  }, [step, playing, initialStep, onDeroule]);
 
   const totalSteps = totalReplaySteps(hand);
   const state = useMemo(() => computeHandState(hand, step), [hand, step]);
