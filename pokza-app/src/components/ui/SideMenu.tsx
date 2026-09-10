@@ -11,6 +11,7 @@ import {
 import { Avatar } from './Avatar';
 import { ConfirmSheet } from './ConfirmSheet';
 import { PowerIcon, type IconProps } from './icons';
+import { useT } from '../../i18n';
 
 const PANEL_WIDTH = 288;
 /** Taille commune des icônes de ligne, pour que le menu reste régulier. */
@@ -71,6 +72,7 @@ export function SideMenu({
   onOpenProfile,
   onSignOut,
 }: SideMenuProps) {
+  const t = useT();
   const anim = useRef(new Animated.Value(0)).current;
   // Le panneau doit rester monté pendant l'animation de fermeture, sinon il disparaît d'un coup
   // au lieu de glisser vers la gauche.
@@ -135,7 +137,7 @@ export function SideMenu({
             <Text style={styles.profileName} numberOfLines={1}>
               {displayName}
             </Text>
-            <Text style={styles.profileHint}>Voir mon profil</Text>
+            <Text style={styles.profileHint}>{t('menu.voir_mon_profil')}</Text>
           </View>
         </Pressable>
 
@@ -172,15 +174,15 @@ export function SideMenu({
           <View style={styles.rowIcon}>
             <PowerIcon size={ROW_ICON_SIZE} color={colors.textSecondary} />
           </View>
-          <Text style={styles.rowLabelMuted}>Déconnexion</Text>
+          <Text style={styles.rowLabelMuted}>{t('menu.deconnexion')}</Text>
         </Pressable>
       </Animated.View>
 
       <ConfirmSheet
         visible={confirmingSignOut}
         icon={PowerIcon}
-        title="Se déconnecter ?"
-        confirmLabel="Déconnexion"
+        title={t('menu.deconnexion_titre')}
+        confirmLabel={t('menu.deconnexion')}
         destructive={false}
         onCancel={() => setConfirmingSignOut(false)}
         onConfirm={() => {

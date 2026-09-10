@@ -26,6 +26,7 @@ import { Avatar } from '../ui/Avatar';
 import { COMMENT_MAX_LENGTH } from '../../constants/limits';
 import { aplatirFil, descendance } from './filCommentaires';
 import { CameraIcon, HeartIcon, TrashIcon } from '../ui/icons';
+import { useT } from '../../i18n';
 
 // Cœur d'un commentaire : plus petit que celui d'une main (24), mais assez grand pour être vu et
 // visé. 18 + 2 × 9 = 36 pt de surface tactile — on ne peut pas monter aux 44 recommandés sans que
@@ -131,6 +132,7 @@ function MediaViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
 }
 
 function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onShowLikers, onOpenMedia, canDelete, onReport, onSelectProfile }: CommentRowProps) {
+  const t = useT();
   const mediaUri = comment.imageUrl ?? comment.gifUrl;
   const openProfile = onSelectProfile ? () => onSelectProfile(comment.authorId) : undefined;
 
@@ -143,9 +145,9 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onShow
         <View style={[styles.commentBubble, styles.commentModerated]}>
           <Text style={styles.commentAuthor}>{comment.authorName}</Text>
           <Text style={styles.commentModeratedText}>
-            {comment.modStatus === 'removed'
-              ? '🚫 Commentaire retiré par la modération'
-              : '🙈 Commentaire masqué par la modération'}
+            {t(comment.modStatus === 'removed'
+              ? 'commentaire.moderation_retire'
+              : 'commentaire.moderation_masque')}
           </Text>
         </View>
       </View>
@@ -189,11 +191,11 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onShow
             </Pressable>
           )}
           <Pressable style={styles.commentAction} onPress={onReply}>
-            <Text style={styles.replyLink}>Répondre</Text>
+            <Text style={styles.replyLink}>{t('commentaire.repondre')}</Text>
           </Pressable>
           {onReport && (
             <Pressable style={styles.commentAction} onPress={onReport}>
-              <Text style={styles.reportLink}>Signaler</Text>
+              <Text style={styles.reportLink}>{t('commentaire.signaler')}</Text>
             </Pressable>
           )}
         </View>
@@ -216,6 +218,7 @@ export function CommentsSection({
   onCountChange,
   onSelectProfile,
 }: CommentsSectionProps) {
+  const t = useT();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -364,7 +367,7 @@ export function CommentsSection({
               <View style={styles.handle} />
             </View>
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Commentaires</Text>
+              <Text style={styles.headerTitle}>{t('commentaire.titre')}</Text>
               <Pressable onPress={onClose} hitSlop={8}>
                 <Text style={styles.closeButton}>✕</Text>
               </Pressable>
@@ -375,7 +378,7 @@ export function CommentsSection({
             {loading && <ActivityIndicator color={colors.textSecondary} />}
             {error && <Text style={styles.error}>{error}</Text>}
             {!loading && comments.length === 0 && (
-              <Text style={styles.empty}>Aucun commentaire pour l'instant.</Text>
+              <Text style={styles.empty}>{t('commentaire.aucun')}</Text>
             )}
             {topLevelComments.map((comment) => (
               <View key={comment.id}>
@@ -411,9 +414,9 @@ export function CommentsSection({
 
           {replyingTo && (
             <View style={styles.replyingBanner}>
-              <Text style={styles.replyingText}>Réponse à {replyingTo.authorName}</Text>
+              <Text style={styles.replyingText}>{t('commentaire.reponse_a', { nom: replyingTo.authorName })}</Text>
               <Pressable onPress={() => setReplyingTo(null)} hitSlop={8}>
-                <Text style={styles.replyingCancel}>Annuler</Text>
+                <Text style={styles.replyingCancel}>{t('commun.annuler')}</Text>
               </Pressable>
             </View>
           )}
@@ -432,7 +435,7 @@ export function CommentsSection({
                 }}
                 hitSlop={8}
               >
-                <Text style={styles.attachmentRemove}>Retirer</Text>
+                <Text style={styles.attachmentRemove}>{t('commentaire.retirer_piece_jointe')}</Text>
               </Pressable>
             </View>
           )}
@@ -459,7 +462,7 @@ export function CommentsSection({
               // recherche) sont les deux seuls `<input>` sans nom accessible ouverts par-dessus le
               // fil. Le même champ, ouvert depuis une notification — donc sans le fil derrière —
               // fonctionne. `react-native-web` transmet `aria-label` (`forwardedProps`), pas `name`.
-              aria-label={replyingTo ? 'Écrire une réponse' : 'Ajouter un commentaire'}
+              aria-label={t(replyingTo ? 'commentaire.aria_reponse' : 'commentaire.aria_ajouter')}
               // `multiline` REND UN <textarea> ET NON UN <input> (`TextInput/index.js:323`), et
               // c'est tout l'objet du changement : au-dessus du fil, les deux `<input>` de l'app
               // perdent majuscule et correction, le `<textarea>` de la feuille de signalement non.
@@ -475,7 +478,7 @@ export function CommentsSection({
               numberOfLines={1}
               blurOnSubmit
               style={styles.input}
-              placeholder={replyingTo ? 'Écrire une réponse…' : 'Ajouter un commentaire…'}
+              placeholder={t(replyingTo ? 'commentaire.champ_reponse' : 'commentaire.champ_ajouter')}
               maxLength={COMMENT_MAX_LENGTH}
               value={draft}
               onChangeText={setDraft}
@@ -486,7 +489,7 @@ export function CommentsSection({
               onPress={handleSubmit}
               disabled={!canSubmit}
             >
-              <Text style={styles.sendButtonText}>Envoyer</Text>
+              <Text style={styles.sendButtonText}>{t('commentaire.envoyer')}</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -512,9 +515,9 @@ export function CommentsSection({
       <ConfirmSheet
         visible={deletingCommentId != null}
         icon={TrashIcon}
-        title="Supprimer ce commentaire ?"
-        message="Cette action est définitive."
-        confirmLabel="Supprimer"
+        title={t('commentaire.suppression_titre')}
+        message={t('commun.action_definitive')}
+        confirmLabel={t('commun.supprimer')}
         onCancel={() => setDeletingCommentId(null)}
         onConfirm={() => {
           const id = deletingCommentId;

@@ -7,6 +7,7 @@ import { useSheetDismiss, sheetGrabStyle } from '../ui/useSheetDismiss';
 import { fetchCommentLikers, fetchPostLikers, type Liker } from '../../data/likes';
 import { errorMessage } from '../../utils/errorMessage';
 import { LARGEUR_MAX } from '../ui/Colonne';
+import { useT } from '../../i18n';
 
 interface LikersSheetProps {
   visible: boolean;
@@ -27,6 +28,7 @@ interface LikersSheetProps {
  * qu'on lit la main, et elle est trop courte pour que le rechargement se voie.
  */
 export function LikersSheet({ visible, onClose, source, onSelectProfile }: LikersSheetProps) {
+  const t = useT();
   const { dragY, grabHandlers } = useSheetDismiss(visible, onClose);
   const [likers, setLikers] = useState<Liker[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,7 +66,7 @@ export function LikersSheet({ visible, onClose, source, onSelectProfile }: Liker
               <View style={styles.handle} />
             </View>
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Qui a aimé</Text>
+              <Text style={styles.headerTitle}>{t('jaime.titre')}</Text>
               <Pressable onPress={onClose} hitSlop={8}>
                 <Text style={styles.closeButton}>✕</Text>
               </Pressable>
@@ -80,7 +82,7 @@ export function LikersSheet({ visible, onClose, source, onSelectProfile }: Liker
               // Atteignable sans bug : le compteur est tenu par un trigger côté base, qui ignore
               // les blocages de celui qui regarde (cf. `fetchLikers`). Un « 1 » peut donc n'ouvrir
               // aucune ligne si la seule personne concernée est bloquée ou bannie.
-              <Text style={styles.statusText}>Personne à afficher ici.</Text>
+              <Text style={styles.statusText}>{t('jaime.personne')}</Text>
             ) : (
               likers.map((liker) => (
                 <Pressable

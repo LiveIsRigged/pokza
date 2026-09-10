@@ -612,7 +612,7 @@ function PostCardInner({
           visible={confirmingDelete}
           icon={TrashIcon}
           title={t('post.suppression_titre')}
-          message={t('post.suppression_message')}
+          message={t('commun.action_definitive')}
           confirmLabel={t('commun.supprimer')}
           onCancel={() => setConfirmingDelete(false)}
           onConfirm={() => {

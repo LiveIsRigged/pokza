@@ -35,7 +35,7 @@ import { useReadTracking } from './src/post/readTracking';
 import { colors } from './src/theme/theme';
 import type { Post } from './src/types/poker';
 import { DisplayUnitProvider } from './src/state/displayUnit';
-import { LangueProvider, useLangue } from './src/i18n';
+import { LangueProvider, useLangue, useT } from './src/i18n';
 import { AuthProvider, useAuth } from './src/state/auth';
 import { useProfileStatus } from './src/state/profile';
 import { AuthScreen } from './src/auth/AuthScreen';
@@ -61,7 +61,6 @@ import {
 } from './src/components/ui/icons';
 
 /** Intitulé de la section réservée au fondateur dans le menu latéral. */
-const ADMIN_SECTION = 'Administration';
 import { Screen } from './src/components/ui/Screen';
 import { PullToRefresh } from './src/components/ui/PullToRefresh';
 import { FeedHeader } from './src/components/ui/FeedHeader';
@@ -132,6 +131,7 @@ function AppContent() {
   // `pret` attend la relecture du choix stocké : sans lui, quiconque a forcé une langue voit
   // d'abord celle de son téléphone, le temps d'un rendu.
   const { pret: languePrete } = useLangue();
+  const t = useT();
   const { session, loading, passwordRecovery, clearPasswordRecovery } = useAuth();
   const {
     hasProfile,
@@ -438,7 +438,7 @@ function AppContent() {
     try {
       const post = local ?? (await fetchPost(postId));
       if (!post) {
-        setPostsError("Cette main n'est plus disponible.");
+        setPostsError(t('post.introuvable'));
         return;
       }
       setCorrectingPost(post);
@@ -463,7 +463,7 @@ function AppContent() {
     try {
       const post = local ?? (await fetchPost(postId));
       if (!post) {
-        setPostsError("Cette main n'est plus disponible.");
+        setPostsError(t('post.introuvable'));
         return;
       }
       // Renseigner le repli MÊME quand la main vient du feed : c'est lui que `editingPost`
@@ -484,7 +484,7 @@ function AppContent() {
     try {
       const post = local ?? (await fetchPost(postId));
       if (!post) {
-        setPostsError("Cette main n'est plus disponible.");
+        setPostsError(t('post.introuvable'));
         return;
       }
       setDuplicatingPost(post);
@@ -811,7 +811,7 @@ function AppContent() {
       <View style={styles.container}>
         <LiveHandCreator
           authorId={session.user.id}
-          authorName={displayName ?? 'Joueur'}
+          authorName={displayName ?? t('commun.joueur')}
           formatFavori={myFormatFavori}
           varianteFavorite={myVarianteFavorite}
           groups={myGroups}
@@ -938,7 +938,7 @@ function AppContent() {
       <View style={styles.container}>
         <LiveHandCreator
           authorId={session.user.id}
-          authorName={displayName ?? 'Joueur'}
+          authorName={displayName ?? t('commun.joueur')}
           formatFavori={myFormatFavori}
           varianteFavorite={myVarianteFavorite}
           groups={myGroups}
@@ -1046,7 +1046,7 @@ function AppContent() {
                   visibility: edits.visibility,
                   groupId: edits.groupId,
                 },
-                displayName ?? 'Joueur',
+                displayName ?? t('commun.joueur'),
                 myAvatarUrl
               );
               setPosts((p) => [saved, ...p]);
@@ -1100,7 +1100,7 @@ function AppContent() {
         <PostScreen
           postId={viewingPostId}
           currentUserId={session.user.id}
-          currentUserName={displayName ?? 'Joueur'}
+          currentUserName={displayName ?? t('commun.joueur')}
           openComments={viewingPostComments}
           onBack={onBack}
           onEditPost={(postId) => void openEdition(postId, 'post')}
@@ -1129,7 +1129,7 @@ function AppContent() {
         <ProfileScreen
           profileId={viewingProfileId}
           currentUserId={session.user.id}
-          currentUserName={displayName ?? 'Joueur'}
+          currentUserName={displayName ?? t('commun.joueur')}
           onProfileChanged={refetchProfile}
           onCreateHand={() => openCreator()}
           onBack={onBack}
@@ -1211,7 +1211,7 @@ function AppContent() {
           ref={groupScreenRef}
           groupId={viewingGroupId}
           currentUserId={session.user.id}
-          currentUserName={displayName ?? 'Joueur'}
+          currentUserName={displayName ?? t('commun.joueur')}
           showPublishedNotice={showPublishedNotice}
           onCreateHand={() => openCreator(viewingGroupId)}
           onBack={onBack}
@@ -1416,7 +1416,7 @@ function AppContent() {
               key={post.id}
               post={post}
               currentUserId={session.user.id}
-              currentUserName={displayName ?? 'Joueur'}
+              currentUserName={displayName ?? t('commun.joueur')}
               isOwnPost={post.authorId === session.user.id}
               onDelete={() => handleDelete(post.id)}
               onEdit={() => void openEdition(post.id, 'feed')}
@@ -1453,11 +1453,11 @@ function AppContent() {
       <ScrollToTopButton visible={showScrollTop} onPress={handleScrollToTop} />
       <SideMenu
         visible={menuOpen}
-        displayName={displayName ?? 'Joueur'}
+        displayName={displayName ?? t('commun.joueur')}
         avatarUrl={myAvatarUrl}
         items={[
           {
-            label: 'Mes invitations',
+            label: t('menu.mes_invitations'),
             icon: MailIcon,
             badge: pendingInvitationsCount,
             onPress: () => {
@@ -1466,7 +1466,7 @@ function AppContent() {
             },
           },
           {
-            label: 'Ajouter des amis',
+            label: t('menu.ajouter_des_amis'),
             icon: FriendsIcon,
             onPress: () => {
               setMenuOpen(false);
@@ -1474,7 +1474,7 @@ function AppContent() {
             },
           },
           {
-            label: 'Mes groupes privés',
+            label: t('menu.mes_groupes_prives'),
             icon: GroupTableIcon,
             // Total des mains non vues, tous groupes confondus — même pastille que « Mes
             // invitations » juste au-dessus.
@@ -1487,7 +1487,7 @@ function AppContent() {
           // « Comptes bloqués », « Supprimer mon compte » et « Informations légales » ne sont PAS
           // ici : ce sont des réglages, rangés dans « Réglages » plutôt qu'au premier niveau du menu.
           {
-            label: 'Réglages',
+            label: t('menu.reglages'),
             icon: GearIcon,
             onPress: () => {
               setMenuOpen(false);
@@ -1500,8 +1500,8 @@ function AppContent() {
           ...(isAdmin
             ? [
                 {
-                  label: 'Statistiques',
-                  section: ADMIN_SECTION,
+                  label: t('menu.statistiques'),
+                  section: t('menu.section_administration'),
                   icon: ChartIcon,
                   onPress: () => {
                     setMenuOpen(false);
@@ -1509,8 +1509,8 @@ function AppContent() {
                   },
                 },
                 {
-                  label: 'Modération',
-                  section: ADMIN_SECTION,
+                  label: t('menu.moderation'),
+                  section: t('menu.section_administration'),
                   icon: ShieldIcon,
                   onPress: () => {
                     setMenuOpen(false);
@@ -1519,8 +1519,8 @@ function AppContent() {
                   },
                 },
                 {
-                  label: "Journal d'audit",
-                  section: ADMIN_SECTION,
+                  label: t('menu.journal_audit'),
+                  section: t('menu.section_administration'),
                   icon: AuditIcon,
                   onPress: () => {
                     setMenuOpen(false);
