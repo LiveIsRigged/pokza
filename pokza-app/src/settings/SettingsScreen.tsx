@@ -6,10 +6,12 @@ import { errorMessage } from '../utils/errorMessage';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { LegalScreen } from '../legal/LegalScreen';
 import { NotificationSettingsScreen } from './NotificationSettingsScreen';
+import { LanguageSettingsScreen } from './LanguageSettingsScreen';
 import { deleteOwnAccount } from '../data/profiles';
 import { supabase } from '../lib/supabase';
 import appJson from '../../app.json';
 import { TrashIcon } from '../components/ui/icons';
+import { useT } from '../i18n';
 
 const CONTACT_EMAIL = 'contact@pokza.app';
 
@@ -44,7 +46,10 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
   { userId, onBack, onOpenBlocked },
   ref
 ) {
+  const t = useT();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  const [languageOpen, setLanguageOpen] = useState(false);
 
   const [legalOpen, setLegalOpen] = useState(false);
 
@@ -60,6 +65,10 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
           setNotificationsOpen(false);
           return true;
         }
+        if (languageOpen) {
+          setLanguageOpen(false);
+          return true;
+        }
         if (legalOpen) {
           setLegalOpen(false);
           return true;
@@ -67,7 +76,7 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
         return false;
       },
     }),
-    [notificationsOpen, legalOpen]
+    [notificationsOpen, languageOpen, legalOpen]
   );
 
   const openLegalIndex = () => setLegalOpen(true);
@@ -89,6 +98,10 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
     return <NotificationSettingsScreen userId={userId} onBack={() => setNotificationsOpen(false)} />;
   }
 
+  if (languageOpen) {
+    return <LanguageSettingsScreen onBack={() => setLanguageOpen(false)} />;
+  }
+
   if (legalOpen) {
     return <LegalScreen onBack={() => setLegalOpen(false)} />;
   }
@@ -100,39 +113,45 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
           <Pressable onPress={onBack} hitSlop={8}>
             <Text style={styles.backArrow}>←</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>Réglages</Text>
+          <Text style={styles.headerTitle}>{t('reglages.titre')}</Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Notifications</Text>
+        <Text style={styles.sectionTitle}>{t('reglages.section_notifications')}</Text>
         <Pressable style={styles.linkRow} onPress={() => setNotificationsOpen(true)}>
-          <Text style={styles.linkRowLabel}>Notifications</Text>
+          <Text style={styles.linkRowLabel}>{t('reglages.ligne_notifications')}</Text>
           <Text style={styles.linkRowChevron}>›</Text>
         </Pressable>
 
-        <Text style={styles.sectionTitle}>Confidentialité</Text>
+        <Text style={styles.sectionTitle}>{t('reglages.section_langue')}</Text>
+        <Pressable style={styles.linkRow} onPress={() => setLanguageOpen(true)}>
+          <Text style={styles.linkRowLabel}>{t('reglages.ligne_langue')}</Text>
+          <Text style={styles.linkRowChevron}>›</Text>
+        </Pressable>
+
+        <Text style={styles.sectionTitle}>{t('reglages.section_confidentialite')}</Text>
         <Pressable style={styles.linkRow} onPress={onOpenBlocked}>
-          <Text style={styles.linkRowLabel}>Comptes bloqués</Text>
+          <Text style={styles.linkRowLabel}>{t('reglages.ligne_comptes_bloques')}</Text>
           <Text style={styles.linkRowChevron}>›</Text>
         </Pressable>
 
-        <Text style={styles.sectionTitle}>À propos</Text>
+        <Text style={styles.sectionTitle}>{t('reglages.section_a_propos')}</Text>
         <Pressable style={styles.linkRow} onPress={openLegalIndex}>
-          <Text style={styles.linkRowLabel}>Informations légales</Text>
+          <Text style={styles.linkRowLabel}>{t('reglages.ligne_informations_legales')}</Text>
           <Text style={styles.linkRowChevron}>›</Text>
         </Pressable>
         <Pressable style={styles.linkRow} onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)}>
-          <Text style={styles.linkRowLabel}>Signaler un problème</Text>
+          <Text style={styles.linkRowLabel}>{t('reglages.ligne_signaler_probleme')}</Text>
           <Text style={styles.linkRowChevron}>›</Text>
         </Pressable>
         <View style={styles.versionRow}>
-          <Text style={styles.versionText}>Pokza {appJson.expo.version}</Text>
+          <Text style={styles.versionText}>{t('reglages.version', { version: appJson.expo.version })}</Text>
         </View>
 
         {deleteError && <Text style={styles.error}>{deleteError}</Text>}
 
         <View style={styles.dangerZone}>
           <Pressable onPress={() => setConfirmingDelete(true)} hitSlop={8}>
-            <Text style={styles.deleteLink}>Supprimer mon compte</Text>
+            <Text style={styles.deleteLink}>{t('reglages.supprimer_mon_compte')}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -140,9 +159,9 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
       <ConfirmSheet
         visible={confirmingDelete}
         icon={TrashIcon}
-        title="Supprimer ton compte ?"
-        message="Ton compte, tes mains et tes commentaires seront définitivement supprimés."
-        confirmLabel="Supprimer définitivement"
+        title={t('reglages.suppression_titre')}
+        message={t('reglages.suppression_message')}
+        confirmLabel={t('reglages.suppression_bouton')}
         loading={deletingAccount}
         onCancel={() => setConfirmingDelete(false)}
         onConfirm={handleDeleteAccount}

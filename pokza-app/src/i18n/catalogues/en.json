@@ -1,0 +1,20 @@
+{
+  "reglages.titre": "Settings",
+  "reglages.section_notifications": "Notifications",
+  "reglages.ligne_notifications": "Notifications",
+  "reglages.section_langue": "Language",
+  "reglages.ligne_langue": "Language",
+  "reglages.section_confidentialite": "Privacy",
+  "reglages.ligne_comptes_bloques": "Blocked accounts",
+  "reglages.section_a_propos": "About",
+  "reglages.ligne_informations_legales": "Legal information",
+  "reglages.ligne_signaler_probleme": "Report a problem",
+  "reglages.version": "Pokza {version}",
+  "reglages.supprimer_mon_compte": "Delete my account",
+  "reglages.suppression_titre": "Delete your account?",
+  "reglages.suppression_message": "Your account, your hands and your comments will be permanently deleted.",
+  "reglages.suppression_bouton": "Delete permanently",
+  "langue.titre": "Language",
+  "langue.automatique": "Device language",
+  "langue.contenu_non_traduit": "Hands and comments stay in the language their author wrote them in."
+}

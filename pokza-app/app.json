@@ -27,7 +27,8 @@
         {
           "cameraPermission": "Pokza a besoin d'accéder à la caméra pour scanner le code d'un ami."
         }
-      ]
+      ],
+      "expo-localization"
     ]
   }
 }

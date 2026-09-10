@@ -35,6 +35,7 @@ import { useReadTracking } from './src/post/readTracking';
 import { colors } from './src/theme/theme';
 import type { Post } from './src/types/poker';
 import { DisplayUnitProvider } from './src/state/displayUnit';
+import { LangueProvider, useLangue } from './src/i18n';
 import { AuthProvider, useAuth } from './src/state/auth';
 import { useProfileStatus } from './src/state/profile';
 import { AuthScreen } from './src/auth/AuthScreen';
@@ -93,13 +94,15 @@ export default function App() {
           pour que Safari iOS cesse de faire glisser la page. Monté ici parce que le défaut vient
           de la feuille de style d'`index.html` — il ne concerne pas un écran en particulier. */}
       <AjusteurHauteur />
-      <DisplayUnitProvider>
-        <AuthProvider>
-          <RootChrome>
-            <AppContent />
-          </RootChrome>
-        </AuthProvider>
-      </DisplayUnitProvider>
+      <LangueProvider>
+        <DisplayUnitProvider>
+          <AuthProvider>
+            <RootChrome>
+              <ContenuLocalise />
+            </RootChrome>
+          </AuthProvider>
+        </DisplayUnitProvider>
+      </LangueProvider>
     </SafeAreaProvider>
   );
 }
@@ -124,8 +127,22 @@ function RootChrome({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Change de langue = REMONTE tout l'arbre. C'est volontairement brutal : `t()` est appelable hors
+ * React (moteur de main, dates relatives, messages d'erreur), et ces textes-là ne s'abonnent à
+ * rien — sans remontage ils resteraient dans l'ancienne langue jusqu'au prochain rendu, au hasard.
+ * Le geste est rare et délibéré, en perdre la position dans le fil est le bon prix.
+ */
+function ContenuLocalise() {
+  const { langue } = useLangue();
+  return <AppContent key={langue} />;
+}
+
 function AppContent() {
   const [fontsLoaded] = useFonts({ Fraunces_400Regular, Fraunces_600SemiBold });
+  // `pret` attend la relecture du choix stocké : sans lui, quiconque a forcé une langue voit
+  // d'abord celle de son téléphone, le temps d'un rendu.
+  const { pret: languePrete } = useLangue();
   const { session, loading, passwordRecovery, clearPasswordRecovery } = useAuth();
   const {
     hasProfile,
@@ -695,7 +712,7 @@ function AppContent() {
   // d'édition sans post et l'app retomber silencieusement sur le feed.
   const editingPost = posts.find((p) => p.id === editingPostId) ?? editingPostFallback;
 
-  if (!fontsLoaded || loading) {
+  if (!fontsLoaded || loading || !languePrete) {
     return <View style={styles.container} />;
   }
 

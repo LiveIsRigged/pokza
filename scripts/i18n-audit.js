@@ -1,0 +1,130 @@
+// Le garde-fou de la traduction : ce qui empêche l'anglais de mentir en silence.
+// ──────────────────────────────────────────────────────────────────────────────
+// `tsc` attrape déjà deux fautes sur trois : une clé qui n'existe pas dans `fr.json` ne compile
+// pas, et `en.json` est typé COMPLET, donc oublier l'anglais d'une clé casse la compilation.
+//
+// Reste le cas que ni le type ni les tests ne voient, et c'est le seul dangereux : on retouche un
+// mot FRANÇAIS sans retoucher sa traduction. Rien ne casse, l'app tourne, l'anglais affiche
+// l'ancienne phrase — indéfiniment, jusqu'à ce qu'un anglophone la lise et ne dise rien.
+//
+// La parade : chaque langue traduite porte une empreinte `<langue>.source.json`, qui garde le texte
+// français dont la traduction est issue. Si le français a bougé depuis, la traduction est PÉRIMÉE
+// et ce script le dit.
+//
+//   node scripts/i18n-audit.js                      → l'état des lieux (sort en erreur si trou)
+//   node scripts/i18n-audit.js --sceller en cle...  → « c'est traduit », après avoir traduit
+//
+// À lancer avant tout commit qui touche un texte.
+
+const fs = require('fs');
+const path = require('path');
+
+const RACINE = path.join(__dirname, '..', 'pokza-app');
+const CATALOGUES = path.join(RACINE, 'src', 'i18n', 'catalogues');
+const SOURCE = 'fr';
+
+const lire = (f) => JSON.parse(fs.readFileSync(path.join(CATALOGUES, f), 'utf8'));
+const ecrire = (f, o) =>
+  fs.writeFileSync(path.join(CATALOGUES, f), JSON.stringify(o, null, 2) + '\n', 'utf8');
+
+/** Un texte peut être une chaîne ou ses formes plurielles : on compare les deux pareil. */
+const empreinte = (v) => (typeof v === 'string' ? v : JSON.stringify(v));
+
+const langues = fs
+  .readdirSync(CATALOGUES)
+  .filter((f) => f.endsWith('.json') && !f.endsWith('.source.json'))
+  .map((f) => f.replace(/\.json$/, ''))
+  .filter((l) => l !== SOURCE);
+
+const fr = lire(`${SOURCE}.json`);
+
+// ── Mode « sceller » : après avoir traduit, on date la traduction sur le français actuel ────────
+const args = process.argv.slice(2);
+if (args[0] === '--sceller') {
+  const langue = args[1];
+  const cles = args.slice(2);
+  if (!langue || cles.length === 0) {
+    console.error('Usage : node scripts/i18n-audit.js --sceller <langue> <cle> [<cle>...]');
+    process.exit(2);
+  }
+  const traduit = lire(`${langue}.json`);
+  const source = lire(`${langue}.source.json`);
+  for (const cle of cles) {
+    if (!(cle in fr)) {
+      console.error(`✗ « ${cle} » n'existe pas dans ${SOURCE}.json`);
+      process.exit(2);
+    }
+    if (!(cle in traduit)) {
+      console.error(`✗ « ${cle} » n'est pas traduit dans ${langue}.json — traduire d'abord`);
+      process.exit(2);
+    }
+    source[cle] = fr[cle];
+  }
+  // On garde l'ordre du français : les deux fichiers se lisent côte à côte, et les diffs restent
+  // lisibles au lieu de bouger à chaque ajout.
+  ecrire(`${langue}.source.json`, Object.fromEntries(Object.keys(fr).filter((c) => c in source).map((c) => [c, source[c]])));
+  console.log(`✓ ${cles.length} clé(s) scellée(s) en ${langue}`);
+  process.exit(0);
+}
+
+// ── Mode audit ──────────────────────────────────────────────────────────────────────────────────
+let trous = 0;
+console.log(`${Object.keys(fr).length} clés en ${SOURCE}\n`);
+
+for (const langue of langues) {
+  const traduit = lire(`${langue}.json`);
+  const source = lire(`${langue}.source.json`);
+
+  const manquantes = Object.keys(fr).filter((c) => !(c in traduit));
+  const perimees = Object.keys(fr).filter(
+    (c) => c in traduit && empreinte(source[c]) !== empreinte(fr[c])
+  );
+  const orphelines = Object.keys(traduit).filter((c) => !(c in fr));
+
+  console.log(`── ${langue} ──`);
+  const dire = (titre, liste, explication) => {
+    if (liste.length === 0) return;
+    trous += liste.length;
+    console.log(`  ${titre} (${liste.length}) — ${explication}`);
+    for (const c of liste) {
+      console.log(`      ${c}`);
+      if (titre.startsWith('PÉRIMÉ')) {
+        console.log(`        ${SOURCE} était : ${JSON.stringify(source[c] ?? null)}`);
+        console.log(`        ${SOURCE} est   : ${JSON.stringify(fr[c])}`);
+      }
+    }
+  };
+  dire('MANQUANTES', manquantes, 'jamais traduites — repli sur l’anglais');
+  dire('PÉRIMÉES', perimees, 'le français a bougé depuis la traduction');
+  dire('ORPHELINES', orphelines, 'la clé n’existe plus en français — à supprimer');
+  if (manquantes.length + perimees.length + orphelines.length === 0) console.log('  ✓ à jour');
+  console.log('');
+}
+
+// ── Clés jamais appelées : pas une erreur, mais du texte mort qu'on traduit pour rien ────────────
+const fichiers = [];
+(function balayer(dossier) {
+  for (const e of fs.readdirSync(dossier, { withFileTypes: true })) {
+    const p = path.join(dossier, e.name);
+    if (e.isDirectory()) {
+      if (e.name !== 'node_modules' && e.name !== 'i18n') balayer(p);
+    } else if (/\.tsx?$/.test(e.name)) fichiers.push(p);
+  }
+})(path.join(RACINE, 'src'));
+fichiers.push(path.join(RACINE, 'App.tsx'));
+
+const code = fichiers.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+const appelees = new Set();
+for (const m of code.matchAll(/\bt\(\s*'([^']+)'/g)) appelees.add(m[1]);
+const jamais = Object.keys(fr).filter((c) => !appelees.has(c));
+if (jamais.length > 0) {
+  console.log(`Clés jamais appelées (${jamais.length}) — informatif, pas bloquant :`);
+  for (const c of jamais) console.log(`      ${c}`);
+  console.log('');
+}
+
+if (trous > 0) {
+  console.log(`✗ ${trous} trou(s) — traduire, puis « --sceller »`);
+  process.exit(1);
+}
+console.log('✓ toutes les langues sont à jour');

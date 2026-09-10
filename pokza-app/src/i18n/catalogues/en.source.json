@@ -1,0 +1,20 @@
+{
+  "reglages.titre": "Réglages",
+  "reglages.section_notifications": "Notifications",
+  "reglages.ligne_notifications": "Notifications",
+  "reglages.section_langue": "Langue",
+  "reglages.ligne_langue": "Langue",
+  "reglages.section_confidentialite": "Confidentialité",
+  "reglages.ligne_comptes_bloques": "Comptes bloqués",
+  "reglages.section_a_propos": "À propos",
+  "reglages.ligne_informations_legales": "Informations légales",
+  "reglages.ligne_signaler_probleme": "Signaler un problème",
+  "reglages.version": "Pokza {version}",
+  "reglages.supprimer_mon_compte": "Supprimer mon compte",
+  "reglages.suppression_titre": "Supprimer ton compte ?",
+  "reglages.suppression_message": "Ton compte, tes mains et tes commentaires seront définitivement supprimés.",
+  "reglages.suppression_bouton": "Supprimer définitivement",
+  "langue.titre": "Langue",
+  "langue.automatique": "Langue de l'appareil",
+  "langue.contenu_non_traduit": "Les mains et les commentaires restent dans la langue de leur auteur."
+}
