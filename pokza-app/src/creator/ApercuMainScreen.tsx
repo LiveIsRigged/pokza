@@ -4,6 +4,7 @@ import { Pressable } from '../components/ui/Pressable';
 import { HandReplayer } from '../components/replayer/HandReplayer';
 import { colors, spacing, typography } from '../theme/theme';
 import type { Hand } from '../types/poker';
+import { useT } from '../i18n';
 
 interface ApercuMainScreenProps {
   /** La main telle qu'elle sera publiée — celle que construit `construitMain`, pas une copie. */
@@ -28,13 +29,14 @@ interface ApercuMainScreenProps {
  * dans le dos de l'aperçu.
  */
 export function ApercuMainScreen({ hand, onFermer }: ApercuMainScreenProps) {
+  const t = useT();
   return (
     <View style={styles.overlay}>
       <View style={styles.topRow}>
         <Pressable onPress={onFermer} hitSlop={8}>
           <Text style={styles.retour}>←</Text>
         </Pressable>
-        <Text style={styles.titre}>Revoir la main</Text>
+        <Text style={styles.titre}>{t('createur.revoir_titre')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.contenu}>

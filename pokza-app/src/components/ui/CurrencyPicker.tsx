@@ -42,7 +42,7 @@ export function CurrencyPicker({ visible, selectedCode, onSelect, onClose }: Cur
         <Pressable style={styles.backdropFill} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Choisir une devise</Text>
+            <Text style={styles.headerTitle}>{t('devise.choisir')}</Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <Text style={styles.closeButton}>✕</Text>
             </Pressable>

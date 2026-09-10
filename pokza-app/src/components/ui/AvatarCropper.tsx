@@ -3,6 +3,7 @@ import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from './Pressable';
 import { colors, radius, spacing } from '../../theme/theme';
 import type { CropRegion } from '../../data/avatars';
+import { useT } from '../../i18n';
 
 const VIEWPORT = 280;
 const ZOOM_STEP = 1.25;
@@ -40,6 +41,7 @@ function clampOffset(offset: Point, scale: number, naturalWidth: number, natural
  * jamais de bord vide. Le pan est ensuite borné pour la même raison.
  */
 export function AvatarCropper({ uri, naturalWidth, naturalHeight, onCancel, onConfirm }: AvatarCropperProps) {
+  const t = useT();
   const minScale = Math.max(VIEWPORT / naturalWidth, VIEWPORT / naturalHeight);
   const maxScale = minScale * MAX_ZOOM_FACTOR;
 
@@ -105,7 +107,7 @@ export function AvatarCropper({ uri, naturalWidth, naturalHeight, onCancel, onCo
 
   return (
     <View style={styles.overlay}>
-      <Text style={styles.title}>Cadre ta photo</Text>
+      <Text style={styles.title}>{t('avatar.cadrer')}</Text>
       <View style={styles.viewport} {...panResponder.panHandlers}>
         <Image
           source={{ uri }}
@@ -122,17 +124,17 @@ export function AvatarCropper({ uri, naturalWidth, naturalHeight, onCancel, onCo
         <Pressable style={styles.zoomButton} onPress={() => applyZoom(1 / ZOOM_STEP)} hitSlop={8}>
           <Text style={styles.zoomButtonText}>−</Text>
         </Pressable>
-        <Text style={styles.zoomLabel}>Zoom</Text>
+        <Text style={styles.zoomLabel}>{t('avatar.zoom')}</Text>
         <Pressable style={styles.zoomButton} onPress={() => applyZoom(ZOOM_STEP)} hitSlop={8}>
           <Text style={styles.zoomButtonText}>+</Text>
         </Pressable>
       </View>
       <View style={styles.actionsRow}>
         <Pressable style={styles.cancelButton} onPress={onCancel} hitSlop={8}>
-          <Text style={styles.cancelButtonText}>Annuler</Text>
+          <Text style={styles.cancelButtonText}>{t('commun.annuler')}</Text>
         </Pressable>
         <Pressable style={styles.confirmButton} onPress={handleConfirm} hitSlop={8}>
-          <Text style={styles.confirmButtonText}>Valider</Text>
+          <Text style={styles.confirmButtonText}>{t('avatar.valider')}</Text>
         </Pressable>
       </View>
     </View>

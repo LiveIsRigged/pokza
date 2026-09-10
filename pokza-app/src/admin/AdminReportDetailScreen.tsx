@@ -17,6 +17,7 @@ import { reportReasonLabel } from '../data/reports';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { BlockIcon, ClockIcon, TrashIcon, WarningIcon, type IconProps } from '../components/ui/icons';
 import { useT } from '../i18n';
+import { langueCourante } from '../i18n/traduire';
 
 interface AdminReportDetailScreenProps {
   reportId: string;
@@ -25,7 +26,7 @@ interface AdminReportDetailScreenProps {
 }
 
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR', {
+  return new Date(iso).toLocaleString(langueCourante(), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -112,24 +113,24 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
       {feedback && <Text style={styles.feedbackText}>{feedback}</Text>}
 
       {loading || !ctx ? (
-        <Text style={styles.statusText}>Chargement…</Text>
+        <Text style={styles.statusText}>{t('commun.chargement')}</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           {/* Signalement */}
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <Text style={styles.reason}>{reportReasonLabel(ctx.report.reason)}</Text>
-              {ctx.report.severity === 'priority' && <Text style={styles.priorityBadge}>⚠️ Prioritaire</Text>}
+              {ctx.report.severity === 'priority' && <Text style={styles.priorityBadge}>{t('admin.prioritaire')}</Text>}
             </View>
             <Text style={styles.metaLine}>{t('admin.statut_ligne', { statut: t(REPORT_STATUS_CLE[ctx.report.status]) })}</Text>
-            <Text style={styles.metaLine}>Reçu le {formatDateTime(ctx.report.createdAt)}</Text>
+            <Text style={styles.metaLine}>{t('admin.recu_le', { date: formatDateTime(ctx.report.createdAt) })}</Text>
             {ctx.report.reporterEmail ? (
-              <Text style={styles.metaLine}>Signaleur : {ctx.report.reporterEmail}</Text>
+              <Text style={styles.metaLine}>{t('admin.signaleur', { email: ctx.report.reporterEmail })}</Text>
             ) : null}
             {ctx.report.details ? <Text style={styles.detailsText}>« {ctx.report.details} »</Text> : null}
             <Text style={styles.metaLine}>
-              {ctx.reportsOnTarget} signalement{ctx.reportsOnTarget > 1 ? 's' : ''} sur cette cible ·{' '}
-              {ctx.reportsOnAuthorAsUser} sur ce compte
+              {t('admin.signalements_sur_cible', { count: ctx.reportsOnTarget })} ·{' '}
+              {t('admin.signalements_sur_compte', { count: ctx.reportsOnAuthorAsUser })}
             </Text>
           </View>
 
@@ -138,26 +139,26 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
           <View style={styles.card}>
             {targetType === 'post' && (
               <>
-                <Text style={styles.contentTitle}>{(target?.title as string) || '(sans titre)'}</Text>
+                <Text style={styles.contentTitle}>{(target?.title as string) || t('admin.sans_titre')}</Text>
                 {target?.description ? <Text style={styles.contentBody}>{target.description as string}</Text> : null}
               </>
             )}
             {targetType === 'comment' && (
-              <Text style={styles.contentBody}>{(target?.body as string) || '(commentaire vide)'}</Text>
+              <Text style={styles.contentBody}>{(target?.body as string) || t('admin.commentaire_vide')}</Text>
             )}
             {targetType === 'user' && (
               <Text style={styles.contentTitle}>@{(target?.pseudo as string) || '?'}</Text>
             )}
             {target == null && <Text style={styles.contentBody}>{t('admin.contenu_introuvable')}</Text>}
             {contentModStatus && (
-              <Text style={styles.modStatusBadge}>État de modération : {contentModStatus}</Text>
+              <Text style={styles.modStatusBadge}>{t('admin.etat_moderation', { etat: contentModStatus })}</Text>
             )}
           </View>
 
           {/* Actions sur le contenu (post/comment uniquement) */}
           {(targetType === 'post' || targetType === 'comment') && target != null && (
             <>
-              <Text style={styles.sectionTitle}>Agir sur le contenu</Text>
+              <Text style={styles.sectionTitle}>{t('admin.agir_sur_contenu')}</Text>
               <View style={styles.actionsRow}>
                 <Pressable
                   style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
@@ -166,7 +167,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                     run(t('admin.contenu_masque'), () => setContentStatus(targetType, ctx.report.targetId, 'hidden', note || undefined))
                   }
                 >
-                  <Text style={styles.actionBtnText}>Masquer</Text>
+                  <Text style={styles.actionBtnText}>{t('admin.masquer')}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.actionBtn, styles.actionDanger, busy && styles.actionBtnDisabled]}
@@ -174,9 +175,9 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   onPress={() =>
                     setPendingAction({
                       icon: TrashIcon,
-                      title: `Retirer ${targetType === 'post' ? 'cette main' : 'ce commentaire'} ?`,
-                      message: "Il ne sera plus visible par personne, seul l'auteur continuera de le voir.",
-                      confirmLabel: 'Retirer',
+                      title: t('admin.retirer_contenu_titre', { cible: t(targetType === 'post' ? 'signalement.cible_main' : 'signalement.cible_commentaire') }),
+                      message: t('admin.retirer_contenu_message'),
+                      confirmLabel: t('commun.retirer'),
                       execute: () =>
                         run(t('admin.contenu_retire'), () =>
                           setContentStatus(targetType, ctx.report.targetId, 'removed', note || undefined)
@@ -184,7 +185,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                     })
                   }
                 >
-                  <Text style={[styles.actionBtnText, styles.actionDangerText]}>Retirer</Text>
+                  <Text style={[styles.actionBtnText, styles.actionDangerText]}>{t('commun.retirer')}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
@@ -202,7 +203,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
           {/* Auteur + sanctions */}
           {authorId && (
             <>
-              <Text style={styles.sectionTitle}>Auteur</Text>
+              <Text style={styles.sectionTitle}>{t('admin.auteur')}</Text>
               <View style={styles.card}>
                 {ctx.authorSanctions.length === 0 ? (
                   <Text style={styles.metaLine}>{t('admin.aucune_sanction')}</Text>
@@ -222,7 +223,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                 </Pressable>
               </View>
 
-              <Text style={styles.sectionTitle}>Sanctionner l'auteur</Text>
+              <Text style={styles.sectionTitle}>{t('admin.sanctionner_auteur')}</Text>
               <View style={styles.actionsRow}>
                 <Pressable
                   style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
@@ -237,7 +238,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                     })
                   }
                 >
-                  <Text style={styles.actionBtnText}>Avertir</Text>
+                  <Text style={styles.actionBtnText}>{t('admin.avertir')}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
@@ -245,8 +246,8 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   onPress={() =>
                     setPendingAction({
                       icon: ClockIcon,
-                      title: 'Suspendre ce compte 7 jours ?',
-                      confirmLabel: 'Suspendre',
+                      title: t('admin.suspendre_titre'),
+                      confirmLabel: t('admin.suspendre'),
                       execute: () =>
                         run('Suspension 7 jours', () =>
                           sanctionUser(
@@ -259,7 +260,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                     })
                   }
                 >
-                  <Text style={styles.actionBtnText}>Suspendre 7 j</Text>
+                  <Text style={styles.actionBtnText}>{t('admin.suspendre_7j')}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.actionBtn, styles.actionDanger, busy && styles.actionBtnDisabled]}
@@ -267,14 +268,14 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                   onPress={() =>
                     setPendingAction({
                       icon: BlockIcon,
-                      title: 'Bannir ce compte ?',
+                      title: t('admin.bannir_titre'),
                       message: t('admin.bannissement_definitif'),
-                      confirmLabel: 'Bannir',
+                      confirmLabel: t('admin.bannir'),
                       execute: () => run('Compte banni', () => sanctionUser(authorId, 'banned', note || undefined)),
                     })
                   }
                 >
-                  <Text style={[styles.actionBtnText, styles.actionDangerText]}>Bannir</Text>
+                  <Text style={[styles.actionBtnText, styles.actionDangerText]}>{t('admin.bannir')}</Text>
                 </Pressable>
               </View>
             </>

@@ -5,13 +5,14 @@ import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, radius, spacing } from '../theme/theme';
 import { listAuditLog, type AuditEntry } from '../data/admin';
 import { useT, type Cle } from '../i18n';
+import { langueCourante } from '../i18n/traduire';
 
 interface AdminAuditScreenProps {
   onBack: () => void;
 }
 
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR', {
+  return new Date(iso).toLocaleString(langueCourante(), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -69,14 +70,14 @@ export function AdminAuditScreen({ onBack }: AdminAuditScreenProps) {
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Journal d'audit</Text>
+        <Text style={styles.title}>{t('admin.journal_titre')}</Text>
       </View>
 
       {error && <Text style={styles.statusText}>{error}</Text>}
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
-          <Text style={styles.statusText}>Chargement…</Text>
+          <Text style={styles.statusText}>{t('commun.chargement')}</Text>
         ) : entries.length === 0 ? (
           <Text style={styles.statusText}>{t('admin.aucune_action')}</Text>
         ) : (

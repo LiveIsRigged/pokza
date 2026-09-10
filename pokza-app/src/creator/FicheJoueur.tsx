@@ -8,6 +8,7 @@ import type { GameType } from '../types/poker';
 import { formatChipInput } from '../utils/chipFormat';
 import { LARGEUR_MAX } from '../components/ui/Colonne';
 import { autoFocusUtile } from '../web/clavierVirtuel';
+import { useT } from '../i18n';
 
 interface FicheJoueurProps {
   visible: boolean;
@@ -53,6 +54,7 @@ export function FicheJoueur({
   onVider,
   onFermer,
 }: FicheJoueurProps) {
+  const t = useT();
   // Un siège où rien n'a été saisi n'a rien à remettre à zéro : le bouton reste là (sa place ne
   // bouge pas d'une fiche à l'autre) mais il est éteint, plutôt que de promettre un effet nul.
   const aQuelqueChoseAVider = nom.trim().length > 0 || tapis !== undefined;
@@ -88,7 +90,7 @@ export function FicheJoueur({
           </View>
 
           <View style={styles.corps}>
-            <Text style={styles.label}>Nom</Text>
+            <Text style={styles.label}>{t('createur.fiche_nom')}</Text>
             <TextInput
               autoComplete="off"
               style={styles.input}
@@ -101,7 +103,7 @@ export function FicheJoueur({
               autoFocus={autoFocusUtile() && !estHero && nom.length === 0}
             />
 
-            <Text style={styles.label}>Stack</Text>
+            <Text style={styles.label}>{t('createur.champ_stack')}</Text>
             <OptionalDecimalTextInput
               style={styles.input}
               placeholder={formatChipInput(tapisParDefaut, gameType)}
@@ -112,7 +114,7 @@ export function FicheJoueur({
 
             <View style={styles.actions}>
               <Pressable style={styles.action} onPress={onChangerDePlace}>
-                <Text style={styles.actionTexte}>Changer de place</Text>
+                <Text style={styles.actionTexte}>{t('createur.changer_de_place')}</Text>
               </Pressable>
               <Pressable
                 style={[styles.action, !aQuelqueChoseAVider && styles.actionEteinte]}

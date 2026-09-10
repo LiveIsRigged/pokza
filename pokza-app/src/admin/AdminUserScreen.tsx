@@ -14,6 +14,7 @@ import {
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { WarningIcon } from '../components/ui/icons';
 import { useT } from '../i18n';
+import { langueCourante } from '../i18n/traduire';
 
 interface AdminUserScreenProps {
   userId: string;
@@ -21,7 +22,7 @@ interface AdminUserScreenProps {
 }
 
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR', {
+  return new Date(iso).toLocaleString(langueCourante(), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -100,7 +101,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
       {feedback && <Text style={styles.feedbackText}>{feedback}</Text>}
 
       {loading || !ctx ? (
-        <Text style={styles.statusText}>Chargement…</Text>
+        <Text style={styles.statusText}>{t('commun.chargement')}</Text>
       ) : !profile ? (
         <Text style={styles.statusText}>Compte introuvable.</Text>
       ) : (
@@ -114,7 +115,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
               {ctx.recentContentCount.comments} commentaire{ctx.recentContentCount.comments > 1 ? 's' : ''}
             </Text>
             <Text style={styles.metaLine}>
-              {ctx.reportsAgainstUser} signalement{ctx.reportsAgainstUser > 1 ? 's' : ''} visant ce compte
+              {t('admin.signalements_sur_compte', { count: ctx.reportsAgainstUser })}
             </Text>
           </View>
 
@@ -146,7 +147,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
           </View>
 
           {/* Sanctions */}
-          <Text style={styles.sectionTitle}>Sanctions</Text>
+          <Text style={styles.sectionTitle}>{t('admin.sanctions')}</Text>
           {ctx.sanctions.length === 0 ? (
             <View style={styles.card}>
               <Text style={styles.metaLine}>{t('admin.aucune_sanction')}</Text>
@@ -171,7 +172,7 @@ export function AdminUserScreen({ userId, onBack }: AdminUserScreenProps) {
                       disabled={busy}
                       onPress={() => run(t('admin.action_sanction_levee'), () => liftSanction(s.id))}
                     >
-                      <Text style={styles.actionBtnText}>Lever la sanction</Text>
+                      <Text style={styles.actionBtnText}>{t('admin.lever_sanction')}</Text>
                     </Pressable>
                   )}
                 </View>

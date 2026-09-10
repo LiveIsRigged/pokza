@@ -105,13 +105,13 @@ export function NotificationSettingsScreen({ userId, onBack }: NotificationSetti
           <Pressable onPress={onBack} hitSlop={8}>
             <Text style={styles.backArrow}>←</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>Notifications</Text>
+          <Text style={styles.headerTitle}>{t('notif.titre')}</Text>
         </View>
 
         {pushSupported() ? (
           <>
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Notifications sur cet appareil</Text>
+              <Text style={styles.rowLabel}>{t('notif.sur_cet_appareil')}</Text>
               {perm === 'denied' ? (
                 <Text style={styles.deniedHint}>{t('notif.bloquees')}</Text>
               ) : (

@@ -161,7 +161,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
               />
               <StatTile value={stats.croissance.sansProfil} label={t('stats.inscrits_sans_profil')} />
             </Tiles>
-            <MiniBars data={stats.croissance.parJour} caption="Inscriptions · 14 derniers jours" />
+            <MiniBars data={stats.croissance.parJour} caption={t('stats.inscriptions_14_jours')} />
           </Section>
 
           <Section title={t('stats.utilisateurs_actifs')}>

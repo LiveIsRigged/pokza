@@ -62,7 +62,7 @@ export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScre
             <Pressable onPress={onFermer} hitSlop={8}>
               <Text style={styles.fermer}>←</Text>
             </Pressable>
-            <Text style={styles.titre}>La main en texte</Text>
+            <Text style={styles.titre}>{t('post.main_en_texte_titre')}</Text>
           </View>
 
           <ScrollView style={styles.corps} contentContainerStyle={styles.corpsInner}>

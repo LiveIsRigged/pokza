@@ -3,6 +3,7 @@ import { Animated, Dimensions, Easing, Modal, StyleSheet, Text, View } from 'rea
 import { Pressable } from './Pressable';
 import { borders, colors, radius, spacing } from '../../theme/theme';
 import type { IconProps } from './icons';
+import { useT } from '../../i18n';
 
 /** Rouge des actions destructrices, partagé par le libellé et son icône. */
 const DESTRUCTIVE = '#C0392B';
@@ -49,6 +50,7 @@ export function OverflowMenu({
   items: OverflowMenuItem[];
   anchor?: OverflowAnchor | null;
 }) {
+  const t = useT();
   const anim = useRef(new Animated.Value(0)).current;
   // Rester monté le temps de l'animation de fermeture (sinon le panneau disparaît d'un coup).
   const [rendered, setRendered] = useState(visible);
@@ -115,7 +117,7 @@ export function OverflowMenu({
         })}
         <Pressable style={[styles.item, styles.itemBorder]} onPress={onClose}>
           <View style={styles.itemIcon} />
-          <Text style={[styles.itemLabel, styles.cancelLabel]}>Annuler</Text>
+          <Text style={[styles.itemLabel, styles.cancelLabel]}>{t('commun.annuler')}</Text>
         </Pressable>
       </Animated.View>
     </Modal>

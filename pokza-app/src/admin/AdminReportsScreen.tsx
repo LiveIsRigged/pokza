@@ -71,7 +71,7 @@ export function AdminReportsScreen({ onBack, onOpenReport, reloadKey }: AdminRep
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Signalements</Text>
+        <Text style={styles.title}>{t('admin.signalements')}</Text>
       </View>
 
       <View style={styles.tabsWrap}>
@@ -95,14 +95,14 @@ export function AdminReportsScreen({ onBack, onOpenReport, reloadKey }: AdminRep
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
-          <Text style={styles.statusText}>Chargement…</Text>
+          <Text style={styles.statusText}>{t('commun.chargement')}</Text>
         ) : reports.length === 0 ? (
           <Text style={styles.statusText}>{t('admin.aucun_signalement')}</Text>
         ) : (
           reports.map((r) => (
             <Pressable key={r.id} style={styles.row} onPress={() => onOpenReport(r.id)}>
               <View style={styles.rowHeader}>
-                {r.severity === 'priority' && <Text style={styles.priorityBadge}>⚠️ Prioritaire</Text>}
+                {r.severity === 'priority' && <Text style={styles.priorityBadge}>{t('admin.prioritaire')}</Text>}
                 <Text style={styles.targetBadge}>{TARGET_LABEL[r.targetType] ?? r.targetType}</Text>
                 {r.reportsOnTarget > 1 && <Text style={styles.multiBadge}>×{r.reportsOnTarget}</Text>}
                 <View style={styles.grow} />

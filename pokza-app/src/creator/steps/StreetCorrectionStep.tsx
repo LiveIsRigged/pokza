@@ -158,7 +158,7 @@ export function StreetCorrectionStep({
           </>
         )}
 
-        <Text style={styles.label}>Mises de cette street</Text>
+        <Text style={styles.label}>{t('createur.mises_de_street')}</Text>
         {mises.length === 0 ? (
           <Text style={styles.vide}>{t('createur.personne_na_parle')}</Text>
         ) : (
@@ -172,7 +172,7 @@ export function StreetCorrectionStep({
         {/* Le SEUL geste qui efface, et il est explicite. Reprendre les mises d'une street impose
             de refaire celles qui suivent : leur légalité dépend de ce qui vient d'être misé. */}
         <Pressable style={styles.refaire} onPress={onRefaireLesMises}>
-          <Text style={styles.refaireTexte}>Refaire les mises</Text>
+          <Text style={styles.refaireTexte}>{t('createur.refaire_les_mises')}</Text>
         </Pressable>
         <Text style={styles.avertissement}>
           Refaire les mises efface celles de cette street et des suivantes. Les cartes, elles, sont

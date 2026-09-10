@@ -153,10 +153,10 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
                   </Pressable>
                   <View style={styles.actions}>
                     <Pressable style={styles.declineButton} onPress={() => handleDeclineFriend(req.senderId)} hitSlop={hitSlopPairLeft}>
-                      <Text style={styles.declineButtonText}>Refuser</Text>
+                      <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
                     </Pressable>
                     <Pressable style={styles.acceptButton} onPress={() => handleAcceptFriend(req.senderId)} hitSlop={hitSlopPairRight}>
-                      <Text style={styles.acceptButtonText}>Accepter</Text>
+                      <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -179,10 +179,10 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
                   </View>
                   <View style={styles.actions}>
                     <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(invite.groupId)} hitSlop={hitSlopPairLeft}>
-                      <Text style={styles.declineButtonText}>Refuser</Text>
+                      <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
                     </Pressable>
                     <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(invite.groupId)} hitSlop={hitSlopPairRight}>
-                      <Text style={styles.acceptButtonText}>Accepter</Text>
+                      <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
                     </Pressable>
                   </View>
                 </View>

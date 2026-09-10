@@ -80,7 +80,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
               <TextInput
                 autoComplete="off"
                 style={styles.searchInput}
-                placeholder="Chercher un GIF…"
+                placeholder={t('gif.chercher')}
                 value={query}
                 onChangeText={handleQueryChange}
                 autoFocus={autoFocusUtile()}
