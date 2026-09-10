@@ -128,6 +128,69 @@ if (jamais.length > 0) {
   console.log('');
 }
 
+// ── Le français resté dans le code : le trou que rien ne voyait ─────────────────────────────────
+// Une clé inutilisée se voit, une clé périmée se voit — mais un écran à MOITIÉ traduit, non : il
+// compile, il s'affiche, et la moitié française passe sous le nez de tous les autres contrôles.
+// C'est arrivé sur l'écran des statistiques : trois libellés en texte JSX nu ont survécu à une
+// passe qui ne cherchait que des chaînes entre guillemets.
+//
+// Informatif et non bloquant : trois familles restent en français EXPRÈS (cf. le glossaire), et
+// les commentaires du code le sont tous.
+const HORS_PERIMETRE = [
+  'src/legal/legalContent.ts',      // des documents, pas des étiquettes — traduits à part
+  'src/data/lieux.ts',              // des noms PROPRES : « Casino Barrière de Lille » ne se traduit pas
+  'src/import/verification.ts',     // diagnostics affichés sous un refus, écrits pour diagnostiquer
+  'src/import/montage.ts',
+  'src/import/dialectes/',          // motifs de lecture des rooms : les traduire casserait l'import
+];
+const accent = /[éèêàçùôîûëïÉÈÀÇÊÎÔÛ]/;
+const commentaire = /^\s*(\*|\/\/|\/\*)/;
+const restant = [];
+for (const f of fichiers) {
+  const relatif = path.relative(RACINE, f).split(path.sep).join('/');
+  if (HORS_PERIMETRE.some((h) => relatif.startsWith(h))) continue;
+  // Les commentaires de ce dépôt sont en français et pleins d'apostrophes — sans les retirer
+  // D'ABORD, chaque « qu'il » ouvre une fausse chaîne et le rapport se noie sous ses propres
+  // faux positifs. Même piège que le comptage naïf qui annonçait 1700 chaînes au lieu de 450.
+  const lignes = fs.readFileSync(f, 'utf8').split('\n');
+  let dansBloc = false;
+  lignes.forEach((ligneBrute, i) => {
+    let ligne = ligneBrute;
+    if (dansBloc) {
+      const fin = ligne.indexOf('*/');
+      if (fin === -1) return;
+      ligne = ligne.slice(fin + 2);
+      dansBloc = false;
+    }
+    const debut = ligne.indexOf('/*');
+    if (debut !== -1) {
+      const fin = ligne.indexOf('*/', debut + 2);
+      if (fin === -1) {
+        dansBloc = true;
+        ligne = ligne.slice(0, debut);
+      } else {
+        ligne = ligne.slice(0, debut) + ligne.slice(fin + 2);
+      }
+    }
+    const deuxSlashs = ligne.indexOf('//');
+    if (deuxSlashs !== -1) ligne = ligne.slice(0, deuxSlashs);
+    if (commentaire.test(ligne) || ligne.trim() === '') return;
+    // Texte JSX nu (`>Par variante<`) et littéraux de plus de trois caractères accentués.
+    const nu = ligne.match(/>\s*([^<>{}\n]*[éèêàçùôîûëïÉÈÀÇÊÎÔÛ][^<>{}\n]*?)\s*</);
+    const litteral = ligne.match(/['"`]([^'"`\n]{4,}[éèêàçùôîûëïÉÈÀÇÊÎÔÛ][^'"`\n]*)['"`]/);
+    const trouve = (nu && nu[1]) || (litteral && litteral[1]);
+    if (trouve && accent.test(trouve)) restant.push(`${relatif}:${i + 1}  ${trouve.trim()}`);
+  });
+}
+if (restant.length > 0) {
+  console.log(`Français restant dans le code (${restant.length}) — informatif :`);
+  // `--tout` : la liste entière, pour s'en servir comme d'une liste de travail.
+  const plafond = process.argv.includes('--tout') ? restant.length : 40;
+  for (const l of restant.slice(0, plafond)) console.log(`      ${l}`);
+  if (restant.length > plafond) console.log(`      … et ${restant.length - plafond} de plus (--tout)`);
+  console.log('');
+}
+
 // ── Notes de contexte devenues orphelines ────────────────────────────────────────────────────────
 // `contexte.json` explique les clés qu'on ne peut pas traduire en lisant seulement leur texte. Il
 // ne sert qu'à l'export vers le relecteur d'une nouvelle langue — donc personne ne le regarde au

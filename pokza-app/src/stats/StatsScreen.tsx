@@ -5,19 +5,27 @@ import { borders, colors, radius, spacing, tints } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { fetchAdminStats, type AdminStats, type DayCount } from '../data/stats';
 import { formatLabel } from '../profile/profileOptions';
+import { useT, type Cle } from '../i18n';
+import { t } from '../i18n/traduire';
 
 interface StatsScreenProps {
   onBack: () => void;
 }
 
-const VARIANTE_LABEL: Record<string, string> = { nlhe: "Hold'em", plo: 'PLO', plo5: 'PLO5' };
-const FREQUENCE_LABEL: Record<string, string> = {
-  tres_occasionnel: 'Très occasionnel',
-  occasionnel: 'Occasionnel',
-  regulier: 'Régulier',
-  tres_regulier: 'Très régulier',
-  '?': 'Non précisé',
+const VARIANTE_CLE: Record<string, Cle> = {
+  nlhe: 'profil.variante_nlhe',
+  plo: 'profil.variante_plo',
+  plo5: 'profil.variante_plo5',
 };
+const FREQUENCE_CLE: Record<string, Cle> = {
+  tres_occasionnel: 'stats.frequence_tres_occasionnel',
+  occasionnel: 'stats.frequence_occasionnel',
+  regulier: 'stats.frequence_regulier',
+  tres_regulier: 'stats.frequence_tres_regulier',
+  '?': 'stats.non_precise',
+};
+const varianteLabel = (k: string) => (VARIANTE_CLE[k] ? t(VARIANTE_CLE[k]) : k);
+const frequenceLabel = (k: string) => (FREQUENCE_CLE[k] ? t(FREQUENCE_CLE[k]) : k);
 
 /** Une tuile chiffre + libellé. `hint` = précision optionnelle sous le libellé (ex. un pourcentage). */
 function StatTile({ value, label, hint }: { value: string | number; label: string; hint?: string }) {
@@ -92,6 +100,7 @@ function toEntries(dict: Record<string, number>, label: (key: string) => string)
 }
 
 export function StatsScreen({ onBack }: StatsScreenProps) {
+  const t = useT();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,8 +139,8 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
         </Pressable>
       </View>
 
-      <Text style={styles.title}>Statistiques</Text>
-      {generatedTime ? <Text style={styles.subtitle}>À jour à {generatedTime}</Text> : null}
+      <Text style={styles.title}>{t('stats.titre')}</Text>
+      {generatedTime ? <Text style={styles.subtitle}>{t('stats.a_jour_a', { heure: generatedTime })}</Text> : null}
 
       {loading && !stats ? (
         <ActivityIndicator style={styles.loader} color={colors.action} />
@@ -139,90 +148,90 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
         <Text style={styles.error}>{error}</Text>
       ) : stats ? (
         <>
-          <Section title="Croissance">
+          <Section title={t('stats.croissance')}>
             <Tiles>
-              <StatTile value={stats.croissance.inscrits} label="Inscrits" />
-              <StatTile value={`+${stats.croissance.nouveaux24h}`} label="Nouveaux (24 h)" />
-              <StatTile value={`+${stats.croissance.nouveaux7j}`} label="Nouveaux (7 j)" />
-              <StatTile value={`+${stats.croissance.nouveaux30j}`} label="Nouveaux (30 j)" />
+              <StatTile value={stats.croissance.inscrits} label={t('stats.inscrits')} />
+              <StatTile value={`+${stats.croissance.nouveaux24h}`} label={t('stats.nouveaux_24h')} />
+              <StatTile value={`+${stats.croissance.nouveaux7j}`} label={t('stats.nouveaux_7j')} />
+              <StatTile value={`+${stats.croissance.nouveaux30j}`} label={t('stats.nouveaux_30j')} />
               <StatTile
                 value={stats.croissance.profilsCompletes}
-                label="Profils complétés"
+                label={t('stats.profils_completes')}
                 hint={pct(stats.croissance.profilsCompletes, stats.croissance.inscrits)}
               />
-              <StatTile value={stats.croissance.sansProfil} label="Inscrits sans profil" />
+              <StatTile value={stats.croissance.sansProfil} label={t('stats.inscrits_sans_profil')} />
             </Tiles>
             <MiniBars data={stats.croissance.parJour} caption="Inscriptions · 14 derniers jours" />
           </Section>
 
-          <Section title="Utilisateurs actifs">
+          <Section title={t('stats.utilisateurs_actifs')}>
             <Tiles>
-              <StatTile value={stats.activite.actifs24h} label="Actifs (24 h)" />
-              <StatTile value={stats.activite.actifs7j} label="Actifs (7 j)" />
-              <StatTile value={stats.activite.actifs30j} label="Actifs (30 j)" />
-              <StatTile value={stats.activite.jamaisRevenus} label="Jamais revenus" />
+              <StatTile value={stats.activite.actifs24h} label={t('stats.actifs_24h')} />
+              <StatTile value={stats.activite.actifs7j} label={t('stats.actifs_7j')} />
+              <StatTile value={stats.activite.actifs30j} label={t('stats.actifs_30j')} />
+              <StatTile value={stats.activite.jamaisRevenus} label={t('stats.jamais_revenus')} />
             </Tiles>
           </Section>
 
-          <Section title="Contenu">
+          <Section title={t('stats.contenu')}>
             <Tiles>
-              <StatTile value={stats.contenu.mains} label="Mains postées" />
-              <StatTile value={`+${stats.contenu.mains7j}`} label="Mains (7 j)" />
-              <StatTile value={stats.contenu.posteursTotal} label="Posteurs" />
-              <StatTile value={stats.contenu.posteurs7j} label="Posteurs (7 j)" />
-              <StatTile value={stats.contenu.bombPots} label="Bomb pots" />
-              <StatTile value={stats.contenu.doubleBoards} label="Double boards" />
-              <StatTile value={stats.contenu.avecSondage} label="Avec sondage" />
-              <StatTile value={stats.contenu.cash} label="Cash" />
-              <StatTile value={stats.contenu.tournoi} label="Tournoi" />
-              <StatTile value={stats.contenu.publiques} label="Publiques" />
-              <StatTile value={stats.contenu.enGroupe} label="En groupe" />
-              <StatTile value={stats.contenu.privees} label="Privées" />
+              <StatTile value={stats.contenu.mains} label={t('stats.mains_postees')} />
+              <StatTile value={`+${stats.contenu.mains7j}`} label={t('stats.mains_7j')} />
+              <StatTile value={stats.contenu.posteursTotal} label={t('stats.posteurs')} />
+              <StatTile value={stats.contenu.posteurs7j} label={t('stats.posteurs_7j')} />
+              <StatTile value={stats.contenu.bombPots} label={t('stats.bomb_pots')} />
+              <StatTile value={stats.contenu.doubleBoards} label={t('stats.double_boards')} />
+              <StatTile value={stats.contenu.avecSondage} label={t('stats.avec_sondage')} />
+              <StatTile value={stats.contenu.cash} label={t('stats.cash')} />
+              <StatTile value={stats.contenu.tournoi} label={t('stats.tournoi')} />
+              <StatTile value={stats.contenu.publiques} label={t('stats.publiques')} />
+              <StatTile value={stats.contenu.enGroupe} label={t('stats.en_groupe')} />
+              <StatTile value={stats.contenu.privees} label={t('stats.privees')} />
             </Tiles>
-            <Text style={styles.miniTitle}>Par variante</Text>
-            <Breakdown entries={toEntries(stats.contenu.parVariante, (k) => VARIANTE_LABEL[k] ?? k)} />
+            <Text style={styles.miniTitle}>{t('stats.par_variante')}</Text>
+            <Breakdown entries={toEntries(stats.contenu.parVariante, varianteLabel)} />
             <MiniBars data={stats.contenu.parJour} caption="Mains postées · 14 derniers jours" />
           </Section>
 
-          <Section title="Engagement">
+          <Section title={t('stats.engagement')}>
             <Tiles>
-              <StatTile value={stats.engagement.likes} label="Likes" />
-              <StatTile value={stats.engagement.commentaires} label="Commentaires" />
-              <StatTile value={stats.engagement.reponses} label="Réponses" />
-              <StatTile value={stats.engagement.votes} label="Votes" />
+              <StatTile value={stats.engagement.likes} label={t('stats.likes')} />
+              <StatTile value={stats.engagement.commentaires} label={t('stats.commentaires')} />
+              <StatTile value={stats.engagement.reponses} label={t('stats.reponses')} />
+              <StatTile value={stats.engagement.votes} label={t('stats.votes')} />
               <StatTile
                 value={stats.engagement.mainsAvecLike}
-                label="Mains likées"
+                label={t('stats.mains_likees')}
                 hint={pct(stats.engagement.mainsAvecLike, stats.contenu.mains)}
               />
               <StatTile
                 value={stats.engagement.mainsAvecCommentaire}
-                label="Mains commentées"
+                label={t('stats.mains_commentees')}
                 hint={pct(stats.engagement.mainsAvecCommentaire, stats.contenu.mains)}
               />
             </Tiles>
           </Section>
 
-          <Section title="Social">
+          <Section title={t('stats.social')}>
             <Tiles>
-              <StatTile value={stats.social.amities} label="Amitiés" />
-              <StatTile value={stats.social.demandesEnAttente} label="Demandes en attente" />
-              <StatTile value={stats.social.groupes} label="Groupes" />
-              <StatTile value={stats.social.membresGroupes} label="Membres de groupes" />
+              <StatTile value={stats.social.amities} label={t('stats.amities')} />
+              <StatTile value={stats.social.demandesEnAttente} label={t('stats.demandes_en_attente')} />
+              <StatTile value={stats.social.groupes} label={t('stats.groupes')} />
+              <StatTile value={stats.social.membresGroupes} label={t('stats.membres_de_groupes')} />
             </Tiles>
           </Section>
 
-          <Section title="Préférences des joueurs">
-            <Text style={styles.miniTitle}>Format favori</Text>
-            <Breakdown entries={toEntries(stats.profils.formatFavori, (k) => (k === '?' ? 'Non précisé' : formatLabel(k)))} />
-            <Text style={styles.miniTitle}>Variante préférée</Text>
-            <Breakdown entries={toEntries(stats.profils.varianteFavorite, (k) => VARIANTE_LABEL[k] ?? k)} />
-            <Text style={styles.miniTitle}>Fréquence de jeu</Text>
-            <Breakdown entries={toEntries(stats.profils.frequence, (k) => FREQUENCE_LABEL[k] ?? k)} />
+          <Section title={t('stats.preferences')}>
+            <Text style={styles.miniTitle}>{t('profil.format_favori')}</Text>
+            <Breakdown entries={toEntries(stats.profils.formatFavori, (k) => (k === '?' ? t('stats.non_precise') : formatLabel(k)))} />
+            <Text style={styles.miniTitle}>{t('profil.variante_preferee')}</Text>
+            <Breakdown entries={toEntries(stats.profils.varianteFavorite, varianteLabel)} />
+            <Text style={styles.miniTitle}>{t('stats.frequence_de_jeu')}</Text>
+            <Breakdown entries={toEntries(stats.profils.frequence, frequenceLabel)} />
           </Section>
 
           {stats.topPosteurs.length > 0 && (
-            <Section title="Top posteurs">
+            <Section title={t('stats.top_posteurs')}>
               <Breakdown entries={stats.topPosteurs.map((t) => ({ label: t.pseudo, n: t.n }))} />
             </Section>
           )}
