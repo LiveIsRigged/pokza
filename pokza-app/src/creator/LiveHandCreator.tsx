@@ -29,6 +29,7 @@ import {
   rememberUsedGroup,
 } from '../groups/lastUsedGroups';
 import { CopyIcon, TrashIcon } from '../components/ui/icons';
+import { useT } from '../i18n';
 
 /**
  * QUATRE ÉTAPES, TOUJOURS — constat 7 de l'audit, tranché par Victor le 02/09/2026.
@@ -131,6 +132,7 @@ export function LiveHandCreator({
   initial,
   initialPhase,
 }: LiveHandCreatorProps) {
+  const t = useT();
   // Table de départ d'après le profil, calculée une fois : sert d'état initial ET de base au
   // chargement des réglages mémorisés, qui la recouvrent (cf. l'effet plus bas).
   const playerDefaults = useRef<ContextData>(defaultContextForPlayer({ formatFavori, varianteFavorite }));
@@ -723,8 +725,9 @@ export function LiveHandCreator({
     l.length <= 1 ? l[0] ?? '' : `${l.slice(0, -1).join(', ')} et ${l[l.length - 1]}`;
 
   /** Le libellé du bouton sur l'étape d'entrée d'une correction. Ailleurs, l'assistant normal. */
-  const libelleBouton = (invalide: boolean) => (aLEntree ? (invalide ? 'Continuer' : 'Valider') : undefined);
-  const RIEN_A_RESSAISIR = "Rien d'autre ne sera à ressaisir.";
+  const libelleBouton = (invalide: boolean) =>
+    aLEntree ? t(invalide ? 'commun.continuer' : 'createur.valider') : undefined;
+  const RIEN_A_RESSAISIR = t('createur.rien_a_ressaisir');
 
   const renderStep = () => {
   // Une street REPRISE ne s'ouvre pas sur l'enregistreur : entrer ne doit rien effacer. On y
@@ -1209,9 +1212,9 @@ export function LiveHandCreator({
       <ConfirmSheet
         visible={confirmingAbandon}
         icon={TrashIcon}
-        title="Abandonner cette main ?"
-        message="Ce que tu as saisi sera perdu."
-        confirmLabel="Abandonner"
+        title={t('createur.abandonner_titre')}
+        message={t('createur.abandonner_message')}
+        confirmLabel={t('createur.abandonner_bouton')}
         cancelLabel="Continuer la saisie"
         onCancel={() => setConfirmingAbandon(false)}
         onConfirm={() => {
@@ -1229,9 +1232,9 @@ export function LiveHandCreator({
       <ConfirmSheet
         visible={confirmingImport}
         icon={CopyIcon}
-        title="Remplacer cette main ?"
-        message="Ce que tu as saisi sera remplacé par la main importée."
-        confirmLabel="Importer"
+        title={t('createur.remplacer_titre')}
+        message={t('createur.remplacer_message')}
+        confirmLabel={t('createur.remplacer_bouton')}
         cancelLabel="Garder ma saisie"
         destructive={false}
         onCancel={() => setConfirmingImport(false)}

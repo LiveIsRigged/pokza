@@ -1,4 +1,5 @@
 import type { CodeDeRefus } from './formeNeutre';
+import { t, type Cle } from '../i18n/traduire';
 
 /**
  * CE QU'ON DIT À L'AUTEUR QUAND UNE MAIN EST REFUSÉE.
@@ -17,15 +18,14 @@ import type { CodeDeRefus } from './formeNeutre';
  * là. Rien de ce texte ne quitte l'appareil, ce qui reste la promesse de l'architecture (une hand
  * history porte les pseudos et les tapis de gens qui n'ont rien demandé).
  */
-const MESSAGES: Record<CodeDeRefus, string> = {
-  'texte-vide': "Il n'y a rien à lire.",
-  'fichier-trop-gros': "Ce fichier est trop gros pour être une hand history.",
+const MESSAGES: Record<CodeDeRefus, Cle> = {
+  'texte-vide': 'import.refus_texte_vide',
+  'fichier-trop-gros': 'import.refus_fichier_trop_gros',
   // ⚠️ REFUS DÉCIDÉ PAR VICTOR le 04/09/2026. Un cashout (GGPoker) fait payer au joueur une prime
   // pour encaisser son équité avant la fin : sur la main mesurée, il a réellement touché UN QUART
   // de moins que le pot affiché (10,09 de prime sur 41,87). Le déroulé du coup est exact, mais le
   // résultat en argent ne l'est pas — et Pokza n'a aucun endroit pour le dire.
-  'main-avec-cashout':
-    "Cette main a été encaissée avant la fin (cashout) : le gagnant n'a pas touché le pot affiché.",
+  'main-avec-cashout': 'import.refus_main_avec_cashout',
   /**
    * ⚠️ LE SEUL REFUS QUI APPELLE UNE SUITE, ET ELLE N'EST PAS ENTRE LES MAINS DE L'AUTEUR : sa
    * salle n'est pas lue, il n'y peut rien. La phrase commence donc par CE QU'IL PEUT FAIRE
@@ -48,18 +48,16 @@ const MESSAGES: Record<CodeDeRefus, string> = {
    * L'envoi est fait PAR L'AUTEUR, par courrier, en voyant ce qu'il envoie. Ce n'est pas le
    * « envoyer cet exemple » qu'il avait écarté : là, rien ne quitte l'appareil tout seul.
    */
-  'format-inconnu':
-    "Pokza n'a pas reconnu ce format : il faut saisir la main toi-même.\n"
-    + "Envoie-nous un exemple à contact@pokza.app pour qu'on ajoute cette room.",
+  'format-inconnu': 'import.refus_format_inconnu',
   // ⚠️ JAMAIS LU : `messageDeRefus` traite `plusieurs-mains` à part, parce que sa phrase dépend du
   // nombre de mains ET de la provenance (un fichier de session ne s'ouvre pas comme un collage se
   // recolle). L'entrée n'existe que pour que `Record<CodeDeRefus, string>` reste exhaustif — ce
   // filet vient d'ailleurs d'attraper sa suppression accidentelle.
-  'plusieurs-mains': "Colle une seule main.",
-  'variante-non-prise-en-charge': "Pokza ne lit que le Hold'em pour l'instant.",
-  'trop-de-joueurs': 'Cette table a plus de dix joueurs.',
-  'pas-assez-de-joueurs': "Il n'y a pas assez de joueurs dans ce texte.",
-  'bouton-introuvable': "Le bouton n'est indiqué nulle part dans ce texte.",
+  'plusieurs-mains': 'import.refus_plusieurs_mains',
+  'variante-non-prise-en-charge': 'import.refus_variante_non_prise_en_charge',
+  'trop-de-joueurs': 'import.refus_trop_de_joueurs',
+  'pas-assez-de-joueurs': 'import.refus_pas_assez_de_joueurs',
+  'bouton-introuvable': 'import.refus_bouton_introuvable',
   /**
    * Pokza a toujours exactement un héros : sans point de vue, la main n'a personne à désigner.
    *
@@ -71,14 +69,14 @@ const MESSAGES: Record<CodeDeRefus, string> = {
    * c'est (« ce texte ne montre les cartes de personne » / « aucun siège n'est marqué Hero ») — et
    * c'est exactement à ça que sert la ligne grise sous le message.
    */
-  'hero-introuvable': "Rien n'indique quelle place est la tienne dans cette main.",
-  'joueur-inconnu': "Un joueur agit sans être assis à la table.",
-  'noms-en-double': 'Deux joueurs portent le même nom à cette table.',
-  'mise-forcee-inconnue': "Cette main contient une mise forcée que Pokza ne sait pas encore lire.",
-  'ligne-incomprise': "Une ligne de ce texte n'a pas pu être lue.",
-  'sans-petite-blinde': "Personne ne poste la petite blinde dans cette main.",
+  'hero-introuvable': 'import.refus_hero_introuvable',
+  'joueur-inconnu': 'import.refus_joueur_inconnu',
+  'noms-en-double': 'import.refus_noms_en_double',
+  'mise-forcee-inconnue': 'import.refus_mise_forcee_inconnue',
+  'ligne-incomprise': 'import.refus_ligne_incomprise',
+  'sans-petite-blinde': 'import.refus_sans_petite_blinde',
   // LE message du chantier. Il ne dit pas « erreur » : il dit qu'on a préféré refuser.
-  'controle-echoue': "Pokza a lu cette main, mais les comptes ne tombent pas juste. Mieux vaut refuser que publier une main fausse.",
+  'controle-echoue': 'import.refus_controle_echoue',
 };
 
 /**
@@ -101,9 +99,7 @@ const MESSAGES: Record<CodeDeRefus, string> = {
  * cash lue comme du cash), et la phrase ne doit pas faire croire à une erreur.
  */
 export function messageDAvertissement(nombre: number): string {
-  return nombre > 1
-    ? `La main est lue. ${nombre} choses à corriger si besoin, en remontant à l'étape 1 :`
-    : "La main est lue. Une chose à corriger si besoin, en remontant à l'étape 1 :";
+  return t('import.avertissement', { count: nombre });
 }
 
 /** D'où vient le texte — la seule chose qui change un message, et elle n'en change qu'un. */
@@ -122,10 +118,14 @@ export function messageDeRefus(
   provenance: Provenance = 'collage'
 ): string {
   if (code === 'plusieurs-mains') {
-    const combien = nombreDeMains && nombreDeMains > 1 ? `${nombreDeMains} mains` : 'plusieurs mains';
-    return provenance === 'fichier'
-      ? `Ce fichier contient ${combien}. Pokza n'en importe qu'une : ouvre-le et colle celle que tu veux.`
-      : `Il y a ${combien} dans ce texte. Colle une seule main.`;
+    const combien =
+      nombreDeMains && nombreDeMains > 1
+        ? t('import.n_mains', { count: nombreDeMains })
+        : t('import.plusieurs_mains_indefini');
+    return t(
+      provenance === 'fichier' ? 'import.plusieurs_mains_fichier' : 'import.plusieurs_mains_collage',
+      { combien }
+    );
   }
-  return MESSAGES[code] ?? "Ce texte n'a pas pu être lu.";
+  return t(MESSAGES[code] ?? 'import.refus_defaut');
 }

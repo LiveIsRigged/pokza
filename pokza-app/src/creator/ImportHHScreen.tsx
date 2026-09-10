@@ -9,6 +9,7 @@ import { messageDAvertissement, messageDeRefus, type Provenance } from '../impor
 import type { SourceDeSeed } from './rehydrate';
 import { borders, colors, radius, spacing, typography } from '../theme/theme';
 import { LARGEUR_MAX_IMPORT } from '../components/ui/Colonne';
+import { useT } from '../i18n';
 
 interface ImportHHScreenProps {
   onFermer: () => void;
@@ -44,6 +45,7 @@ interface ImportHHScreenProps {
  * cet exemple » — tranché par Victor le 04/09/2026).
  */
 export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
+  const t = useT();
   const [texte, setTexte] = useState('');
   /** Ce que l'auteur doit lire, et le détail technique en dessous. `null` = rien n'a encore été
    *  tenté — on ne montre pas un reproche avant le premier essai. */
@@ -95,7 +97,7 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
         setRefus({ message: messageDeRefus(e.code, undefined, 'fichier'), detail: e.message });
         return;
       }
-      setRefus({ message: "Ce fichier n'a pas pu être lu.", detail: String(e) });
+      setRefus({ message: t('import.fichier_illisible'), detail: String(e) });
     }
   };
 
@@ -195,7 +197,7 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
             <Pressable onPress={onFermer} hitSlop={8}>
               <Text style={styles.fermer}>←</Text>
             </Pressable>
-            <Text style={styles.titre}>Importer une HH</Text>
+            <Text style={styles.titre}>{t('import.titre')}</Text>
           </View>
 
           {/* Un `View` et non un `ScrollView` : c'est le CHAMP qui doit défiler, pas la page. Dans un
@@ -226,8 +228,8 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
               }}
               placeholder={
                 Platform.OS === 'web'
-                  ? 'Colle ici la HH que tu veux partager, ou dépose le fichier.'
-                  : 'Colle ici la HH que tu veux partager.'
+                  ? t('import.placeholder_avec_fichier')
+                  : t('import.placeholder_sans_fichier')
               }
               placeholderTextColor={colors.textSecondary}
               multiline
@@ -255,7 +257,7 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
                 survol. Web seulement : il n'y a ni glisser-déposer ni sélecteur de fichier en natif. */}
             {Platform.OS === 'web' && (
               <Pressable style={styles.fichier} onPress={choisirFichier} hitSlop={6}>
-                <Text style={styles.fichierTexte}>Choisir un fichier</Text>
+                <Text style={styles.fichierTexte}>{t('import.choisir_un_fichier')}</Text>
               </Pressable>
             )}
 
@@ -296,7 +298,7 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
               onPress={() => (retenue ? onImportee(retenue.source) : void action())}
             >
               <Text style={styles.boutonTexte}>
-                {retenue ? 'Continuer' : texte.trim() ? 'Lire la main' : 'Coller la main'}
+                {retenue ? t('commun.continuer') : texte.trim() ? t('import.lire_la_main') : t('import.coller_la_main')}
               </Text>
             </Pressable>
           </View>

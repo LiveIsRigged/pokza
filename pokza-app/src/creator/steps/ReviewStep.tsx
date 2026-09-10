@@ -8,6 +8,7 @@ import { Pressable } from '../../components/ui/Pressable';
 import { PlayIcon, TextLinesIcon } from '../../components/ui/icons';
 import { WizardScreen } from '../WizardScreen';
 import { DESCRIPTION_MAX_LENGTH, type ReviewData } from '../types';
+import { useT } from '../../i18n';
 import {
   TITLE_MAX_LENGTH,
   VOTE_OPTION_MAX_LENGTH,
@@ -76,6 +77,7 @@ export function ReviewStep({
   onRevoirLaMain,
   onVoirLeTexte,
 }: ReviewStepProps) {
+  const t = useT();
   const update = (patch: Partial<ReviewData>) => onChange({ ...value, ...patch });
 
   const voteOptions = value.voteOptions ?? ['', ''];
@@ -95,13 +97,13 @@ export function ReviewStep({
 
   return (
     <WizardScreen
-      title={republication ? 'Republier' : 'Publier'}
-      subtitle="Derniers détails"
+      title={t(republication ? 'createur.republier' : 'createur.publier')}
+      subtitle={t('createur.derniers_details')}
       onNext={onSubmit}
       nextLabel={
         submitting
-          ? (republication ? 'Republication…' : 'Publication…')
-          : (republication ? 'Republier la main' : 'Publier la main')
+          ? t(republication ? 'createur.republication_en_cours' : 'createur.publication_en_cours')
+          : t(republication ? 'createur.republier_la_main' : 'createur.publier_la_main')
       }
       nextDisabled={
         submitting ||
@@ -122,13 +124,13 @@ export function ReviewStep({
             {onRevoirLaMain ? (
               <Pressable style={styles.outil} onPress={onRevoirLaMain}>
                 <PlayIcon size={18} color={colors.textPrimary} />
-                <Text style={styles.outilTexte}>Revoir la main</Text>
+                <Text style={styles.outilTexte}>{t('createur.revoir_la_main')}</Text>
               </Pressable>
             ) : null}
             {onVoirLeTexte ? (
               <Pressable style={styles.outil} onPress={onVoirLeTexte}>
                 <TextLinesIcon size={18} color={colors.textPrimary} />
-                <Text style={styles.outilTexte}>La main en texte</Text>
+                <Text style={styles.outilTexte}>{t('createur.main_en_texte')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -145,7 +147,7 @@ export function ReviewStep({
             c'est beaucoup demander à 1 h du matin, après tout le travail, sur le geste qui le
             conclut. Le mot est le contraire exact des deux autres, à la même place. */}
         <View style={styles.labelRow}>
-          <Text style={[styles.label, styles.labelNoMargin]}>Titre (obligatoire)</Text>
+          <Text style={[styles.label, styles.labelNoMargin]}>{t('createur.titre_obligatoire')}</Text>
           <Text style={[styles.counter, titleTooLong && styles.counterOver]}>
             {value.title.length}/{TITLE_MAX_LENGTH}
           </Text>
@@ -153,14 +155,14 @@ export function ReviewStep({
         <TextInput
           autoComplete="off"
           style={styles.input}
-          placeholder="Ex : Hero call contre un reg"
+          placeholder={t('createur.titre_exemple')}
           maxLength={TITLE_MAX_LENGTH}
           value={value.title}
           onChangeText={(t) => update({ title: t })}
         />
 
         <View style={styles.labelRow}>
-          <Text style={[styles.label, styles.labelNoMargin]}>Description (optionnel)</Text>
+          <Text style={[styles.label, styles.labelNoMargin]}>{t('createur.description_optionnel')}</Text>
           <Text style={styles.counter}>
             {(value.description ?? '').length}/{DESCRIPTION_MAX_LENGTH}
           </Text>
@@ -168,7 +170,7 @@ export function ReviewStep({
         <TextInput
           autoComplete="off"
           style={[styles.input, styles.descriptionInput]}
-          placeholder="Contexte, action street par street, ce que vous demandez aux lecteurs…"
+          placeholder={t('createur.description_exemple')}
           value={value.description ?? ''}
           onChangeText={(t) => update({ description: t.slice(0, DESCRIPTION_MAX_LENGTH) })}
           maxLength={DESCRIPTION_MAX_LENGTH}
@@ -176,11 +178,11 @@ export function ReviewStep({
           textAlignVertical="top"
         />
 
-        <Text style={styles.label}>Question au vote (optionnel)</Text>
+        <Text style={styles.label}>{t('createur.question_vote')}</Text>
         <TextInput
           autoComplete="off"
           style={styles.input}
-          placeholder="Ex : Tu payes cette river ?"
+          placeholder={t('createur.question_vote_exemple')}
           maxLength={VOTE_QUESTION_MAX_LENGTH}
           value={value.voteQuestion ?? ''}
           onChangeText={(t) => update({ voteQuestion: t })}
@@ -188,13 +190,13 @@ export function ReviewStep({
 
         {hasVoteQuestion && (
           <>
-            <Text style={styles.label}>Réponses possibles (2 à 4)</Text>
+            <Text style={styles.label}>{t('createur.reponses_possibles')}</Text>
             {[0, 1, 2, 3].map((i) => (
               <TextInput
                 autoComplete="off"
                 key={i}
                 style={[styles.input, styles.optionInput]}
-                placeholder={i < 2 ? `Réponse ${i + 1}` : `Réponse ${i + 1} (optionnel)`}
+                placeholder={t(i < 2 ? 'createur.reponse_n' : 'createur.reponse_n_optionnel', { n: i + 1 })}
                 value={voteOptions[i] ?? ''}
                 onChangeText={(t) => updateOption(i, t)}
                 maxLength={VOTE_OPTION_MAX_LENGTH}
@@ -203,7 +205,7 @@ export function ReviewStep({
 
             {filledOptions.length > 0 && (
               <>
-                <Text style={styles.label}>Aperçu du vote</Text>
+                <Text style={styles.label}>{t('createur.apercu_du_vote')}</Text>
                 <View style={styles.previewRow}>
                   {filledOptions.slice(0, MAX_VOTE_OPTIONS).map((opt, i) => (
                     <View key={i} style={styles.previewBubble}>
@@ -216,12 +218,12 @@ export function ReviewStep({
           </>
         )}
 
-        <Text style={styles.label}>Visibilité</Text>
+        <Text style={styles.label}>{t('createur.visibilite')}</Text>
         <View style={styles.row}>
-          <Chip label="Public" selected={value.visibility === 'public'} onPress={() => update({ visibility: 'public', groupId: undefined })} />
-          <Chip label="Privé" selected={value.visibility === 'private'} onPress={() => update({ visibility: 'private', groupId: undefined })} />
+          <Chip label={t('createur.public')} selected={value.visibility === 'public'} onPress={() => update({ visibility: 'public', groupId: undefined })} />
+          <Chip label={t('createur.prive')} selected={value.visibility === 'private'} onPress={() => update({ visibility: 'private', groupId: undefined })} />
           <Chip
-            label="Groupe privé"
+            label={t('createur.groupe_prive')}
             selected={value.visibility === 'group'}
             onPress={() => update({ visibility: 'group', groupId: value.groupId ?? defaultGroupId })}
           />
