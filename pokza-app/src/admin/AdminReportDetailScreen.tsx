@@ -249,7 +249,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                       title: t('admin.suspendre_titre'),
                       confirmLabel: t('admin.suspendre'),
                       execute: () =>
-                        run('Suspension 7 jours', () =>
+                        run(t('admin.suspension_7j'), () =>
                           sanctionUser(
                             authorId,
                             'suspended',
@@ -271,7 +271,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
                       title: t('admin.bannir_titre'),
                       message: t('admin.bannissement_definitif'),
                       confirmLabel: t('admin.bannir'),
-                      execute: () => run('Compte banni', () => sanctionUser(authorId, 'banned', note || undefined)),
+                      execute: () => run(t('admin.compte_banni'), () => sanctionUser(authorId, 'banned', note || undefined)),
                     })
                   }
                 >
@@ -327,7 +327,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
         icon={pendingAction?.icon ?? WarningIcon}
         title={pendingAction?.title ?? ''}
         message={pendingAction?.message}
-        confirmLabel={pendingAction?.confirmLabel ?? 'Confirmer'}
+        confirmLabel={pendingAction?.confirmLabel ?? t('commun.confirmer')}
         loading={busy}
         onCancel={() => setPendingAction(null)}
         onConfirm={async () => {

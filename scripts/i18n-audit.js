@@ -203,37 +203,51 @@ if (restant.length > 0) {
   console.log('');
 }
 
-// ── Texte littéral encore dans l'interface, accent ou pas ────────────────────────────────────────
-// La recherche ci-dessus ne voit que les ACCENTS. « Installer », « Publier », « Groupes »,
-// « Continuer » lui échappent entièrement — et c'est comme ça qu'« Installe Pokza » a survécu à
-// tout le balayage. Celle-ci ne regarde pas la langue : elle cherche du TEXTE LITTÉRAL là où seul
-// un appel à `t()` devrait se trouver. Elle attrape donc aussi bien le français que l'anglais
-// oublié dans le code.
+// ── Texte littéral encore dans le code, quelle que soit la langue ───────────────────────────────
+// Trois versions de ce contrôle ont echoué avant celle-ci, et chaque fois Victor a trouvé ce que je
+// n'avais pas vu :
+//   1. la recherche par ACCENTS ratait « Installer », « Publier », « Groupes », « Tournoi » ;
+//   2. la recherche de texte JSX ne regardait que les `.tsx` — un `.ts` qui fabrique de l'affichage
+//      (`denomination.ts`, `invalidation.ts`, `rehydrate.ts`) y échappait entièrement ;
+//   3. elle ne voyait pas les valeurs par DÉFAUT de paramètre (`cancelLabel = 'Annuler'`), qui sont
+//      pourtant du texte affiché — et en plus figé au chargement du module.
+// Celle-ci ne regarde ni la langue ni la forme syntaxique : toute chaîne littérale qui RESSEMBLE à
+// du texte destiné à un humain (deux mots, ou un mot capitalisé d'au moins quatre lettres) et qui
+// n'est pas une clé du catalogue. Elle bruite un peu — chemins d'import, colonnes SQL, constantes —
+// d'où le filtre ci-dessous, nommé et pas silencieux.
+const BRUIT = [
+  /^[a-z0-9_-]+$/,                       // identifiants, enums, valeurs de style
+  /^[A-Z_]+$/,                           // constantes
+  /^#[0-9a-fA-F]+$|^rgba?\(/,            // couleurs
+  /^\.{0,2}\//,                           // chemins d'import
+  /^https?:\/\//,
+  /^[a-z_]+(?:,\s*[a-z_]+)+$/,           // listes de colonnes SQL
+  /^\(.*:.*\)$/,                         // media queries
+  /must be used within|requires /,       // messages destinés au développeur
+  /^(?:image\/\w+|Fraunces_\w+|System|Enter|MacIntel|PushManager|Notification|top right)$/,
+  /^(?:Hero|Pokza|GIF|NLHE|PLO5?|Pot|Check|Fold|Board \d|BB ante|BTN straddle|PRÉFLOP)$/,
+];
+const MOTS = /[A-Za-zÀ-ÿ]{2,}/g;
 const litteralJsx = [];
 for (const f of fichiers) {
   const relatif = path.relative(RACINE, f).split(path.sep).join('/');
-  if (HORS_PERIMETRE.some((h) => relatif.startsWith(h)) || !relatif.endsWith('.tsx')) continue;
-  const lignes = fs.readFileSync(f, 'utf8').split('\n');
-  lignes.forEach((ligne, i) => {
-    if (commentaire.test(ligne)) return;
-    // <Text …>Du texte</Text> — au moins deux lettres, et pas déjà une expression.
-    const enfant = ligne.match(/>\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' ]{2,60}?)\s*</);
-    // placeholder="…", label="…", title="…" avec une valeur littérale.
-    const attribut = ligne.match(/\b(?:placeholder|label|title|confirmLabel|message|caption|aria-label)="([^"]{3,60})"/);
-    // Les mêmes noms, mais en PROPRIÉTÉ d'objet (`title: 'Retirer cette main ?'`) : c'est ainsi que
-    // les feuilles de confirmation paramétrées passent leurs textes, et l'écran de modération en
-    // avait dix que ni les accents ni le JSX ne voyaient.
-    const propriete = ligne.match(/\b(?:label|title|confirmLabel|message|caption|detail|nom)\s*:\s*(?:'([^'\n]{3,60})'|"([^"\n]{3,60})")/);
-    const trouve =
-      (enfant && enfant[1]) ||
-      (attribut && attribut[1]) ||
-      (propriete && (propriete[1] || propriete[2]));
-    if (trouve && /[A-Za-zÀ-ÿ]{3}/.test(trouve)) litteralJsx.push(`${relatif}:${i + 1}  ${trouve.trim()}`);
+  if (HORS_PERIMETRE.some((h) => relatif.startsWith(h))) continue;
+  const sansBlocs = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  sansBlocs.split('\n').forEach((brute, i) => {
+    const ligne = brute.replace(/\/\/.*$/, '');
+    if (/^\s*(?:import|\*)/.test(ligne)) return;
+    for (const m of ligne.matchAll(/'([^'\n]{3,70})'|"([^"\n]{3,70})"|`([^`\n$]{3,70})`/g)) {
+      const v = m[1] ?? m[2] ?? m[3];
+      if (v in fr || BRUIT.some((b) => b.test(v))) continue;
+      const mots = v.match(MOTS) ?? [];
+      const humain = mots.length >= 2 || (mots.length === 1 && mots[0].length >= 4 && /^[A-ZÀ-Þ]/.test(mots[0]));
+      if (humain) litteralJsx.push(`${relatif}:${i + 1}  ${v}`);
+    }
   });
 }
 if (litteralJsx.length > 0) {
   const plafondJsx = process.argv.includes('--tout') ? litteralJsx.length : 25;
-  console.log(`Texte littéral encore dans le JSX (${litteralJsx.length}) — informatif :`);
+  console.log(`Texte littéral encore dans le code (${litteralJsx.length}) — informatif :`);
   for (const l of litteralJsx.slice(0, plafondJsx)) console.log(`      ${l}`);
   if (litteralJsx.length > plafondJsx) console.log(`      … et ${litteralJsx.length - plafondJsx} de plus (--tout)`);
   console.log('');

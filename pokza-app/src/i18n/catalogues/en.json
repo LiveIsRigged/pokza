@@ -703,5 +703,71 @@
   "admin.signalements_sur_compte": {
     "one": "{count} report against this account",
     "other": "{count} reports against this account"
-  }
+  },
+  "denomination.tournoi_variante": "Tournament {variante}",
+  "denomination.tournoi": "Tournament",
+  "denomination.cash_game": "Cash game",
+  "denomination.bomb_pot": "{prefixe}bomb pot {montant}",
+  "import.niveau": "Level {n}",
+  "profil.stat_mains": {
+    "one": "hand",
+    "other": "hands"
+  },
+  "profil.stat_amis": {
+    "one": "friend",
+    "other": "friends"
+  },
+  "admin.suspension_7j": "7-day suspension",
+  "admin.compte_banni": "Account banned",
+  "admin.confirmer": "Confirm",
+  "admin.cible_main": "Hand",
+  "admin.cible_commentaire": "Comment",
+  "admin.cible_compte": "Account",
+  "post.selectionner_texte": "Select the text to copy it",
+  "post.copier_texte": "Copy the text",
+  "replayer.main_arretee": "The hand stops here",
+  "createur.effacer": "Clear",
+  "createur.continuer_saisie": "Continue entering",
+  "createur.garder_saisie": "Keep what I entered",
+  "createur.champ_type_partie": "the game type",
+  "createur.champ_variante": "the variant",
+  "createur.champ_bomb_pot": "the bomb pot",
+  "createur.champ_ante_bombe": "the bomb ante",
+  "createur.champ_blindes": "the blinds",
+  "createur.champ_ante": "the ante",
+  "createur.champ_straddle": "the straddle",
+  "createur.champ_nombre_joueurs": "the number of players",
+  "createur.champ_position": "your position",
+  "createur.etape_context": "The table",
+  "createur.etape_hole_cards": "Your cards",
+  "createur.etape_showdown": "The showdown",
+  "createur.corriger_cartes_ou_mises": "Fix the cards, or redo the bets",
+  "createur.refaire_mises_street": "Redo the bets on this street",
+  "createur.cartes_de_cette_street": "Cards on this street",
+  "createur.board_n": "Board {n}",
+  "maintexte.preflop_majuscules": "PREFLOP",
+  "amis.invitation_titre": "Join me on Pokza",
+  "amis.invitation_message": "Add me on Pokza to follow my hands and talk them over!",
+  "amis.propre_code": "This is your own code!",
+  "amis.aucun_ami": "You don't have any friends yet. Add them from “Add friends”.",
+  "groupe.membres_titre": "Members",
+  "groupe.ce_membre": "this member",
+  "groupe.aucune_main": "no hand",
+  "groupe.creation_en_cours": "Creating…",
+  "groupe.creer_court": "Create",
+  "post.dupliquer_titre": "Duplicate the hand",
+  "post.modifier_titre": "Edit the post",
+  "commun.confirmer": "Confirm",
+  "groupe.membres_compte": {
+    "one": "{count} member",
+    "other": "{count} members"
+  },
+  "amis.en_commun_compte": {
+    "one": "{count} friend in common",
+    "other": "{count} friends in common"
+  },
+  "amis.code_explication": "Have a friend with Pokza open scan this code to add them instantly — no need to search for them.",
+  "amis.suggestions_vides": "No suggestions yet — they appear from friends in common with people you already know.",
+  "erreur.contenu_illisible": "This content could not be displayed.",
+  "createur.reprendre_joueurs": "Carry over {joueurs}"
 }

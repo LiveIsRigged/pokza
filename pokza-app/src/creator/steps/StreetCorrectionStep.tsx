@@ -110,7 +110,7 @@ export function StreetCorrectionStep({
   return (
     <WizardScreen
       title={t(TITRES[street])}
-      subtitle={initiales.length ? 'Corrige les cartes, ou refais les mises' : 'Refais les mises de cette street'}
+      subtitle={initiales.length ? t('createur.corriger_cartes_ou_mises') : t('createur.refaire_mises_street')}
       onNext={
         initiales.length
           ? () =>
@@ -120,7 +120,7 @@ export function StreetCorrectionStep({
               )
           : undefined
       }
-      nextLabel="Valider"
+      nextLabel={t('createur.valider')}
       nextDisabled={!complet || rienNAChange}
       footerNote={rienNAChange ? null : t('createur.rien_a_ressaisir')}
       onBack={onBack}
@@ -128,7 +128,7 @@ export function StreetCorrectionStep({
       <View>
         {initiales.length > 0 && (
           <>
-            <Text style={styles.label}>{initiales2.length ? 'Board 1' : 'Cartes de cette street'}</Text>
+            <Text style={styles.label}>{initiales2.length ? 'Board 1' : t('createur.cartes_de_cette_street')}</Text>
             <MultiCardPicker
               count={initiales.length}
               selected={cartes}

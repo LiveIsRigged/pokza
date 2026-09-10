@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { borders, colors, radius, tints } from '../theme/theme';
+import { useT } from '../i18n';
 
 /**
  * NOTRE PROPRE PAVÉ NUMÉRIQUE — pour ne plus appeler celui d'iOS.
@@ -66,6 +67,7 @@ export function PaveNumerique({
   /** Appui long sur la correction : on repart de zéro sans marteler la touche. */
   onToutEffacer: () => void;
 }) {
+  const t = useT();
   return (
     <View style={styles.pave}>
       {RANGEES.map((rangee) => (
@@ -82,7 +84,7 @@ export function PaveNumerique({
                 ]}
                 onPress={() => (correction ? onEffacer() : onTouche(touche))}
                 onLongPress={correction ? onToutEffacer : undefined}
-                accessibilityLabel={correction ? 'Effacer' : touche === ',' ? 'Virgule' : touche}
+                accessibilityLabel={correction ? t('createur.effacer') : touche === ',' ? 'Virgule' : touche}
               >
                 <Text style={[styles.libelle, correction && styles.libelleCorrection]}>{touche}</Text>
               </Pressable>

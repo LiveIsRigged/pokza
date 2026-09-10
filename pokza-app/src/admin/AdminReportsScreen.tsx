@@ -14,7 +14,7 @@ interface AdminReportsScreenProps {
   reloadKey?: number;
 }
 
-const TARGET_LABEL: Record<string, string> = { post: 'Main', comment: 'Commentaire', user: 'Compte' };
+const TARGET_CLE: Record<string, Cle> = { post: 'admin.cible_main', comment: 'admin.cible_commentaire', user: 'admin.cible_compte' };
 
 // Onglets de statut. `null` = tout. Ordre pensé pour le travail quotidien : ce qui reste à traiter
 // en premier.
@@ -103,7 +103,7 @@ export function AdminReportsScreen({ onBack, onOpenReport, reloadKey }: AdminRep
             <Pressable key={r.id} style={styles.row} onPress={() => onOpenReport(r.id)}>
               <View style={styles.rowHeader}>
                 {r.severity === 'priority' && <Text style={styles.priorityBadge}>{t('admin.prioritaire')}</Text>}
-                <Text style={styles.targetBadge}>{TARGET_LABEL[r.targetType] ?? r.targetType}</Text>
+                <Text style={styles.targetBadge}>{TARGET_CLE[r.targetType] ? t(TARGET_CLE[r.targetType]) : r.targetType}</Text>
                 {r.reportsOnTarget > 1 && <Text style={styles.multiBadge}>×{r.reportsOnTarget}</Text>}
                 <View style={styles.grow} />
                 <Text style={styles.statusBadge}>{t(REPORT_STATUS_CLE[r.status])}</Text>

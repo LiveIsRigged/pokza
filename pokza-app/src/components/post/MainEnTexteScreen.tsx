@@ -95,8 +95,8 @@ export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScre
                 {issue === 'copie'
                   ? t('commun.copie')
                   : issue === 'refus'
-                    ? 'Sélectionne le texte pour le copier'
-                    : 'Copier le texte'}
+                    ? t('post.selectionner_texte')
+                    : t('post.copier_texte')}
               </Text>
             </Pressable>
           </View>

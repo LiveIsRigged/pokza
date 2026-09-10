@@ -703,5 +703,71 @@
   "admin.signalements_sur_compte": {
     "one": "{count} signalement visant ce compte",
     "other": "{count} signalements visant ce compte"
-  }
+  },
+  "denomination.tournoi_variante": "Tournoi {variante}",
+  "denomination.tournoi": "Tournoi",
+  "denomination.cash_game": "Cash game",
+  "denomination.bomb_pot": "{prefixe}bomb pot {montant}",
+  "import.niveau": "Niveau {n}",
+  "profil.stat_mains": {
+    "one": "main",
+    "other": "mains"
+  },
+  "profil.stat_amis": {
+    "one": "ami",
+    "other": "amis"
+  },
+  "admin.suspension_7j": "Suspension 7 jours",
+  "admin.compte_banni": "Compte banni",
+  "admin.confirmer": "Confirmer",
+  "admin.cible_main": "Main",
+  "admin.cible_commentaire": "Commentaire",
+  "admin.cible_compte": "Compte",
+  "post.selectionner_texte": "Sélectionne le texte pour le copier",
+  "post.copier_texte": "Copier le texte",
+  "replayer.main_arretee": "La main s'arrête ici",
+  "createur.effacer": "Effacer",
+  "createur.continuer_saisie": "Continuer la saisie",
+  "createur.garder_saisie": "Garder ma saisie",
+  "createur.champ_type_partie": "le type de partie",
+  "createur.champ_variante": "la variante",
+  "createur.champ_bomb_pot": "le bomb pot",
+  "createur.champ_ante_bombe": "l'ante de la bombe",
+  "createur.champ_blindes": "les blindes",
+  "createur.champ_ante": "l'ante",
+  "createur.champ_straddle": "le straddle",
+  "createur.champ_nombre_joueurs": "le nombre de joueurs",
+  "createur.champ_position": "ta position",
+  "createur.etape_context": "La table",
+  "createur.etape_hole_cards": "Tes cartes",
+  "createur.etape_showdown": "L'abattage",
+  "createur.corriger_cartes_ou_mises": "Corrige les cartes, ou refais les mises",
+  "createur.refaire_mises_street": "Refais les mises de cette street",
+  "createur.cartes_de_cette_street": "Cartes de cette street",
+  "createur.board_n": "Board {n}",
+  "maintexte.preflop_majuscules": "PRÉFLOP",
+  "amis.invitation_titre": "Rejoins-moi sur Pokza",
+  "amis.invitation_message": "Ajoute-moi sur Pokza pour suivre mes mains et en discuter !",
+  "amis.propre_code": "Ceci est ton propre code !",
+  "amis.aucun_ami": "Tu n'as pas encore d'amis. Ajoute-les depuis « Ajouter des amis ».",
+  "groupe.membres_titre": "Membres",
+  "groupe.ce_membre": "ce membre",
+  "groupe.aucune_main": "aucune main",
+  "groupe.creation_en_cours": "Création…",
+  "groupe.creer_court": "Créer",
+  "post.dupliquer_titre": "Dupliquer la main",
+  "post.modifier_titre": "Modifier le post",
+  "commun.confirmer": "Confirmer",
+  "groupe.membres_compte": {
+    "one": "{count} membre",
+    "other": "{count} membres"
+  },
+  "amis.en_commun_compte": {
+    "one": "{count} ami en commun",
+    "other": "{count} amis en commun"
+  },
+  "amis.code_explication": "Fais scanner ce code par un ami qui a Pokza ouvert pour l'ajouter instantanément — pas besoin de le chercher.",
+  "amis.suggestions_vides": "Pas encore de suggestion — elles apparaissent à partir d'amis en commun avec les personnes que tu connais déjà.",
+  "erreur.contenu_illisible": "Ce contenu n'a pas pu s'afficher.",
+  "createur.reprendre_joueurs": "Reprendre {joueurs}"
 }

@@ -1,6 +1,7 @@
 import type { Action, Seat } from '../types/poker';
 import type { ContextData } from './types';
 import { committedBySeat } from '../engine/handEngine';
+import { t, type Cle } from '../i18n/traduire';
 
 /**
  * CE QUI INVALIDE UN DÉROULÉ DÉJÀ SAISI, ET CE QUI NE L'INVALIDE PAS.
@@ -17,21 +18,21 @@ import { committedBySeat } from '../engine/handEngine';
  */
 
 /** Libellés des champs qui, modifiés, rendent le déroulé incohérent. L'ordre est celui du formulaire. */
-const CHAMPS_STRUCTURELS: { cle: keyof ContextData; label: string }[] = [
-  { cle: 'gameType', label: 'le type de partie' },
-  { cle: 'variant', label: 'la variante' },
-  { cle: 'bombPot', label: 'le bomb pot' },
-  { cle: 'bombAnte', label: "l'ante de la bombe" },
-  { cle: 'sb', label: 'les blindes' },
-  { cle: 'bb', label: 'les blindes' },
-  { cle: 'anteType', label: "l'ante" },
-  { cle: 'ante', label: "l'ante" },
-  { cle: 'straddleCount', label: 'le straddle' },
-  { cle: 'straddleAmounts', label: 'le straddle' },
-  { cle: 'straddleBouton', label: 'le straddle' },
-  { cle: 'straddleBoutonMontant', label: 'le straddle' },
-  { cle: 'numPlayers', label: 'le nombre de joueurs' },
-  { cle: 'heroPosition', label: 'ta position' },
+const CHAMPS_STRUCTURELS: { cle: keyof ContextData; label: Cle }[] = [
+  { cle: 'gameType', label: 'createur.champ_type_partie' },
+  { cle: 'variant', label: 'createur.champ_variante' },
+  { cle: 'bombPot', label: 'createur.champ_bomb_pot' },
+  { cle: 'bombAnte', label: 'createur.champ_ante_bombe' },
+  { cle: 'sb', label: 'createur.champ_blindes' },
+  { cle: 'bb', label: 'createur.champ_blindes' },
+  { cle: 'anteType', label: 'createur.champ_ante' },
+  { cle: 'ante', label: 'createur.champ_ante' },
+  { cle: 'straddleCount', label: 'createur.champ_straddle' },
+  { cle: 'straddleAmounts', label: 'createur.champ_straddle' },
+  { cle: 'straddleBouton', label: 'createur.champ_straddle' },
+  { cle: 'straddleBoutonMontant', label: 'createur.champ_straddle' },
+  { cle: 'numPlayers', label: 'createur.champ_nombre_joueurs' },
+  { cle: 'heroPosition', label: 'createur.champ_position' },
 ];
 
 /**
@@ -90,11 +91,13 @@ function memeValeur(a: unknown, b: unknown): boolean {
 }
 
 export function champsStructurelsModifies(avant: ContextData, apres: ContextData): string[] {
-  const labels: string[] = [];
+  // On dédoublonne sur la CLÉ et non sur le texte : quatre champs de straddle partagent la même
+  // (« le straddle »), et deux textes traduits pourraient coïncider par hasard dans une langue.
+  const cles: Cle[] = [];
   for (const { cle, label } of CHAMPS_STRUCTURELS) {
-    if (!memeValeur(avant[cle], apres[cle]) && !labels.includes(label)) labels.push(label);
+    if (!memeValeur(avant[cle], apres[cle]) && !cles.includes(label)) cles.push(label);
   }
-  return labels;
+  return cles.map((c) => t(c));
 }
 
 export function champsInvalidants(

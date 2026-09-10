@@ -149,7 +149,7 @@ export function SearchScreen({
           <Text style={styles.statusText}>
             {showFriendsList
               ? invitableFriends === null
-                ? 'Chargement…'
+                ? t('commun.chargement')
                 : friendCount === 0
                 ? t('recherche.aucun_ami')
                 : t('recherche.tous_amis_dans_groupe')

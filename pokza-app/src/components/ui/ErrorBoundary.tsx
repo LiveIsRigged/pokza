@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../../theme/theme';
+import { t } from '../../i18n/traduire';
 
 interface Props {
   children: React.ReactNode;
@@ -37,7 +38,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       return (
         this.props.fallback ?? (
           <View style={styles.fallback}>
-            <Text style={styles.text}>Ce contenu n'a pas pu s'afficher.</Text>
+            <Text style={styles.text}>{t('erreur.contenu_illisible')}</Text>
           </View>
         )
       );

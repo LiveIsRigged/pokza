@@ -7,6 +7,7 @@ import {
   BUY_IN_MAX_LENGTH, LOCATION_MAX_LENGTH, TOURNAMENT_NAME_MAX_LENGTH,
 } from '../constants/limits';
 import { refuser, type MainLue } from './formeNeutre';
+import { t } from '../i18n/traduire';
 
 /**
  * LE MONTAGE — TOUTE LA LOGIQUE DURE, UNE SEULE FOIS.
@@ -353,7 +354,7 @@ export function monter(main: MainLue): MontageDeMain {
     tournamentName,
     buyIn,
     // Ce qui est STOCKÉ est la chaîne complète, pas le seul nombre (cf. `LevelNumberInput`).
-    level: enTournoi && main.niveau ? `Niveau ${main.niveau}` : undefined,
+    level: enTournoi && main.niveau ? t('import.niveau', { n: main.niveau }) : undefined,
     siegeParNom,
     positionParNom,
     avertissements,

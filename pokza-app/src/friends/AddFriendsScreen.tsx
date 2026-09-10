@@ -37,12 +37,12 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
 
   const handleShareInvite = async () => {
     const outcome = await shareOrCopy({
-      title: 'Rejoins-moi sur Pokza',
-      message: 'Ajoute-moi sur Pokza pour suivre mes mains et en discuter !',
+      title: t('amis.invitation_titre'),
+      message: t('amis.invitation_message'),
       url: `${POKZA_WEB_ORIGIN}/invite/${currentUserId}`,
     });
     if (outcome === 'copied') setShareFeedback(t('post.lien_copie'));
-    else if (outcome === 'unavailable') setShareFeedback("Le partage n'est pas disponible ici.");
+    else if (outcome === 'unavailable') setShareFeedback(t('post.partage_indisponible'));
     if (outcome === 'copied' || outcome === 'unavailable') setTimeout(() => setShareFeedback(null), 2500);
   };
 
@@ -69,8 +69,7 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
             <QRCode value={`${QR_PREFIX}${currentUserId}`} size={220} color={colors.textPrimary} backgroundColor="#fff" />
           </View>
           <Text style={styles.explainer}>
-            Fais scanner ce code par un ami qui a Pokza ouvert pour l'ajouter instantanément — pas besoin de
-            le chercher.
+            {t('amis.code_explication')}
           </Text>
           <Pressable style={styles.actionButton} onPress={handleShareInvite}>
             <Text style={styles.actionButtonText}>{t('amis.partager_lien')}</Text>
@@ -184,8 +183,7 @@ function SuggestionsTab({
       {suggestions.length === 0 ? (
         pending.length === 0 ? (
           <Text style={styles.explainer}>
-            Pas encore de suggestion — elles apparaissent à partir d'amis en commun avec les personnes que tu
-            connais déjà.
+            {t('amis.suggestions_vides')}
           </Text>
         ) : null
       ) : (
@@ -195,7 +193,7 @@ function SuggestionsTab({
             <View style={styles.suggestionInfo}>
               <Text style={styles.suggestionPseudo}>{s.displayName}</Text>
               <Text style={styles.suggestionMutual}>
-                {s.mutualCount} {s.mutualCount > 1 ? 'amis en commun' : 'ami en commun'}
+                {t('amis.en_commun_compte', { count: s.mutualCount })}
               </Text>
             </View>
           </Pressable>
@@ -232,7 +230,7 @@ function ScannerTab({
     const profileId = data.slice(QR_PREFIX.length);
     if (!profileId) return;
     if (profileId === currentUserId) {
-      setScanError('Ceci est ton propre code !');
+      setScanError(t('amis.propre_code'));
       setTimeout(() => setScanError(null), 2500);
       return;
     }

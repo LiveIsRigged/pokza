@@ -5,6 +5,7 @@ import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, radius, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchFriends, type Friend } from '../data/friends';
+import { useT } from '../i18n';
 
 interface FriendsListScreenProps {
   userId: string;
@@ -13,6 +14,7 @@ interface FriendsListScreenProps {
 }
 
 export function FriendsListScreen({ userId, onBack, onSelectProfile }: FriendsListScreenProps) {
+  const t = useT();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function FriendsListScreen({ userId, onBack, onSelectProfile }: FriendsLi
           <ActivityIndicator style={styles.loader} color={colors.action} />
         ) : friends.length === 0 ? (
           <Text style={styles.statusText}>
-            Tu n'as pas encore d'amis. Ajoute-les depuis « Ajouter des amis ».
+            {t('amis.aucun_ami')}
           </Text>
         ) : (
           friends.map((friend) => (

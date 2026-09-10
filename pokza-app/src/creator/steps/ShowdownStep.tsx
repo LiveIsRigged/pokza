@@ -149,7 +149,7 @@ export function ShowdownStep({
       step={step}
       totalSteps={totalSteps}
       onNext={onNext}
-      nextLabel={nextLabel ?? 'Continuer'}
+      nextLabel={nextLabel ?? t('commun.continuer')}
       nextDisabled={Boolean(nextBloque)}
       footerNote={footerNote}
       onBack={onBack}

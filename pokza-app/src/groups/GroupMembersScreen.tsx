@@ -46,7 +46,7 @@ export function GroupMembersScreen({
           </Pressable>
         </View>
 
-        <Text style={styles.title}>{canManage ? 'Exclure un membre' : 'Membres'}</Text>
+        <Text style={styles.title}>{canManage ? t('groupe.exclure_membre') : t('groupe.membres_titre')}</Text>
 
         {members.map((m) => (
           <View key={m.userId} style={styles.memberRow}>
@@ -63,7 +63,7 @@ export function GroupMembersScreen({
                 onPress={() => (m.status === 'pending' ? onRemoveMember?.(m.userId) : setExcludingMember(m))}
                 hitSlop={8}
               >
-                <Text style={styles.memberRemoveLink}>{m.status === 'pending' ? 'Annuler' : 'Retirer'}</Text>
+                <Text style={styles.memberRemoveLink}>{m.status === 'pending' ? t('commun.annuler') : t('commun.retirer')}</Text>
               </Pressable>
             )}
           </View>
@@ -73,7 +73,7 @@ export function GroupMembersScreen({
       <ConfirmSheet
         visible={excludingMember != null}
         icon={PersonIcon}
-        title={`Retirer ${excludingMember?.displayName ?? 'ce membre'} du groupe ?`}
+        title={`Retirer ${excludingMember?.displayName ?? t('groupe.ce_membre')} du groupe ?`}
         message={t('groupe.exclure_message')}
         confirmLabel={t('commun.retirer')}
         onCancel={() => setExcludingMember(null)}

@@ -71,7 +71,7 @@ export function scinderSignature(texte: string): { corps: string; signature: str
 }
 
 const NOM_STREET: Record<Street, string> = {
-  preflop: 'PRÉFLOP',
+  preflop: t('maintexte.preflop_majuscules'),
   flop: 'FLOP',
   turn: 'TURN',
   river: 'RIVER',

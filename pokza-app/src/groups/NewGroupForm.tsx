@@ -59,7 +59,7 @@ export function NewGroupForm({ onCreate, onCancel }: NewGroupFormProps) {
           disabled={!name.trim() || submitting}
           hitSlop={hitSlopPairRight}
         >
-          <Text style={styles.confirmButtonText}>{submitting ? 'Création…' : 'Créer'}</Text>
+          <Text style={styles.confirmButtonText}>{submitting ? t('groupe.creation_en_cours') : t('groupe.creer_court')}</Text>
         </Pressable>
       </View>
       {error && <Text style={styles.error}>{error}</Text>}

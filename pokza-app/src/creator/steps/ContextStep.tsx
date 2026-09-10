@@ -855,7 +855,7 @@ export function ContextStep({
         {derniereTable && tableVierge && !avantReprise && !enCorrection ? (
           <Pressable style={styles.reprise} onPress={reprendre}>
             <Text style={styles.repriseTitre} numberOfLines={1}>
-              Reprendre {resumeDesJoueurs(derniereTable)}
+              {t('createur.reprendre_joueurs', { joueurs: resumeDesJoueurs(derniereTable) })}
             </Text>
             <Text style={styles.repriseDetail} numberOfLines={1}>
               {[derniereTable.lieu, formatRelativeDate(derniereTable.quand)].filter(Boolean).join(' · ')}

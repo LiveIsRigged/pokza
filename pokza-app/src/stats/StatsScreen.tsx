@@ -6,7 +6,7 @@ import { errorMessage } from '../utils/errorMessage';
 import { fetchAdminStats, type AdminStats, type DayCount } from '../data/stats';
 import { formatLabel } from '../profile/profileOptions';
 import { useT, type Cle } from '../i18n';
-import { t } from '../i18n/traduire';
+import { langueCourante, t } from '../i18n/traduire';
 
 interface StatsScreenProps {
   onBack: () => void;
@@ -125,7 +125,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
     whole > 0 ? `${Math.round((100 * part) / whole)}%` : undefined;
 
   const generatedTime = stats
-    ? new Date(stats.generatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    ? new Date(stats.generatedAt).toLocaleTimeString(langueCourante(), { hour: '2-digit', minute: '2-digit' })
     : null;
 
   return (

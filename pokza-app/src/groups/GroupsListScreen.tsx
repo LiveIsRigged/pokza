@@ -27,8 +27,8 @@ function lowerFirst(text: string): string {
 
 function subtitle(group: Group): string {
   const members = group.memberCount ?? 0;
-  const membersLabel = `${members} membre${members > 1 ? 's' : ''}`;
-  const activity = group.lastPostAt ? t('groupe.derniere_main', { quand: lowerFirst(formatRelativeDate(group.lastPostAt)) }) : 'aucune main';
+  const membersLabel = t('groupe.membres_compte', { count: members });
+  const activity = group.lastPostAt ? t('groupe.derniere_main', { quand: lowerFirst(formatRelativeDate(group.lastPostAt)) }) : t('groupe.aucune_main');
   return `${membersLabel} · ${activity}`;
 }
 
@@ -114,7 +114,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
         ListEmptyComponent={
           <Text style={styles.statusText}>
             {loading
-              ? 'Chargement…'
+              ? t('commun.chargement')
               : query.trim()
                 ? t('groupe.aucun_resultat')
                 : t('groupe.aucun_groupe')}

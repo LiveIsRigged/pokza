@@ -1,6 +1,7 @@
 import type { Hand } from '../types/poker';
 import { abbreviateChips, formatChipAmount, habillerDenomination, SEUIL_ABREGEMENT } from './chipFormat';
 import { devise } from './currency';
+import { t } from '../i18n/traduire';
 
 /**
  * De quoi nommer une partie. Un `Post` remplit ce contrat tel quel ; le créateur, lui, n'a pas
@@ -51,7 +52,7 @@ export function formatContextLine(
   const parts: string[] = [];
 
   if (hand.gameType === 'tournament') {
-    parts.push(variante ? `Tournoi ${variante}` : 'Tournoi');
+    parts.push(variante ? t('denomination.tournoi_variante', { variante }) : t('denomination.tournoi'));
     if (withLocation && post.location) parts.push(post.location);
     const epreuve = nommerEpreuve(post.tournamentName, post.buyIn);
     if (epreuve) parts.push(epreuve);
@@ -59,14 +60,17 @@ export function formatContextLine(
     return parts.join(' · ');
   }
 
-  parts.push('Cash game');
+  parts.push(t('denomination.cash_game'));
   const prefixe = variante ? `${variante} ` : '';
   // Le bomb pot est du cash game par construction (l'interrupteur n'existe pas en tournoi, et
   // basculer sur « Tournoi » l'éteint) : il n'a donc pas de jumeau dans la branche du dessus.
   // Pas de blindes — le montant de l'ante, rangé dans `bb` par `construitMain`, suffit.
   parts.push(
     hand.bombPot
-      ? `${prefixe}bomb pot ${formatChipAmount(hand.blinds.bb, hand.gameType, undefined, hand.currency)}`
+      ? t('denomination.bomb_pot', {
+          prefixe,
+          montant: formatChipAmount(hand.blinds.bb, hand.gameType, undefined, hand.currency),
+        })
       : `${prefixe}${enjeuxCash(hand)}`
   );
   if (withLocation && post.location) parts.push(post.location);

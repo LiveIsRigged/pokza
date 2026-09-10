@@ -3,6 +3,7 @@ import type { AnteType, ContextData, Phase, ReviewData, Snapshot } from './types
 import { DEFAULT_CONTEXT } from './types';
 import { chainStraddleCount } from '../engine/handEngine';
 import { devise } from '../utils/currency';
+import { t, type Cle } from '../i18n/traduire';
 
 /**
  * Tout ce dont `LiveHandCreator` a besoin pour repartir d'une main déjà publiée, dans la forme
@@ -274,14 +275,14 @@ export function seedHistory(seed: CreatorSeed): Snapshot[] {
  * « L'abattage », et c'est le sous-titre de l'écran d'arrivée (« Cartes montrées par les
  * adversaires ») qui porte l'explication — une ligne de feuille n'a qu'un mot, lui en a deux.
  */
-const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
-  context: 'La table',
-  holeCards: 'Tes cartes',
-  'street-preflop': 'Préflop',
-  'street-flop': 'Flop',
-  'street-turn': 'Turn',
-  'street-river': 'River',
-  showdown: "L'abattage",
+const CLE_ETAPE: Partial<Record<Phase, Cle>> = {
+  context: 'createur.etape_context',
+  holeCards: 'createur.etape_hole_cards',
+  'street-preflop': 'createur.street_preflop',
+  'street-flop': 'createur.street_flop',
+  'street-turn': 'createur.street_turn',
+  'street-river': 'createur.street_river',
+  showdown: 'createur.etape_showdown',
 };
 
 /**
@@ -303,7 +304,10 @@ const LIBELLE_ETAPE: Partial<Record<Phase, string>> = {
  */
 export function etapesCorrigibles(post: SourceDeSeed): { phase: Phase; label: string }[] {
   const jouees = seedHistory(postToSeed(post)).map((s) => s.phase);
-  return jouees.map((phase) => ({ phase, label: LIBELLE_ETAPE[phase] ?? phase }));
+  return jouees.map((phase) => {
+    const cle = CLE_ETAPE[phase];
+    return { phase, label: cle ? t(cle) : phase };
+  });
 }
 
 /** L'état exact à poser dans le créateur pour reprendre une main à une étape donnée. */

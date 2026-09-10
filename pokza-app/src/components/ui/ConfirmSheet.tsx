@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { borders, colors, radius, spacing, tints } from '../../theme/theme';
 import type { IconProps } from './icons';
 import { LARGEUR_MAX } from './Colonne';
+import { useT } from '../../i18n';
 
 export interface ConfirmSheetProps {
   visible: boolean;
@@ -48,13 +49,17 @@ export function ConfirmSheet({
   title,
   message,
   confirmLabel,
-  cancelLabel = 'Annuler',
+  cancelLabel,
   destructive = true,
   loading = false,
   onCancel,
   onConfirm,
   children,
 }: ConfirmSheetProps) {
+  const t = useT();
+  // Le défaut ne peut PAS vivre dans la liste des paramètres : `t` vient d'un hook, qui n'existe
+  // qu'une fois dans le corps. Écrit là-haut, il compilait en français figé au chargement du module.
+  const libelleAnnuler = cancelLabel ?? t('commun.annuler');
   const anim = useRef(new Animated.Value(0)).current;
   // Reste monté le temps de l'animation de fermeture (sinon la feuille disparaît d'un coup).
   const [rendered, setRendered] = useState(visible);
@@ -108,7 +113,7 @@ export function ConfirmSheet({
           onPress={onCancel}
           disabled={loading}
         >
-          <Text style={styles.cancelText}>{cancelLabel}</Text>
+          <Text style={styles.cancelText}>{libelleAnnuler}</Text>
         </Pressable>
       </Animated.View>
     </Modal>

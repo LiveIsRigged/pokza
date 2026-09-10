@@ -26,10 +26,11 @@ import { EditGroupScreen } from './EditGroupScreen';
 import { GroupMembersScreen } from './GroupMembersScreen';
 import { CameraIcon, ExitIcon, GroupTableIcon, ImageIcon, PencilIcon, TrashIcon } from '../components/ui/icons';
 import { useT } from '../i18n';
+import { langueCourante } from '../i18n/traduire';
 
 /** Même format court que les dates de main / d'inscription ailleurs dans l'app (ex: "29 juil. 2026"). */
 function formatCreatedDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(langueCourante(), { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 interface GroupScreenProps {

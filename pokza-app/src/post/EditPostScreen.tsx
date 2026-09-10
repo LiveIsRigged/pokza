@@ -175,14 +175,14 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
   return (
     <>
       <WizardScreen
-        title={mode === 'duplicate' ? 'Dupliquer la main' : 'Modifier le post'}
+        title={mode === 'duplicate' ? t('post.dupliquer_titre') : t('post.modifier_titre')}
         subtitle={
           mode === 'duplicate'
             ? t('post.dupliquer_aide')
             : t('post.modifier_aide')
         }
         onNext={handleSave}
-        nextLabel={mode === 'duplicate' ? 'Republier' : 'Enregistrer'}
+        nextLabel={mode === 'duplicate' ? t('createur.republier') : t('commun.enregistrer')}
         nextDisabled={!title.trim() || titleTooLong || (visibility === 'group' && !groupId)}
         onBack={onCancel}
       >

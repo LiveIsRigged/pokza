@@ -1215,7 +1215,7 @@ export function LiveHandCreator({
         title={t('createur.abandonner_titre')}
         message={t('createur.abandonner_message')}
         confirmLabel={t('createur.abandonner_bouton')}
-        cancelLabel="Continuer la saisie"
+        cancelLabel={t('createur.continuer_saisie')}
         onCancel={() => setConfirmingAbandon(false)}
         onConfirm={() => {
           setConfirmingAbandon(false);
@@ -1235,7 +1235,7 @@ export function LiveHandCreator({
         title={t('createur.remplacer_titre')}
         message={t('createur.remplacer_message')}
         confirmLabel={t('createur.remplacer_bouton')}
-        cancelLabel="Garder ma saisie"
+        cancelLabel={t('createur.garder_saisie')}
         destructive={false}
         onCancel={() => setConfirmingImport(false)}
         onConfirm={() => {

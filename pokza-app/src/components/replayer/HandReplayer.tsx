@@ -19,6 +19,7 @@ import { TableVue, type SiegeAffiche } from '../table/TableVue';
 import { ActionCallout } from './ActionCallout';
 import { PlaybackControls } from './PlaybackControls';
 import { UnitToggle, UNIT_TOGGLE_WIDTH } from './UnitToggle';
+import { t } from '../../i18n/traduire';
 
 const AUTOPLAY_INTERVAL_MS = 1400;
 /**
@@ -166,7 +167,7 @@ export function HandReplayer({ hand, onDeroule }: HandReplayerProps) {
   const texteArret = siegeEnAttente
     ? nomEnAttente
       ? `À ${nomEnAttente} de jouer`
-      : "La main s'arrête ici"
+      : t('replayer.main_arretee')
     : null;
 
   /**

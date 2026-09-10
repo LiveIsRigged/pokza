@@ -504,12 +504,12 @@ export function ProfileScreen({
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
                   <Text style={styles.statNumber}>{posts.length}</Text>
-                  <Text style={styles.statLabel}>main{posts.length !== 1 ? 's' : ''}</Text>
+                  <Text style={styles.statLabel}>{t('profil.stat_mains', { count: posts.length })}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statNumber}>{friendCount}</Text>
-                  <Text style={styles.statLabel}>ami{friendCount !== 1 ? 's' : ''}</Text>
+                  <Text style={styles.statLabel}>{t('profil.stat_amis', { count: friendCount })}</Text>
                 </View>
               </View>
               {/* Visible que l'on soit déjà ami ou non : contrairement au bloc détaillé plus bas
