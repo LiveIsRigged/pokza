@@ -625,8 +625,8 @@ function PostCardInner({
         <ConfirmSheet
           visible={confirmingBlock}
           icon={BlockIcon}
-          title={t('post.blocage_titre', { nom: post.authorName })}
-          message={t('post.blocage_message')}
+          title={t('commun.blocage_titre', { nom: post.authorName })}
+          message={t('commun.blocage_message')}
           confirmLabel={t('commun.bloquer')}
           onCancel={() => setConfirmingBlock(false)}
           onConfirm={() => {

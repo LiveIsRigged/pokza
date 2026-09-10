@@ -32,6 +32,7 @@ function parseBirthDate(day: string, month: string, year: string): string | null
 
 const MINIMUM_AGE = 18;
 import { BIO_MAX_LENGTH, PSEUDO_MAX_LENGTH } from '../constants/limits';
+import { useT } from '../i18n';
 
 /** Compare année/mois/jour un à un plutôt que de soustraire des millisecondes — insensible aux
  * fuseaux horaires et aux années bissextiles, qui rendraient un calcul par différence peu fiable
@@ -46,6 +47,7 @@ function isAtLeastAge(dateNaissanceIso: string, minimumAge: number): boolean {
 }
 
 export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScreenProps) {
+  const t = useT();
   const [pseudo, setPseudo] = useState('');
   const [prenom, setPrenom] = useState('');
   const [nom, setNom] = useState('');
@@ -94,11 +96,11 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
     }
     const dateNaissance = parseBirthDate(day, month, year);
     if (!dateNaissance) {
-      setError('Date de naissance invalide.');
+      setError(t('profil.erreur_date_invalide'));
       return;
     }
     if (!isAtLeastAge(dateNaissance, MINIMUM_AGE)) {
-      setError('Pokza est réservé aux personnes majeures (18 ans et plus).');
+      setError(t('profil.erreur_mineur'));
       return;
     }
 
@@ -120,9 +122,9 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
     if (rpcError) {
       setSubmitting(false);
       if (rpcError.code === '23505') {
-        setError('Ce pseudo est déjà pris, choisis-en un autre.');
+        setError(t('profil.erreur_pseudo_pris'));
       } else if (rpcError.code === '23514') {
-        setError('Pokza est réservé aux personnes majeures (18 ans et plus).');
+        setError(t('profil.erreur_mineur'));
       } else {
         setError(rpcError.message);
       }
@@ -172,30 +174,30 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
           <Text style={styles.backText}>‹ Retour</Text>
         </Pressable>
 
-        <Text style={styles.title}>Complète ton profil</Text>
-        <Text style={styles.subtitle}>Dernière étape avant de rejoindre Pokza</Text>
+        <Text style={styles.title}>{t('profil.completer_titre')}</Text>
+        <Text style={styles.subtitle}>{t('profil.completer_sous_titre')}</Text>
 
-        <Text style={styles.label}>Pseudo</Text>
+        <Text style={styles.label}>{t('profil.pseudo')}</Text>
         <TextInput
           autoComplete="off"
           style={styles.input}
           value={pseudo}
           onChangeText={setPseudo}
           autoCapitalize="none"
-          placeholder="Ton pseudo sur Pokza"
+          placeholder={t('profil.pseudo_placeholder')}
           maxLength={PSEUDO_MAX_LENGTH}
         />
 
-        <Text style={styles.label}>Prénom</Text>
-        <TextInput style={styles.input} value={prenom} onChangeText={setPrenom} placeholder="Prénom" />
+        <Text style={styles.label}>{t('profil.prenom')}</Text>
+        <TextInput style={styles.input} value={prenom} onChangeText={setPrenom} placeholder={t('profil.prenom')} />
 
-        <Text style={styles.label}>Nom</Text>
-        <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder="Nom" />
+        <Text style={styles.label}>{t('profil.nom')}</Text>
+        <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder={t('profil.nom')} />
 
-        <Text style={styles.label}>Afficher sur Pokza</Text>
+        <Text style={styles.label}>{t('profil.afficher_sur_pokza')}</Text>
         <View style={styles.row}>
-          <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
-          <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
+          <Chip label={t('profil.mon_nom')} selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
+          <Chip label={t('profil.mon_pseudo')} selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
         </View>
         {apercuNomAffiche ? (
           <Text style={styles.reassurance}>
@@ -203,26 +205,26 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
           </Text>
         ) : null}
 
-        <Text style={styles.label}>Pays</Text>
+        <Text style={styles.label}>{t('profil.pays')}</Text>
         <Pressable style={styles.selector} onPress={() => setCountryPickerOpen(true)}>
           {country ? (
             <Text style={styles.selectorValue}>
               {flagEmoji(country)} {countryByCode(country)?.name ?? country}
             </Text>
           ) : (
-            <Text style={styles.selectorPlaceholder}>Choisir un pays</Text>
+            <Text style={styles.selectorPlaceholder}>{t('pays.titre')}</Text>
           )}
           <Text style={styles.selectorChevron}>›</Text>
         </Pressable>
 
-        <Text style={styles.label}>Date de naissance</Text>
+        <Text style={styles.label}>{t('profil.date_de_naissance')}</Text>
         <View style={styles.dobRow}>
           <TextInput
             autoComplete="off"
             style={styles.dobInput}
             value={day}
             onChangeText={setDay}
-            placeholder="JJ"
+            placeholder={t('profil.jour_court')}
             keyboardType="number-pad"
             maxLength={2}
           />
@@ -231,7 +233,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             style={styles.dobInput}
             value={month}
             onChangeText={setMonth}
-            placeholder="MM"
+            placeholder={t('profil.mois_court')}
             keyboardType="number-pad"
             maxLength={2}
           />
@@ -240,7 +242,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             style={[styles.dobInput, styles.dobInputYear]}
             value={year}
             onChangeText={setYear}
-            placeholder="AAAA"
+            placeholder={t('profil.annee_court')}
             keyboardType="number-pad"
             maxLength={4}
           />
@@ -262,7 +264,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
         </Pressable>
 
         <View style={styles.bioLabelRow}>
-          <Text style={styles.label}>Description (optionnel)</Text>
+          <Text style={styles.label}>{t('profil.description_optionnel')}</Text>
           <Text style={styles.bioCounter}>
             {bio.length}/{BIO_MAX_LENGTH}
           </Text>
@@ -272,38 +274,38 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
           style={[styles.input, styles.bioInput]}
           value={bio}
           onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
-          placeholder="Quelques mots sur toi…"
+          placeholder={t('profil.description_placeholder')}
           multiline
           maxLength={BIO_MAX_LENGTH}
         />
-        <Text style={styles.reassurance}>Affichée sur ton profil. Tu peux la laisser vide et l'écrire plus tard.</Text>
+        <Text style={styles.reassurance}>{t('profil.description_aide')}</Text>
 
-        <Text style={styles.label}>Format favori</Text>
+        <Text style={styles.label}>{t('profil.format_favori')}</Text>
         <View style={styles.row}>
           {FORMAT_OPTIONS.map((opt) => (
-            <Chip key={opt.value} label={opt.label} selected={formatFavori === opt.value} onPress={() => setFormatFavori(opt.value)} />
+            <Chip key={opt.value} label={t(opt.cle)} selected={formatFavori === opt.value} onPress={() => setFormatFavori(opt.value)} />
           ))}
         </View>
 
-        <Text style={styles.label}>Variante préférée</Text>
+        <Text style={styles.label}>{t('profil.variante_preferee')}</Text>
         <View style={styles.row}>
           {VARIANTE_OPTIONS.map((opt) => (
-            <Chip key={opt.value} label={opt.label} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
+            <Chip key={opt.value} label={t(opt.cle)} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
           ))}
         </View>
-        <Text style={styles.reassurance}>Les mains de cette variante remonteront un peu dans ton fil. Modifiable à tout moment.</Text>
+        <Text style={styles.reassurance}>{t('profil.variante_aide_creation')}</Text>
 
-        <Text style={styles.label}>À quelle fréquence joues-tu au poker ?</Text>
+        <Text style={styles.label}>{t('profil.frequence_question')}</Text>
         <View style={styles.column}>
           {FREQUENCE_OPTIONS.map((opt) => (
-            <Chip key={opt.value} label={opt.label} selected={frequenceJeu === opt.value} onPress={() => setFrequenceJeu(opt.value)} />
+            <Chip key={opt.value} label={t(opt.cle)} selected={frequenceJeu === opt.value} onPress={() => setFrequenceJeu(opt.value)} />
           ))}
         </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={!canSubmit}>
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Valider mon profil</Text>}
+          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{t('profil.valider_mon_profil')}</Text>}
         </Pressable>
 
         <CountryPicker

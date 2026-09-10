@@ -39,26 +39,27 @@ import { blockUser, isBlockedByMe, unblockUser } from '../data/blocks';
 import { countryLabel } from '../data/countries';
 import { playerSummary } from './profileOptions';
 import { BlockIcon, CameraIcon, FlagIcon, ImageIcon, PersonIcon, PersonMinusIcon, TrashIcon, UndoIcon } from '../components/ui/icons';
+import { useT } from '../i18n';
+import { langueCourante, t } from '../i18n/traduire';
+import { enumerer } from '../utils/enumerer';
 
 /** Même format que les dates de main affichées sur `PostCard` (ex: "29 juil. 2026") — cohérence
  * visuelle entre les deux, pas de format de date différent selon l'écran. */
 function formatJoinDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(langueCourante(), { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function mutualFriendCountLabel(count: number): string {
-  return `${count} ami${count > 1 ? 's' : ''} en commun`;
+  return t('profil.amis_en_commun_compte', { count });
 }
 
 function mutualFriendsLabel(noms: string[]): string {
-  const prefix = noms.length === 1 ? 'Ami en commun' : 'Amis en commun';
-  if (noms.length <= 3) {
-    const allButLast = noms.slice(0, -1).join(', ');
-    return `${prefix} : ${allButLast}${allButLast ? ' et ' : ''}${noms[noms.length - 1]}`;
-  }
-  const shown = noms.slice(0, 2);
-  return `${prefix} : ${shown.join(', ')} et ${noms.length - 2} de plus`;
+  const titre = t('profil.amis_en_commun_titre', { count: noms.length });
+  // Au-delà de trois, on ne cite que les deux premiers : la ligne doit tenir. Le « et N de plus »
+  // est une phrase à part entière et non un bout recollé — sa place change d'une langue à l'autre.
+  const noms_ = noms.length <= 3 ? enumerer(noms) : t('profil.et_n_de_plus', { noms: enumerer(noms.slice(0, 2)), n: noms.length - 2 });
+  return t('profil.amis_en_commun_liste', { titre, noms: noms_ });
 }
 
 interface ProfileScreenProps {
@@ -96,6 +97,8 @@ export function ProfileScreen({
   onCreateHand,
   onProfileChanged,
 }: ProfileScreenProps) {
+  // Masque le `t` du module : les aides hors composant (dates, amis en commun) prennent celui-ci.
+  const t = useT();
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,13 +305,13 @@ export function ProfileScreen({
   // Menu ⋯ de l'en-tête, uniquement sur le profil d'un autre : signaler le compte, retirer l'ami
   // (si on l'est déjà — sinon ce choix n'a pas de sens et n'apparaît pas), bloquer/débloquer.
   const menuItems: OverflowMenuItem[] = [
-    { label: 'Signaler ce joueur', icon: FlagIcon, onPress: () => setReportOpen(true) },
+    { label: t('profil.signaler_joueur'), icon: FlagIcon, onPress: () => setReportOpen(true) },
     ...(friendStatus === 'friends'
-      ? [{ label: 'Retirer cet ami', icon: PersonMinusIcon, destructive: true, onPress: () => setConfirmingRemove(true) }]
+      ? [{ label: t('profil.retirer_ami'), icon: PersonMinusIcon, destructive: true, onPress: () => setConfirmingRemove(true) }]
       : []),
     blocked
-      ? { label: 'Débloquer', icon: UndoIcon, onPress: handleUnblock }
-      : { label: 'Bloquer ce joueur', icon: BlockIcon, destructive: true, onPress: () => setConfirmingBlock(true) },
+      ? { label: t('profil.debloquer'), icon: UndoIcon, onPress: handleUnblock }
+      : { label: t('profil.bloquer_joueur'), icon: BlockIcon, destructive: true, onPress: () => setConfirmingBlock(true) },
   ];
 
   const handleSendFriendRequest = async () => {
@@ -400,11 +403,11 @@ export function ProfileScreen({
   // « Retirer la photo » isolé sous l'avatar.
   const avatarMenuItems: OverflowMenuItem[] = [
     ...(Platform.OS !== 'web'
-      ? [{ label: 'Prendre une photo', icon: CameraIcon, onPress: handleTakePhoto }]
+      ? [{ label: t('profil.prendre_photo'), icon: CameraIcon, onPress: handleTakePhoto }]
       : []),
-    { label: 'Choisir une photo', icon: ImageIcon, onPress: handleChangeAvatar },
+    { label: t('profil.choisir_photo'), icon: ImageIcon, onPress: handleChangeAvatar },
     ...(profile?.avatarUrl
-      ? [{ label: 'Retirer la photo', icon: TrashIcon, destructive: true, onPress: handleRemoveAvatar }]
+      ? [{ label: t('profil.retirer_photo'), icon: TrashIcon, destructive: true, onPress: handleRemoveAvatar }]
       : []),
   ];
 
@@ -467,7 +470,7 @@ export function ProfileScreen({
         {error && <Text style={styles.statusText}>{error}</Text>}
 
         {loading || !profile ? (
-          <Text style={styles.statusText}>Chargement du profil…</Text>
+          <Text style={styles.statusText}>{t('profil.chargement')}</Text>
         ) : (
           <>
             <View style={styles.header}>
@@ -515,16 +518,16 @@ export function ProfileScreen({
               {!isOwnProfile && !blocked && mutualFriendCount > 0 && (
                 <Text style={styles.mutualCountLine}>{mutualFriendCountLabel(mutualFriendCount)}</Text>
               )}
-              <Text style={styles.metaLine}>Membre depuis {formatJoinDate(profile.createdAt)}</Text>
+              <Text style={styles.metaLine}>{t('profil.membre_depuis', { date: formatJoinDate(profile.createdAt) })}</Text>
 
               {isOwnProfile && (
                 <View style={styles.ownProfileActions}>
                   <Pressable style={styles.editProfileButton} onPress={() => setEditingProfile(true)}>
-                    <Text style={styles.editProfileButtonText}>Modifier mon profil</Text>
+                    <Text style={styles.editProfileButtonText}>{t('profil.modifier')}</Text>
                   </Pressable>
                   <Pressable style={styles.editProfileButton} onPress={onOpenFriends} disabled={!onOpenFriends}>
                     <Text style={styles.editProfileButtonText}>
-                      Mes amis{friendCount > 0 ? ` · ${friendCount}` : ''}
+                      {friendCount > 0 ? t('profil.mes_amis_compte', { n: friendCount }) : t('profil.mes_amis')}
                     </Text>
                   </Pressable>
                 </View>
@@ -534,17 +537,17 @@ export function ProfileScreen({
                 <View style={styles.friendSection}>
                   {friendStatus === 'none' && (
                     <Pressable style={styles.friendButton} onPress={handleSendFriendRequest}>
-                      <Text style={styles.friendButtonText}>Ajouter en ami</Text>
+                      <Text style={styles.friendButtonText}>{t('profil.ajouter_en_ami')}</Text>
                     </Pressable>
                   )}
                   {friendStatus === 'pending_sent' && (
                     <Pressable style={styles.friendButtonOutline} onPress={handleCancelOrRemove}>
-                      <Text style={styles.friendButtonOutlineText}>Demande envoyée · Annuler</Text>
+                      <Text style={styles.friendButtonOutlineText}>{t('profil.demande_envoyee')}</Text>
                     </Pressable>
                   )}
                   {friendStatus === 'pending_received' && (
                     <Pressable style={styles.friendButton} onPress={handleAcceptFriendRequest}>
-                      <Text style={styles.friendButtonText}>Accepter la demande d'ami</Text>
+                      <Text style={styles.friendButtonText}>{t('profil.accepter_demande')}</Text>
                     </Pressable>
                   )}
                   {/* Le retrait d'ami n'est plus déclenché ici : il vit désormais dans le menu ⋯
@@ -575,7 +578,7 @@ export function ProfileScreen({
 
             {isOwnProfile && pendingRequests.length > 0 && (
               <View style={styles.pendingSection}>
-                <Text style={styles.pendingSectionTitle}>Invitations en attente</Text>
+                <Text style={styles.pendingSectionTitle}>{t('profil.invitations_en_attente')}</Text>
                 {pendingRequests.map((req) => (
                   <View key={req.senderId} style={styles.pendingRow}>
                     <Pressable
@@ -592,14 +595,14 @@ export function ProfileScreen({
                         onPress={() => handleDeclinePending(req.senderId)}
                         hitSlop={hitSlopPairLeft}
                       >
-                        <Text style={styles.pendingDeclineText}>Refuser</Text>
+                        <Text style={styles.pendingDeclineText}>{t('commun.refuser')}</Text>
                       </Pressable>
                       <Pressable
                         style={styles.pendingAcceptButton}
                         onPress={() => handleAcceptPending(req.senderId)}
                         hitSlop={hitSlopPairRight}
                       >
-                        <Text style={styles.pendingAcceptText}>Accepter</Text>
+                        <Text style={styles.pendingAcceptText}>{t('commun.accepter')}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -609,21 +612,20 @@ export function ProfileScreen({
 
             {blocked ? (
               <View style={styles.blockedNotice}>
-                <Text style={styles.blockedTitle}>Tu as bloqué ce joueur</Text>
+                <Text style={styles.blockedTitle}>{t('profil.bloque_titre')}</Text>
                 <Text style={styles.blockedText}>
-                  Ses mains et ses interactions te sont masquées, et il ne peut plus t'envoyer de
-                  demande d'ami. Tu peux le débloquer à tout moment.
+                  {t('profil.bloque_texte')}
                 </Text>
                 <Pressable style={styles.unblockButton} onPress={handleUnblock}>
-                  <Text style={styles.unblockButtonText}>Débloquer</Text>
+                  <Text style={styles.unblockButtonText}>{t('profil.debloquer')}</Text>
                 </Pressable>
               </View>
             ) : posts.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
+                <Text style={styles.statusText}>{t('profil.aucune_main')}</Text>
                 {isOwnProfile && onCreateHand && (
                   <Pressable style={styles.emptyButton} onPress={onCreateHand}>
-                    <Text style={styles.emptyButtonText}>+ Créer une main</Text>
+                    <Text style={styles.emptyButtonText}>{t('profil.creer_une_main')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -659,17 +661,17 @@ export function ProfileScreen({
       <ConfirmSheet
         visible={confirmingRemove}
         icon={PersonIcon}
-        title="Retirer cet ami ?"
-        confirmLabel="Retirer"
+        title={t('profil.retirer_ami_titre')}
+        confirmLabel={t('commun.retirer')}
         onCancel={() => setConfirmingRemove(false)}
         onConfirm={handleCancelOrRemove}
       />
       <ConfirmSheet
         visible={confirmingBlock}
         icon={BlockIcon}
-        title={`Bloquer ${profile?.displayName ?? 'ce joueur'} ?`}
-        message="Tu ne verras plus ses mains, et il ne pourra plus t'envoyer de demande d'ami."
-        confirmLabel="Bloquer"
+        title={t('commun.blocage_titre', { nom: profile?.displayName ?? t('profil.ce_joueur') })}
+        message={t('commun.blocage_message')}
+        confirmLabel={t('commun.bloquer')}
         onCancel={() => setConfirmingBlock(false)}
         onConfirm={() => {
           setConfirmingBlock(false);

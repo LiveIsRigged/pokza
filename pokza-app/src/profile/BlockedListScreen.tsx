@@ -5,6 +5,7 @@ import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, radius, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchBlockedUsers, unblockUser, type BlockedUser } from '../data/blocks';
+import { useT } from '../i18n';
 
 interface BlockedListScreenProps {
   currentUserId: string;
@@ -19,6 +20,7 @@ interface BlockedListScreenProps {
  * bloqués (garanti par la RLS de `blocks`).
  */
 export function BlockedListScreen({ currentUserId, onBack, onSelectProfile }: BlockedListScreenProps) {
+  const t = useT();
   const [blocked, setBlocked] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,16 +69,16 @@ export function BlockedListScreen({ currentUserId, onBack, onSelectProfile }: Bl
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Comptes bloqués</Text>
+        <Text style={styles.title}>{t('reglages.ligne_comptes_bloques')}</Text>
       </View>
 
       {error && <Text style={styles.statusText}>{error}</Text>}
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
-          <Text style={styles.statusText}>Chargement…</Text>
+          <Text style={styles.statusText}>{t('commun.chargement')}</Text>
         ) : blocked.length === 0 ? (
-          <Text style={styles.statusText}>Tu n'as bloqué personne.</Text>
+          <Text style={styles.statusText}>{t('bloques.aucun')}</Text>
         ) : (
           blocked.map((u) => (
             <View key={u.id} style={styles.row}>
@@ -94,7 +96,7 @@ export function BlockedListScreen({ currentUserId, onBack, onSelectProfile }: Bl
                 disabled={unblocking.has(u.id)}
                 hitSlop={8}
               >
-                <Text style={styles.unblockButtonText}>Débloquer</Text>
+                <Text style={styles.unblockButtonText}>{t('profil.debloquer')}</Text>
               </Pressable>
             </View>
           ))

@@ -10,6 +10,7 @@ import { countryByCode, flagEmoji } from '../data/countries';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
 import { BIO_MAX_LENGTH, PSEUDO_MAX_LENGTH } from '../constants/limits';
+import { useT } from '../i18n';
 
 interface EditProfileScreenProps {
   profile: ProfileDetails;
@@ -25,6 +26,7 @@ interface EditProfileScreenProps {
  * Comptes bloqués et suppression de compte vivent désormais dans Réglages (menu latéral), pas ici.
  */
 export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditProfileScreenProps) {
+  const t = useT();
   const [pseudo, setPseudo] = useState(profile.pseudo);
   const [displayPreference, setDisplayPreference] = useState<'pseudo' | 'nom'>(profile.displayPreference);
   const [bio, setBio] = useState(profile.bio ?? '');
@@ -69,42 +71,42 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
           </Pressable>
         </View>
 
-        <Text style={styles.title}>Modifier mon profil</Text>
+        <Text style={styles.title}>{t('profil.modifier')}</Text>
 
-        <Text style={styles.label}>Pseudo</Text>
+        <Text style={styles.label}>{t('profil.pseudo')}</Text>
         <TextInput
           autoComplete="off"
           style={styles.input}
           value={pseudo}
           onChangeText={setPseudo}
           autoCapitalize="none"
-          placeholder="Ton pseudo sur Pokza"
+          placeholder={t('profil.pseudo_placeholder')}
           maxLength={PSEUDO_MAX_LENGTH}
         />
 
-        <Text style={styles.label}>Afficher sur Pokza</Text>
+        <Text style={styles.label}>{t('profil.afficher_sur_pokza')}</Text>
         <View style={styles.row}>
           {/* Même ordre qu'à l'inscription (`CompleteProfileScreen`) : le nom d'abord. Deux écrans
               qui proposent le même choix dans un ordre différent se lisent mal. */}
-          <Chip label="Mon nom" selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
-          <Chip label="Mon pseudo" selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
+          <Chip label={t('profil.mon_nom')} selected={displayPreference === 'nom'} onPress={() => setDisplayPreference('nom')} />
+          <Chip label={t('profil.mon_pseudo')} selected={displayPreference === 'pseudo'} onPress={() => setDisplayPreference('pseudo')} />
         </View>
 
-        <Text style={styles.label}>Pays</Text>
+        <Text style={styles.label}>{t('profil.pays')}</Text>
         <Pressable style={styles.selector} onPress={() => setCountryPickerOpen(true)}>
           {country ? (
             <Text style={styles.selectorValue}>
               {flagEmoji(country)} {countryByCode(country)?.name ?? country}
             </Text>
           ) : (
-            <Text style={styles.selectorPlaceholder}>Choisir un pays</Text>
+            <Text style={styles.selectorPlaceholder}>{t('pays.titre')}</Text>
           )}
           <Text style={styles.selectorChevron}>›</Text>
         </Pressable>
-        {!country && <Text style={styles.hint}>Le pays est obligatoire.</Text>}
+        {!country && <Text style={styles.hint}>{t('profil.erreur_pays_obligatoire')}</Text>}
 
         <View style={styles.bioLabelRow}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>{t('profil.description')}</Text>
           <Text style={styles.bioCounter}>
             {bio.length}/{BIO_MAX_LENGTH}
           </Text>
@@ -114,37 +116,37 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
           style={[styles.input, styles.bioInput]}
           value={bio}
           onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
-          placeholder="Quelques mots sur toi…"
+          placeholder={t('profil.description_placeholder')}
           multiline
           maxLength={BIO_MAX_LENGTH}
         />
 
-        <Text style={styles.label}>Format favori</Text>
+        <Text style={styles.label}>{t('profil.format_favori')}</Text>
         <View style={styles.row}>
           {FORMAT_OPTIONS.map((opt) => (
-            <Chip key={opt.value} label={opt.label} selected={formatFavori === opt.value} onPress={() => setFormatFavori(opt.value)} />
+            <Chip key={opt.value} label={t(opt.cle)} selected={formatFavori === opt.value} onPress={() => setFormatFavori(opt.value)} />
           ))}
         </View>
 
-        <Text style={styles.label}>Variante préférée</Text>
+        <Text style={styles.label}>{t('profil.variante_preferee')}</Text>
         <View style={styles.row}>
           {VARIANTE_OPTIONS.map((opt) => (
-            <Chip key={opt.value} label={opt.label} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
+            <Chip key={opt.value} label={t(opt.cle)} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
           ))}
         </View>
-        <Text style={styles.hint}>Les mains de cette variante remontent un peu dans ton fil.</Text>
+        <Text style={styles.hint}>{t('profil.variante_aide_edition')}</Text>
 
-        <Text style={styles.label}>À quelle fréquence joues-tu au poker ?</Text>
+        <Text style={styles.label}>{t('profil.frequence_question')}</Text>
         <View style={styles.column}>
           {FREQUENCE_OPTIONS.map((opt) => (
-            <Chip key={opt.value} label={opt.label} selected={frequenceJeu === opt.value} onPress={() => setFrequenceJeu(opt.value)} />
+            <Chip key={opt.value} label={t(opt.cle)} selected={frequenceJeu === opt.value} onPress={() => setFrequenceJeu(opt.value)} />
           ))}
         </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]} onPress={handleSave} disabled={!canSubmit}>
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Enregistrer</Text>}
+          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{t('commun.enregistrer')}</Text>}
         </Pressable>
 
       </ScrollView>

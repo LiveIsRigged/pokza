@@ -1,30 +1,34 @@
 import type { GameType } from '../types/poker';
+import { t, type Cle } from '../i18n/traduire';
 
-// Labels partagés entre le formulaire de création de profil et l'affichage d'un profil consulté —
+// Libellés partagés entre le formulaire de création de profil et l'affichage d'un profil consulté —
 // une seule source pour ces libellés, pour ne jamais les faire diverger.
+//
+// Des CLÉS et non des textes : ces tables sont calculées UNE FOIS au chargement du module, donc un
+// libellé figé y resterait dans la langue du démarrage.
 
 export const FORMAT_OPTIONS = [
-  { value: 'cash_live', label: 'Cash game live' },
-  { value: 'cash_online', label: 'Cash game online' },
-  { value: 'tournoi_live', label: 'Tournois live' },
-  { value: 'tournoi_online', label: 'Tournois online' },
-  { value: 'spins', label: 'Spins' },
-] as const;
+  { value: 'cash_live', cle: 'profil.format_cash_live' },
+  { value: 'cash_online', cle: 'profil.format_cash_online' },
+  { value: 'tournoi_live', cle: 'profil.format_tournoi_live' },
+  { value: 'tournoi_online', cle: 'profil.format_tournoi_online' },
+  { value: 'spins', cle: 'profil.format_spins' },
+] as const satisfies readonly { value: string; cle: Cle }[];
 
 // Variante préférée : sert à faire remonter dans le feed les mains de ce type (cf. vue SQL
 // `posts_ranked`). Valeurs alignées sur `Variant` (types/poker.ts) — le défaut est 'nlhe'.
 export const VARIANTE_OPTIONS = [
-  { value: 'nlhe', label: "Hold'em" },
-  { value: 'plo', label: 'PLO' },
-  { value: 'plo5', label: 'PLO5' },
-] as const;
+  { value: 'nlhe', cle: 'profil.variante_nlhe' },
+  { value: 'plo', cle: 'profil.variante_plo' },
+  { value: 'plo5', cle: 'profil.variante_plo5' },
+] as const satisfies readonly { value: string; cle: Cle }[];
 
 export const FREQUENCE_OPTIONS = [
-  { value: 'tres_occasionnel', label: 'Très occasionnellement (moins de deux fois par mois)' },
-  { value: 'occasionnel', label: "Occasionnellement (moins d'une fois par semaine)" },
-  { value: 'regulier', label: 'Régulièrement (toutes les semaines)' },
-  { value: 'tres_regulier', label: 'Très régulièrement (minimum trois fois par semaine)' },
-] as const;
+  { value: 'tres_occasionnel', cle: 'profil.frequence_tres_occasionnel' },
+  { value: 'occasionnel', cle: 'profil.frequence_occasionnel' },
+  { value: 'regulier', cle: 'profil.frequence_regulier' },
+  { value: 'tres_regulier', cle: 'profil.frequence_tres_regulier' },
+] as const satisfies readonly { value: string; cle: Cle }[];
 
 /**
  * Type de partie présélectionné à la création d'une main, d'après le format favori du profil : un
@@ -39,7 +43,8 @@ export function gameTypeForFormat(formatFavori: string | undefined): GameType {
 }
 
 export function formatLabel(value: string): string {
-  return FORMAT_OPTIONS.find((o) => o.value === value)?.label ?? value;
+  const option = FORMAT_OPTIONS.find((o) => o.value === value);
+  return option ? t(option.cle) : value;
 }
 
 /** Résumé affiché sous le pseudo sur la page de profil, tant qu'aucune description n'a été
@@ -49,6 +54,9 @@ export function formatLabel(value: string): string {
 export function playerSummary(formatFavori: string, frequenceJeu: string): string {
   const regulier = frequenceJeu === 'regulier' || frequenceJeu === 'tres_regulier';
   const format = formatLabel(formatFavori);
+  // ⚠️ La minuscule initiale est une convention FRANÇAISE (et anglaise). Une langue qui met une
+  // majuscule aux noms communs — l'allemand — devra le signaler : le code ne le devine pas. Noté
+  // dans `contexte.json` pour le relecteur.
   const formatLowerFirst = format.charAt(0).toLowerCase() + format.slice(1);
-  return `Joueur ${regulier ? 'régulier' : 'occasionnel'} de ${formatLowerFirst}`;
+  return t(regulier ? 'profil.resume_regulier' : 'profil.resume_occasionnel', { format: formatLowerFirst });
 }

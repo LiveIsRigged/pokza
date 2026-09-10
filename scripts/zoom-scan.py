@@ -78,23 +78,31 @@ for path in sorted(ROOT.rglob('*.tsx')):
         # `autoFocus` NU (sans accolade) ou gardé par autre chose que `autoFocusUtile()`.
         af = re.search(r'\bautoFocus(\s*=\s*\{([^{}]*)\})?', tag)
         focus_nu = bool(af) and 'autoFocusUtile' not in (af.group(2) or '')
-        rows.append((str(path), line, m.group(1), ' + '.join(refs), eff, origin, passthrough, declare, focus_nu))
+        rows.append((str(path), line, m.group(1), ' + '.join(refs), eff, origin, passthrough, declare, focus_nu, tag))
 
 # ⚠️ LES DEUX SEULES EXCEPTIONS, ET ELLES SONT UN CHOIX : « Prénom » et « Nom » de la complétion de
 # profil. C'est la VRAIE identité de la personne, le remplissage lui rend service (tranché le
 # 03/09). Toute autre absence est un trou — c'est pour ça que la liste est ici, nommée, et pas un
 # `# noqa` perdu dans le code.
+#
+# ⚠️ DÉSIGNÉES PAR LEUR LIAISON, PAS PAR LEUR NUMÉRO DE LIGNE. Elles l'étaient (190 et 193) et la
+# première modification du fichier venue d'ailleurs — deux lignes ajoutées pour la traduction — a
+# décalé les deux champs : le scan a aussitôt crié au trou sur des champs qui n'avaient pas bougé.
+# Un garde-fou qui accuse à tort finit désarmé ; `value={prenom}` ne bouge pas quand le fichier bouge.
 VOULUES = {
-    ('pokza-app/src/profile/CompleteProfileScreen.tsx', 190),
-    ('pokza-app/src/profile/CompleteProfileScreen.tsx', 193),
+    ('pokza-app/src/profile/CompleteProfileScreen.tsx', 'value={prenom}'),
+    ('pokza-app/src/profile/CompleteProfileScreen.tsx', 'value={nom}'),
 }
+
+def voulue(ligne):
+    return any(f == ligne[0] and liaison in ligne[9] for f, liaison in VOULUES)
 # ⚠️ SEUL LE `TextInput` PRIMITIF EST CONCERNÉ, et c'est ce qui rend la règle 2 sans faux positif :
 # c'est lui que `react-native-web` transforme en `<input autocomplete="on">`. Tout le reste
 # (`DecimalTextInput`, `LocationInput`, `LevelNumberInput`…) est un composant à NOUS, qui rend son
 # propre `TextInput` — lequel est scanné dans le fichier où il est écrit. Exiger la prop à leur
 # point d'appel donnerait 11 faux positifs, et exiger l'inverse laisserait passer un vrai trou.
 muets = [r for r in rows
-         if r[2] == 'TextInput' and not r[7] and (r[0], r[1]) not in VOULUES]
+         if r[2] == 'TextInput' and not r[7] and not voulue(r)]
 # ⚠️ Toutes les balises, pas seulement `TextInput` : une enveloppe maison peut relayer `autoFocus`
 # depuis son point d'appel, et c'est là qu'il faut le garder.
 focus = [r for r in rows if r[8]]
