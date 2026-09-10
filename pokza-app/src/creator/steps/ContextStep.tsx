@@ -38,6 +38,8 @@ import { joueursNommes, reprendreTable, resumeDesJoueurs, type DerniereTable } f
 import { chargerDerniereTable } from '../derniereTableStockage';
 import { FicheJoueur } from '../FicheJoueur';
 import { formatRelativeDate } from '../../utils/relativeDate';
+import { useT } from '../../i18n';
+import { enumerer } from '../../utils/enumerer';
 
 /** Le repli de la table quand un champ prend le focus : assez long pour que l'œil suive le
  *  mouvement, assez court pour ne pas retarder la frappe. */
@@ -52,6 +54,7 @@ function LevelNumberInput({
   value: string | undefined;
   onChangeValue: (level: string | undefined) => void;
 }) {
+  const t = useT();
   const extractDigits = (v: string | undefined) => (v ?? '').replace(/\D/g, '');
   const [digits, setDigits] = useState(extractDigits(value));
 
@@ -63,7 +66,7 @@ function LevelNumberInput({
 
   return (
     <View style={styles.levelInputRow}>
-      <Text style={styles.levelInputPrefix}>Niveau</Text>
+      <Text style={styles.levelInputPrefix}>{t('createur.niveau')}</Text>
       <TextInput
         autoComplete="off"
         style={[styles.input, styles.levelInputField]}
@@ -162,6 +165,7 @@ export function ContextStep({
   enCorrection,
   onImporter,
 }: ContextStepProps) {
+  const t = useT();
   const availablePositions = POSITION_SETS[value.numPlayers] ?? POSITION_SETS[6];
   const heroValid = availablePositions.includes(value.heroPosition);
   // La grosse blinde ne peut pas être plus PETITE que la petite : SB 100 / BB 5 n'a aucun sens.
@@ -347,10 +351,6 @@ export function ContextStep({
     update(posesDeTable(avant));
   };
 
-  /** « Bob et Chloé » — le « et » final, sinon la phrase sonne comme une liste. */
-  const enumerer = (l: string[]) =>
-    l.length <= 1 ? l[0] ?? '' : `${l.slice(0, -1).join(', ')} et ${l[l.length - 1]}`;
-
   /**
    * UN DROIT À L'ERREUR — constat 5 de l'audit, tranché par Victor le 02/09/2026.
    * ───────────────────────────────────────────────────────────────────────────
@@ -423,8 +423,8 @@ export function ContextStep({
 
   return (
     <WizardScreen
-      title="La table"
-      subtitle="Contexte de la main"
+      title={t('createur.table_titre')}
+      subtitle={t('createur.table_sous_titre')}
       zoneFixe={
         <Animated.View
           style={{
@@ -460,7 +460,7 @@ export function ContextStep({
               Touche le siège où envoyer {nomDe(echangeDepuis) || straddleLabelForPosition(echangeDepuis)}
             </Text>
             <Pressable onPress={() => setEchangeDepuis(null)} hitSlop={8}>
-              <Text style={styles.annuler}>↩ Annuler</Text>
+              <Text style={styles.annuler}>{t('createur.annuler_derniere')}</Text>
             </Pressable>
           </>
         ) : undefined
@@ -517,13 +517,13 @@ export function ContextStep({
             accessibilityRole="button"
           >
             <CopyIcon size={18} color={colors.action} />
-            <Text style={styles.importerTexte}>Import</Text>
+            <Text style={styles.importerTexte}>{t('createur.import')}</Text>
           </Pressable>
         ) : null
       }
     >
       <View>
-        <Text style={styles.label}>Type de partie</Text>
+        <Text style={styles.label}>{t('createur.type_de_partie')}</Text>
         {/* Le bomb pot tient sur la même ligne que Cash game / Tournoi : c'est une variation du type
             de partie, pas un réglage de plus. Format spécial et rare, il reste un interrupteur
             discret à droite plutôt qu'un choix de premier plan, et n'existe qu'en cash game (une
@@ -532,12 +532,12 @@ export function ContextStep({
         <View style={styles.gameTypeRow}>
           <View style={[styles.row, styles.gameTypeChips]}>
             <Chip
-              label="Cash game"
+              label={t('createur.cash_game')}
               selected={value.gameType === 'cash'}
               onPress={() => update({ gameType: 'cash', sb: 2, bb: 5, effectiveStack: defaultStackFor('cash', 5) })}
             />
             <Chip
-              label="Tournoi"
+              label={t('createur.tournoi')}
               selected={value.gameType === 'tournament'}
               onPress={() =>
                 update({
@@ -574,7 +574,7 @@ export function ContextStep({
           )}
         </View>
 
-        <Text style={styles.label}>Variante</Text>
+        <Text style={styles.label}>{t('createur.variante')}</Text>
         <View style={styles.row}>
           <Chip label="NLHE" selected={value.variant === 'nlhe'} onPress={() => update({ variant: 'nlhe' })} />
           <Chip label="PLO" selected={value.variant === 'plo'} onPress={() => update({ variant: 'plo' })} />
@@ -583,16 +583,16 @@ export function ContextStep({
 
         {value.bombPot ? (
           <>
-            <Text style={styles.label}>Ante par joueur</Text>
+            <Text style={styles.label}>{t('createur.ante_par_joueur')}</Text>
             <DecimalTextInput
               style={styles.input}
-              placeholder="Ante"
+              placeholder={t('createur.ante')}
               value={value.bombAnte}
               gameType={value.gameType}
               onChangeValue={(bombAnte) => update({ bombAnte })}
             />
 
-            <Text style={styles.label}>Boards</Text>
+            <Text style={styles.label}>{t('createur.boards')}</Text>
             <View style={styles.row}>
               <Chip label="1 board" selected={!value.doubleBoard} onPress={() => update({ doubleBoard: false })} />
               <Chip label="2 boards" selected={value.doubleBoard} onPress={() => update({ doubleBoard: true })} />
@@ -605,7 +605,7 @@ export function ContextStep({
           </>
         ) : (
           <>
-        <Text style={styles.label}>Blindes</Text>
+        <Text style={styles.label}>{t('createur.blindes')}</Text>
         <View style={styles.row}>
           {(value.gameType === 'tournament' ? TOURNAMENT_BLIND_PRESETS : CASH_BLIND_PRESETS).map(([sb, bb]) => (
             <Chip
@@ -650,7 +650,7 @@ export function ContextStep({
             changerait un nombre que le joueur n'a pas touché, et il ne saurait pas lequel des deux
             est faux. Le bouton Suivant reste bloqué tant que ce n'est pas réglé. */}
         {showBlindsError && (
-          <Text style={styles.errorText}>La BB ne peut pas être plus petite que la SB.</Text>
+          <Text style={styles.errorText}>{t('createur.bb_plus_petite_que_sb')}</Text>
         )}
           </>
         )}
@@ -664,10 +664,10 @@ export function ContextStep({
               <>
                 <Text style={styles.label}>Straddle</Text>
                 <View style={styles.row}>
-                  <Chip label="Aucun" selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
-                  <Chip label="Simple" selected={value.straddleCount === 1} onPress={() => update({ straddleCount: 1 })} />
-                  <Chip label="Double" selected={value.straddleCount === 2} onPress={() => update({ straddleCount: 2 })} />
-                  <Chip label="Triple" selected={value.straddleCount === 3} onPress={() => update({ straddleCount: 3 })} />
+                  <Chip label={t('createur.aucun')} selected={value.straddleCount === 0} onPress={() => update({ straddleCount: 0 })} />
+                  <Chip label={t('createur.straddle_simple')} selected={value.straddleCount === 1} onPress={() => update({ straddleCount: 1 })} />
+                  <Chip label={t('createur.straddle_double')} selected={value.straddleCount === 2} onPress={() => update({ straddleCount: 2 })} />
+                  <Chip label={t('createur.straddle_triple')} selected={value.straddleCount === 3} onPress={() => update({ straddleCount: 3 })} />
                 </View>
                 {value.straddleCount > 0 && (
                   <>
@@ -727,16 +727,16 @@ export function ContextStep({
               </>
             )}
 
-            <Text style={styles.label}>Ante</Text>
+            <Text style={styles.label}>{t('createur.ante')}</Text>
             <View style={styles.row}>
-              <Chip label="Aucun" selected={value.anteType === 'none'} onPress={() => update({ anteType: 'none' })} />
+              <Chip label={t('createur.aucun')} selected={value.anteType === 'none'} onPress={() => update({ anteType: 'none' })} />
               <Chip
                 label="BB ante"
                 selected={value.anteType === 'bb'}
                 onPress={() => update({ anteType: 'bb', ante: value.bb })}
               />
               <Chip
-                label="Ante par joueur"
+                label={t('createur.ante_par_joueur')}
                 selected={value.anteType === 'per-player'}
                 onPress={() =>
                   update({ anteType: 'per-player', ante: value.ante || Math.max(1, Math.round(value.bb / 4)) })
@@ -744,12 +744,12 @@ export function ContextStep({
               />
             </View>
             {value.anteType === 'bb' && (
-              <Text style={styles.helperText}>Montant de l'ante : {value.bb} (identique à la BB)</Text>
+              <Text style={styles.helperText}>{t('createur.montant_ante_bb', { bb: value.bb })}</Text>
             )}
             {value.anteType === 'per-player' && (
               <DecimalTextInput
                 style={styles.input}
-                placeholder="Ante par joueur"
+                placeholder={t('createur.ante_par_joueur')}
                 value={value.ante}
                 gameType={value.gameType}
                 onChangeValue={(ante) => update({ ante })}
@@ -758,14 +758,14 @@ export function ContextStep({
 
             {value.gameType === 'tournament' && (
               <View style={styles.inlineFieldRow}>
-                <Text style={styles.inlineFieldLabel}>Niveau de blindes (optionnel)</Text>
+                <Text style={styles.inlineFieldLabel}>{t('createur.niveau_de_blindes')}</Text>
                 <LevelNumberInput value={value.level} onChangeValue={(level) => update({ level })} />
               </View>
             )}
           </>
         )}
 
-        <Text style={styles.label}>Nombre de joueurs</Text>
+        <Text style={styles.label}>{t('createur.nombre_de_joueurs')}</Text>
         {/* UNE SEULE LIGNE, EN LARGEURS ÉGALES (Victor, 02/09/2026).
             2 à 10 est un CONTINUUM, pas une liste. En pastilles à largeur libre, les neuf ne
             tenaient pas (352 px de pastilles + 64 px d'espaces = 416 pour 354 disponibles) et
@@ -807,10 +807,10 @@ export function ContextStep({
           // Le jeu de 52 cartes borne la table : ex. PLO5 (5 cartes/joueur) plafonne à 9 en simple
           // board, à 8 en double board. On explique la borne plutôt que de faire disparaître le chip 10
           // sans raison visible.
-          <Text style={styles.helperText}>Limité à {maxPlayers} joueurs dans cette variante (jeu de 52 cartes).</Text>
+          <Text style={styles.helperText}>{t('createur.limite_variante', { max: maxPlayers })}</Text>
         )}
 
-        <Text style={styles.label}>Ta position</Text>
+        <Text style={styles.label}>{t('createur.ta_position')}</Text>
         <View style={styles.row}>
           {positionChipOrder.map((pos: Position) => (
             <Chip
@@ -827,7 +827,7 @@ export function ContextStep({
         </View>
 
         <View style={styles.enteteJoueurs}>
-          <Text style={[styles.label, styles.labelSansMarge]}>Joueurs (nom et stack, optionnel)</Text>
+          <Text style={[styles.label, styles.labelSansMarge]}>{t('createur.joueurs_nom_stack')}</Text>
           {/* SANS NOM, JUSTE UN SIGLE (Victor, 01/09). Deux sens, parce qu'un cran de trop coûterait
               sinon cinq touchers pour revenir sur une table de six.
 
@@ -866,11 +866,15 @@ export function ContextStep({
           <View style={styles.apresReprise}>
             <Text style={styles.apresRepriseTexte}>
               {oublies.length === 0
-                ? 'Joueurs repris.'
-                : `${enumerer(oublies)} n'${oublies.length > 1 ? 'ont' : 'a'} plus de siège à ${value.numPlayers}.`}
+                ? t('createur.joueurs_repris')
+                : t('createur.joueurs_sans_siege', {
+                    noms: enumerer(oublies),
+                    places: value.numPlayers,
+                    count: oublies.length,
+                  })}
             </Text>
             <Pressable onPress={annulerLaReprise} hitSlop={8}>
-              <Text style={styles.annuler}>↩ Annuler</Text>
+              <Text style={styles.annuler}>{t('createur.annuler_derniere')}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -899,10 +903,10 @@ export function ContextStep({
             dur dans chaque siège effacerait la distinction — et le défaut n'aurait plus rien à
             mettre à jour. */}
         <View style={styles.playerRow}>
-          <Text style={styles.libelleDefaut}>Stack par défaut</Text>
+          <Text style={styles.libelleDefaut}>{t('createur.stack_par_defaut')}</Text>
           <DecimalTextInput
             style={[styles.input, styles.playerStackInput]}
-            placeholder="Stack"
+            placeholder={t('createur.champ_stack')}
             value={value.effectiveStack}
             gameType={value.gameType}
             onChangeValue={(effectiveStack) => update({ effectiveStack })}
@@ -969,10 +973,10 @@ export function ContextStep({
           onFermer={() => setFiche(null)}
         />
 
-        <Text style={styles.label}>Lieu (optionnel)</Text>
+        <Text style={styles.label}>{t('createur.lieu')}</Text>
         <LocationInput
           style={styles.input}
-          placeholder="Ex : Club Circus, Bruxelles"
+          placeholder={t('createur.lieu_exemple')}
           value={value.location ?? ''}
           onChangeText={(t) => update({ location: t })}
           onListeOuverte={setListeLieuOuverte}
@@ -984,11 +988,11 @@ export function ContextStep({
             d'épreuve, la série, le format et le jour, d'où les 44 caractères. */}
         {value.gameType === 'tournament' && (
           <>
-            <Text style={styles.label}>Nom du tournoi (optionnel)</Text>
+            <Text style={styles.label}>{t('createur.nom_du_tournoi')}</Text>
             <TextInput
               autoComplete="off"
               style={styles.input}
-              placeholder="Ex : Main Event"
+              placeholder={t('createur.tournoi_exemple')}
               maxLength={TOURNAMENT_NAME_MAX_LENGTH}
               value={value.tournamentName ?? ''}
               onChangeText={(t) => update({ tournamentName: t })}
@@ -1003,7 +1007,7 @@ export function ContextStep({
             réel, et rien ne les habille. */}
         {value.gameType === 'cash' && (
           <>
-            <Text style={styles.label}>Devise</Text>
+            <Text style={styles.label}>{t('createur.devise')}</Text>
             <Pressable style={styles.selector} onPress={() => setDeviseOuverte(true)}>
               <Text style={styles.selectorValue}>
                 {devise(value.currency).sigle}  {devise(value.currency).nom}
@@ -1024,11 +1028,11 @@ export function ContextStep({
 
         {value.gameType === 'tournament' && (
           <>
-            <Text style={styles.label}>Buy-in (optionnel)</Text>
+            <Text style={styles.label}>{t('createur.buy_in')}</Text>
             <TextInput
               autoComplete="off"
               style={styles.input}
-              placeholder="Ex : 100€"
+              placeholder={t('createur.buy_in_exemple')}
               maxLength={BUY_IN_MAX_LENGTH}
               value={value.buyIn ?? ''}
               onChangeText={(t) => update({ buyIn: t })}

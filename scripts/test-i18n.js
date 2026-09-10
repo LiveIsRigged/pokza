@@ -11,14 +11,17 @@
 //   5. une catégorie que le traducteur n'a pas remplie retombe sur `other`, pas sur du vide ;
 //   7. une phrase dont un bout est un lien reste ENTIÈRE dans le catalogue : le traducteur peut
 //      déplacer le lien où sa langue l'exige, y compris en inversant deux repères ;
+//   8. « Bob et Chloé » vient d'`Intl.ListFormat` : l'anglais met la virgule d'Oxford
+//      (« Bob, Chloé, and Ali »), le français non — écrite à la main, elle se serait perdue ;
 //   6. la langue de démarrage suit l'ORDRE DE PRÉFÉRENCE de l'appareil : un Suisse réglé sur
 //      [de, fr] reçoit du français, pas de l'anglais — et une liste sans aucune langue servie
 //      donne l'anglais (décision du 10/09/2026).
 //
 // Compiler d'abord (le `tsc` local, pas `npx tsc` — cf. mémoire projet) :
-//   pokza-app/node_modules/.bin/tsc pokza-app/src/i18n/traduire.ts \
-//     --outDir scripts/i18n --module commonjs --target es2020 --rootDir pokza-app/src \
+//   pokza-app/node_modules/.bin/tsc pokza-app/src/i18n/traduire.ts pokza-app/src/utils/enumerer.ts \
+//     --outDir scripts/i18n --module commonjs --target es2021 --rootDir pokza-app/src \
 //     --resolveJsonModule --skipLibCheck
+// (es2021 et pas es2020 : `Intl.ListFormat` n'existe pas dans la lib es2020.)
 // puis : node scripts/test-i18n.js
 
 const { t, rendre, interpoler, categorie, poserLangue, choisirLangue, segmenter } = require('./i18n/i18n/traduire');
@@ -94,6 +97,19 @@ verifier(
   seg('the {conf} and the {cgu}'),
   JSON.stringify([{ texte: 'the ' }, { repere: 'conf' }, { texte: ' and the ' }, { repere: 'cgu' }])
 );
+
+// 9. l'enumeration « Bob et Chloe » — deleguee a `Intl.ListFormat`
+const { enumerer } = require('./i18n/utils/enumerer');
+poserLangue('fr');
+verifier('fr : un seul nom', enumerer(['Bob']), 'Bob');
+verifier('fr : deux noms', enumerer(['Bob', 'Chloé']), 'Bob et Chloé');
+verifier('fr : trois noms', enumerer(['Bob', 'Chloé', 'Ali']), 'Bob, Chloé et Ali');
+verifier('liste vide', enumerer([]), '');
+poserLangue('en');
+verifier('en : deux noms', enumerer(['Bob', 'Chloé']), 'Bob and Chloé');
+// La virgule d'Oxford : l'anglais la met, le francais non. Ecrite a la main, elle se serait perdue.
+verifier('en : virgule d’Oxford', enumerer(['Bob', 'Chloé', 'Ali']), 'Bob, Chloé, and Ali');
+poserLangue('fr');
 
 console.log(echecs === 0 ? '\nTout passe.' : `\n${echecs} échec(s).`);
 process.exit(echecs === 0 ? 0 : 1);
