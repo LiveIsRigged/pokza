@@ -769,5 +769,12 @@
   "amis.code_explication": "Fais scanner ce code par un ami qui a Pokza ouvert pour l'ajouter instantanément — pas besoin de le chercher.",
   "amis.suggestions_vides": "Pas encore de suggestion — elles apparaissent à partir d'amis en commun avec les personnes que tu connais déjà.",
   "erreur.contenu_illisible": "Ce contenu n'a pas pu s'afficher.",
-  "createur.reprendre_joueurs": "Reprendre {joueurs}"
+  "createur.reprendre_joueurs": "Reprendre {joueurs}",
+  "maintexte.flop_majuscules": "FLOP",
+  "maintexte.turn_majuscules": "TURN",
+  "maintexte.river_majuscules": "RIVER",
+  "maintexte.abattage": "ABATTAGE",
+  "maintexte.entete_street": "{street}  {cartes}  (pot {pot})",
+  "maintexte.gagne": "{nom} gagne {montant}",
+  "createur.virgule": "Virgule"
 }

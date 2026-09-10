@@ -84,7 +84,7 @@ export function PaveNumerique({
                 ]}
                 onPress={() => (correction ? onEffacer() : onTouche(touche))}
                 onLongPress={correction ? onToutEffacer : undefined}
-                accessibilityLabel={correction ? t('createur.effacer') : touche === ',' ? 'Virgule' : touche}
+                accessibilityLabel={correction ? t('createur.effacer') : touche === ',' ? t('createur.virgule') : touche}
               >
                 <Text style={[styles.libelle, correction && styles.libelleCorrection]}>{touche}</Text>
               </Pressable>

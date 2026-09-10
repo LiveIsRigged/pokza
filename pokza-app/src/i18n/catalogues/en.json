@@ -769,5 +769,12 @@
   "amis.code_explication": "Have a friend with Pokza open scan this code to add them instantly — no need to search for them.",
   "amis.suggestions_vides": "No suggestions yet — they appear from friends in common with people you already know.",
   "erreur.contenu_illisible": "This content could not be displayed.",
-  "createur.reprendre_joueurs": "Carry over {joueurs}"
+  "createur.reprendre_joueurs": "Carry over {joueurs}",
+  "maintexte.flop_majuscules": "FLOP",
+  "maintexte.turn_majuscules": "TURN",
+  "maintexte.river_majuscules": "RIVER",
+  "maintexte.abattage": "SHOWDOWN",
+  "maintexte.entete_street": "{street}  {cartes}  (pot {pot})",
+  "maintexte.gagne": "{nom} wins {montant}",
+  "createur.virgule": "Decimal point"
 }

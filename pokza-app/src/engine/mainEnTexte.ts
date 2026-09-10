@@ -1,7 +1,7 @@
 import type { Card, Hand, Seat, Street } from '../types/poker';
 import { formatChipAmount } from '../utils/chipFormat';
 import { formatContextLine, type PartieDecrite } from '../utils/denomination';
-import { t } from '../i18n/traduire';
+import { t, type Cle } from '../i18n/traduire';
 import {
   computeHandState,
   describeAction,
@@ -70,11 +70,14 @@ export function scinderSignature(texte: string): { corps: string; signature: str
   return { corps: texte.slice(0, i + 1), signature: texte.slice(i + 1) };
 }
 
-const NOM_STREET: Record<Street, string> = {
-  preflop: t('maintexte.preflop_majuscules'),
-  flop: 'FLOP',
-  turn: 'TURN',
-  river: 'RIVER',
+// ⚠️ DES CLÉS, PAS DES TEXTES. Cette table est calculée UNE FOIS au chargement du module : un
+// `t()` écrit ici serait résolu au démarrage et resterait dans cette langue-là pour toute la
+// session. Piège déjà payé sur les titres de street, les options de profil et les motifs de refus.
+const CLE_STREET: Record<Street, Cle> = {
+  preflop: 'maintexte.preflop_majuscules',
+  flop: 'maintexte.flop_majuscules',
+  turn: 'maintexte.turn_majuscules',
+  river: 'maintexte.river_majuscules',
 };
 
 /** `{rank:'K', suit:'s'}` → `Ks`. Les deux champs portent déjà la bonne lettre. */
@@ -171,7 +174,7 @@ export function mainEnTexte(partie: PartieDecrite): string {
   // L'abattage : les mains adverses saisies par l'auteur. Hero n'y est pas, la sienne est en haut.
   const montrees = hand.seats.filter((s) => !s.isHero && s.holeCards?.length);
   if (montrees.length > 0) {
-    lignes.push('', 'ABATTAGE');
+    lignes.push('', t('maintexte.abattage'));
     for (const seat of montrees) {
       lignes.push(`${etiquetteSiege(hand, seat)} : ${cartesEnTexte(seat.holeCards!)}`);
     }
@@ -193,7 +196,7 @@ function enTeteDeStreet(
 ): string {
   // Le préflop n'a ni carte ni pot à annoncer : le pot y vaut zéro par construction, puisque les
   // mises forcées sont les seules à le remplir avant la première décision.
-  if (street === 'preflop') return NOM_STREET.preflop;
+  if (street === 'preflop') return t(CLE_STREET.preflop);
 
   const tombees = (board: Hand['board'] | undefined): Card[] => {
     if (!board) return [];
@@ -206,7 +209,7 @@ function enTeteDeStreet(
   // Double board (bomb pot) : les deux boards sur la même ligne, séparés par une barre — ils
   // tombent dans le même souffle et se lisent ensemble.
   const cartes = [un, deux].filter((c) => c.length > 0).map(cartesEnTexte).join('  |  ');
-  return `${NOM_STREET[street]}  ${cartes}  (pot ${montant(pot)})`;
+  return t('maintexte.entete_street', { street: t(CLE_STREET[street]), cartes, pot: montant(pot) });
 }
 
 /** Qui gagne, et combien — ou pourquoi personne ne gagne. */
@@ -226,6 +229,6 @@ function conclusion(hand: Hand, montant: (n: number) => string): string[] {
   return fin.potAwards.map((part) => {
     const seat = hand.seats.find((s) => s.id === part.seatId);
     const nom = seat ? etiquetteSiege(hand, seat) : '';
-    return `${nom} gagne ${montant(fin.potTotal * part.fraction)}`;
+    return t('maintexte.gagne', { nom, montant: montant(fin.potTotal * part.fraction) });
   });
 }

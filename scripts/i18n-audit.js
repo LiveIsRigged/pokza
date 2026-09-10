@@ -253,6 +253,77 @@ if (litteralJsx.length > 0) {
   console.log('');
 }
 
+// ── `t()` appelé au CHARGEMENT du module — le piège le plus silencieux du lot ────────────────────
+// Une table calculée au niveau module (`const NOM_STREET = { preflop: t('…') }`) résout ses textes
+// UNE FOIS, au démarrage, et les garde dans cette langue-là pour toute la session. Rien ne casse :
+// pas d'erreur, pas de trou à l'écran, juste un écran qui reste en français après un changement de
+// langue. Six tables sont tombées dans ce piège pendant le chantier — dont une que j'ai écrite
+// moi-même en croyant traduire. Toutes portent des CLÉS désormais, résolues à l'affichage.
+//
+// La détection compte les accolades pour de vrai (chaînes ignorées) : profondeur 0 = niveau module.
+// Un `t()` dans une fonction fléchée passe, et c'est voulu — elle n'est évaluée qu'à l'appel.
+function tAuChargement(source) {
+  const sansBloc = source
+    .replace(/\/\*[\s\S]*?\*\//g, (b) => '\n'.repeat((b.match(/\n/g) || []).length))
+    .replace(/\/\/[^\n]*/g, '');
+  const sorties = [];
+  // Ce qui compte n'est PAS la profondeur d'accolades — le cas dangereux est justement un `t()`
+  // DANS un objet de niveau module, donc à profondeur 1. Ce qui compte, c'est d'être ou non dans un
+  // corps de FONCTION : là, le texte est résolu à l'appel, donc dans la bonne langue. On empile donc
+  // pour chaque accolade ouvrante si elle ouvre une fonction, et un `t()` est sûr dès qu'une seule
+  // fonction se trouve sous lui.
+  const pile = [];
+  let flecheEnCours = false;
+  let ligne = 1;
+  for (let i = 0; i < sansBloc.length; i++) {
+    const c = sansBloc[i];
+    if (c === '\n') ligne++;
+    else if (c === ';') flecheEnCours = false;
+    else if (c === '=' && sansBloc[i + 1] === '>') flecheEnCours = true;
+    else if (c === '{') {
+      const avant = sansBloc.slice(Math.max(0, i - 120), i);
+      // `): string {` compte aussi : une annotation de type de retour sépare la parenthèse de
+      // l'accolade, et sans elle le corps de la fonction passait pour du niveau module.
+      pile.push(/=>\s*$|\)\s*(?::\s*[^={};]+)?\s*$|\bfunction\b[^{]*$/.test(avant));
+      flecheEnCours = false;
+    } else if (c === '}') {
+      pile.pop();
+      flecheEnCours = false;
+    }
+    else if (c === '"' || c === "'" || c === '`') {
+      const guillemet = c;
+      i++;
+      while (i < sansBloc.length && sansBloc[i] !== guillemet) {
+        if (sansBloc[i] === '\\') i++;
+        else if (sansBloc[i] === '\n') ligne++;
+        i++;
+      }
+    } else if (
+      sansBloc.startsWith('t(', i) &&
+      (i === 0 || !/[\w.$]/.test(sansBloc[i - 1])) &&
+      !pile.some(Boolean) &&
+      // …et pas non plus dans une flèche SANS accolades (`const f = (k) => t('…')`), qui n'ouvre
+      // aucun bloc mais reste une fonction : on regarde si l'instruction courante contient `=>`.
+      !flecheEnCours
+    ) {
+      sorties.push(ligne);
+    }
+  }
+  return sorties;
+}
+const figes = [];
+for (const f of fichiers) {
+  const relatif = path.relative(RACINE, f).split(path.sep).join('/');
+  for (const ligne of tAuChargement(fs.readFileSync(f, 'utf8'))) figes.push(`${relatif}:${ligne}`);
+}
+if (figes.length > 0) {
+  trous += figes.length;
+  console.log(`« t() » résolu au chargement du module (${figes.length}) — le texte restera dans la`);
+  console.log(`langue du démarrage. Porter des CLÉS et les résoudre à l'affichage :`);
+  for (const l of figes) console.log(`      ${l}`);
+  console.log('');
+}
+
 // ── Notes de contexte devenues orphelines ────────────────────────────────────────────────────────
 // `contexte.json` explique les clés qu'on ne peut pas traduire en lisant seulement leur texte. Il
 // ne sert qu'à l'export vers le relecteur d'une nouvelle langue — donc personne ne le regarde au
