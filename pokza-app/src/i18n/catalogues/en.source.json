@@ -100,5 +100,8 @@
   "echo.commente_groupe": {
     "one": "{nom} et un autre ami ont commenté cette main",
     "other": "{nom} et {count} autres amis ont commenté cette main"
-  }
+  },
+  "pays.titre": "Choisir un pays",
+  "pays.rechercher": "Rechercher un pays…",
+  "pays.ne_pas_indiquer": "Ne pas indiquer"
 }

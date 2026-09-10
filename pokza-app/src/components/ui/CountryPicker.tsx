@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from './Pressable';
 import { borders, colors, radius, spacing } from '../../theme/theme';
-import { COUNTRIES, flagEmoji, type Country } from '../../data/countries';
+import { listeDesPays, flagEmoji, type Country } from '../../data/countries';
+import { useLangue, useT } from '../../i18n';
 import { fold } from '../../utils/recherche';
 import { LARGEUR_MAX } from './Colonne';
 
@@ -23,6 +24,10 @@ interface CountryPickerProps {
  * dérivé à l'affichage (cf. `flagEmoji`).
  */
 export function CountryPicker({ visible, selectedCode, onSelect, onClose, allowClear = true }: CountryPickerProps) {
+  const t = useT();
+  // La liste dépend de la langue : les noms viennent d'`Intl` et le TRI change (« Allemagne » en A,
+  // « Germany » en G). C'est aussi ce qui redessine le sélecteur quand on change de langue.
+  const { langue } = useLangue();
   const [query, setQuery] = useState('');
 
   // Repartir d'une recherche vierge à chaque ouverture.
@@ -31,10 +36,11 @@ export function CountryPicker({ visible, selectedCode, onSelect, onClose, allowC
   }, [visible]);
 
   const filtered = useMemo(() => {
+    const pays = listeDesPays();
     const q = fold(query.trim());
-    if (!q) return COUNTRIES;
-    return COUNTRIES.filter((c) => fold(c.name).includes(q) || c.code.toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return pays;
+    return pays.filter((c: Country) => fold(c.name).includes(q) || c.code.toLowerCase().includes(q));
+  }, [query, langue]);
 
   const renderItem = ({ item }: { item: Country }) => {
     const selected = item.code === selectedCode;
@@ -56,7 +62,7 @@ export function CountryPicker({ visible, selectedCode, onSelect, onClose, allowC
         <Pressable style={styles.backdropFill} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Choisir un pays</Text>
+            <Text style={styles.headerTitle}>{t('pays.titre')}</Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <Text style={styles.closeButton}>✕</Text>
             </Pressable>
@@ -66,7 +72,7 @@ export function CountryPicker({ visible, selectedCode, onSelect, onClose, allowC
             <TextInput
               autoComplete="off"
               style={styles.search}
-              placeholder="Rechercher un pays…"
+              placeholder={t('pays.rechercher')}
               value={query}
               onChangeText={setQuery}
               autoCapitalize="none"
@@ -84,7 +90,7 @@ export function CountryPicker({ visible, selectedCode, onSelect, onClose, allowC
             ListHeaderComponent={
               allowClear ? (
                 <Pressable style={styles.clearRow} onPress={() => onSelect(null)}>
-                  <Text style={styles.clearText}>Ne pas indiquer</Text>
+                  <Text style={styles.clearText}>{t('pays.ne_pas_indiquer')}</Text>
                   {!selectedCode && <Text style={styles.check}>✓</Text>}
                 </Pressable>
               ) : null

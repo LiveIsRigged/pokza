@@ -1,7 +1,17 @@
-// Liste ISO 3166-1 alpha-2 avec noms français, servant au sélecteur de pays du profil.
-// On ne stocke que le code à deux lettres (ex. « FR ») : le drapeau et le nom en sont dérivés à
-// l'affichage, ce qui évite de garder un emoji en base (rendu variable selon la plateforme) et
-// permet de retraduire le nom si besoin. Généré via Intl.DisplayNames('fr'), trié par nom.
+import { langueCourante } from '../i18n/traduire';
+import type { Langue } from '../i18n/langues';
+
+// Liste ISO 3166-1 alpha-2 servant au sélecteur de pays du profil. On ne stocke que le code à deux
+// lettres (ex. « FR ») : le drapeau ET LE NOM en sont dérivés à l'affichage.
+//
+// Les noms venaient d'une table figée en français, elle-même « générée via Intl.DisplayNames('fr') »
+// — la traduction ne fait que revenir à la source. Vérifié avant de basculer : sur les 243 pays,
+// `Intl.DisplayNames('fr')` rend AUJOURD'HUI exactement les mêmes noms que la table, zéro écart.
+// Le gain n'est pas le fichier économisé, c'est que chaque nouvelle langue arrive sans ressaisir
+// 243 noms — et sans risquer les fautes que 243 lignes recopiées à la main garantissent.
+//
+// Le TRI dépend de la langue : « Allemagne » se classe en A, « Germany » en G, « Deutschland » en D.
+// D'où `Intl.Collator`, qui connaît aussi les règles locales (le å suédois se classe après le z).
 
 export interface Country {
   /** Code ISO 3166-1 alpha-2, toujours en majuscules (ex. « FR », « BE »). */
@@ -9,253 +19,65 @@ export interface Country {
   name: string;
 }
 
-export const COUNTRIES: Country[] = [
-  { code: 'AF', name: 'Afghanistan' },
-  { code: 'ZA', name: 'Afrique du Sud' },
-  { code: 'AL', name: 'Albanie' },
-  { code: 'DZ', name: 'Algérie' },
-  { code: 'DE', name: 'Allemagne' },
-  { code: 'AD', name: 'Andorre' },
-  { code: 'AO', name: 'Angola' },
-  { code: 'AI', name: 'Anguilla' },
-  { code: 'AG', name: 'Antigua-et-Barbuda' },
-  { code: 'SA', name: 'Arabie saoudite' },
-  { code: 'AR', name: 'Argentine' },
-  { code: 'AM', name: 'Arménie' },
-  { code: 'AW', name: 'Aruba' },
-  { code: 'AU', name: 'Australie' },
-  { code: 'AT', name: 'Autriche' },
-  { code: 'AZ', name: 'Azerbaïdjan' },
-  { code: 'BS', name: 'Bahamas' },
-  { code: 'BH', name: 'Bahreïn' },
-  { code: 'BD', name: 'Bangladesh' },
-  { code: 'BB', name: 'Barbade' },
-  { code: 'BE', name: 'Belgique' },
-  { code: 'BZ', name: 'Belize' },
-  { code: 'BJ', name: 'Bénin' },
-  { code: 'BM', name: 'Bermudes' },
-  { code: 'BT', name: 'Bhoutan' },
-  { code: 'BY', name: 'Biélorussie' },
-  { code: 'BO', name: 'Bolivie' },
-  { code: 'BA', name: 'Bosnie-Herzégovine' },
-  { code: 'BW', name: 'Botswana' },
-  { code: 'BR', name: 'Brésil' },
-  { code: 'BN', name: 'Brunei' },
-  { code: 'BG', name: 'Bulgarie' },
-  { code: 'BF', name: 'Burkina Faso' },
-  { code: 'BI', name: 'Burundi' },
-  { code: 'KH', name: 'Cambodge' },
-  { code: 'CM', name: 'Cameroun' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'CV', name: 'Cap-Vert' },
-  { code: 'CL', name: 'Chili' },
-  { code: 'CN', name: 'Chine' },
-  { code: 'CY', name: 'Chypre' },
-  { code: 'CO', name: 'Colombie' },
-  { code: 'KM', name: 'Comores' },
-  { code: 'CG', name: 'Congo-Brazzaville' },
-  { code: 'CD', name: 'Congo-Kinshasa' },
-  { code: 'KP', name: 'Corée du Nord' },
-  { code: 'KR', name: 'Corée du Sud' },
-  { code: 'CR', name: 'Costa Rica' },
-  { code: 'CI', name: 'Côte d’Ivoire' },
-  { code: 'HR', name: 'Croatie' },
-  { code: 'CU', name: 'Cuba' },
-  { code: 'CW', name: 'Curaçao' },
-  { code: 'DK', name: 'Danemark' },
-  { code: 'DJ', name: 'Djibouti' },
-  { code: 'DM', name: 'Dominique' },
-  { code: 'EG', name: 'Égypte' },
-  { code: 'AE', name: 'Émirats arabes unis' },
-  { code: 'EC', name: 'Équateur' },
-  { code: 'ER', name: 'Érythrée' },
-  { code: 'ES', name: 'Espagne' },
-  { code: 'EE', name: 'Estonie' },
-  { code: 'SZ', name: 'Eswatini' },
-  { code: 'VA', name: 'État de la Cité du Vatican' },
-  { code: 'US', name: 'États-Unis' },
-  { code: 'ET', name: 'Éthiopie' },
-  { code: 'FJ', name: 'Fidji' },
-  { code: 'FI', name: 'Finlande' },
-  { code: 'FR', name: 'France' },
-  { code: 'GA', name: 'Gabon' },
-  { code: 'GM', name: 'Gambie' },
-  { code: 'GE', name: 'Géorgie' },
-  { code: 'GH', name: 'Ghana' },
-  { code: 'GI', name: 'Gibraltar' },
-  { code: 'GR', name: 'Grèce' },
-  { code: 'GD', name: 'Grenade' },
-  { code: 'GL', name: 'Groenland' },
-  { code: 'GP', name: 'Guadeloupe' },
-  { code: 'GU', name: 'Guam' },
-  { code: 'GT', name: 'Guatemala' },
-  { code: 'GG', name: 'Guernesey' },
-  { code: 'GN', name: 'Guinée' },
-  { code: 'GQ', name: 'Guinée équatoriale' },
-  { code: 'GW', name: 'Guinée-Bissau' },
-  { code: 'GY', name: 'Guyana' },
-  { code: 'GF', name: 'Guyane française' },
-  { code: 'HT', name: 'Haïti' },
-  { code: 'HN', name: 'Honduras' },
-  { code: 'HU', name: 'Hongrie' },
-  { code: 'CX', name: 'Île Christmas' },
-  { code: 'IM', name: 'Île de Man' },
-  { code: 'NF', name: 'Île Norfolk' },
-  { code: 'AX', name: 'Îles Åland' },
-  { code: 'KY', name: 'Îles Caïmans' },
-  { code: 'CC', name: 'Îles Cocos' },
-  { code: 'CK', name: 'Îles Cook' },
-  { code: 'FO', name: 'Îles Féroé' },
-  { code: 'FK', name: 'Îles Malouines' },
-  { code: 'MP', name: 'Îles Mariannes du Nord' },
-  { code: 'MH', name: 'Îles Marshall' },
-  { code: 'PN', name: 'Îles Pitcairn' },
-  { code: 'SB', name: 'Îles Salomon' },
-  { code: 'TC', name: 'Îles Turques-et-Caïques' },
-  { code: 'VG', name: 'Îles Vierges britanniques' },
-  { code: 'VI', name: 'Îles Vierges des États-Unis' },
-  { code: 'IN', name: 'Inde' },
-  { code: 'ID', name: 'Indonésie' },
-  { code: 'IQ', name: 'Irak' },
-  { code: 'IR', name: 'Iran' },
-  { code: 'IE', name: 'Irlande' },
-  { code: 'IS', name: 'Islande' },
-  { code: 'IL', name: 'Israël' },
-  { code: 'IT', name: 'Italie' },
-  { code: 'JM', name: 'Jamaïque' },
-  { code: 'JP', name: 'Japon' },
-  { code: 'JE', name: 'Jersey' },
-  { code: 'JO', name: 'Jordanie' },
-  { code: 'KZ', name: 'Kazakhstan' },
-  { code: 'KE', name: 'Kenya' },
-  { code: 'KG', name: 'Kirghizstan' },
-  { code: 'KI', name: 'Kiribati' },
-  { code: 'KW', name: 'Koweït' },
-  { code: 'RE', name: 'La Réunion' },
-  { code: 'LA', name: 'Laos' },
-  { code: 'LS', name: 'Lesotho' },
-  { code: 'LV', name: 'Lettonie' },
-  { code: 'LB', name: 'Liban' },
-  { code: 'LR', name: 'Liberia' },
-  { code: 'LY', name: 'Libye' },
-  { code: 'LI', name: 'Liechtenstein' },
-  { code: 'LT', name: 'Lituanie' },
-  { code: 'LU', name: 'Luxembourg' },
-  { code: 'MK', name: 'Macédoine du Nord' },
-  { code: 'MG', name: 'Madagascar' },
-  { code: 'MY', name: 'Malaisie' },
-  { code: 'MW', name: 'Malawi' },
-  { code: 'MV', name: 'Maldives' },
-  { code: 'ML', name: 'Mali' },
-  { code: 'MT', name: 'Malte' },
-  { code: 'MA', name: 'Maroc' },
-  { code: 'MQ', name: 'Martinique' },
-  { code: 'MU', name: 'Maurice' },
-  { code: 'MR', name: 'Mauritanie' },
-  { code: 'YT', name: 'Mayotte' },
-  { code: 'MX', name: 'Mexique' },
-  { code: 'FM', name: 'Micronésie' },
-  { code: 'MD', name: 'Moldavie' },
-  { code: 'MC', name: 'Monaco' },
-  { code: 'MN', name: 'Mongolie' },
-  { code: 'ME', name: 'Monténégro' },
-  { code: 'MS', name: 'Montserrat' },
-  { code: 'MZ', name: 'Mozambique' },
-  { code: 'MM', name: 'Myanmar (Birmanie)' },
-  { code: 'NA', name: 'Namibie' },
-  { code: 'NR', name: 'Nauru' },
-  { code: 'NP', name: 'Népal' },
-  { code: 'NI', name: 'Nicaragua' },
-  { code: 'NE', name: 'Niger' },
-  { code: 'NG', name: 'Nigeria' },
-  { code: 'NU', name: 'Niue' },
-  { code: 'NO', name: 'Norvège' },
-  { code: 'NC', name: 'Nouvelle-Calédonie' },
-  { code: 'NZ', name: 'Nouvelle-Zélande' },
-  { code: 'OM', name: 'Oman' },
-  { code: 'UG', name: 'Ouganda' },
-  { code: 'UZ', name: 'Ouzbékistan' },
-  { code: 'PK', name: 'Pakistan' },
-  { code: 'PW', name: 'Palaos' },
-  { code: 'PA', name: 'Panama' },
-  { code: 'PG', name: 'Papouasie-Nouvelle-Guinée' },
-  { code: 'PY', name: 'Paraguay' },
-  { code: 'NL', name: 'Pays-Bas' },
-  { code: 'BQ', name: 'Pays-Bas caribéens' },
-  { code: 'PE', name: 'Pérou' },
-  { code: 'PH', name: 'Philippines' },
-  { code: 'PL', name: 'Pologne' },
-  { code: 'PF', name: 'Polynésie française' },
-  { code: 'PR', name: 'Porto Rico' },
-  { code: 'PT', name: 'Portugal' },
-  { code: 'QA', name: 'Qatar' },
-  { code: 'HK', name: 'R.A.S. chinoise de Hong Kong' },
-  { code: 'MO', name: 'R.A.S. chinoise de Macao' },
-  { code: 'CF', name: 'République centrafricaine' },
-  { code: 'DO', name: 'République dominicaine' },
-  { code: 'RO', name: 'Roumanie' },
-  { code: 'GB', name: 'Royaume-Uni' },
-  { code: 'RU', name: 'Russie' },
-  { code: 'RW', name: 'Rwanda' },
-  { code: 'EH', name: 'Sahara occidental' },
-  { code: 'BL', name: 'Saint-Barthélemy' },
-  { code: 'KN', name: 'Saint-Christophe-et-Niévès' },
-  { code: 'SM', name: 'Saint-Marin' },
-  { code: 'MF', name: 'Saint-Martin' },
-  { code: 'SX', name: 'Saint-Martin (partie néerlandaise)' },
-  { code: 'PM', name: 'Saint-Pierre-et-Miquelon' },
-  { code: 'VC', name: 'Saint-Vincent-et-les Grenadines' },
-  { code: 'SH', name: 'Sainte-Hélène' },
-  { code: 'LC', name: 'Sainte-Lucie' },
-  { code: 'SV', name: 'Salvador' },
-  { code: 'WS', name: 'Samoa' },
-  { code: 'AS', name: 'Samoa américaines' },
-  { code: 'ST', name: 'Sao Tomé-et-Principe' },
-  { code: 'SN', name: 'Sénégal' },
-  { code: 'RS', name: 'Serbie' },
-  { code: 'SC', name: 'Seychelles' },
-  { code: 'SL', name: 'Sierra Leone' },
-  { code: 'SG', name: 'Singapour' },
-  { code: 'SK', name: 'Slovaquie' },
-  { code: 'SI', name: 'Slovénie' },
-  { code: 'SO', name: 'Somalie' },
-  { code: 'SD', name: 'Soudan' },
-  { code: 'SS', name: 'Soudan du Sud' },
-  { code: 'LK', name: 'Sri Lanka' },
-  { code: 'SE', name: 'Suède' },
-  { code: 'CH', name: 'Suisse' },
-  { code: 'SR', name: 'Suriname' },
-  { code: 'SJ', name: 'Svalbard et Jan Mayen' },
-  { code: 'SY', name: 'Syrie' },
-  { code: 'TJ', name: 'Tadjikistan' },
-  { code: 'TW', name: 'Taïwan' },
-  { code: 'TZ', name: 'Tanzanie' },
-  { code: 'TD', name: 'Tchad' },
-  { code: 'CZ', name: 'Tchéquie' },
-  { code: 'IO', name: 'Territoire britannique de l’océan Indien' },
-  { code: 'PS', name: 'Territoires palestiniens' },
-  { code: 'TH', name: 'Thaïlande' },
-  { code: 'TL', name: 'Timor oriental' },
-  { code: 'TG', name: 'Togo' },
-  { code: 'TK', name: 'Tokelau' },
-  { code: 'TO', name: 'Tonga' },
-  { code: 'TT', name: 'Trinité-et-Tobago' },
-  { code: 'TN', name: 'Tunisie' },
-  { code: 'TM', name: 'Turkménistan' },
-  { code: 'TR', name: 'Turquie' },
-  { code: 'TV', name: 'Tuvalu' },
-  { code: 'UA', name: 'Ukraine' },
-  { code: 'UY', name: 'Uruguay' },
-  { code: 'VU', name: 'Vanuatu' },
-  { code: 'VE', name: 'Venezuela' },
-  { code: 'VN', name: 'Viêt Nam' },
-  { code: 'WF', name: 'Wallis-et-Futuna' },
-  { code: 'YE', name: 'Yémen' },
-  { code: 'ZM', name: 'Zambie' },
-  { code: 'ZW', name: 'Zimbabwe' },
+const CODES: string[] = [
+  'AD', 'AE', 'AF', 'AG', 'AI', 'AL', 'AM', 'AO', 'AR', 'AS', 'AT', 'AU',
+  'AW', 'AX', 'AZ', 'BA', 'BB', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ',
+  'BL', 'BM', 'BN', 'BO', 'BQ', 'BR', 'BS', 'BT', 'BW', 'BY', 'BZ', 'CA',
+  'CC', 'CD', 'CF', 'CG', 'CH', 'CI', 'CK', 'CL', 'CM', 'CN', 'CO', 'CR',
+  'CU', 'CV', 'CW', 'CX', 'CY', 'CZ', 'DE', 'DJ', 'DK', 'DM', 'DO', 'DZ',
+  'EC', 'EE', 'EG', 'EH', 'ER', 'ES', 'ET', 'FI', 'FJ', 'FK', 'FM', 'FO',
+  'FR', 'GA', 'GB', 'GD', 'GE', 'GF', 'GG', 'GH', 'GI', 'GL', 'GM', 'GN',
+  'GP', 'GQ', 'GR', 'GT', 'GU', 'GW', 'GY', 'HK', 'HN', 'HR', 'HT', 'HU',
+  'ID', 'IE', 'IL', 'IM', 'IN', 'IO', 'IQ', 'IR', 'IS', 'IT', 'JE', 'JM',
+  'JO', 'JP', 'KE', 'KG', 'KH', 'KI', 'KM', 'KN', 'KP', 'KR', 'KW', 'KY',
+  'KZ', 'LA', 'LB', 'LC', 'LI', 'LK', 'LR', 'LS', 'LT', 'LU', 'LV', 'LY',
+  'MA', 'MC', 'MD', 'ME', 'MF', 'MG', 'MH', 'MK', 'ML', 'MM', 'MN', 'MO',
+  'MP', 'MQ', 'MR', 'MS', 'MT', 'MU', 'MV', 'MW', 'MX', 'MY', 'MZ', 'NA',
+  'NC', 'NE', 'NF', 'NG', 'NI', 'NL', 'NO', 'NP', 'NR', 'NU', 'NZ', 'OM',
+  'PA', 'PE', 'PF', 'PG', 'PH', 'PK', 'PL', 'PM', 'PN', 'PR', 'PS', 'PT',
+  'PW', 'PY', 'QA', 'RE', 'RO', 'RS', 'RU', 'RW', 'SA', 'SB', 'SC', 'SD',
+  'SE', 'SG', 'SH', 'SI', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SO', 'SR', 'SS',
+  'ST', 'SV', 'SX', 'SY', 'SZ', 'TC', 'TD', 'TG', 'TH', 'TJ', 'TK', 'TL',
+  'TM', 'TN', 'TO', 'TR', 'TT', 'TV', 'TW', 'TZ', 'UA', 'UG', 'US', 'UY',
+  'UZ', 'VA', 'VC', 'VE', 'VG', 'VI', 'VN', 'VU', 'WF', 'WS', 'YE', 'YT',
+  'ZA', 'ZM', 'ZW',
 ];
 
-const BY_CODE = new Map(COUNTRIES.map((c) => [c.code, c]));
+/** Une liste par langue : la calculer à chaque rendu du sélecteur coûterait 243 appels `Intl`. */
+const parLangue = new Map<Langue, { liste: Country[]; parCode: Map<string, Country> }>();
+
+function pour(langue: Langue) {
+  const dejaLa = parLangue.get(langue);
+  if (dejaLa) return dejaLa;
+
+  let nommer: (code: string) => string;
+  try {
+    const noms = new Intl.DisplayNames([langue], { type: 'region' });
+    // `of()` peut rendre `undefined` pour un code que la plateforme ne connaît pas.
+    nommer = (code) => noms.of(code) ?? code;
+  } catch {
+    // Moteur sans ICU (Hermes compilé sans, sur Android) : le sélecteur affiche les codes plutôt
+    // que rien, et la recherche par code continue de fonctionner.
+    nommer = (code) => code;
+  }
+
+  const liste = CODES.map((code) => ({ code, name: nommer(code) }));
+  try {
+    const collateur = new Intl.Collator(langue);
+    liste.sort((a, b) => collateur.compare(a.name, b.name));
+  } catch {
+    liste.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const calcule = { liste, parCode: new Map(liste.map((p) => [p.code, p])) };
+  parLangue.set(langue, calcule);
+  return calcule;
+}
+
+/** Les pays nommés et triés dans la langue courante. */
+export function listeDesPays(): Country[] {
+  return pour(langueCourante()).liste;
+}
 
 /**
  * Emoji drapeau dérivé du code : chaque lettre est convertie en son « symbole indicateur régional »
@@ -273,7 +95,7 @@ export function flagEmoji(code?: string | null): string {
 
 export function countryByCode(code?: string | null): Country | undefined {
   if (!code) return undefined;
-  return BY_CODE.get(code.toUpperCase());
+  return pour(langueCourante()).parCode.get(code.toUpperCase());
 }
 
 /** Libellé prêt à l'affichage : « 🇫🇷 France ». Renvoie '' si le code est absent ou inconnu. */

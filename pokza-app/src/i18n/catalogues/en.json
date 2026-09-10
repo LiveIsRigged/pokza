@@ -100,5 +100,8 @@
   "echo.commente_groupe": {
     "one": "{nom} and one other friend commented on this hand",
     "other": "{nom} and {count} other friends commented on this hand"
-  }
+  },
+  "pays.titre": "Choose a country",
+  "pays.rechercher": "Search for a country…",
+  "pays.ne_pas_indiquer": "Prefer not to say"
 }

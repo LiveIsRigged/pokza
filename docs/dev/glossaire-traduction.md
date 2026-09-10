@@ -56,6 +56,8 @@ table. Tu es le seul à savoir où passe la ligne pour ta langue — ne recopie 
 |---|---|---|
 | jours de la semaine, mois, dates longues | `utils/relativeDate.ts` | `Intl` les connaît dans toutes les langues — 19 entrées de moins à ressaisir par langue |
 | motifs des analyseurs d'import | `import/dialectes/` | ils reconnaissent l'anglais des rooms (`PRE-FLOP`, `SHOW DOWN`) : les traduire casserait l'import |
+| noms de pays | `data/countries.ts` | `Intl.DisplayNames` : 243 noms de moins à ressaisir par langue, et le tri se refait par langue |
+| noms de lieux | `data/lieux.ts` | des noms PROPRES — « Casino Barrière de Lille » s'appelle ainsi en allemand aussi |
 | « Pokza » | partout | nom du produit |
 
 **Piège mesuré** : `Intl` rend « lundi » en minuscule alors que l'app affiche « Lundi ». On remet
