@@ -11,6 +11,8 @@ import { passwordError } from './passwordRules';
 import { errorMessage } from '../utils/errorMessage';
 import { Turnstile, captchaEnabled, type TurnstileHandle } from './Turnstile';
 import { LegalScreen } from '../legal/LegalScreen';
+import { t, useT, type Cle } from '../i18n';
+import { decouper } from '../i18n/noeuds';
 import { useInstallPromptInset } from '../web/InstallPrompt';
 import type { LegalDocId } from '../legal/legalContent';
 import {
@@ -40,18 +42,18 @@ function onEnterKey(handler: () => void) {
 // Messages Supabase Auth en anglais, non traduits nulle part côté serveur — mappés vers le
 // français comme le reste des erreurs de l'app (cf. codes 23505/23514 dans CompleteProfileScreen).
 // Comparaison insensible à la casse : Supabase ne garantit pas la casse exacte d'une version à l'autre.
-const AUTH_ERROR_TRANSLATIONS: [string, string][] = [
-  ['invalid login credentials', 'Email ou mot de passe incorrect.'],
-  ['user already registered', 'Un compte existe déjà avec cet email.'],
-  ['password should be at least', 'Le mot de passe doit contenir au moins 6 caractères.'],
-  ['unable to validate email address', "Format d'email invalide."],
-  ['email not confirmed', "Confirme d'abord ton email avant de te connecter."],
+const AUTH_ERROR_TRANSLATIONS: [string, Cle][] = [
+  ['invalid login credentials', 'auth.erreur_identifiants'],
+  ['user already registered', 'auth.erreur_compte_existant'],
+  ['password should be at least', 'auth.erreur_mot_de_passe_court_serveur'],
+  ['unable to validate email address', 'auth.erreur_email_invalide'],
+  ['email not confirmed', 'auth.erreur_email_non_confirme'],
 ];
 
 function translateAuthError(message: string): string {
   const lower = message.toLowerCase();
   const match = AUTH_ERROR_TRANSLATIONS.find(([needle]) => lower.includes(needle));
-  if (match) return match[1];
+  if (match) return t(match[1]);
   // Aucune des tournures Supabase connues. Le repli renvoyait alors le message BRUT — donc en
   // anglais : « Failed to fetch » s'affichait tel quel en rouge sous le formulaire, observé en
   // direct pendant l'audit. `errorMessage` reconnaît en plus les pannes réseau et les formule en
@@ -74,6 +76,7 @@ function InputRow({ icon, trailing, children }: { icon: React.ReactNode; trailin
  *  version compacte (logo + « Pokza » en ligne, sans slogan ni pictos) en inscription, pour laisser
  *  respirer le formulaire plus long. */
 function BrandHeader({ compact }: { compact: boolean }) {
+  const t = useT();
   if (compact) {
     return (
       <View style={styles.brandRow}>
@@ -89,29 +92,31 @@ function BrandHeader({ compact }: { compact: boolean }) {
       </View>
       <Text style={styles.title}>Pokza</Text>
       <Text style={styles.tagline}>
-        Le moyen le plus <Text style={styles.taglineAccent}>simple</Text>
-        {'\n'}de <Text style={styles.taglineAccent}>partager</Text> ses mains de poker
+        {decouper(t('auth.accroche'), {
+          simple: <Text style={styles.taglineAccent}>{t('auth.accroche_simple')}</Text>,
+          partager: <Text style={styles.taglineAccent}>{t('auth.accroche_partager')}</Text>,
+        })}
       </Text>
       <View style={styles.featureRow}>
         <View style={styles.featureCol}>
           <View style={styles.featureIconBox}>
             <FeatureCardIcon size={38} />
           </View>
-          <Text style={styles.featureLabel}>Crée</Text>
+          <Text style={styles.featureLabel}>{t('auth.atout_creer')}</Text>
         </View>
         <View style={styles.featureDivider} />
         <View style={styles.featureCol}>
           <View style={styles.featureIconBox}>
             <FeatureShareIcon size={32} />
           </View>
-          <Text style={styles.featureLabel}>Partage</Text>
+          <Text style={styles.featureLabel}>{t('auth.atout_partager')}</Text>
         </View>
         <View style={styles.featureDivider} />
         <View style={styles.featureCol}>
           <View style={styles.featureIconBox}>
             <FeatureChatIcon size={32} />
           </View>
-          <Text style={styles.featureLabel}>Débat</Text>
+          <Text style={styles.featureLabel}>{t('auth.atout_debattre')}</Text>
         </View>
       </View>
     </>
@@ -119,6 +124,7 @@ function BrandHeader({ compact }: { compact: boolean }) {
 }
 
 export function AuthScreen() {
+  const t = useT();
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
@@ -190,7 +196,7 @@ export function AuthScreen() {
       // Ressaisie de l'email : garde-fou anti-faute de frappe (aucun mail de vérification n'est
       // envoyé). Comparaison normalisée — l'email est insensible à la casse et aux espaces autour.
       if (email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase()) {
-        setError('Les deux adresses email ne correspondent pas.');
+        setError(t('auth.erreur_emails_differents'));
         return;
       }
       const pwError = passwordError(password, confirmPassword);
@@ -201,13 +207,13 @@ export function AuthScreen() {
       // Garde aussi utile que le bouton désactivé : la touche Entrée déclenche handleSubmit
       // directement, sans passer par l'état "disabled" du bouton.
       if (!acceptedTerms) {
-        setError('Pour créer un compte, tu dois certifier avoir 18 ans et accepter les conditions.');
+        setError(t('auth.erreur_conditions'));
         return;
       }
     }
 
     if (captchaEnabled && !captchaToken) {
-      setError("Patiente une seconde : la vérification anti-robot n'est pas encore terminée.");
+      setError(t('auth.erreur_captcha_en_cours'));
       return;
     }
 
@@ -234,7 +240,7 @@ export function AuthScreen() {
     // Rédigé côté utilisateur : « activée sur le projet » était du vocabulaire d'implémentation.
     if (mode === 'signUp') {
       trackEvent('signed_up');
-      setSignUpMessage('Compte créé. Si tu reçois un email de confirmation, ouvre-le avant de te connecter.');
+      setSignUpMessage(t('auth.compte_cree'));
     }
   };
 
@@ -242,7 +248,7 @@ export function AuthScreen() {
     if (submitting) return; // même contournement par la touche Entrée que dans `handleSubmit`
     setError(null);
     if (captchaEnabled && !captchaToken) {
-      setError("Patiente une seconde : la vérification anti-robot n'est pas encore terminée.");
+      setError(t('auth.erreur_captcha_en_cours'));
       return;
     }
     setSubmitting(true);
@@ -267,20 +273,17 @@ export function AuthScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <BrandHeader compact />
-          <Text style={styles.subtitle}>Mot de passe oublié</Text>
+          <Text style={styles.subtitle}>{t('auth.oubli_titre')}</Text>
 
           {resetSent ? (
-            <Text style={styles.info}>
-              Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé —
-              vérifie ta boîte mail.
-            </Text>
+            <Text style={styles.info}>{t('auth.oubli_envoye')}</Text>
           ) : (
             <>
-              <Text style={styles.helper}>On t'envoie un lien par email pour choisir un nouveau mot de passe.</Text>
+              <Text style={styles.helper}>{t('auth.oubli_aide')}</Text>
               <InputRow icon={<MailIcon color={iconMuted} />}>
                 <TextInput
                   style={styles.inputField}
-                  placeholder="Email"
+                  placeholder={t('auth.champ_email')}
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -304,13 +307,13 @@ export function AuthScreen() {
                 onPress={handleForgotPassword}
                 disabled={submitting || !email || (captchaEnabled && !captchaToken)}
               >
-                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Envoyer le lien</Text>}
+                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{t('auth.oubli_bouton')}</Text>}
               </Pressable>
             </>
           )}
 
           <Pressable onPress={() => switchMode('signIn')} hitSlop={8}>
-            <Text style={styles.toggleText}>← Retour à la connexion</Text>
+            <Text style={styles.toggleText}>{t('auth.retour_connexion')}</Text>
           </Pressable>
         </ScrollView>
       </View>
@@ -328,7 +331,7 @@ export function AuthScreen() {
         <InputRow icon={<MailIcon color={iconMuted} />}>
           <TextInput
             style={styles.inputField}
-            placeholder="Email"
+            placeholder={t('auth.champ_email')}
             placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
@@ -348,7 +351,7 @@ export function AuthScreen() {
             <TextInput
               ref={confirmEmailRef}
               style={styles.inputField}
-              placeholder="Confirme ton email"
+              placeholder={t('auth.champ_confirme_email')}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
@@ -375,7 +378,7 @@ export function AuthScreen() {
           <TextInput
             ref={passwordRef}
             style={styles.inputField}
-            placeholder="Mot de passe"
+            placeholder={t('auth.champ_mot_de_passe')}
             placeholderTextColor={colors.textSecondary}
             secureTextEntry={!showPassword}
             autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
@@ -393,7 +396,7 @@ export function AuthScreen() {
             <TextInput
               ref={confirmPasswordRef}
               style={styles.inputField}
-              placeholder="Confirme le mot de passe"
+              placeholder={t('auth.champ_confirme_mot_de_passe')}
               placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showPassword}
               autoComplete="new-password"
@@ -413,22 +416,25 @@ export function AuthScreen() {
               {acceptedTerms && <Text style={styles.checkboxTick}>✓</Text>}
             </View>
             <Text style={styles.consentText}>
-              Je certifie avoir 18 ans et j'accepte les{' '}
-              <Text style={styles.consentLink} onPress={() => setLegalDoc('cgu')}>
-                conditions d'utilisation
-              </Text>{' '}
-              et la{' '}
-              <Text style={styles.consentLink} onPress={() => setLegalDoc('confidentialite')}>
-                politique de confidentialité
-              </Text>
-              .
+              {decouper(t('auth.consentement'), {
+                cgu: (
+                  <Text style={styles.consentLink} onPress={() => setLegalDoc('cgu')}>
+                    {t('auth.consentement_cgu')}
+                  </Text>
+                ),
+                confidentialite: (
+                  <Text style={styles.consentLink} onPress={() => setLegalDoc('confidentialite')}>
+                    {t('auth.consentement_confidentialite')}
+                  </Text>
+                ),
+              })}
             </Text>
           </Pressable>
         )}
 
         {mode === 'signIn' && (
           <Pressable onPress={() => switchMode('forgotPassword')} hitSlop={8}>
-            <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
+            <Text style={styles.forgotPasswordText}>{t('auth.mot_de_passe_oublie')}</Text>
           </Pressable>
         )}
 
@@ -459,21 +465,26 @@ export function AuthScreen() {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitText}>{mode === 'signIn' ? 'Se connecter' : "S'inscrire"}</Text>
+            <Text style={styles.submitText}>{t(mode === 'signIn' ? 'auth.se_connecter' : 'auth.s_inscrire')}</Text>
           )}
         </Pressable>
 
         <Pressable onPress={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')} hitSlop={8}>
           <Text style={styles.toggleText}>
-            {mode === 'signIn' ? 'Pas de compte ? ' : 'Déjà un compte ? '}
-            <Text style={styles.toggleAccent}>{mode === 'signIn' ? 'Crée-en un' : 'Connecte-toi'}</Text>
+            {mode === 'signIn'
+              ? decouper(t('auth.bascule_vers_inscription'), {
+                  lien: <Text style={styles.toggleAccent}>{t('auth.bascule_vers_inscription_lien')}</Text>,
+                })
+              : decouper(t('auth.bascule_vers_connexion'), {
+                  lien: <Text style={styles.toggleAccent}>{t('auth.bascule_vers_connexion_lien')}</Text>,
+                })}
           </Text>
         </Pressable>
 
         {reportTarget && (
           <Pressable onPress={() => openPublicReport(reportTarget)} hitSlop={8}>
             <Text style={styles.reportLink}>
-              {reportTarget.type === 'post' ? 'Signaler ce contenu sans compte' : 'Signaler ce profil sans compte'}
+              {t(reportTarget.type === 'post' ? 'auth.signaler_contenu_sans_compte' : 'auth.signaler_profil_sans_compte')}
             </Text>
           </Pressable>
         )}

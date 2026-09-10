@@ -26,6 +26,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
+import { useT } from '../i18n';
 
 const SITE_KEY = process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -86,6 +87,7 @@ export const Turnstile = forwardRef<TurnstileHandle, Props>(function Turnstile(
   // On cible le conteneur par son `id` DOM plutôt que par une ref React : sous react-native-web,
   // la ref d'une `View` renvoie une instance interne, pas l'élément DOM que Turnstile attend
   // (vérifié — `render()` ne créait aucun widget). `nativeID` produit un vrai attribut `id`.
+  const t = useT();
   const domId = useRef(`turnstile-${Math.random().toString(36).slice(2)}`).current;
   const widgetId = useRef<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -129,18 +131,14 @@ export const Turnstile = forwardRef<TurnstileHandle, Props>(function Turnstile(
           // n'avait aucun moyen de deviner qu'il fallait recharger la page.
           'error-callback': () => {
             callbacks.current.onToken(null);
-            callbacks.current.onError?.(
-              "La vérification anti-robot a échoué. Recharge la page pour réessayer.",
-            );
+            callbacks.current.onError?.(t('auth.captcha_echec'));
           },
         });
       })
       .catch(() => {
         if (cancelled) return;
         setFailed(true);
-        callbacks.current.onError?.(
-          "La vérification anti-robot n'a pas pu se charger. Vérifie ta connexion ou désactive ton bloqueur de scripts.",
-        );
+        callbacks.current.onError?.(t('auth.captcha_indisponible'));
       });
 
     return () => {

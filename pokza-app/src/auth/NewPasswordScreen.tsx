@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { borders, colors, radius } from '../theme/theme';
 import { clearDeepLinkFromUrl } from '../navigation/deepLink';
 import { passwordError } from './passwordRules';
+import { useT } from '../i18n';
 
 // Même limite de `onSubmitEditing` sur web que dans AuthScreen — cf. sa fonction `onEnterKey`.
 function onEnterKey(handler: () => void) {
@@ -23,6 +24,7 @@ interface NewPasswordScreenProps {
  * (cf. `passwordRecovery` dans state/auth) — c'est une session valide comme une autre, donc rien
  * d'autre ne forcerait ce détour sans ce garde-fou explicite dans App.tsx. */
 export function NewPasswordScreen({ onDone, onCancel }: NewPasswordScreenProps) {
+  const t = useT();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -55,13 +57,13 @@ export function NewPasswordScreen({ onDone, onCancel }: NewPasswordScreenProps) 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Pokza</Text>
-      <Text style={styles.subtitle}>Choisis un nouveau mot de passe</Text>
+      <Text style={styles.subtitle}>{t('motdepasse.nouveau_titre')}</Text>
 
       <TextInput
         style={styles.input}
         autoComplete="new-password"
         textContentType="newPassword"
-        placeholder="Nouveau mot de passe"
+        placeholder={t('motdepasse.champ_nouveau')}
         placeholderTextColor={colors.textSecondary}
         secureTextEntry
         returnKeyType="next"
@@ -76,7 +78,7 @@ export function NewPasswordScreen({ onDone, onCancel }: NewPasswordScreenProps) 
         style={styles.input}
         autoComplete="new-password"
         textContentType="newPassword"
-        placeholder="Confirme le mot de passe"
+        placeholder={t('auth.champ_confirme_mot_de_passe')}
         placeholderTextColor={colors.textSecondary}
         secureTextEntry
         returnKeyType="go"
@@ -93,11 +95,11 @@ export function NewPasswordScreen({ onDone, onCancel }: NewPasswordScreenProps) 
         onPress={handleSubmit}
         disabled={submitting || !password || !confirmPassword}
       >
-        {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Valider</Text>}
+        {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{t('motdepasse.valider')}</Text>}
       </Pressable>
 
       <Pressable onPress={handleCancel} hitSlop={8}>
-        <Text style={styles.cancelText}>Annuler</Text>
+        <Text style={styles.cancelText}>{t('commun.annuler')}</Text>
       </Pressable>
     </View>
   );

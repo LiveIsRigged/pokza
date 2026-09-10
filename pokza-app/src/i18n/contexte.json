@@ -1,0 +1,19 @@
+{
+  "_lisez_moi": "Notes destinées à qui traduira vers une NOUVELLE langue. On n'écrit ici que les clés qu'on ne peut pas traduire juste en lisant leur texte : un mot isolé, un morceau de phrase, deux clés qui se ressemblent, un chiffre qui vient d'ailleurs. Ce fichier n'est jamais embarqué dans l'app — il ne sert qu'à l'export destiné au relecteur.",
+  "auth.accroche": "Accroche de la page d'accueil, sur DEUX lignes (le \\n est volontaire, il équilibre le bloc). Les deux repères sont des mots mis en valeur en couleur : ils doivent rester des mots de la phrase, pas des ajouts.",
+  "auth.accroche_simple": "Le mot mis en valeur dans {simple} de auth.accroche. Doit s'accorder avec la phrase autour.",
+  "auth.accroche_partager": "Le mot mis en valeur dans {partager} de auth.accroche. Verbe, doit s'accorder avec la phrase autour.",
+  "auth.atout_creer": "Un seul mot sous une icône, dans une rangée de trois (Crée / Partage / Débat). Très peu de place : un mot court, impératif ou nom d'action.",
+  "auth.atout_partager": "Voir auth.atout_creer — même rangée, même contrainte de largeur.",
+  "auth.atout_debattre": "Voir auth.atout_creer — même rangée, même contrainte de largeur.",
+  "auth.consentement_cgu": "Texte du lien à l'intérieur de la phrase de consentement : en MINUSCULES et au milieu d'une phrase, pas un titre. Doit désigner le même document que « Conditions d'utilisation » dans les textes légaux.",
+  "auth.consentement_confidentialite": "Idem : lien au milieu d'une phrase, minuscules, et désigne le même document que « Politique de confidentialité ».",
+  "auth.se_connecter": "Le BOUTON principal du formulaire. En anglais il se dit comme auth.bascule_vers_connexion_lien, mais ce sont deux endroits différents — une langue peut vouloir les distinguer.",
+  "auth.bascule_vers_connexion_lien": "Le LIEN en bas de page pour repasser au formulaire de connexion. Voir auth.se_connecter.",
+  "auth.retour_connexion": "Commence par une flèche ←, à garder telle quelle en tête de texte.",
+  "auth.erreur_mot_de_passe_court_serveur": "PIÈGE : ce « 6 » vient du serveur d'authentification, pas de nous. Notre propre minimum est de 8 (motdepasse.trop_court). Ne pas aligner les deux chiffres.",
+  "motdepasse.trop_court": "Le {n} est notre minimum à nous (8 aujourd'hui). Ne pas écrire le chiffre en dur.",
+  "reglages.section_notifications": "Titre de section. La ligne juste en dessous (reglages.ligne_notifications) porte le même mot en français ; une autre langue peut vouloir les différencier.",
+  "reglages.version": "{version} est le numéro de version de l'app. « Pokza » est le nom du produit et ne se traduit jamais.",
+  "langue.automatique": "L'entrée de liste qui rend le suivi automatique réversible : elle veut dire « suivre le réglage du téléphone », pas « détecter la langue »."
+}

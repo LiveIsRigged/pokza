@@ -114,13 +114,34 @@ const fichiers = [];
 fichiers.push(path.join(RACINE, 'App.tsx'));
 
 const code = fichiers.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
-const appelees = new Set();
-for (const m of code.matchAll(/\bt\(\s*'([^']+)'/g)) appelees.add(m[1]);
-const jamais = Object.keys(fr).filter((c) => !appelees.has(c));
+// On relève TOUTE chaîne littérale, pas seulement ce qui suit `t(` : une clé passe aussi par un
+// ternaire (`t(x ? 'a' : 'b')`) ou par une table de correspondance. Chercher `t('...')` seul
+// déclarait neuf clés mortes qui étaient bien vivantes — un garde-fou qui crie à tort finit ignoré.
+// Les clés sont préfixées et pointées, une collision fortuite avec une autre chaîne est exclue.
+const litterales = new Set();
+for (const m of code.matchAll(/'([^'\n]+)'/g)) litterales.add(m[1]);
+for (const m of code.matchAll(/"([^"\n]+)"/g)) litterales.add(m[1]);
+const jamais = Object.keys(fr).filter((c) => !litterales.has(c));
 if (jamais.length > 0) {
   console.log(`Clés jamais appelées (${jamais.length}) — informatif, pas bloquant :`);
   for (const c of jamais) console.log(`      ${c}`);
   console.log('');
+}
+
+// ── Notes de contexte devenues orphelines ────────────────────────────────────────────────────────
+// `contexte.json` explique les clés qu'on ne peut pas traduire en lisant seulement leur texte. Il
+// ne sert qu'à l'export vers le relecteur d'une nouvelle langue — donc personne ne le regarde au
+// quotidien, donc il pourrit en silence si rien ne le surveille.
+const cheminContexte = path.join(RACINE, 'src', 'i18n', 'contexte.json');
+if (fs.existsSync(cheminContexte)) {
+  const contexte = JSON.parse(fs.readFileSync(cheminContexte, 'utf8'));
+  const orphelines = Object.keys(contexte).filter((c) => !c.startsWith('_') && !(c in fr));
+  if (orphelines.length > 0) {
+    trous += orphelines.length;
+    console.log(`Notes de contexte orphelines (${orphelines.length}) — la clé n'existe plus :`);
+    for (const c of orphelines) console.log(`      ${c}`);
+    console.log('');
+  }
 }
 
 // ── `t` nu dans un composant : le texte resterait dans l'ancienne langue après un changement ─────

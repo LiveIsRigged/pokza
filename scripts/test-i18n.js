@@ -9,6 +9,8 @@
 //   4. les pluriels passent par `Intl.PluralRules`, donc le russe obtient bien ses TROIS formes —
 //      c'est ce qui interdit d'écrire soi-même « n > 1 ? 's' : '' », qui est faux hors français ;
 //   5. une catégorie que le traducteur n'a pas remplie retombe sur `other`, pas sur du vide ;
+//   7. une phrase dont un bout est un lien reste ENTIÈRE dans le catalogue : le traducteur peut
+//      déplacer le lien où sa langue l'exige, y compris en inversant deux repères ;
 //   6. la langue de démarrage suit l'ORDRE DE PRÉFÉRENCE de l'appareil : un Suisse réglé sur
 //      [de, fr] reçoit du français, pas de l'anglais — et une liste sans aucune langue servie
 //      donne l'anglais (décision du 10/09/2026).
@@ -19,7 +21,7 @@
 //     --resolveJsonModule --skipLibCheck
 // puis : node scripts/test-i18n.js
 
-const { t, rendre, interpoler, categorie, poserLangue, choisirLangue } = require('./i18n/i18n/traduire');
+const { t, rendre, interpoler, categorie, poserLangue, choisirLangue, segmenter } = require('./i18n/i18n/traduire');
 
 let echecs = 0;
 function verifier(nom, obtenu, attendu) {
@@ -73,6 +75,25 @@ verifier('appareil suisse [de, fr] → fr', choisirLangue(['de', 'fr']), 'fr');
 verifier('appareil allemand seul → anglais', choisirLangue(['de']), 'en');
 verifier('aucune préférence → anglais', choisirLangue([]), 'en');
 verifier('codes nuls ignorés', choisirLangue([null, undefined, 'fr']), 'fr');
+
+// 8. phrases a trous — celles dont un morceau est un lien ou un mot en couleur
+const seg = (g) => JSON.stringify(segmenter(g));
+verifier(
+  'deux reperes dans une phrase',
+  seg("j'accepte les {cgu} et la {conf}."),
+  JSON.stringify([{ texte: "j'accepte les " }, { repere: 'cgu' }, { texte: ' et la ' }, { repere: 'conf' }, { texte: '.' }])
+);
+verifier('repere en tete', seg('{lien} pour commencer'), JSON.stringify([{ repere: 'lien' }, { texte: ' pour commencer' }]));
+verifier('repere en fin', seg('Pas de compte ? {lien}'), JSON.stringify([{ texte: 'Pas de compte ? ' }, { repere: 'lien' }]));
+verifier('reperes colles', seg('{a}{b}'), JSON.stringify([{ repere: 'a' }, { repere: 'b' }]));
+verifier('aucun repere', seg('Se connecter'), JSON.stringify([{ texte: 'Se connecter' }]));
+verifier('gabarit vide', seg(''), JSON.stringify([]));
+// L'ORDRE des reperes doit pouvoir changer : c'est tout l'interet de garder la phrase entiere.
+verifier(
+  'ordre inverse par la traduction',
+  seg('the {conf} and the {cgu}'),
+  JSON.stringify([{ texte: 'the ' }, { repere: 'conf' }, { texte: ' and the ' }, { repere: 'cgu' }])
+);
 
 console.log(echecs === 0 ? '\nTout passe.' : `\n${echecs} échec(s).`);
 process.exit(echecs === 0 ? 0 : 1);

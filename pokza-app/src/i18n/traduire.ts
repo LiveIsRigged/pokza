@@ -94,6 +94,33 @@ export function t(cle: Cle, variables?: Variables): string {
   return rendre(message, langueActive, variables);
 }
 
+/** Un morceau de gabarit : du texte brut, ou un repère nommé à remplacer par autre chose. */
+export type Segment = { texte: string } | { repere: string };
+
+/**
+ * Découpe « Je certifie … j'accepte les {cgu} et la {confidentialite}. » en morceaux.
+ *
+ * Sert aux phrases dont un bout n'est pas du texte : un mot en couleur, un lien qui ouvre les CGU.
+ * Le réflexe — couper la phrase en trois clés et recoller — ne survit pas à la traduction : l'ordre
+ * des mots change d'une langue à l'autre, et « et la » tout seul dans une liste ne veut rien dire
+ * pour un traducteur. La phrase reste donc ENTIÈRE, avec des repères que le traducteur déplace.
+ *
+ * Pur exprès (pas de React ici) : c'est `noeuds.tsx` qui transforme les segments en éléments.
+ */
+export function segmenter(gabarit: string): Segment[] {
+  const sortie: Segment[] = [];
+  let reste = gabarit;
+  for (;;) {
+    const trouve = /\{(\w+)\}/.exec(reste);
+    if (!trouve) break;
+    if (trouve.index > 0) sortie.push({ texte: reste.slice(0, trouve.index) });
+    sortie.push({ repere: trouve[1] });
+    reste = reste.slice(trouve.index + trouve[0].length);
+  }
+  if (reste.length > 0) sortie.push({ texte: reste });
+  return sortie;
+}
+
 /**
  * Première langue préférée de l'appareil que nous servons réellement.
  *
