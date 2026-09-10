@@ -19,6 +19,7 @@ import {
 } from '../constants/limits';
 import { normaliserBuyIn } from '../utils/buyIn';
 import { borders, colors } from '../theme/theme';
+import { useT } from '../i18n';
 
 export interface PostEdits {
   title: string;
@@ -85,6 +86,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
   { post, mode = 'edit', onSave, onCancel, groups, onCreateGroup },
   ref
 ) {
+  const t = useT();
   const [title, setTitle] = useState(post.title);
   const [description, setDescription] = useState(post.description ?? '');
   const [location, setLocation] = useState(post.location ?? '');
@@ -189,7 +191,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
               sur un mur invisible. Il affiche aussi "52/40" sur une ancienne main trop longue —
               c est voulu : ca lui dit exactement combien enlever pour pouvoir enregistrer. */}
           <View style={styles.labelRow}>
-            <Text style={[styles.label, styles.labelNoMargin]}>Titre</Text>
+            <Text style={[styles.label, styles.labelNoMargin]}>{t('post.titre_champ')}</Text>
             <Text style={[styles.counter, titleTooLong && styles.counterOver]}>
               {title.length}/{TITLE_MAX_LENGTH}
             </Text>
@@ -197,7 +199,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
           <TextInput autoComplete="off" style={styles.input} maxLength={TITLE_MAX_LENGTH} value={title} onChangeText={setTitle} />
 
           <View style={styles.labelRow}>
-            <Text style={[styles.label, styles.labelNoMargin]}>Description (optionnel)</Text>
+            <Text style={[styles.label, styles.labelNoMargin]}>{t('createur.description_optionnel')}</Text>
             <Text style={styles.counter}>
               {description.length}/{DESCRIPTION_MAX_LENGTH}
             </Text>
@@ -212,26 +214,26 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
             textAlignVertical="top"
           />
 
-          <Text style={styles.label}>Lieu (optionnel)</Text>
+          <Text style={styles.label}>{t('createur.lieu')}</Text>
           <LocationInput
             style={styles.input}
-            placeholder="Ex : Club Circus, Bruxelles"
+            placeholder={t('createur.lieu_exemple')}
             value={location}
             onChangeText={setLocation}
           />
 
           {isTournament && (
             <>
-              <Text style={styles.label}>Nom du tournoi (optionnel)</Text>
+              <Text style={styles.label}>{t('createur.nom_du_tournoi')}</Text>
               <TextInput
                 autoComplete="off"
                 style={styles.input}
-                placeholder="Ex : Main Event"
+                placeholder={t('createur.tournoi_exemple')}
                 maxLength={TOURNAMENT_NAME_MAX_LENGTH}
                 value={tournamentName}
                 onChangeText={setTournamentName}
               />
-              <Text style={styles.label}>Buy-in (optionnel)</Text>
+              <Text style={styles.label}>{t('createur.buy_in')}</Text>
               <TextInput
                 autoComplete="off"
                 style={styles.input}
@@ -248,13 +250,13 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
                   if (range.length <= BUY_IN_MAX_LENGTH) setBuyIn(range);
                 }}
               />
-              <Text style={styles.label}>Niveau de blindes (optionnel)</Text>
+              <Text style={styles.label}>{t('createur.niveau_de_blindes')}</Text>
               {/* Champ libre ici, alors que la création impose un numéro seul (LevelNumberInput).
                   La limite couvre le format réellement stocké — « Niveau » + 3 chiffres. */}
               <TextInput
                 autoComplete="off"
                 style={styles.input}
-                placeholder="Ex : Niveau 12"
+                placeholder={t('post.niveau_exemple')}
                 maxLength={LEVEL_MAX_LENGTH}
                 value={level}
                 onChangeText={setLevel}
@@ -262,11 +264,11 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
             </>
           )}
 
-          <Text style={styles.label}>Question au vote (optionnel)</Text>
+          <Text style={styles.label}>{t('createur.question_vote')}</Text>
           <TextInput
             autoComplete="off"
             style={styles.input}
-            placeholder="Ex : Tu payes cette river ?"
+            placeholder={t('createur.question_vote_exemple')}
             maxLength={VOTE_QUESTION_MAX_LENGTH}
             value={voteQuestion}
             onChangeText={setVoteQuestion}
@@ -274,7 +276,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
 
           {hasVoteQuestion && (
             <>
-              <Text style={styles.label}>Réponses possibles (2 à 4)</Text>
+              <Text style={styles.label}>{t('createur.reponses_possibles')}</Text>
               {[0, 1, 2, 3].map((i) => (
                 <TextInput
                   autoComplete="off"
@@ -289,7 +291,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
             </>
           )}
 
-          <Text style={styles.label}>Visibilité</Text>
+          <Text style={styles.label}>{t('createur.visibilite')}</Text>
 
           {/* Une PHRASE à la place des chips, et pas des chips grisés ni rien du tout : l'auteur
               qui cherche ce réglage doit comprendre pourquoi il a disparu — et découvrir la sortie
@@ -308,10 +310,10 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
           ) : (
             <>
               <View style={styles.row}>
-                <Chip label="Public" selected={visibility === 'public'} onPress={() => setVisibility('public')} />
-                <Chip label="Privé" selected={visibility === 'private'} onPress={() => setVisibility('private')} />
+                <Chip label={t('createur.public')} selected={visibility === 'public'} onPress={() => setVisibility('public')} />
+                <Chip label={t('createur.prive')} selected={visibility === 'private'} onPress={() => setVisibility('private')} />
                 <Chip
-                  label="Groupe privé"
+                  label={t('createur.groupe_prive')}
                   selected={visibility === 'group'}
                   onPress={() => {
                     setVisibility('group');

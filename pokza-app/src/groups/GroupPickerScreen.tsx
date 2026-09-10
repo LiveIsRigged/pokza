@@ -5,6 +5,7 @@ import { borders, colors, radius, spacing, tints, typography } from '../theme/th
 import { Avatar } from '../components/ui/Avatar';
 import { NewGroupForm } from './NewGroupForm';
 import type { Group } from '../data/groups';
+import { useT } from '../i18n';
 
 interface GroupPickerScreenProps {
   /** Déjà ordonnés, le plus récemment utilisé en tête. */
@@ -25,6 +26,7 @@ interface GroupPickerScreenProps {
  * en-tête de celle-ci, sinon il perd le focus à chaque frappe quand la liste se re-rend.
  */
 export function GroupPickerScreen({ groups, selectedId, onSelect, onCreateGroup, onBack }: GroupPickerScreenProps) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -40,13 +42,13 @@ export function GroupPickerScreen({ groups, selectedId, onSelect, onCreateGroup,
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Choisir un groupe privé</Text>
+        <Text style={styles.title}>{t('groupe.choisir_titre')}</Text>
       </View>
 
       <TextInput
         autoComplete="off"
         style={styles.search}
-        placeholder="Rechercher un groupe"
+        placeholder={t('groupe.rechercher')}
         value={query}
         onChangeText={setQuery}
         autoCorrect={false}
@@ -57,7 +59,7 @@ export function GroupPickerScreen({ groups, selectedId, onSelect, onCreateGroup,
         keyExtractor={(g) => g.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.emptyText}>Aucun groupe ne porte ce nom.</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{t('groupe.aucun_resultat')}</Text>}
         renderItem={({ item }) => (
           <Pressable
             style={[styles.groupRow, item.id === selectedId && styles.groupRowSelected]}
@@ -81,7 +83,7 @@ export function GroupPickerScreen({ groups, selectedId, onSelect, onCreateGroup,
             />
           ) : (
             <Pressable style={styles.createButton} onPress={() => setCreating(true)}>
-              <Text style={styles.createButtonText}>+ Créer un groupe privé</Text>
+              <Text style={styles.createButtonText}>{t('groupe.creer')}</Text>
             </Pressable>
           )
         }

@@ -8,6 +8,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { NewGroupForm } from './NewGroupForm';
 import { formatRelativeDate } from '../utils/relativeDate';
 import { formatBadgeCount } from '../components/ui/SideMenu';
+import { useT } from '../i18n';
 
 /**
  * Nombre de groupes à partir duquel le champ de recherche apparaît. Une ligne fait 64 pt et
@@ -37,6 +38,7 @@ interface GroupsListScreenProps {
 }
 
 export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: GroupsListScreenProps) {
+  const t = useT();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Mes groupes privés</Text>
+        <Text style={styles.title}>{t('menu.mes_groupes_prives')}</Text>
       </View>
 
       {error && <Text style={styles.statusText}>{error}</Text>}
@@ -94,7 +96,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
         <TextInput
           autoComplete="off"
           style={styles.search}
-          placeholder="Rechercher un groupe"
+          placeholder={t('groupe.rechercher')}
           value={query}
           onChangeText={setQuery}
           autoCorrect={false}
@@ -144,7 +146,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
             <NewGroupForm onCreate={handleCreate} onCancel={() => setCreating(false)} />
           ) : (
             <Pressable style={styles.createButton} onPress={() => setCreating(true)}>
-              <Text style={styles.createButtonText}>+ Créer un groupe privé</Text>
+              <Text style={styles.createButtonText}>{t('groupe.creer')}</Text>
             </Pressable>
           )
         }

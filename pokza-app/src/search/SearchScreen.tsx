@@ -9,6 +9,7 @@ import { fetchFriends } from '../data/friends';
 import { fetchGroupMembers } from '../data/groups';
 import { Popover } from '../components/ui/Popover';
 import { autoFocusUtile } from '../web/clavierVirtuel';
+import { useT } from '../i18n';
 
 interface SearchScreenProps {
   onBack: () => void;
@@ -40,6 +41,7 @@ export function SearchScreen({
   currentUserId,
   excludeGroupId,
 }: SearchScreenProps) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ProfileSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -110,7 +112,7 @@ export function SearchScreen({
   const renderInput = (style: any) => (
     <TextInput
       autoComplete="off"
-      aria-label="Rechercher un utilisateur"
+      aria-label={t('recherche.titre')}
       // On cherche un PSEUDO, qui n'est le plus souvent pas un mot de la langue : la correction
       // automatique n'a rien a y faire, elle ne peut que dégrader la saisie. Tranché par Victor le
       // 09/09/2026. Même choix que la recherche de groupe et le sélecteur de pays.
@@ -126,7 +128,7 @@ export function SearchScreen({
       style={style}
       value={query}
       onChangeText={setQuery}
-      placeholder="Rechercher un utilisateur…"
+      placeholder={t('recherche.placeholder')}
       autoCapitalize="none"
       autoFocus={autoFocusUtile()}
     />
@@ -140,7 +142,7 @@ export function SearchScreen({
         style={variant === 'sheet' ? styles.listSheet : styles.listScreen}
         contentContainerStyle={styles.resultsContent}
       >
-        {showFriendsList && <Text style={styles.friendsHint}>Tes amis</Text>}
+        {showFriendsList && <Text style={styles.friendsHint}>{t('recherche.tes_amis')}</Text>}
         {loading ? (
           <ActivityIndicator style={styles.loader} color={colors.action} />
         ) : displayed.length === 0 ? (
@@ -171,7 +173,7 @@ export function SearchScreen({
               </View>
               {inviteMode && (
                 <Pressable style={styles.inviteButton} onPress={() => handleInvite(profile.id)} hitSlop={8}>
-                  <Text style={styles.inviteButtonText}>Inviter</Text>
+                  <Text style={styles.inviteButtonText}>{t('groupe.inviter')}</Text>
                 </Pressable>
               )}
             </Pressable>

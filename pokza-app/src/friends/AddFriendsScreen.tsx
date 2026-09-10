@@ -8,6 +8,7 @@ import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, ti
 import { Chip } from '../creator/Chip';
 import { Avatar } from '../components/ui/Avatar';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../utils/share';
+import { useT } from '../i18n';
 import {
   acceptFriendRequest,
   deleteFriendRelation,
@@ -30,6 +31,7 @@ interface AddFriendsScreenProps {
 type Tab = 'code' | 'scan' | 'suggestions';
 
 export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: AddFriendsScreenProps) {
+  const t = useT();
   const [tab, setTab] = useState<Tab>('suggestions');
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
 
@@ -50,13 +52,13 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Ajouter des amis</Text>
+        <Text style={styles.title}>{t('menu.ajouter_des_amis')}</Text>
       </View>
 
       <View style={styles.tabsRow}>
-        <Chip label="Suggestions" selected={tab === 'suggestions'} onPress={() => setTab('suggestions')} />
-        <Chip label="Mon code" selected={tab === 'code'} onPress={() => setTab('code')} />
-        <Chip label="Scanner" selected={tab === 'scan'} onPress={() => setTab('scan')} />
+        <Chip label={t('amis.suggestions')} selected={tab === 'suggestions'} onPress={() => setTab('suggestions')} />
+        <Chip label={t('amis.mon_code')} selected={tab === 'code'} onPress={() => setTab('code')} />
+        <Chip label={t('amis.scanner')} selected={tab === 'scan'} onPress={() => setTab('scan')} />
       </View>
 
       {tab === 'suggestions' ? (
@@ -71,7 +73,7 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
             le chercher.
           </Text>
           <Pressable style={styles.actionButton} onPress={handleShareInvite}>
-            <Text style={styles.actionButtonText}>Partager mon lien d'invitation</Text>
+            <Text style={styles.actionButtonText}>{t('amis.partager_lien')}</Text>
           </Pressable>
           {shareFeedback && <Text style={styles.feedback}>{shareFeedback}</Text>}
         </View>
@@ -89,6 +91,7 @@ function SuggestionsTab({
   currentUserId: string;
   onSelectProfile: (profileId: string) => void;
 }) {
+  const t = useT();
   const [suggestions, setSuggestions] = useState<SuggestedFriend[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,7 +152,7 @@ function SuggestionsTab({
     <ScrollView contentContainerStyle={styles.suggestionsList}>
       {pending.length > 0 && (
         <>
-          <Text style={styles.sectionLabel}>Demandes reçues</Text>
+          <Text style={styles.sectionLabel}>{t('amis.demandes_recues')}</Text>
           {pending.map((req) => (
             <View key={req.senderId} style={styles.suggestionRow}>
               <Pressable style={styles.pendingInfo} onPress={() => onSelectProfile(req.senderId)}>
@@ -162,19 +165,19 @@ function SuggestionsTab({
                   onPress={() => handleDeclinePending(req.senderId)}
                   hitSlop={hitSlopPairLeft}
                 >
-                  <Text style={styles.declinePillText}>Refuser</Text>
+                  <Text style={styles.declinePillText}>{t('commun.refuser')}</Text>
                 </Pressable>
                 <Pressable
                   style={styles.acceptPill}
                   onPress={() => handleAcceptPending(req.senderId)}
                   hitSlop={hitSlopPairRight}
                 >
-                  <Text style={styles.acceptPillText}>Accepter</Text>
+                  <Text style={styles.acceptPillText}>{t('commun.accepter')}</Text>
                 </Pressable>
               </View>
             </View>
           ))}
-          {suggestions.length > 0 && <Text style={styles.sectionLabel}>Suggestions</Text>}
+          {suggestions.length > 0 && <Text style={styles.sectionLabel}>{t('amis.suggestions')}</Text>}
         </>
       )}
 
@@ -209,6 +212,7 @@ function ScannerTab({
   currentUserId: string;
   onScannedProfile: (profileId: string) => void;
 }) {
+  const t = useT();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanError, setScanError] = useState<string | null>(null);
   // Un scan réussi navigue immédiatement (l'écran est démonté) — cette ref évite seulement de
@@ -243,9 +247,9 @@ function ScannerTab({
   if (!permission.granted) {
     return (
       <View style={styles.codeTab}>
-        <Text style={styles.explainer}>Pokza a besoin d'accéder à la caméra pour scanner le code d'un ami.</Text>
+        <Text style={styles.explainer}>{t('amis.camera_permission')}</Text>
         <Pressable style={styles.actionButton} onPress={requestPermission}>
-          <Text style={styles.actionButtonText}>Autoriser la caméra</Text>
+          <Text style={styles.actionButtonText}>{t('amis.autoriser_camera')}</Text>
         </Pressable>
       </View>
     );

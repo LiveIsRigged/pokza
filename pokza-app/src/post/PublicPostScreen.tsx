@@ -6,6 +6,7 @@ import { PokzaLogo } from '../components/ui/authIcons';
 import { fetchPublicPost, fetchSharedPost, type PublicPost } from '../data/posts';
 import { colors, radius, typography } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
+import { useT } from '../i18n';
 
 /**
  * Main partagée ouverte SANS compte.
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export function PublicPostScreen({ postId, shareToken, onJoin, dejaConnecte }: Props) {
+  const t = useT();
   const [post, setPost] = useState<PublicPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export function PublicPostScreen({ postId, shareToken, onJoin, dejaConnecte }: P
       {/* `null` sans erreur : la main existe peut-être, mais elle n'est pas publique — ou plus.
           On ne distingue pas les deux, ce serait dire à un inconnu qu'un identifiant existe. */}
       {!loading && !error && !post && (
-        <Text style={styles.message}>Cette main n'est pas disponible publiquement.</Text>
+        <Text style={styles.message}>{t('public.non_disponible')}</Text>
       )}
 
       {!loading && post && (
@@ -96,25 +98,25 @@ export function PublicPostScreen({ postId, shareToken, onJoin, dejaConnecte }: P
       <View style={styles.invitation}>
         {dejaConnecte ? (
           <>
-            <Text style={styles.invitationTitre}>Tu es déjà sur Pokza</Text>
+            <Text style={styles.invitationTitre}>{t('public.deja_sur_pokza')}</Text>
             <Text style={styles.invitationTexte}>
               Cette page est ce que verront les personnes à qui tu envoies le lien.
             </Text>
             <Pressable style={styles.bouton} onPress={onJoin}>
-              <Text style={styles.boutonTexte}>Retour à Pokza</Text>
+              <Text style={styles.boutonTexte}>{t('public.retour')}</Text>
             </Pressable>
           </>
         ) : (
           <>
-            <Text style={styles.invitationTitre}>Partage tes mains sur Pokza</Text>
+            <Text style={styles.invitationTitre}>{t('public.partage_tes_mains')}</Text>
             <Text style={styles.invitationTexte}>
               Crée un compte pour commenter cette main, voter sur la décision, et publier les tiennes.
             </Text>
             <Pressable style={styles.bouton} onPress={onJoin}>
-              <Text style={styles.boutonTexte}>Créer un compte</Text>
+              <Text style={styles.boutonTexte}>{t('public.creer_compte')}</Text>
             </Pressable>
             <Pressable onPress={onJoin} hitSlop={8}>
-              <Text style={styles.lien}>J'ai déjà un compte</Text>
+              <Text style={styles.lien}>{t('public.deja_un_compte')}</Text>
             </Pressable>
           </>
         )}

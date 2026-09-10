@@ -12,6 +12,7 @@ import {
 } from '../data/friends';
 import { acceptGroupInvite, fetchPendingGroupInvites, removeGroupMember, type PendingGroupInvite } from '../data/groups';
 import { GroupTableIcon } from '../components/ui/icons';
+import { useT } from '../i18n';
 
 interface InvitationsScreenProps {
   currentUserId: string;
@@ -30,6 +31,7 @@ interface InvitationsScreenProps {
  * chronologique unique.
  */
 export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onInvitationHandled }: InvitationsScreenProps) {
+  const t = useT();
   const [friendRequests, setFriendRequests] = useState<PendingRequest[]>([]);
   const [groupInvites, setGroupInvites] = useState<PendingGroupInvite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,21 +127,21 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Mes invitations</Text>
+        <Text style={styles.title}>{t('menu.mes_invitations')}</Text>
       </View>
 
       {error && <Text style={styles.statusText}>{error}</Text>}
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
-          <Text style={styles.statusText}>Chargement…</Text>
+          <Text style={styles.statusText}>{t('commun.chargement')}</Text>
         ) : (
           <>
             {/* Les deux sections restent affichées même vides : sans elles, un écran qui ne dit que
                 « aucune invitation » n'apprend pas ce qu'il est censé contenir. */}
-            <Text style={styles.sectionTitle}>Demandes d'ami</Text>
+            <Text style={styles.sectionTitle}>{t('invitations.demandes_ami')}</Text>
             {visibleFriendRequests.length === 0 ? (
-              <Text style={styles.sectionEmpty}>Aucune demande pour l'instant.</Text>
+              <Text style={styles.sectionEmpty}>{t('invitations.aucune_demande')}</Text>
             ) : (
               visibleFriendRequests.map((req) => (
                 <View key={req.senderId} style={styles.row}>
@@ -161,9 +163,9 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
               ))
             )}
 
-            <Text style={styles.sectionTitle}>Groupes privés</Text>
+            <Text style={styles.sectionTitle}>{t('invitations.groupes_prives')}</Text>
             {visibleGroupInvites.length === 0 ? (
-              <Text style={styles.sectionEmpty}>Aucune invitation pour l'instant.</Text>
+              <Text style={styles.sectionEmpty}>{t('invitations.aucune_invitation')}</Text>
             ) : (
               visibleGroupInvites.map((invite) => (
                 <View key={invite.groupId} style={styles.row}>

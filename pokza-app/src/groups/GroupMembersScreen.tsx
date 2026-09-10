@@ -6,6 +6,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import type { GroupMember } from '../data/groups';
 import { PersonIcon } from '../components/ui/icons';
+import { useT } from '../i18n';
 
 interface GroupMembersScreenProps {
   members: GroupMember[];
@@ -30,6 +31,7 @@ export function GroupMembersScreen({
   onSelectProfile,
   onBack,
 }: GroupMembersScreenProps) {
+  const t = useT();
   // Un membre déjà accepté ne se retire pas sans confirmation (perte de son accès et de son
   // historique dans le groupe). Annuler une invitation encore en attente, elle, reste immédiate :
   // rien n'a encore d'effet, l'inviter à nouveau coûte un tap.
@@ -54,7 +56,7 @@ export function GroupMembersScreen({
                 {m.displayName}
                 {m.userId === ownerId && ' 👑'}
               </Text>
-              {m.status === 'pending' && <Text style={styles.memberPending}>en attente</Text>}
+              {m.status === 'pending' && <Text style={styles.memberPending}>{t('groupe.en_attente')}</Text>}
             </Pressable>
             {canManage && m.userId !== currentUserId && (
               <Pressable
@@ -72,8 +74,8 @@ export function GroupMembersScreen({
         visible={excludingMember != null}
         icon={PersonIcon}
         title={`Retirer ${excludingMember?.displayName ?? 'ce membre'} du groupe ?`}
-        message="Il ne verra plus les mains partagées ici, et pourra être réinvité plus tard."
-        confirmLabel="Retirer"
+        message={t('groupe.exclure_message')}
+        confirmLabel={t('commun.retirer')}
         onCancel={() => setExcludingMember(null)}
         onConfirm={() => {
           const userId = excludingMember?.userId;

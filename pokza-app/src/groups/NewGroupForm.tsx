@@ -5,6 +5,7 @@ import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing } f
 import { GROUP_NAME_MAX_LENGTH } from '../constants/limits';
 import { errorMessage } from '../utils/errorMessage';
 import { autoFocusUtile } from '../web/clavierVirtuel';
+import { useT } from '../i18n';
 
 interface NewGroupFormProps {
   /** Doit lever en cas d'échec : le message est alors affiché ici et la saisie est conservée. */
@@ -18,6 +19,7 @@ interface NewGroupFormProps {
  * « Mes groupes » ferait perdre la saisie en cours.
  */
 export function NewGroupForm({ onCreate, onCancel }: NewGroupFormProps) {
+  const t = useT();
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function NewGroupForm({ onCreate, onCancel }: NewGroupFormProps) {
       <TextInput
         autoComplete="off"
         style={styles.input}
-        placeholder="Nom du groupe privé"
+        placeholder={t('groupe.nom_placeholder')}
         value={name}
         onChangeText={(t) => setName(t.slice(0, GROUP_NAME_MAX_LENGTH))}
         maxLength={GROUP_NAME_MAX_LENGTH}
@@ -49,7 +51,7 @@ export function NewGroupForm({ onCreate, onCancel }: NewGroupFormProps) {
       />
       <View style={styles.actions}>
         <Pressable style={styles.cancelButton} onPress={onCancel} hitSlop={hitSlopPairLeft}>
-          <Text style={styles.cancelButtonText}>Annuler</Text>
+          <Text style={styles.cancelButtonText}>{t('commun.annuler')}</Text>
         </Pressable>
         <Pressable
           style={[styles.confirmButton, (!name.trim() || submitting) && styles.confirmButtonDisabled]}

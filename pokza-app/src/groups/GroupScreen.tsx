@@ -25,6 +25,7 @@ import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { EditGroupScreen } from './EditGroupScreen';
 import { GroupMembersScreen } from './GroupMembersScreen';
 import { CameraIcon, ExitIcon, GroupTableIcon, ImageIcon, PencilIcon, TrashIcon } from '../components/ui/icons';
+import { useT } from '../i18n';
 
 /** Même format court que les dates de main / d'inscription ailleurs dans l'app (ex: "29 juil. 2026"). */
 function formatCreatedDate(iso: string): string {
@@ -83,6 +84,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
 ) {
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
+  const t = useT();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -227,11 +229,11 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
   // « Retirer la photo » isolé sous l'avatar du groupe.
   const avatarMenuItems: OverflowMenuItem[] = [
     ...(Platform.OS !== 'web'
-      ? [{ label: 'Prendre une photo', icon: CameraIcon, onPress: handleTakePhoto }]
+      ? [{ label: t('profil.prendre_photo'), icon: CameraIcon, onPress: handleTakePhoto }]
       : []),
-    { label: 'Choisir une photo', icon: ImageIcon, onPress: handleChangeAvatar },
+    { label: t('profil.choisir_photo'), icon: ImageIcon, onPress: handleChangeAvatar },
     ...(group?.avatarUrl
-      ? [{ label: 'Retirer la photo', icon: TrashIcon, destructive: true, onPress: handleRemoveAvatar }]
+      ? [{ label: t('profil.retirer_photo'), icon: TrashIcon, destructive: true, onPress: handleRemoveAvatar }]
       : []),
   ];
 
@@ -272,12 +274,12 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
   // (`confirmingLeave`) qu'auparavant, juste depuis le menu plutôt qu'un lien sur la page, et
   // affichée maintenant dans le `ConfirmSheet` partagé plutôt qu'en ligne.
   const groupMenuItems: OverflowMenuItem[] = [
-    ...(isOwner ? [{ label: 'Modifier le groupe', icon: PencilIcon, onPress: () => setEditingGroup(true) }] : []),
+    ...(isOwner ? [{ label: t('groupe.modifier'), icon: PencilIcon, onPress: () => setEditingGroup(true) }] : []),
     isOwner
-      ? { label: 'Supprimer le groupe', icon: TrashIcon, destructive: true, onPress: () => setConfirmingLeave(true) }
-      : { label: 'Quitter le groupe', icon: ExitIcon, destructive: true, onPress: () => setConfirmingLeave(true) },
+      ? { label: t('groupe.supprimer'), icon: TrashIcon, destructive: true, onPress: () => setConfirmingLeave(true) }
+      : { label: t('groupe.quitter'), icon: ExitIcon, destructive: true, onPress: () => setConfirmingLeave(true) },
     ...(isOwner
-      ? [{ label: 'Exclure un membre', icon: GroupTableIcon, onPress: () => setManagingMembers(true) }]
+      ? [{ label: t('groupe.exclure_membre'), icon: GroupTableIcon, onPress: () => setManagingMembers(true) }]
       : []),
   ];
 
@@ -343,7 +345,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
         {error && <Text style={styles.statusText}>{error}</Text>}
 
         {loading || !group ? (
-          <Text style={styles.statusText}>Chargement du groupe privé…</Text>
+          <Text style={styles.statusText}>{t('groupe.chargement')}</Text>
         ) : (
           <>
             <View style={styles.header}>
@@ -373,17 +375,17 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
                   <View style={styles.statsRow}>
                     <View style={styles.statItem}>
                       <Text style={styles.statValue}>{posts.length}</Text>
-                      <Text style={styles.statLabel}>main{posts.length > 1 ? 's' : ''}</Text>
+                      <Text style={styles.statLabel}>{t('groupe.stat_mains', { count: posts.length })}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                       <Text style={styles.statValue}>{acceptedCount}</Text>
-                      <Text style={styles.statLabel}>membre{acceptedCount > 1 ? 's' : ''}</Text>
+                      <Text style={styles.statLabel}>{t('groupe.stat_membres', { count: acceptedCount })}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                       <Text style={styles.statValue}>{formatCreatedDate(group.createdAt)}</Text>
-                      <Text style={styles.statLabel}>créé le</Text>
+                      <Text style={styles.statLabel}>{t('groupe.cree_le')}</Text>
                     </View>
                   </View>
                 );
@@ -420,17 +422,17 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
                 {/* Visible de tous les membres, contrairement à « Inviter » — remplace l'ancienne
                     section « Membres » systématiquement dépliée sur la page. */}
                 <Pressable style={styles.membersButton} onPress={() => setViewingMembers(true)}>
-                  <Text style={styles.membersButtonText}>Liste de membres</Text>
+                  <Text style={styles.membersButtonText}>{t('groupe.liste_membres')}</Text>
                 </Pressable>
                 {isOwner && (
                   <Pressable style={styles.inviteButton} onPress={() => onInviteMembers(groupId)}>
-                    <Text style={styles.inviteButtonText}>Inviter</Text>
+                    <Text style={styles.inviteButtonText}>{t('groupe.inviter')}</Text>
                   </Pressable>
                 )}
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Mains du groupe privé</Text>
+            <Text style={styles.sectionTitle}>{t('groupe.mains_du_groupe')}</Text>
             {/* Affiché que le groupe ait des mains ou non, et toujours au même endroit : rien ne
                 se déplace quand la première main arrive. Réservé jusqu'ici à l'état vide, ce
                 bouton n'était de toute façon pas un raccourci — il ouvrait un créateur qui
@@ -440,11 +442,11 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
                 dans `LiveHandCreator`). */}
             {onCreateHand && (
               <Pressable style={styles.createHandButton} onPress={onCreateHand}>
-                <Text style={styles.createHandButtonText}>+ Créer une main</Text>
+                <Text style={styles.createHandButtonText}>{t('profil.creer_une_main')}</Text>
               </Pressable>
             )}
             {posts.length === 0 ? (
-              <Text style={styles.statusText}>Aucune main partagée pour l'instant.</Text>
+              <Text style={styles.statusText}>{t('profil.aucune_main')}</Text>
             ) : (
               posts.map((post) => (
                 <PostCard

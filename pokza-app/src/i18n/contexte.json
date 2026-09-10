@@ -17,5 +17,7 @@
   "reglages.version": "{version} est le numéro de version de l'app. « Pokza » est le nom du produit et ne se traduit jamais.",
   "langue.automatique": "L'entrée de liste qui rend le suivi automatique réversible : elle veut dire « suivre le réglage du téléphone », pas « détecter la langue ».",
   "profil.resume_regulier": "{format} est un des libellés profil.format_* INSÉRÉ AU MILIEU de la phrase, avec une minuscule initiale forcée par le code (« Joueur régulier de cash game live »). ⚠️ Cette minuscule est une convention française et anglaise : une langue qui met une majuscule aux noms communs (allemand) devra le signaler, le code ne le devine pas.",
-  "profil.resume_occasionnel": "Voir profil.resume_regulier — même construction, même piège de minuscule initiale."
+  "profil.resume_occasionnel": "Voir profil.resume_regulier — même construction, même piège de minuscule initiale.",
+  "groupe.stat_mains": "Étiquette SEULE sous un gros chiffre (« 12 » au-dessus, « mains » en dessous) : le nombre n'est PAS dans la chaîne, ne pas l'y ajouter. C'est bien un pluriel : il s'accorde avec le chiffre affiché au-dessus.",
+  "groupe.stat_membres": "Voir groupe.stat_mains — même bloc de statistiques, même contrainte."
 }

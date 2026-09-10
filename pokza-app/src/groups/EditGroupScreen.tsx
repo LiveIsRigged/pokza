@@ -6,6 +6,7 @@ import { borders, colors, radius, spacing } from '../theme/theme';
 import { updateGroupDescription } from '../data/groups';
 
 import { GROUP_DESCRIPTION_MAX_LENGTH as DESCRIPTION_MAX_LENGTH } from '../constants/limits';
+import { useT } from '../i18n';
 
 interface EditGroupScreenProps {
   groupId: string;
@@ -18,6 +19,7 @@ interface EditGroupScreenProps {
  * description est modifiable ici (le nom pourrait l'être, la policy le permet déjà, mais n'a pas
  * été demandé). */
 export function EditGroupScreen({ groupId, initialDescription, onCancel, onSaved }: EditGroupScreenProps) {
+  const t = useT();
   const [description, setDescription] = useState(initialDescription ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +46,10 @@ export function EditGroupScreen({ groupId, initialDescription, onCancel, onSaved
           </Pressable>
         </View>
 
-        <Text style={styles.title}>Modifier le groupe privé</Text>
+        <Text style={styles.title}>{t('groupe.modifier_titre')}</Text>
 
         <View style={styles.labelRow}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>{t('profil.description')}</Text>
           <Text style={styles.counter}>
             {description.length}/{DESCRIPTION_MAX_LENGTH}
           </Text>
@@ -57,7 +59,7 @@ export function EditGroupScreen({ groupId, initialDescription, onCancel, onSaved
           style={styles.input}
           value={description}
           onChangeText={(text) => setDescription(text.slice(0, DESCRIPTION_MAX_LENGTH))}
-          placeholder="À quoi sert ce groupe ?"
+          placeholder={t('groupe.description_placeholder')}
           multiline
           maxLength={DESCRIPTION_MAX_LENGTH}
         />
@@ -65,7 +67,7 @@ export function EditGroupScreen({ groupId, initialDescription, onCancel, onSaved
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable style={styles.submitButton} onPress={handleSave} disabled={submitting}>
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Enregistrer</Text>}
+          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{t('commun.enregistrer')}</Text>}
         </Pressable>
       </ScrollView>
     </View>

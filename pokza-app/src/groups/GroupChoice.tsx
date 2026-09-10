@@ -5,6 +5,7 @@ import { borders, colors, radius, spacing } from '../theme/theme';
 import { Chip } from '../creator/Chip';
 import { NewGroupForm } from './NewGroupForm';
 import type { Group } from '../data/groups';
+import { useT } from '../i18n';
 
 /**
  * Au-delà de ce nombre, la rangée cesse d'être lisible d'un coup d'œil et repousse le bouton de
@@ -41,6 +42,7 @@ function visibleGroups(groups: Group[], selectedId?: string): Group[] {
  * modification d'une main, qui avaient jusqu'ici deux copies divergentes du même bloc.
  */
 export function GroupChoice({ groups, selectedId, onSelect, onCreateGroup, onOpenPicker }: GroupChoiceProps) {
+  const t = useT();
   const [creating, setCreating] = useState(false);
 
   const create = async (name: string) => {
@@ -59,7 +61,7 @@ export function GroupChoice({ groups, selectedId, onSelect, onCreateGroup, onOpe
           <NewGroupForm onCreate={create} onCancel={() => setCreating(false)} />
         ) : (
           <Pressable style={styles.createButton} onPress={() => setCreating(true)}>
-            <Text style={styles.createButtonText}>+ Créer un groupe privé</Text>
+            <Text style={styles.createButtonText}>{t('groupe.creer')}</Text>
           </Pressable>
         )}
       </View>
@@ -71,7 +73,7 @@ export function GroupChoice({ groups, selectedId, onSelect, onCreateGroup, onOpe
 
   return (
     <>
-      <Text style={styles.label}>Quel groupe privé ?</Text>
+      <Text style={styles.label}>{t('groupe.quel_groupe')}</Text>
       <View style={styles.row}>
         {shown.map((g) => (
           <Chip key={g.id} label={g.name} selected={selectedId === g.id} onPress={() => onSelect(g.id)} />
@@ -82,13 +84,13 @@ export function GroupChoice({ groups, selectedId, onSelect, onCreateGroup, onOpe
           la rangée renvoie au sélecteur, qui porte lui-même la création. */}
       {collapsed ? (
         <Pressable style={styles.link} onPress={onOpenPicker} hitSlop={8}>
-          <Text style={styles.linkText}>Choisir un autre groupe</Text>
+          <Text style={styles.linkText}>{t('groupe.choisir_autre')}</Text>
         </Pressable>
       ) : creating ? (
         <NewGroupForm onCreate={create} onCancel={() => setCreating(false)} />
       ) : (
         <Pressable style={styles.link} onPress={() => setCreating(true)} hitSlop={8}>
-          <Text style={styles.linkText}>+ Nouveau groupe</Text>
+          <Text style={styles.linkText}>{t('groupe.nouveau')}</Text>
         </Pressable>
       )}
     </>

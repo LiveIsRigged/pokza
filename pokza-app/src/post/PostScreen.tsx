@@ -8,6 +8,7 @@ import { deletePost, fetchPost, setLiked } from '../data/posts';
 import { markPostRead } from '../data/postViews';
 import type { Post } from '../types/poker';
 import { PostCard } from '../components/post/PostCard';
+import { useT } from '../i18n';
 
 interface PostScreenProps {
   postId: string;
@@ -47,6 +48,7 @@ export function PostScreen({
   onSelectProfile,
   onLoaded,
 }: PostScreenProps) {
+  const t = useT();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,17 +106,17 @@ export function PostScreen({
           <Pressable onPress={onBack} hitSlop={8}>
             <Text style={styles.backArrow}>←</Text>
           </Pressable>
-          <Text style={styles.title}>La main</Text>
+          <Text style={styles.title}>{t('post.la_main')}</Text>
         </View>
 
         {error && <Text style={styles.statusText}>{error}</Text>}
 
         {loading ? (
-          <Text style={styles.statusText}>Chargement de la main…</Text>
+          <Text style={styles.statusText}>{t('post.chargement')}</Text>
         ) : !post ? (
           // Cas normal, pas une panne : main supprimée, repassée en privé, ou groupe quitté depuis
           // l'envoi de la notification.
-          <Text style={styles.statusText}>Cette main n'est plus disponible.</Text>
+          <Text style={styles.statusText}>{t('post.introuvable')}</Text>
         ) : (
           <PostCard
             post={post}
