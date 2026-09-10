@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { t } from '../i18n/traduire';
 
 export const MIN_PASSWORD_LENGTH = 8;
 

@@ -60,5 +60,9 @@
   "motdepasse.nouveau_titre": "Choisis un nouveau mot de passe",
   "motdepasse.champ_nouveau": "Nouveau mot de passe",
   "motdepasse.valider": "Valider",
-  "commun.annuler": "Annuler"
+  "commun.annuler": "Annuler",
+  "date.a_l_instant": "à l'instant",
+  "date.il_y_a_minutes": "il y a {count} mn",
+  "date.il_y_a_heures": "il y a {count}h",
+  "date.hier": "Hier"
 }

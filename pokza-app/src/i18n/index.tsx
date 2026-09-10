@@ -4,7 +4,7 @@ import { getLocales } from 'expo-localization';
 import { choisirLangue, poserLangue, t } from './traduire';
 import { estLangueServie, type Langue } from './langues';
 
-export { t } from './traduire';
+export { t, langueCourante } from './traduire';
 export type { Cle } from './traduire';
 
 /**

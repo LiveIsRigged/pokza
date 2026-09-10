@@ -60,5 +60,9 @@
   "motdepasse.nouveau_titre": "Choose a new password",
   "motdepasse.champ_nouveau": "New password",
   "motdepasse.valider": "Save",
-  "commun.annuler": "Cancel"
+  "commun.annuler": "Cancel",
+  "date.a_l_instant": "just now",
+  "date.il_y_a_minutes": "{count} min ago",
+  "date.il_y_a_heures": "{count}h ago",
+  "date.hier": "Yesterday"
 }
