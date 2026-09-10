@@ -123,6 +123,22 @@ if (jamais.length > 0) {
   console.log('');
 }
 
+// ── `t` nu dans un composant : le texte resterait dans l'ancienne langue après un changement ─────
+// Le seul piège du module. `t` nu est LÉGITIME hors React et dans un gestionnaire d'événement (le
+// texte y est fabriqué au clic, pas affiché en continu) — d'où l'avertissement plutôt que l'échec.
+const sansAbonnement = [];
+for (const f of fichiers) {
+  if (!f.endsWith('.tsx')) continue;
+  const contenu = fs.readFileSync(f, 'utf8');
+  const importeT = /import\s*\{[^}]*\bt\b[^}]*\}\s*from\s*'[^']*i18n'/.test(contenu);
+  if (importeT && !contenu.includes('useT(')) sansAbonnement.push(path.relative(RACINE, f));
+}
+if (sansAbonnement.length > 0) {
+  console.log(`Composants qui importent « t » sans « useT » (${sansAbonnement.length}) — vérifier :`);
+  for (const f of sansAbonnement) console.log(`      ${f}`);
+  console.log('');
+}
+
 if (trous > 0) {
   console.log(`✗ ${trous} trou(s) — traduire, puis « --sceller »`);
   process.exit(1);

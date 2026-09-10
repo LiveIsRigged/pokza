@@ -75,8 +75,15 @@ export function useLangue(): LangueContextValue {
 }
 
 /**
- * `t` pour les composants. Identique à `t`, mais s'abonne au contexte : le composant se redessine
- * quand la langue change au lieu de garder l'ancien texte à l'écran.
+ * `t` pour les composants — LA seule façon d'afficher du texte traduit dans un rendu.
+ *
+ * La fonction rendue est la même que `t` ; ce qui compte, c'est que l'appeler ABONNE le composant
+ * au contexte, donc le redessine quand la langue change. Un composant qui importerait `t`
+ * directement garderait l'ancienne langue à l'écran jusqu'à ce qu'autre chose le fasse redessiner —
+ * c'est le seul piège de ce module, et `scripts/i18n-audit.js` le signale.
+ *
+ * `t` nu reste bon partout ailleurs : hors React (moteur de main, dates, messages d'erreur) et dans
+ * un gestionnaire d'événement, où le texte est fabriqué au moment du clic et jamais « à l'écran ».
  */
 export function useT(): typeof t {
   const { langue } = useLangue();

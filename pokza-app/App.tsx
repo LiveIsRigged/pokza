@@ -98,7 +98,7 @@ export default function App() {
         <DisplayUnitProvider>
           <AuthProvider>
             <RootChrome>
-              <ContenuLocalise />
+              <AppContent />
             </RootChrome>
           </AuthProvider>
         </DisplayUnitProvider>
@@ -125,17 +125,6 @@ function RootChrome({ children }: { children: React.ReactNode }) {
       </Colonne>
     </View>
   );
-}
-
-/**
- * Change de langue = REMONTE tout l'arbre. C'est volontairement brutal : `t()` est appelable hors
- * React (moteur de main, dates relatives, messages d'erreur), et ces textes-là ne s'abonnent à
- * rien — sans remontage ils resteraient dans l'ancienne langue jusqu'au prochain rendu, au hasard.
- * Le geste est rare et délibéré, en perdre la position dans le fil est le bon prix.
- */
-function ContenuLocalise() {
-  const { langue } = useLangue();
-  return <AppContent key={langue} />;
 }
 
 function AppContent() {
