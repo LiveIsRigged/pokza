@@ -8,6 +8,7 @@ import { TableVue } from '../../components/table/TableVue';
 import { GABARIT_ATELIER, hauteurTableCartes } from '../../engine/layout';
 import { potDeReglage, siegesDeReglage } from '../tableReglage';
 import type { ContextData } from '../types';
+import { useT, type Cle } from '../../i18n';
 
 interface HoleCardsStepProps {
   /** Nombre de cartes à choisir selon la variante : 2 (Hold'em), 4 (PLO) ou 5 (PLO5). */
@@ -57,10 +58,12 @@ interface HoleCardsStepProps {
  * alors à « ou laisse vide ». Une phrase de plus n'aurait rien dit et aurait coûté une ligne sur
  * un écran qui n'en a pas à donner.
  */
-const CHOIX: { valeur: HeroCardsVisibility; libelle: string }[] = [
-  { valeur: 'visible', libelle: 'Visibles' },
-  { valeur: 'end', libelle: 'Révélées à la fin' },
-  { valeur: 'never', libelle: 'Cachées' },
+// Des CLÉS, pas des libellés : la table est calculée une fois au chargement du module, donc un
+// libellé figé ici resterait dans la langue du démarrage.
+const CHOIX: { valeur: HeroCardsVisibility; cle: Cle }[] = [
+  { valeur: 'visible', cle: 'createur.visibilite_visibles' },
+  { valeur: 'end', cle: 'createur.visibilite_fin' },
+  { valeur: 'never', cle: 'createur.visibilite_cachees' },
 ];
 
 export function HoleCardsStep({
@@ -78,6 +81,7 @@ export function HoleCardsStep({
   visibility,
   onChangeVisibility,
 }: HoleCardsStepProps) {
+  const t = useT();
   const chosenCount = cards.filter(Boolean).length;
   // Sous « Cachées » seulement, la main vide est un choix : 0 ou toutes. Une seule carte sur deux
   // reste bloquée dans tous les cas — ça, ce n'est pas un choix, c'est une saisie interrompue.
@@ -107,10 +111,11 @@ export function HoleCardsStep({
 
   return (
     <WizardScreen
-      title="Tes cartes"
-      subtitle={
-        visibility === 'never' ? `Choisis tes ${count} cartes, ou laisse vide` : `Choisis tes ${count} cartes`
-      }
+      title={t('createur.tes_cartes_titre')}
+      subtitle={t(
+        visibility === 'never' ? 'createur.tes_cartes_sous_titre_vide' : 'createur.tes_cartes_sous_titre',
+        { n: count }
+      )}
       onNext={onNext}
       nextLabel={nextLabel}
       footerNote={footerNote}
@@ -143,7 +148,7 @@ export function HoleCardsStep({
         {CHOIX.map((c) => (
           <Chip
             key={c.valeur}
-            label={c.libelle}
+            label={t(c.cle)}
             selected={visibility === c.valeur}
             onPress={() => onChangeVisibility(c.valeur)}
           />

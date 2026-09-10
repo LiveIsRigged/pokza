@@ -11,6 +11,7 @@ import { TableVue, type SiegeAffiche } from '../../components/table/TableVue';
 import { GABARIT_ATELIER, GABARIT_ATELIER_DOUBLE, hauteurTableAtelier } from '../../engine/layout';
 import type { GameType } from '../../types/poker';
 import type { CodeDevise } from '../../utils/currency';
+import { useT } from '../../i18n';
 
 interface ShowdownStepProps {
   /** Nombre de cartes fermées par joueur selon la variante : 2 (Hold'em), 4 (PLO) ou 5 (PLO5). */
@@ -90,6 +91,7 @@ export function ShowdownStep({
   bb,
   holeCardCount,
 }: ShowdownStepProps) {
+  const t = useT();
   const [selectedId, setSelectedId] = useState<string>(villains[0]?.id ?? '');
 
   /**
@@ -143,7 +145,7 @@ export function ShowdownStep({
     <WizardScreen
       // « Abattage » sans article : « La main — L'abattage » enchaînait deux déterminants et butait
       // à l'oreille (Victor, 02/09). Même forme que les quatre streets, cf. `STREET_TITLES`.
-      title="La main — Abattage"
+      title={t('createur.abattage_titre')}
       step={step}
       totalSteps={totalSteps}
       onNext={onNext}
@@ -172,21 +174,19 @@ export function ShowdownStep({
           est celui qu'on veut presque toujours, et il dit ce qu'il fait. Attention en relisant :
           « Oui » vaut `revealShowdown = true` — le drapeau nomme la révélation, la question nomme
           l'attente. */}
-      <Text style={styles.label}>Cacher les mains jusqu'à l'abattage</Text>
+      <Text style={styles.label}>{t('createur.abattage_label')}</Text>
       <View style={styles.revealRow}>
-        <Chip label="Oui" selected={revealShowdown} onPress={() => onChangeRevealShowdown(true)} />
-        <Chip label="Non" selected={!revealShowdown} onPress={() => onChangeRevealShowdown(false)} />
+        <Chip label={t('commun.oui')} selected={revealShowdown} onPress={() => onChangeRevealShowdown(true)} />
+        <Chip label={t('commun.non')} selected={!revealShowdown} onPress={() => onChangeRevealShowdown(false)} />
       </View>
       <Text style={styles.revealHint}>
-        {revealShowdown
-          ? "Les cartes resteront cachées pendant le coup, et n'apparaîtront qu'à l'abattage."
-          : 'Les cartes seront visibles dans le replay dès le début.'}
+        {t(revealShowdown ? 'createur.abattage_indice_cache' : 'createur.abattage_indice_visible')}
       </Text>
 
       {selectedId ? (
         <View style={styles.pickerSection}>
           <Text style={[typography.contextLine, styles.hint]}>
-            Cartes de {seatLabel(villains.find((v) => v.id === selectedId)!, seats, actions)}
+            {t('createur.cartes_de', { joueur: seatLabel(villains.find((v) => v.id === selectedId)!, seats, actions) })}
           </Text>
           {/* Sans aperçu : les emplacements sont sur le feutre, devant leur joueur. */}
           <MultiCardPicker

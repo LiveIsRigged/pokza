@@ -15,6 +15,8 @@ import { TableVue, type SiegeAffiche } from '../../components/table/TableVue';
 import { GABARIT_ATELIER, GABARIT_ATELIER_DOUBLE, hauteurTableAtelier } from '../../engine/layout';
 import { holeCardCount } from '../../types/poker';
 import type { CodeDevise } from '../../utils/currency';
+import { useT, type Cle } from '../../i18n';
+import { decouper } from '../../i18n/noeuds';
 
 /**
  * LE TITRE NOMME SON ÉTAPE, SUR LES QUATRE — décision de Victor du 02/09/2026.
@@ -33,13 +35,15 @@ import type { CodeDevise } from '../../utils/currency';
  * est le fait principal de l'écran — la seule chose qui ait changé depuis le précédent. Le tiret
  * joint deux pairs.
  */
-const ETAPE = 'La main';
-const STREET_TITLES: Record<Street, string> = {
-  preflop: `${ETAPE} — Préflop`,
-  flop: `${ETAPE} — Flop`,
-  turn: `${ETAPE} — Turn`,
-  river: `${ETAPE} — River`,
+// Des CLÉS et non des titres : cette table est calculée UNE FOIS au chargement du module, donc un
+// titre figé ici resterait dans la langue du démarrage même après un changement de langue.
+const STREET_CLES: Record<Street, Cle> = {
+  preflop: 'createur.street_preflop',
+  flop: 'createur.street_flop',
+  turn: 'createur.street_turn',
+  river: 'createur.street_river',
 };
+
 
 /**
  * Combien de cartes de board sont DÉJÀ TOMBÉES quand cette street s'ouvre.
@@ -321,6 +325,7 @@ export function StreetStep({
   step,
   totalSteps,
 }: StreetStepProps) {
+  const t = useT();
   const [boardCards, setBoardCards] = useState<(Card | undefined)[]>(
     reprise ? reprise.boardCards : Array(boardCount).fill(undefined)
   );
@@ -863,7 +868,7 @@ export function StreetStep({
     // normalisait déjà la virgule, seul cet écran-ci avait été oublié.
     const amountSaisi = parseFloat(amountInput.replace(',', '.'));
     if (!Number.isFinite(amountSaisi) || amountSaisi <= 0) {
-      setAmountError('Entre un montant valide, par exemple 2,5.');
+      setAmountError(t('createur.montant_invalide'));
       return;
     }
     // On ne peut jamais miser plus que son stack.
@@ -1032,7 +1037,7 @@ export function StreetStep({
         onComplete(finalBoard(), finalBoard2(), recorded, active);
       }}
     >
-      <Text style={styles.primaryText}>Continuer</Text>
+      <Text style={styles.primaryText}>{t('commun.continuer')}</Text>
     </Pressable>
   ) : enteringAmount ? (
     <View style={styles.row}>
@@ -1043,10 +1048,10 @@ export function StreetStep({
           setEnteringAmount(null);
         }}
       >
-        <Text style={styles.secondaryText}>Annuler</Text>
+        <Text style={styles.secondaryText}>{t('commun.annuler')}</Text>
       </Pressable>
       <Pressable style={styles.primaryButton} onPress={confirmAmount}>
-        <Text style={styles.primaryText}>Valider</Text>
+        <Text style={styles.primaryText}>{t('createur.valider')}</Text>
       </Pressable>
     </View>
   ) : (
@@ -1065,7 +1070,9 @@ export function StreetStep({
           onPress={handleCall}
         >
           <Text style={styles.actionText}>
-            Suivre ({fmt(resteAPoser)}){isCallAllIn ? ' · tapis' : ''}
+            {t(isCallAllIn ? 'createur.action_suivre_tapis' : 'createur.action_suivre', {
+              montant: fmt(resteAPoser),
+            })}
           </Text>
         </Pressable>
       </>
@@ -1082,7 +1089,7 @@ export function StreetStep({
           setEnteringAmount(betAmount > 0 ? 'raise' : 'bet');
         }}
       >
-        <Text style={styles.actionText}>{betAmount > 0 ? 'Relancer' : 'Miser'}</Text>
+        <Text style={styles.actionText}>{t(betAmount > 0 ? 'createur.action_relancer' : 'createur.action_miser')}</Text>
       </Pressable>
     )}
     {/* « TAPIS » DISPARAÎT QUAND IL NE FAIT QUE DOUBLER « SUIVRE » (Victor, 02/09/2026).
@@ -1098,7 +1105,7 @@ export function StreetStep({
         de quoi relancer. */}
     {currentRemaining > betAmount && (
       <Pressable style={styles.allInButton} onPress={handleAllIn}>
-        <Text style={styles.allInText}>Tapis ({fmt(currentRemaining)})</Text>
+        <Text style={styles.allInText}>{t('createur.action_tapis', { montant: fmt(currentRemaining) })}</Text>
       </Pressable>
     )}
     </View>
@@ -1106,7 +1113,10 @@ export function StreetStep({
 
   return (
     <WizardScreen
-      title={STREET_TITLES[street]}
+      title={t('createur.titre_street', {
+        etape: t('createur.etape_main'),
+        street: t(STREET_CLES[street]),
+      })}
       /* Pas de sous-titre : la table dit ce que la phrase disait. */
       onBack={onBack}
       zoneFixe={table}
@@ -1128,14 +1138,16 @@ export function StreetStep({
               le choix du board, où personne ne l'a encore. */}
           {boardComplete && nomQuiParle ? (
             <Text style={styles.aQuiDeJouer} numberOfLines={1}>
-              À <Text style={styles.aQuiNom}>{nomQuiParle}</Text> de jouer
+              {decouper(t('createur.a_qui_de_jouer'), {
+                nom: <Text style={styles.aQuiNom}>{nomQuiParle}</Text>,
+              })}
             </Text>
           ) : (
             <View />
           )}
           {history.length > 0 ? (
             <Pressable onPress={handleUndo} style={styles.undoButton}>
-              <Text style={styles.undoText}>↩ Annuler</Text>
+              <Text style={styles.undoText}>{t('createur.annuler_derniere')}</Text>
             </Pressable>
           ) : null}
         </>
@@ -1148,7 +1160,7 @@ export function StreetStep({
       footerLink={
         arretPossible && !enteringAmount
           ? {
-              label: 'Arrêter la main ici',
+              label: t('createur.arreter_la_main'),
               onPress: () => {
                 onEtat?.(etatCourant(queue, active, recorded, orderCounter));
                 onStop(finalBoard(), finalBoard2(), recorded, active, currentSeatId);
@@ -1213,7 +1225,7 @@ export function StreetStep({
                   {sizeShortcuts.length > 0 && (
                     <>
                       <Text style={styles.sectionLabel}>
-                        {enteringAmount === 'raise' ? 'Relance rapide' : 'Mise rapide'}
+                        {t(enteringAmount === 'raise' ? 'createur.relance_rapide' : 'createur.mise_rapide')}
                       </Text>
                       <View style={styles.potShortcutsRow}>
                         {sizeShortcuts.map(({ label, amount }) => (
@@ -1241,7 +1253,7 @@ export function StreetStep({
                       style={[styles.amountTexte, !amountInput && styles.amountPlaceholder]}
                       numberOfLines={1}
                     >
-                      {amountInput || `Montant (max ${fmt(currentRemaining)})`}
+                      {amountInput || t('createur.champ_montant', { max: fmt(currentRemaining) })}
                     </Text>
                   </View>
                   <PaveNumerique
@@ -1266,7 +1278,7 @@ export function StreetStep({
                   {(street === 'preflop' || bombPot) && betAmount === 0 && queue.length > 1 && (
                     // Personne n'a misé : proposer aussi le batch "check" (cf. handleCheckUntil).
                     <View style={styles.foldUntilSection}>
-                      <Text style={styles.sectionLabel}>Check rapide jusqu'à</Text>
+                      <Text style={styles.sectionLabel}>{t('createur.check_rapide_jusqua')}</Text>
                       <View style={styles.potShortcutsRow}>
                         {queue.slice(1).map((seatId) => {
                           const seat = seats.find((s) => s.id === seatId)!;
@@ -1285,7 +1297,7 @@ export function StreetStep({
                   )}
                   {(street === 'preflop' || bombPot) && queue.length > 1 && (
                     <View style={styles.foldUntilSection}>
-                      <Text style={styles.sectionLabel}>Fold rapide jusqu'à</Text>
+                      <Text style={styles.sectionLabel}>{t('createur.fold_rapide_jusqua')}</Text>
                       <View style={styles.potShortcutsRow}>
                         {queue.slice(1).map((seatId) => {
                           const seat = seats.find((s) => s.id === seatId)!;
@@ -1308,9 +1320,7 @@ export function StreetStep({
           ) : (
             // Plus personne ne peut agir : le bouton « Continuer » est descendu dans le socle.
             <Text style={styles.allInNote}>
-              {revenuSurStreetFinie
-                ? 'Cette street est déjà jouée. « ↩ Annuler » revient dessus action par action.'
-                : 'Les joueurs restants sont à tapis.'}
+              {t(revenuSurStreetFinie ? 'createur.street_deja_jouee' : 'createur.tous_a_tapis')}
             </Text>
           )}
         </View>

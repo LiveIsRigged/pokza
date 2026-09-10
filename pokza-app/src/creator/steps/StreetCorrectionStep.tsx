@@ -7,12 +7,13 @@ import { describeAction } from '../../engine/handEngine';
 import { MultiCardPicker } from '../MultiCardPicker';
 import { WizardScreen } from '../WizardScreen';
 import type { CodeDevise } from '../../utils/currency';
+import { useT, type Cle } from '../../i18n';
 
-const TITRES: Record<Street, string> = {
-  preflop: 'Préflop',
-  flop: 'Flop',
-  turn: 'Turn',
-  river: 'River',
+const TITRES: Record<Street, Cle> = {
+  preflop: 'createur.street_preflop',
+  flop: 'createur.street_flop',
+  turn: 'createur.street_turn',
+  river: 'createur.street_river',
 };
 
 /**
@@ -90,6 +91,7 @@ export function StreetCorrectionStep({
   onRefaireLesMises,
   onBack,
 }: StreetCorrectionStepProps) {
+  const t = useT();
   const initiales = cartesDeLaStreet(board, street);
   const initiales2 = cartesDeLaStreet(board2, street);
   const [cartes, setCartes] = useState<(Card | undefined)[]>(initiales);
@@ -107,7 +109,7 @@ export function StreetCorrectionStep({
 
   return (
     <WizardScreen
-      title={TITRES[street]}
+      title={t(TITRES[street])}
       subtitle={initiales.length ? 'Corrige les cartes, ou refais les mises' : 'Refais les mises de cette street'}
       onNext={
         initiales.length

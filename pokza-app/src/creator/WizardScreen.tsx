@@ -5,6 +5,7 @@ import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, spacing, tints, typography } from '../theme/theme';
 import { useLeftEdgeSwipe } from '../navigation/edgeSwipe';
 import { RESIDU_TOLERE } from './debordement';
+import { useT } from '../i18n';
 
 /**
  * LE RAIL DE DÉFILEMENT — « il y a une suite, et voilà combien ».
@@ -105,7 +106,7 @@ export function WizardScreen({
   subtitle,
   children,
   onNext,
-  nextLabel = 'Continuer',
+  nextLabel,
   nextDisabled,
   onBack,
   step,
@@ -118,6 +119,7 @@ export function WizardScreen({
   rangeeFixe,
   socle,
 }: WizardScreenProps) {
+  const t = useT();
   // Retour au glissement bord-gauche → droite, double du bouton ‹ Retour (étape précédente, ou
   // sortie du créateur à la première étape). Inerte quand l'étape n'a pas de retour.
   const backSwipe = useLeftEdgeSwipe(onBack ?? (() => {}), !!onBack);
@@ -193,15 +195,13 @@ export function WizardScreen({
       <View style={styles.topRow}>
         {onBack ? (
           <Pressable onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backText}>‹ Retour</Text>
+            <Text style={styles.backText}>{t('createur.retour')}</Text>
           </Pressable>
         ) : (
           <View />
         )}
         {step && totalSteps ? (
-          <Text style={styles.stepIndicator}>
-            Étape {step}/{totalSteps}
-          </Text>
+          <Text style={styles.stepIndicator}>{t('createur.etape', { n: step, total: totalSteps })}</Text>
         ) : null}
       </View>
       {/* Le titre prend toute la place restante (`flex: 1`) : un titre long passe donc à la ligne
@@ -274,7 +274,7 @@ export function WizardScreen({
           disabled={nextDisabled}
           style={[styles.nextButton, nextDisabled && styles.nextButtonDisabled]}
         >
-          <Text style={styles.nextText}>{nextLabel}</Text>
+          <Text style={styles.nextText}>{nextLabel ?? t('commun.continuer')}</Text>
         </Pressable>
       )}
       {footerLink && (
