@@ -13,6 +13,7 @@ import {
 import { acceptFriendRequest, deleteFriendRelation, fetchPendingRequests } from '../data/friends';
 import { acceptGroupInvite, fetchPendingGroupInvites, removeGroupMember } from '../data/groups';
 import { enablePush, pushState, pushSupported, type PushState } from '../web/push';
+import { t, useT } from '../i18n';
 import {
   BellIcon,
   CommentIcon,
@@ -40,13 +41,13 @@ interface NotificationsScreenProps {
 // est lue en un coup d'œil, "il y a 3 min" renseigne davantage que la date complète à cette échelle.
 function timeAgo(iso: string): string {
   const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return "à l'instant";
+  if (seconds < 60) return t('date.a_l_instant');
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return t('duree.minutes_courtes', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h`;
+  if (hours < 24) return t('duree.heures_courtes', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days} j`;
+  return t('duree.jours_courts', { count: days });
 }
 
 function iconFor(type: AppNotification['type']): React.ComponentType<IconProps> {
@@ -73,37 +74,47 @@ function iconFor(type: AppNotification['type']): React.ComponentType<IconProps> 
   }
 }
 
+/**
+ * ⚠️ CES PHRASES EXISTENT EN DOUBLE. `supabase/functions/send-push/index.ts` fabrique les mêmes
+ * pour le push, côté serveur, et ne peut pas lire ce catalogue : elle tourne sous Deno, hors du
+ * bundle de l'app, et surtout elle ne sait pas encore quelle langue parle le destinataire (il
+ * faudra la stocker sur le profil). Tant que ce lot n'est pas fait, l'historique in-app suit la
+ * langue choisie et le push reste en français. Toucher une phrase ici sans toucher l'autre les
+ * fait diverger en silence — le défaut existait déjà avant la traduction, en une seule langue.
+ */
 function textFor(n: AppNotification): string {
+  const nom = n.actorName;
+  const groupe = n.groupName ?? '?';
   switch (n.type) {
     case 'post_like':
-      return `${n.actorName} a aimé ta main`;
+      return t('notif.post_like', { nom });
     case 'comment_like':
-      return `${n.actorName} a aimé ton commentaire`;
+      return t('notif.comment_like', { nom });
     case 'post_comment':
-      return `${n.actorName} a commenté ta main`;
+      return t('notif.post_comment', { nom });
     case 'comment_reply':
-      return `${n.actorName} a répondu à ton commentaire`;
+      return t('notif.comment_reply', { nom });
     case 'friend_request':
-      return `${n.actorName} veut devenir ami avec toi`;
+      return t('notif.friend_request', { nom });
     case 'friend_accept':
-      return `${n.actorName} a accepté ta demande d'ami`;
+      return t('notif.friend_accept', { nom });
     case 'friend_posted':
       return n.postLocation
-        ? `${n.actorName} a posté une main à ${n.postLocation}`
-        : `${n.actorName} a posté une main`;
+        ? t('notif.friend_posted_lieu', { nom, lieu: n.postLocation })
+        : t('notif.friend_posted', { nom });
     case 'group_invite':
-      return `${n.actorName} t'invite dans le groupe privé ${n.groupName ?? '?'}`;
+      return t('notif.group_invite', { nom, groupe });
     case 'group_accept':
-      return `${n.actorName} a rejoint le groupe privé ${n.groupName ?? '?'}`;
+      return t('notif.group_accept', { nom, groupe });
     case 'group_posted':
-      return `${n.actorName} a posté une main dans le groupe privé ${n.groupName ?? '?'}`;
+      return t('notif.group_posted', { nom, groupe });
     // Notifications de modération : on ne nomme jamais l'admin, on parle de « la modération ».
     case 'report_resolved':
-      return 'Ton signalement a été traité par la modération.';
+      return t('notif.report_resolved');
     case 'content_removed':
-      return 'Un de tes contenus a été retiré par la modération.';
+      return t('notif.content_removed');
     case 'account_sanctioned':
-      return 'Ton compte a fait l\'objet d\'une mesure de modération.';
+      return t('notif.account_sanctioned');
   }
 }
 
@@ -115,6 +126,9 @@ export function NotificationsScreen({
   onOpenGroup,
   onOpenPost,
 }: NotificationsScreenProps) {
+  // Masque volontairement le `t` du module : `textFor`/`timeAgo` sont hors composant et prennent
+  // celui-ci, tandis qu'ici c'est `useT` qui redessine la liste quand la langue change.
+  const t = useT();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -268,7 +282,7 @@ export function NotificationsScreen({
 
   return (
     <Popover visible={visible} onClose={onClose} width={320}>
-      <Text style={styles.title}>Notifications</Text>
+      <Text style={styles.title}>{t('notif.titre')}</Text>
       {error && <Text style={styles.statusText}>{error}</Text>}
 
       {pushSupported() && perm !== 'granted' && (
@@ -282,17 +296,17 @@ export function NotificationsScreen({
             {perm === 'denied'
               ? 'Notifications bloquées — réactive-les dans les réglages de ton navigateur.'
               : enabling
-                ? 'Activation…'
-                : 'Activer les notifications sur cet appareil'}
+                ? t('notif.activation_en_cours')
+                : t('notif.activer_sur_appareil')}
           </Text>
         </Pressable>
       )}
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}>
         {loading ? (
-          <Text style={styles.statusText}>Chargement…</Text>
+          <Text style={styles.statusText}>{t('commun.chargement')}</Text>
         ) : notifications.length === 0 ? (
-          <Text style={styles.statusText}>Aucune notification pour l'instant.</Text>
+          <Text style={styles.statusText}>{t('notif.aucune')}</Text>
         ) : (
           notifications.map((n) => (
             <View key={n.id} style={[styles.row, !n.read && styles.rowUnread]}>
@@ -311,20 +325,20 @@ export function NotificationsScreen({
               {showFriendActions(n) && (
                 <View style={styles.actions}>
                   <Pressable style={styles.declineButton} onPress={() => handleDecline(n)} hitSlop={hitSlopPairLeft}>
-                    <Text style={styles.declineButtonText}>Refuser</Text>
+                    <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
                   </Pressable>
                   <Pressable style={styles.acceptButton} onPress={() => handleAccept(n)} hitSlop={hitSlopPairRight}>
-                    <Text style={styles.acceptButtonText}>Accepter</Text>
+                    <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
                   </Pressable>
                 </View>
               )}
               {showGroupActions(n) && (
                 <View style={styles.actions}>
                   <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(n)} hitSlop={hitSlopPairLeft}>
-                    <Text style={styles.declineButtonText}>Refuser</Text>
+                    <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
                   </Pressable>
                   <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(n)} hitSlop={hitSlopPairRight}>
-                    <Text style={styles.acceptButtonText}>Accepter</Text>
+                    <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
                   </Pressable>
                 </View>
               )}
