@@ -26,7 +26,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
-import { useT } from '../i18n';
+import { langueCourante, useT } from '../i18n';
 
 const SITE_KEY = process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -119,7 +119,15 @@ export const Turnstile = forwardRef<TurnstileHandle, Props>(function Turnstile(
 
         widgetId.current = api.render(el, {
           sitekey: SITE_KEY,
-          language: 'fr',
+          // Le widget parle la langue LUE PAR LA PERSONNE, pas celle du code. En dur sur « fr », un
+          // Allemand qui s'inscrivait voyait une case de vérification en français — sur l'écran
+          // d'inscription, avant même d'avoir vu l'app. Turnstile accepte aussi « auto », qui suit
+          // le NAVIGATEUR : on n'en veut pas, quelqu'un qui a forcé Deutsch depuis un téléphone
+          // français aurait un widget français collé à un formulaire allemand. Une langue que
+          // Turnstile ne connaîtrait pas retombe sur l'anglais, c'est déjà notre repli.
+          // Lu ici et non au chargement du module : `App.tsx` ne rend rien avant `pret`, donc la
+          // langue est définitive quand cet effet s'exécute.
+          language: langueCourante(),
           callback: (token: string) => callbacks.current.onToken(token),
           // Un jeton Turnstile expire au bout de 5 minutes. Sans ce rappel, un formulaire laissé
           // ouvert enverrait un jeton périmé et l'utilisateur verrait un refus inexplicable.
