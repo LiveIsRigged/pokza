@@ -113,6 +113,33 @@ const fichiers = [];
 })(path.join(RACINE, 'src'));
 fichiers.push(path.join(RACINE, 'App.tsx'));
 
+// ⚠️ L'APP N'EST PAS LE SEUL CONSOMMATEUR. `i18n-push.js` lit des clés `notif.*` pour fabriquer
+// les textes de la fonction `send-push`, et il les désigne SANS leur préfixe (`'quelquun'`, pas
+// `'notif.quelquun'`). En ne balayant que `pokza-app/src`, ce contrôle a déclaré morte
+// `notif.quelquun` — le repli quand l'auteur n'a pas de nom — et elle a été supprimée pour de bon
+// avant que le contrôle de dérive des textes du push ne la rattrape. D'où ces deux dossiers, et la
+// règle du suffixe plus bas. Le sens de l'erreur n'est pas neutre : croire vivante une clé morte
+// laisse traîner une ligne inutile, croire morte une clé vivante casse une notification.
+const generateurs = [];
+(function balayerGenerateurs(dossier) {
+  if (!fs.existsSync(dossier)) return;
+  for (const e of fs.readdirSync(dossier, { withFileTypes: true })) {
+    const p = path.join(dossier, e.name);
+    if (e.isDirectory()) {
+      if (e.name !== 'node_modules') balayerGenerateurs(p);
+    } else if (/\.(js|ts|json)$/.test(e.name)) generateurs.push(p);
+  }
+})(__dirname);
+(function balayerFonctions(dossier) {
+  if (!fs.existsSync(dossier)) return;
+  for (const e of fs.readdirSync(dossier, { withFileTypes: true })) {
+    const p = path.join(dossier, e.name);
+    if (e.isDirectory()) balayerFonctions(p);
+    else if (/\.(ts|json)$/.test(e.name)) generateurs.push(p);
+  }
+})(path.join(__dirname, '..', 'supabase', 'functions'));
+
+const codeGenerateurs = generateurs.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
 const code = fichiers.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
 // On relève TOUTE chaîne littérale, pas seulement ce qui suit `t(` : une clé passe aussi par un
 // ternaire (`t(x ? 'a' : 'b')`) ou par une table de correspondance. Chercher `t('...')` seul
@@ -127,7 +154,17 @@ const litterales = new Set();
 for (const m of code.matchAll(/\bt\(\s*'([^'\n]+)'/g)) litterales.add(m[1]);
 for (const m of code.matchAll(/'([^'\n]+)'/g)) litterales.add(m[1]);
 for (const m of code.matchAll(/"([^"\n]+)"/g)) litterales.add(m[1]);
-const jamais = Object.keys(fr).filter((c) => !litterales.has(c));
+// Côté générateurs, on accepte AUSSI le dernier segment seul : c'est la forme sous laquelle
+// `i18n-push.js` nomme ses clés. Une collision fortuite ferait survivre une clé morte — coût : une
+// ligne de trop dans la feuille du relecteur. L'erreur inverse supprime une clé qui sert.
+const jamais = Object.keys(fr).filter(
+  (c) =>
+    !litterales.has(c) &&
+    !codeGenerateurs.includes(`'${c}'`) &&
+    !codeGenerateurs.includes(`"${c}"`) &&
+    !codeGenerateurs.includes(`'${c.split('.').pop()}'`) &&
+    !codeGenerateurs.includes(`"${c.split('.').pop()}"`)
+);
 if (jamais.length > 0) {
   console.log(`Clés jamais appelées (${jamais.length}) — informatif, pas bloquant :`);
   for (const c of jamais) console.log(`      ${c}`);
