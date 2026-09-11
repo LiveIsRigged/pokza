@@ -43,10 +43,11 @@ poserLangue('en');
 verifier('anglais', t('reglages.titre'), 'Settings');
 
 // 3. une langue sans catalogue retombe sur l'anglais, pas sur la clé
-// ⚠️ Ce cas se testait avec 'de' jusqu'à ce que l'allemand existe pour de vrai (11/09). L'ESPAGNOL
-// le remplace : il faut ici une langue que Pokza NE SERT PAS, sinon le test ne teste plus le repli
-// mais la traduction. Le jour où l'espagnol arrivera, prendre la suivante.
-poserLangue('es');
+// ⚠️ Ce cas s'est testé avec 'de', puis avec 'es' — chaque fois jusqu'à ce que la langue existe
+// pour de vrai (allemand le 11/09, espagnol le même jour). L'ITALIEN prend la suite : il faut ici
+// une langue que Pokza NE SERT PAS, sinon le test ne teste plus le repli mais la traduction. Ce
+// commentaire a déjà servi deux fois — le jour où l'italien arrivera, prendre encore la suivante.
+poserLangue('it');
 verifier('repli sur anglais', t('reglages.titre'), 'Settings');
 poserLangue('fr');
 
@@ -87,7 +88,7 @@ verifier('appareil en français', choisirLangue(['fr']), 'fr');
 // [italien, français] reçoit du français plutôt que de l'anglais.
 verifier('appareil suisse [it, fr] → fr', choisirLangue(['it', 'fr']), 'fr');
 verifier('appareil [de, fr] → de (les deux sont servies)', choisirLangue(['de', 'fr']), 'de');
-verifier('langue non servie seule → anglais', choisirLangue(['es']), 'en');
+verifier('langue non servie seule → anglais', choisirLangue(['it']), 'en');
 verifier('aucune préférence → anglais', choisirLangue([]), 'en');
 verifier('codes nuls ignorés', choisirLangue([null, undefined, 'fr']), 'fr');
 // « de-AT » est de l'allemand : un Autrichien basculé sur l'anglais faute d'un tiret n'aurait aucun

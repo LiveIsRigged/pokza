@@ -58,7 +58,7 @@ export function playerSummary(formatFavori: string, frequenceJeu: string): strin
   // « joueur régulier de cash game live » ; l'allemand met une majuscule à ses noms communs, et
   // « live Cash Game » y serait une faute. La typographie appartient à la langue : on ne l'applique
   // donc qu'aux langues qui la pratiquent, et une langue de plus se déclare ici.
-  const MINUSCULE_EN_MILIEU_DE_PHRASE = ['fr', 'en'];
+  const MINUSCULE_EN_MILIEU_DE_PHRASE = ['fr', 'en', 'es'];
   const formatLowerFirst = MINUSCULE_EN_MILIEU_DE_PHRASE.includes(langueCourante())
     ? format.charAt(0).toLowerCase() + format.slice(1)
     : format;

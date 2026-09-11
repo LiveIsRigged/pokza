@@ -33,6 +33,23 @@
     "account_sanctioned": "Your account has been subject to a moderation measure.",
     "quelquun": "Someone"
   },
+  "es": {
+    "post_like": "A {nom} le gusta tu mano",
+    "comment_like": "A {nom} le gusta tu comentario",
+    "post_comment": "{nom} comentó tu mano",
+    "comment_reply": "{nom} respondió a tu comentario",
+    "friend_request": "{nom} quiere ser tu amigo",
+    "friend_accept": "{nom} aceptó tu solicitud de amistad",
+    "friend_posted": "{nom} publicó una mano",
+    "friend_posted_lieu": "{nom} publicó una mano en {lieu}",
+    "group_invite": "{nom} te invita al grupo privado {groupe}",
+    "group_accept": "{nom} se unió al grupo privado {groupe}",
+    "group_posted": "{nom} publicó una mano en el grupo privado {groupe}",
+    "report_resolved": "Moderación ya trató tu reporte.",
+    "content_removed": "Moderación retiró uno de tus contenidos.",
+    "account_sanctioned": "Tu cuenta fue objeto de una medida de moderación.",
+    "quelquun": "Alguien"
+  },
   "fr": {
     "post_like": "{nom} a aimé ta main",
     "comment_like": "{nom} a aimé ton commentaire",
