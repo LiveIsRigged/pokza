@@ -13,6 +13,7 @@
 //      déplacer le lien où sa langue l'exige, y compris en inversant deux repères ;
 //   8. « Bob et Chloé » vient d'`Intl.ListFormat` : l'anglais met la virgule d'Oxford
 //      (« Bob, Chloé, and Ali »), le français non — écrite à la main, elle se serait perdue ;
+//   9. une variante régionale retombe sur sa langue de base : « de-AT » donne de l'allemand ;
 //   6. la langue de démarrage suit l'ORDRE DE PRÉFÉRENCE de l'appareil : un Suisse réglé sur
 //      [de, fr] reçoit du français, pas de l'anglais — et une liste sans aucune langue servie
 //      donne l'anglais (décision du 10/09/2026).
@@ -42,8 +43,16 @@ poserLangue('en');
 verifier('anglais', t('reglages.titre'), 'Settings');
 
 // 3. une langue sans catalogue retombe sur l'anglais, pas sur la clé
-poserLangue('de'); // déclarée nulle part : c'est exactement l'état d'une langue en cours de route
+// ⚠️ Ce cas se testait avec 'de' jusqu'à ce que l'allemand existe pour de vrai (11/09). L'ESPAGNOL
+// le remplace : il faut ici une langue que Pokza NE SERT PAS, sinon le test ne teste plus le repli
+// mais la traduction. Le jour où l'espagnol arrivera, prendre la suivante.
+poserLangue('es');
 verifier('repli sur anglais', t('reglages.titre'), 'Settings');
+poserLangue('fr');
+
+// …et une langue servie MAIS INCOMPLÈTE retombe clé par clé, pas en bloc.
+poserLangue('de');
+verifier('allemand servi', t('reglages.titre'), 'Einstellungen');
 poserLangue('fr');
 
 // 4. interpolation
@@ -74,10 +83,18 @@ verifier('catégorie manquante → other', rendre({ other: '{count} шт.' }, 'r
 
 // 7. langue de démarrage
 verifier('appareil en français', choisirLangue(['fr']), 'fr');
-verifier('appareil suisse [de, fr] → fr', choisirLangue(['de', 'fr']), 'fr');
-verifier('appareil allemand seul → anglais', choisirLangue(['de']), 'en');
+// La PREMIÈRE langue servie de la liste, pas la première tout court : un Suisse réglé sur
+// [italien, français] reçoit du français plutôt que de l'anglais.
+verifier('appareil suisse [it, fr] → fr', choisirLangue(['it', 'fr']), 'fr');
+verifier('appareil [de, fr] → de (les deux sont servies)', choisirLangue(['de', 'fr']), 'de');
+verifier('langue non servie seule → anglais', choisirLangue(['es']), 'en');
 verifier('aucune préférence → anglais', choisirLangue([]), 'en');
 verifier('codes nuls ignorés', choisirLangue([null, undefined, 'fr']), 'fr');
+// « de-AT » est de l'allemand : un Autrichien basculé sur l'anglais faute d'un tiret n'aurait aucun
+// moyen de savoir que sa langue existe.
+verifier('variante régionale → langue de base', choisirLangue(['de-AT']), 'de');
+verifier('fr-CA → fr', choisirLangue(['fr-CA']), 'fr');
+verifier("la variante ne l'emporte pas sur une correspondance exacte plus loin", choisirLangue(['pt-BR', 'de']), 'de');
 
 // 8. phrases a trous — celles dont un morceau est un lien ou un mot en couleur
 const seg = (g) => JSON.stringify(segmenter(g));

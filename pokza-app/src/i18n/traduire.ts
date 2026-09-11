@@ -1,5 +1,6 @@
 import fr from './catalogues/fr.json';
 import en from './catalogues/en.json';
+import de from './catalogues/de.json';
 import { estLangueServie, LANGUE_REPLI, LANGUE_SOURCE, type Langue } from './langues';
 
 /**
@@ -28,7 +29,11 @@ export type Variables = Record<string, string | number>;
  * L'anglais est exhaustif (`Record`), les langues suivantes ne le seront pas forcément
  * (`Partial`) : une clé qui manque retombe sur l'anglais plutôt que d'afficher un trou.
  */
-const CATALOGUES: { fr: Record<Cle, Message>; en: Record<Cle, Message> } = { fr, en };
+const CATALOGUES: {
+  fr: Record<Cle, Message>;
+  en: Record<Cle, Message>;
+  de: Partial<Record<Cle, Message>>;
+} = { fr, en, de };
 
 /**
  * Langue effective, tenue hors de React : `handEngine`, `relativeDate` ou `errorMessage` produisent
@@ -132,6 +137,12 @@ export function segmenter(gabarit: string): Segment[] {
 export function choisirLangue(preferees: readonly (string | null | undefined)[]): Langue {
   for (const code of preferees) {
     if (estLangueServie(code)) return code;
+    // ⚠️ « de-AT » EST DE L'ALLEMAND. `getLocales()` rend en principe le code nu (« de »), mais rien
+    // ne le garantit sur toutes les plateformes, et le jour où on servira une variante régionale
+    // (« pt-BR ») les deux formes coexisteront. Un Autrichien basculé sur l'anglais faute d'un
+    // tiret serait un défaut invisible : il n'aurait aucun moyen de savoir que l'allemand existe.
+    const base = typeof code === 'string' ? code.split('-')[0] : null;
+    if (estLangueServie(base)) return base;
   }
   return LANGUE_REPLI;
 }

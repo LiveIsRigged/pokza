@@ -1,5 +1,5 @@
 import type { GameType } from '../types/poker';
-import { t, type Cle } from '../i18n/traduire';
+import { langueCourante, t, type Cle } from '../i18n/traduire';
 
 // Libellés partagés entre le formulaire de création de profil et l'affichage d'un profil consulté —
 // une seule source pour ces libellés, pour ne jamais les faire diverger.
@@ -54,9 +54,13 @@ export function formatLabel(value: string): string {
 export function playerSummary(formatFavori: string, frequenceJeu: string): string {
   const regulier = frequenceJeu === 'regulier' || frequenceJeu === 'tres_regulier';
   const format = formatLabel(formatFavori);
-  // ⚠️ La minuscule initiale est une convention FRANÇAISE (et anglaise). Une langue qui met une
-  // majuscule aux noms communs — l'allemand — devra le signaler : le code ne le devine pas. Noté
-  // dans `contexte.json` pour le relecteur.
-  const formatLowerFirst = format.charAt(0).toLowerCase() + format.slice(1);
+  // ⚠️ LA MINUSCULE INITIALE EST UNE CONVENTION, PAS UNE RÈGLE. Le français et l'anglais écrivent
+  // « joueur régulier de cash game live » ; l'allemand met une majuscule à ses noms communs, et
+  // « live Cash Game » y serait une faute. La typographie appartient à la langue : on ne l'applique
+  // donc qu'aux langues qui la pratiquent, et une langue de plus se déclare ici.
+  const MINUSCULE_EN_MILIEU_DE_PHRASE = ['fr', 'en'];
+  const formatLowerFirst = MINUSCULE_EN_MILIEU_DE_PHRASE.includes(langueCourante())
+    ? format.charAt(0).toLowerCase() + format.slice(1)
+    : format;
   return t(regulier ? 'profil.resume_regulier' : 'profil.resume_occasionnel', { format: formatLowerFirst });
 }

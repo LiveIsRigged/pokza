@@ -1,4 +1,21 @@
 {
+  "de": {
+    "post_like": "{nom} gefällt deine Hand",
+    "comment_like": "{nom} gefällt dein Kommentar",
+    "post_comment": "{nom} hat deine Hand kommentiert",
+    "comment_reply": "{nom} hat auf deinen Kommentar geantwortet",
+    "friend_request": "{nom} möchte mit dir befreundet sein",
+    "friend_accept": "{nom} hat deine Freundschaftsanfrage angenommen",
+    "friend_posted": "{nom} hat eine Hand gepostet",
+    "friend_posted_lieu": "{nom} hat eine Hand in {lieu} gepostet",
+    "group_invite": "{nom} lädt dich in die private Gruppe {groupe} ein",
+    "group_accept": "{nom} ist der privaten Gruppe {groupe} beigetreten",
+    "group_posted": "{nom} hat eine Hand in der privaten Gruppe {groupe} gepostet",
+    "report_resolved": "Deine Meldung wurde von der Moderation bearbeitet.",
+    "content_removed": "Einer deiner Beiträge wurde von der Moderation entfernt.",
+    "account_sanctioned": "Gegen dein Konto wurde eine Moderationsmaßnahme ergriffen.",
+    "quelquun": "Jemand"
+  },
   "en": {
     "post_like": "{nom} liked your hand",
     "comment_like": "{nom} liked your comment",
