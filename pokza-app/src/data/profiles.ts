@@ -154,6 +154,22 @@ export async function updateProfile(userId: string, edits: ProfileEditInput): Pr
  * L'avatar est retiré avant l'appel — une fois le compte supprimé, plus rien ne permet de
  * retrouver son chemin de stockage pour le nettoyer après coup.
  */
+/**
+ * Pousse la langue RÉSOLUE du lecteur sur son profil, pour les notifications push.
+ *
+ * ⚠️ LA LANGUE, PAS LA PRÉFÉRENCE. « Suivre l'appareil » ne veut rien dire côté serveur : l'Edge
+ * Function qui fabrique le push n'a jamais vu le téléphone. On stocke donc ce que la personne VOIT
+ * à l'écran, recalculé à chaque ouverture — si elle change la langue de son téléphone, la colonne
+ * suit d'elle-même au prochain lancement.
+ *
+ * Volontairement silencieux : rater cette écriture ne doit jamais empêcher d'utiliser l'app. Le
+ * pire qui arrive est un push dans la langue précédente, jusqu'à la prochaine ouverture.
+ */
+export async function syncLangueDuProfil(userId: string, langue: string): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ language: langue }).eq('id', userId);
+  if (error) console.warn('langue non enregistrée pour le push', error.message);
+}
+
 export async function deleteOwnAccount(userId: string): Promise<void> {
   try {
     await removeAvatar(userId);

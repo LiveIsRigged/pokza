@@ -253,6 +253,24 @@ if (litteralJsx.length > 0) {
   console.log('');
 }
 
+// ── Les textes du push, qui vivent hors du bundle ───────────────────────────────────────────────
+// `supabase/functions/send-push/textes.json` est GÉNÉRÉ depuis ce catalogue par
+// `scripts/i18n-push.js` : la fonction Deno ne peut pas importer `fr.json`. Si le fichier dérive,
+// le push dit autre chose que l'historique in-app — exactement le défaut qu'on vient de supprimer.
+{
+  const generateur = path.join(__dirname, 'i18n-push.js');
+  if (fs.existsSync(generateur)) {
+    const { status } = require('child_process').spawnSync(
+      process.execPath, [generateur, '--verifier'], { encoding: 'utf8' }
+    );
+    if (status !== 0) {
+      trous += 1;
+      console.log("Les textes du push ont dérivé du catalogue — `node scripts/i18n-push.js`,");
+      console.log('puis redéployer la fonction `send-push`.\n');
+    }
+  }
+}
+
 // ── `t()` appelé au CHARGEMENT du module — le piège le plus silencieux du lot ────────────────────
 // Une table calculée au niveau module (`const NOM_STREET = { preflop: t('…') }`) résout ses textes
 // UNE FOIS, au démarrage, et les garde dans cette langue-là pour toute la session. Rien ne casse :

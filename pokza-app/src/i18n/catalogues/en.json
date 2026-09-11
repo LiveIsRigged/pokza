@@ -776,5 +776,6 @@
   "maintexte.abattage": "SHOWDOWN",
   "maintexte.entete_street": "{street}  {cartes}  (pot {pot})",
   "maintexte.gagne": "{nom} wins {montant}",
-  "createur.virgule": "Decimal point"
+  "createur.virgule": "Decimal point",
+  "notif.quelquun": "Someone"
 }

@@ -17,6 +17,11 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import * as webpush from 'jsr:@negrel/webpush';
+// GÉNÉRÉ depuis le catalogue de l'app par `scripts/i18n-push.js`, et vérifié par
+// `scripts/i18n-audit.js`. NE PAS le modifier à la main : la modification serait perdue au
+// prochain passage du générateur, et surtout elle ferait diverger le push de l'in-app — le défaut
+// que ce fichier existe précisément pour supprimer.
+import TEXTES from './textes.json' with { type: 'json' };
 
 type NotificationType =
   | 'post_like'
@@ -61,41 +66,41 @@ const appServerPromise = (async () => {
   });
 })();
 
-/** Message affiché (miroir de `textFor` côté app). La modération ne nomme jamais l'admin. */
+/** Langue de REPLI de tout le produit : celle que voit quiconque parle une langue non servie. */
+const REPLI = 'en';
+
+/**
+ * Le texte d'une clé dans la langue du destinataire, avec le même repli que l'app : sa langue si
+ * on la sert, l'anglais sinon. Une langue en cours de traduction peut n'avoir qu'une partie des
+ * clés — on retombe alors clé par clé, pas en bloc.
+ */
+function texte(langue: string, nom: string): string {
+  const catalogues = TEXTES as Record<string, Record<string, string>>;
+  return catalogues[langue]?.[nom] ?? catalogues[REPLI][nom];
+}
+
+/** Remplace les repères `{nom}`, `{lieu}`, `{groupe}` — même mécanique que `t()` côté app. */
+function remplir(gabarit: string, variables: Record<string, string>): string {
+  return gabarit.replace(/\{(\w+)\}/g, (brut, cle: string) => variables[cle] ?? brut);
+}
+
+/**
+ * Message affiché. Les phrases viennent du MÊME catalogue que l'historique in-app (`textes.json`,
+ * généré) : elles ne peuvent plus diverger sans que l'audit le dise. La modération ne nomme jamais
+ * l'admin.
+ */
 function bodyFor(
   type: NotificationType,
+  langue: string,
   actorName: string,
   postLocation: string | null,
   groupName: string | null,
 ): string {
-  switch (type) {
-    case 'post_like':
-      return `${actorName} a aimé ta main`;
-    case 'comment_like':
-      return `${actorName} a aimé ton commentaire`;
-    case 'post_comment':
-      return `${actorName} a commenté ta main`;
-    case 'comment_reply':
-      return `${actorName} a répondu à ton commentaire`;
-    case 'friend_request':
-      return `${actorName} veut devenir ami avec toi`;
-    case 'friend_accept':
-      return `${actorName} a accepté ta demande d'ami`;
-    case 'friend_posted':
-      return postLocation ? `${actorName} a posté une main à ${postLocation}` : `${actorName} a posté une main`;
-    case 'group_invite':
-      return `${actorName} t'invite dans le groupe privé ${groupName ?? ''}`.trim();
-    case 'group_accept':
-      return `${actorName} a rejoint le groupe privé ${groupName ?? ''}`.trim();
-    case 'group_posted':
-      return `${actorName} a posté une main dans le groupe privé ${groupName ?? ''}`.trim();
-    case 'report_resolved':
-      return 'Ton signalement a été traité par la modération.';
-    case 'content_removed':
-      return 'Un de tes contenus a été retiré par la modération.';
-    case 'account_sanctioned':
-      return 'Ton compte a fait l’objet d’une mesure de modération.';
+  const vars = { nom: actorName, lieu: postLocation ?? '', groupe: groupName ?? '' };
+  if (type === 'friend_posted') {
+    return remplir(texte(langue, postLocation ? 'friend_posted_lieu' : 'friend_posted'), vars).trim();
   }
+  return remplir(texte(langue, type), vars).trim();
 }
 
 /** Lien profond ouvert au clic (miroir des routes gérées : /post/:id et /invite/:userId). */
@@ -175,12 +180,16 @@ Deno.serve(async (req) => {
     }
 
     // Résolution des libellés en service_role (contourne la RLS).
-    const [{ data: actor }, post, group] = await Promise.all([
+    const [{ data: actor }, { data: destinataire }, post, group] = await Promise.all([
       // `display_name` et non `pseudo` : c'est le seul nom sous lequel une personne apparaît dans
       // l'app depuis le 23/08, et une notification qui annonce un pseudo que le destinataire n'a
       // jamais vu ne lui apprend rien. La colonne vaut déjà le pseudo pour qui a choisi de
       // l'afficher (cf. `docs/dev/recherche-par-nom.sql`) : un seul champ couvre les deux cas.
       admin.from('profiles').select('display_name').eq('id', n.actor_id).maybeSingle(),
+      // La langue du DESTINATAIRE, pas celle de l'auteur : c'est lui qui lira la notification.
+      // `language` porte la langue RÉSOLUE (ce qu'il voit à l'écran), pas sa préférence : « suivre
+      // l'appareil » ne veut rien dire côté serveur, qui n'a jamais vu son téléphone.
+      admin.from('profiles').select('language').eq('id', n.recipient_id).maybeSingle(),
       n.post_id
         ? admin.from('posts').select('location').eq('id', n.post_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -189,8 +198,9 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null }),
     ]);
 
-    const actorName = actor?.display_name ?? 'Quelqu’un';
-    const body = bodyFor(n.type, actorName, post?.data?.location ?? null, group?.data?.name ?? null);
+    const langue = destinataire?.language ?? REPLI;
+    const actorName = actor?.display_name ?? texte(langue, 'quelquun');
+    const body = bodyFor(n.type, langue, actorName, post?.data?.location ?? null, group?.data?.name ?? null);
     const message = JSON.stringify({
       title: 'Pokza',
       body,

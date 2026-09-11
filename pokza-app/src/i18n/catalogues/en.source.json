@@ -776,5 +776,6 @@
   "maintexte.abattage": "ABATTAGE",
   "maintexte.entete_street": "{street}  {cartes}  (pot {pot})",
   "maintexte.gagne": "{nom} gagne {montant}",
-  "createur.virgule": "Virgule"
+  "createur.virgule": "Virgule",
+  "notif.quelquun": "Quelqu’un"
 }

@@ -31,6 +31,7 @@ import {
   updatePost,
 } from './src/data/posts';
 import { resetLecturesLocales } from './src/data/postViews';
+import { syncLangueDuProfil } from './src/data/profiles';
 import { useReadTracking } from './src/post/readTracking';
 import { colors } from './src/theme/theme';
 import type { Post } from './src/types/poker';
@@ -130,9 +131,18 @@ function AppContent() {
   const [fontsLoaded] = useFonts({ Fraunces_400Regular, Fraunces_600SemiBold });
   // `pret` attend la relecture du choix stocké : sans lui, quiconque a forcé une langue voit
   // d'abord celle de son téléphone, le temps d'un rendu.
-  const { pret: languePrete } = useLangue();
+  const { langue, pret: languePrete } = useLangue();
   const t = useT();
   const { session, loading, passwordRecovery, clearPasswordRecovery } = useAuth();
+
+  // La langue lue par cette personne part sur son profil, pour que les notifications PUSH — qui
+  // sont fabriquées côté serveur, hors du bundle — soient dans la même langue que ce qu'elle voit.
+  // Rejoué à chaque changement de langue et à chaque connexion ; l'échec est sans conséquence.
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId || !languePrete) return;
+    void syncLangueDuProfil(userId, langue);
+  }, [session?.user?.id, langue, languePrete]);
   const {
     hasProfile,
     displayName,

@@ -1,0 +1,36 @@
+{
+  "en": {
+    "post_like": "{nom} liked your hand",
+    "comment_like": "{nom} liked your comment",
+    "post_comment": "{nom} commented on your hand",
+    "comment_reply": "{nom} replied to your comment",
+    "friend_request": "{nom} wants to be your friend",
+    "friend_accept": "{nom} accepted your friend request",
+    "friend_posted": "{nom} posted a hand",
+    "friend_posted_lieu": "{nom} posted a hand at {lieu}",
+    "group_invite": "{nom} invites you to the private group {groupe}",
+    "group_accept": "{nom} joined the private group {groupe}",
+    "group_posted": "{nom} posted a hand in the private group {groupe}",
+    "report_resolved": "Your report has been handled by moderation.",
+    "content_removed": "One of your posts was removed by moderation.",
+    "account_sanctioned": "Your account has been subject to a moderation measure.",
+    "quelquun": "Someone"
+  },
+  "fr": {
+    "post_like": "{nom} a aimé ta main",
+    "comment_like": "{nom} a aimé ton commentaire",
+    "post_comment": "{nom} a commenté ta main",
+    "comment_reply": "{nom} a répondu à ton commentaire",
+    "friend_request": "{nom} veut devenir ami avec toi",
+    "friend_accept": "{nom} a accepté ta demande d'ami",
+    "friend_posted": "{nom} a posté une main",
+    "friend_posted_lieu": "{nom} a posté une main à {lieu}",
+    "group_invite": "{nom} t'invite dans le groupe privé {groupe}",
+    "group_accept": "{nom} a rejoint le groupe privé {groupe}",
+    "group_posted": "{nom} a posté une main dans le groupe privé {groupe}",
+    "report_resolved": "Ton signalement a été traité par la modération.",
+    "content_removed": "Un de tes contenus a été retiré par la modération.",
+    "account_sanctioned": "Ton compte a fait l'objet d'une mesure de modération.",
+    "quelquun": "Quelqu’un"
+  }
+}
