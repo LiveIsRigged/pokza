@@ -8,6 +8,39 @@ d'une nouvelle langue.
 **Se lit avec** `pokza-app/src/i18n/contexte.json`, qui note les clés qu'on ne peut pas
 traduire en lisant seulement leur texte.
 
+## Comment on traduit vers une nouvelle langue
+
+```bash
+node scripts/i18n-export.js de
+```
+
+Produit `scripts/i18n-de.csv` : une ligne par texte, avec le **français**, l'**anglais**, une
+**note de contexte** quand le texte seul ne suffit pas, et une colonne vide à remplir. Les deux
+langues sources sont là exprès — deux formulations valent mieux qu'une pour deviner l'intention
+d'un mot isolé.
+
+Envoyer le CSV **avec ce fichier**. Il dit ce qui ne se traduit pas.
+
+Au retour :
+
+```bash
+node scripts/i18n-import.js de le-fichier-rempli.csv
+```
+
+Il refuse d'écrire quoi que ce soit si une traduction **perd un repère** (`{nom}`, `{count}`) :
+c'est la faute la plus fréquente et la plus invisible — le relecteur voit un mot bizarre entre
+accolades et le supprime de bonne foi, la phrase perd le prénom à l'écran, et rien ne le signale
+jamais. Il refuse aussi les clés qui n'existent plus, et les pluriels sans forme `other`.
+
+Un tableur **à moitié rempli passe** : ce qui manque retombe sur l'anglais, clé par clé. On peut
+donc réinjecter plusieurs fois.
+
+### Les pluriels
+
+Ils sortent **éclatés en une ligne par forme** (`cle#one`, `cle#other`). Si ta langue en réclame
+d'autres — le russe a `few` et `many` —, **ajoute des lignes** `cle#few`, `cle#many`. C'est écrit
+dans la colonne contexte de chaque forme, sinon personne ne devine qu'il en a le droit.
+
 ## La règle qui prime sur tout
 
 **Le jargon du poker reste en anglais** (décision du 10/09/2026). Mais la frontière n'est pas
