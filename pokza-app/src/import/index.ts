@@ -89,7 +89,7 @@ export function importerMain(texteBrut: string): ResultatImport {
     const premiere = texte.split('\n').map((l) => l.trim()).find(Boolean) ?? '';
     return {
       ok: false, code: 'format-inconnu',
-      message: premiere.slice(0, 120) || 'aucune ligne lisible',
+      message: premiere.slice(0, 120) || t('diag.aucune_ligne_lisible'),
     };
   }
 

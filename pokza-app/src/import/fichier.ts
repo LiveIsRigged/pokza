@@ -1,4 +1,5 @@
 import { refuser } from './formeNeutre';
+import { t } from '../i18n/traduire';
 
 /**
  * LIRE UNE HAND HISTORY DEPUIS UN FICHIER.
@@ -49,7 +50,7 @@ export function decoderTexte(octets: ArrayBuffer): string {
 
 /** Un fichier trop gros, ou vide, n'est pas une hand history. */
 export function verifierTaille(octets: number): void {
-  if (octets === 0) refuser('texte-vide', 'fichier vide');
+  if (octets === 0) refuser('texte-vide', t('diag.fichier_vide'));
   if (octets > TAILLE_MAX_OCTETS) {
     refuser('fichier-trop-gros', `${Math.round(octets / 1024 / 1024)} Mo`);
   }
@@ -63,6 +64,6 @@ export async function texteDuFichier(fichier: File): Promise<string> {
   verifierTaille(fichier.size);
   const octets = await fichier.arrayBuffer();
   const texte = decoderTexte(octets);
-  if (!texte.trim()) refuser('texte-vide', 'fichier sans texte');
+  if (!texte.trim()) refuser('texte-vide', t('diag.fichier_sans_texte'));
   return texte;
 }

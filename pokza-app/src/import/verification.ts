@@ -4,6 +4,7 @@ import { POSITION_SETS } from '../creator/positions';
 import { roundMoney } from '../utils/chipFormat';
 import type { MainLue } from './formeNeutre';
 import type { MontageDeMain } from './montage';
+import { t } from '../i18n/traduire';
 
 /**
  * LA VÉRIFICATION PAR REJEU — LE CŒUR DU CHANTIER.
@@ -92,7 +93,7 @@ export function verifier(main: MainLue, montage: MontageDeMain): Controle[] {
 /** Aucune carte ne peut être distribuée deux fois, et le board du résumé — quand le dialecte en a
  *  un — doit tomber d'accord avec l'assemblage street par street. */
 function controleStructure(main: MainLue, hand: Hand): Controle {
-  const nom = 'structure et cartes';
+  const nom = t('diag.controle_structure');
   const toutes: Card[] = [
     ...(hand.board.flop ?? []), ...(hand.board.turn ? [hand.board.turn] : []),
     ...(hand.board.river ? [hand.board.river] : []),
@@ -100,7 +101,7 @@ function controleStructure(main: MainLue, hand: Hand): Controle {
   ];
   const vues = new Set(toutes.map((c) => `${c.rank}${c.suit}`));
   if (vues.size !== toutes.length) {
-    return { numero: 1, nom, ok: false, temoin: true, detail: 'une carte est distribuée deux fois' };
+    return { numero: 1, nom, ok: false, temoin: true, detail: t('diag.carte_en_double') };
   }
 
   // Une street qui a des actions doit avoir ses cartes : sans ça on rejouerait un turn à l'aveugle.
@@ -110,7 +111,7 @@ function controleStructure(main: MainLue, hand: Hand): Controle {
                 || (rue === 'turn' && !hand.board.turn)
                 || (rue === 'river' && !hand.board.river));
   if (manque) {
-    return { numero: 1, nom, ok: false, temoin: true, detail: `des actions au ${manque} sans carte` };
+    return { numero: 1, nom, ok: false, temoin: true, detail: t('diag.actions_sans_carte', { rue: manque }) };
   }
 
   /**
@@ -143,13 +144,13 @@ function controleStructure(main: MainLue, hand: Hand): Controle {
   if (muette) {
     return {
       numero: 1, nom, ok: false, temoin: true,
-      detail: `${muette} distribué sans aucune action, et ${capables.length} joueurs pouvaient encore agir`
-        + ' — le texte est tronqué',
+      detail: t('diag.rue_muette', { rue: muette, n: capables.length })
+        + t('diag.texte_tronque'),
     };
   }
 
   if (!main.boardResume) {
-    return { numero: 1, nom, ok: true, temoin: false, detail: 'aucun board de résumé' };
+    return { numero: 1, nom, ok: true, temoin: false, detail: t('diag.aucun_board_resume') };
   }
   const assemble = [...(hand.board.flop ?? []), ...(hand.board.turn ? [hand.board.turn] : []),
                     ...(hand.board.river ? [hand.board.river] : [])];
@@ -157,7 +158,7 @@ function controleStructure(main: MainLue, hand: Hand): Controle {
   const ok = ecrire(assemble) === ecrire(main.boardResume);
   return {
     numero: 1, nom, ok, temoin: true,
-    detail: ok ? undefined : `board assemblé « ${ecrire(assemble)} » ≠ résumé « ${ecrire(main.boardResume)} »`,
+    detail: ok ? undefined : t('diag.board_different', { assemble: ecrire(assemble), resume: ecrire(main.boardResume) }),
   };
 }
 
@@ -172,7 +173,7 @@ function controleStructure(main: MainLue, hand: Hand): Controle {
  *   • `ordre-de-parole` (Betclic) : le bloc des sièges est écrit dans l'ordre de parole préflop.
  */
 function controlePositions(main: MainLue, montage: MontageDeMain): Controle {
-  const nom = 'placement des positions';
+  const nom = t('diag.controle_positions');
   const { positionParNom } = montage;
   const aDeux = montage.hand.seats.length === 2;
   const ko = (detail: string): Controle => ({ numero: 2, nom, ok: false, temoin: true, detail });
@@ -183,21 +184,26 @@ function controlePositions(main: MainLue, montage: MontageDeMain): Controle {
     if (!poste) continue;
     const reelle = positionParNom.get(poste.nom);
     if (reelle !== attendue(genre)) {
-      return ko(`« ${poste.nom} » poste la ${genre === 'sb' ? 'petite' : 'grosse'} blinde en ${reelle} et non en ${attendue(genre)}`);
+      return ko(t('diag.blinde_mal_placee', {
+        nom: poste.nom,
+        genre: t(genre === 'sb' ? 'diag.blinde_petite' : 'diag.blinde_grosse'),
+        reelle: reelle ?? '?',
+        attendue: attendue(genre),
+      }));
     }
   }
 
-  const t = main.temoinPositions;
-  if (!t) return { numero: 2, nom, ok: true, temoin: true };
+  const temoin = main.temoinPositions;
+  if (!temoin) return { numero: 2, nom, ok: true, temoin: true };
 
-  if (t.genre === 'blindes-nommees') {
-    if (t.sb && positionParNom.get(t.sb) !== attendue('sb')) {
-      return ko(`le résumé nomme « ${t.sb} » petite blinde, le montage le place en ${positionParNom.get(t.sb)}`);
+  if (temoin.genre === 'blindes-nommees') {
+    if (temoin.sb && positionParNom.get(temoin.sb) !== attendue('sb')) {
+      return ko(t('diag.resume_nomme_sb', { nom: temoin.sb, position: positionParNom.get(temoin.sb) ?? '?' }));
     }
-    if (t.bb && positionParNom.get(t.bb) !== 'BB') {
-      return ko(`le résumé nomme « ${t.bb} » grosse blinde, le montage le place en ${positionParNom.get(t.bb)}`);
+    if (temoin.bb && positionParNom.get(temoin.bb) !== 'BB') {
+      return ko(t('diag.resume_nomme_bb', { nom: temoin.bb, position: positionParNom.get(temoin.bb) ?? '?' }));
     }
-    return { numero: 2, nom, ok: true, temoin: Boolean(t.sb || t.bb) };
+    return { numero: 2, nom, ok: true, temoin: Boolean(temoin.sb || temoin.bb) };
   }
 
   // Le fichier écrit ses sièges dans l'ordre de parole préflop : la liste des positions qu'on en
@@ -207,7 +213,7 @@ function controlePositions(main: MainLue, montage: MontageDeMain): Controle {
   const ok = ordre.length === attendu.length && ordre.every((p, i) => p === attendu[i]);
   return {
     numero: 2, nom, ok, temoin: true,
-    detail: ok ? undefined : `ordre des sièges ${ordre.join('-')}, ordre de parole attendu ${attendu.join('-')}`,
+    detail: ok ? undefined : t('diag.ordre_sieges', { ordre: ordre.join('-'), attendu: attendu.join('-') }),
   };
 }
 
@@ -241,7 +247,7 @@ function controleRejeu(hand: Hand): Controle[] {
   }
   const majTapis = (seatId: string) => {
     if (etat.cumul[seatId] > roundMoney(tapis[seatId]) + EPSILON) {
-      fautes.tapis.push(`${nomme(seatId)} engage ${etat.cumul[seatId]} pour un tapis de ${tapis[seatId]}`);
+      fautes.tapis.push(t('diag.tapis_depasse', { joueur: nomme(seatId), engage: etat.cumul[seatId], tapis: tapis[seatId] }));
     }
     if (proche(etat.cumul[seatId], tapis[seatId])) etat.aTapis.add(seatId);
   };
@@ -256,13 +262,13 @@ function controleRejeu(hand: Hand): Controle[] {
       const maximum = Math.max(0, ...Object.values(misesDeStreet));
       const dejaMis = misesDeStreet[a.seatId] ?? 0;
 
-      if (etat.couche.has(a.seatId)) fautes.legalite.push(`${nomme(a.seatId)} agit après s'être couché`);
-      if (etat.aTapis.has(a.seatId)) fautes.legalite.push(`${nomme(a.seatId)} agit après être à tapis`);
+      if (etat.couche.has(a.seatId)) fautes.legalite.push(t('diag.agit_apres_fold', { joueur: nomme(a.seatId) }));
+      if (etat.aTapis.has(a.seatId)) fautes.legalite.push(t('diag.agit_apres_tapis', { joueur: nomme(a.seatId) }));
 
       if (a.type === 'fold') { etat.couche.add(a.seatId); continue; }
       if (a.type === 'check') {
         if (!proche(dejaMis, maximum)) {
-          fautes.legalite.push(`${nomme(a.seatId)} checke devant une mise de ${maximum} (il a ${dejaMis})`);
+          fautes.legalite.push(t('diag.check_devant_mise', { joueur: nomme(a.seatId), maximum, dejaMis }));
         }
         continue;
       }
@@ -273,17 +279,17 @@ function controleRejeu(hand: Hand): Controle[] {
       const auTapis = proche(etat.cumul[a.seatId], tapis[a.seatId]);
 
       if (a.type === 'call' && total > maximum + EPSILON) {
-        fautes.legalite.push(`${nomme(a.seatId)} « suit » ${total} au-dessus de la mise ${maximum}`);
+        fautes.legalite.push(t('diag.suit_au_dessus', { joueur: nomme(a.seatId), total, maximum }));
       }
       // Suivre pour MOINS que la mise n'est légal à une seule condition : y avoir mis son tapis.
       if (a.type === 'call' && total < maximum - EPSILON && !auTapis) {
-        fautes.legalite.push(`${nomme(a.seatId)} suit ${total} pour une mise de ${maximum} sans être à tapis`);
+        fautes.legalite.push(t('diag.suit_en_dessous', { joueur: nomme(a.seatId), total, maximum }));
       }
       if (a.type === 'bet' && maximum > EPSILON) {
-        fautes.legalite.push(`${nomme(a.seatId)} « mise » ${total} alors que ${maximum} est déjà misé`);
+        fautes.legalite.push(t('diag.mise_deja_misee', { joueur: nomme(a.seatId), total, maximum }));
       }
       if (a.type === 'raise' && total <= maximum + EPSILON) {
-        fautes.legalite.push(`${nomme(a.seatId)} « relance » à ${total} sous la mise ${maximum}`);
+        fautes.legalite.push(t('diag.relance_sous_mise', { joueur: nomme(a.seatId), total, maximum }));
       }
 
       misesDeStreet[a.seatId] = total;
@@ -301,7 +307,7 @@ function controleRejeu(hand: Hand): Controle[] {
     const mises = enJeu.map((id) => misesDeStreet[id] ?? 0);
     if (mises.length > 1 && !mises.every((m) => proche(m, mises[0]))) {
       fautes.cloture.push(
-        `${rue} : ${enJeu.map((id, i) => `${nomme(id)}=${mises[i]}`).join(', ')} — le tour ne ferme pas`
+        t('diag.tour_ne_ferme_pas', { rue, mises: enJeu.map((id, i) => `${nomme(id)}=${mises[i]}`).join(', ') })
       );
     }
   }
@@ -311,9 +317,9 @@ function controleRejeu(hand: Hand): Controle[] {
     detail: liste.length === 0 ? undefined : liste.join(' · '),
   });
   return [
-    rendre(3, 'légalité des actions', fautes.legalite),
-    rendre(4, 'tapis', fautes.tapis),
-    rendre(5, 'clôture des tours', fautes.cloture),
+    rendre(3, t('diag.controle_legalite'), fautes.legalite),
+    rendre(4, t('diag.controle_tapis'), fautes.tapis),
+    rendre(5, t('diag.controle_cloture'), fautes.cloture),
   ];
 }
 
@@ -329,7 +335,7 @@ function controleRejeu(hand: Hand): Controle[] {
  * forte de tout le pipeline — une action mal lue change le vainqueur ou le partage.
  */
 function controlePot(main: MainLue, montage: MontageDeMain): Controle {
-  const nom = 'pot et gagnants';
+  const nom = t('diag.controle_pot');
   const { hand } = montage;
   const nomme = etiquettes(hand);
   const engage = committedBySeat(hand.actions);
@@ -348,7 +354,7 @@ function controlePot(main: MainLue, montage: MontageDeMain): Controle {
   if (resume?.nonSuiviAnnonce != null) {
     temoin = true;
     if (!proche(resume.nonSuiviAnnonce, nonSuiviDerive)) {
-      morceaux.push(`mise non suivie dérivée ${nonSuiviDerive} ≠ annoncée ${resume.nonSuiviAnnonce}`);
+      morceaux.push(t('diag.non_suivi_different', { derive: nonSuiviDerive, annonce: resume.nonSuiviAnnonce }));
     }
   }
 
@@ -373,8 +379,13 @@ function controlePot(main: MainLue, montage: MontageDeMain): Controle {
       : [somme, somme - resume.rake, somme - nonSuiviDerive, somme - nonSuiviDerive - resume.rake]
     ).map(roundMoney);
     if (!attendus.some((a) => proche(a, resume.potTotal!))) {
-      morceaux.push(`pot calculé ${[...new Set(attendus)].join(' ou ')} (Σ ${somme}, non suivi`
-        + ` ${nonSuiviDerive}, rake ${resume.rake}) ≠ pot annoncé ${resume.potTotal}`);
+      morceaux.push(t('diag.pot_different', {
+        attendus: [...new Set(attendus)].join(' ou '),
+        somme,
+        nonSuivi: nonSuiviDerive,
+        rake: resume.rake ?? 0,
+        annonce: resume.potTotal ?? 0,
+      }));
     }
   }
 
@@ -399,8 +410,9 @@ function controlePot(main: MainLue, montage: MontageDeMain): Controle {
     );
     const encaisse = roundMoney(annonces.reduce((s, g) => s + g.montant, 0));
     if (encaisse > plafond + EPSILON) {
-      morceaux.push(`${encaisse} encaissé(s) pour ${plafond} au pot au maximum`
-        + ` (Σ ${somme}, non suivi ${nonSuiviDerive})`);
+      morceaux.push(t('diag.encaisse_trop', {
+        encaisse, plafond, somme, nonSuivi: nonSuiviDerive,
+      }));
     }
 
     const parts = determinePotAwards(hand);
@@ -409,23 +421,23 @@ function controlePot(main: MainLue, montage: MontageDeMain): Controle {
     const obtenus = new Map<string, number>();
     for (const g of annonces) {
       const seatId = montage.siegeParNom.get(g.nom);
-      if (!seatId) { morceaux.push(`gagnant inconnu « ${g.nom} »`); continue; }
+      if (!seatId) { morceaux.push(t('diag.gagnant_inconnu', { nom: g.nom })); continue; }
       obtenus.set(seatId, (obtenus.get(seatId) ?? 0) + g.montant / totalAnnonce);
     }
     for (const [seatId, part] of obtenus) {
       const attendu = attendus.get(seatId);
-      if (attendu == null) { morceaux.push(`${nomme(seatId)} gagne dans le fichier, pas dans le moteur`); continue; }
+      if (attendu == null) { morceaux.push(t('diag.gagne_fichier_pas_moteur', { joueur: nomme(seatId) })); continue; }
       if (Math.abs(attendu - part) > 1e-6) {
-        morceaux.push(`${nomme(seatId)} : ${(part * 100).toFixed(1)} % annoncés, ${(attendu * 100).toFixed(1)} % calculés`);
+        morceaux.push(t('diag.part_differente', { joueur: nomme(seatId), annonce: (part * 100).toFixed(1), calcule: (attendu * 100).toFixed(1) }));
       }
     }
     for (const seatId of attendus.keys()) {
-      if (!obtenus.has(seatId)) morceaux.push(`${nomme(seatId)} gagne dans le moteur, pas dans le fichier`);
+      if (!obtenus.has(seatId)) morceaux.push(t('diag.gagne_moteur_pas_fichier', { joueur: nomme(seatId) }));
     }
   }
 
   return {
     numero: 6, nom, ok: morceaux.length === 0, temoin,
-    detail: morceaux.length > 0 ? morceaux.join(' · ') : (temoin ? undefined : 'aucun résumé'),
+    detail: morceaux.length > 0 ? morceaux.join(' · ') : (temoin ? undefined : t('diag.aucun_resume')),
   };
 }

@@ -146,8 +146,6 @@ const HORS_PERIMETRE = [
   'src/legal/legalContent.ts',      // des documents, pas des étiquettes — traduits à part
   'src/legal/legalContent.en.ts',   // la traduction de ces mêmes documents (cf. scripts/test-legal.js)
   'src/data/lieux.ts',              // des noms PROPRES : « Casino Barrière de Lille » ne se traduit pas
-  'src/import/verification.ts',     // diagnostics affichés sous un refus, écrits pour diagnostiquer
-  'src/import/montage.ts',
   'src/import/dialectes/',          // motifs de lecture des rooms : les traduire casserait l'import
   // Ces deux-là ne sont PAS des oublis, et c'est pour ça qu'ils sont nommés ici plutôt que tolérés
   // en silence :
@@ -175,6 +173,9 @@ for (const f of fichiers) {
       ligne = ligne.slice(fin + 2);
       dansBloc = false;
     }
+    // Un message de `console.*` s'adresse au développeur, jamais à un joueur : il n'a pas à être
+    // traduit, et le signaler noierait le rapport sous du bruit qu'on ne corrigera jamais.
+    ligne = ligne.replace(/\bconsole\.\w+\([^)]*\)?/g, '');
     const debut = ligne.indexOf('/*');
     if (debut !== -1) {
       const fin = ligne.indexOf('*/', debut + 2);

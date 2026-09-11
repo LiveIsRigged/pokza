@@ -59,7 +59,7 @@ const VARIANTES: Record<string, Variant> = {
 function lireVariante(ecrite: string): Variant {
   const clef = ecrite.toLowerCase().replace(/[^a-z0-9]/g, '');
   const v = VARIANTES[clef];
-  if (!v) refuser('variante-non-prise-en-charge', `variante non prise en charge : « ${ecrite} »`);
+  if (!v) refuser('variante-non-prise-en-charge', t('diag.variante_non_prise', { ecrite }));
   return v!;
 }
 
@@ -76,7 +76,7 @@ function lireVariante(ecrite: string): Variant {
  */
 function anneauDepuisLeBouton(nombreDeJoueurs: number): Position[] {
   const ordre = POSITION_SETS[nombreDeJoueurs];
-  if (!ordre) refuser('trop-de-joueurs', `${nombreDeJoueurs} joueurs : Pokza va de 2 à 10`);
+  if (!ordre) refuser('trop-de-joueurs', t('diag.trop_de_joueurs', { n: nombreDeJoueurs }));
   const i = ordre!.indexOf('BTN');
   return [...ordre!.slice(i), ...ordre!.slice(0, i)];
 }
@@ -91,12 +91,12 @@ export function monter(main: MainLue): MontageDeMain {
 
   // ─── Les sièges ─────────────────────────────────────────────────────────────────────────────
   const nombre = main.sieges.length;
-  if (nombre < 2) refuser('pas-assez-de-joueurs', `${nombre} joueur(s) à table`);
+  if (nombre < 2) refuser('pas-assez-de-joueurs', t('diag.joueurs_a_table', { n: nombre }));
   const anneau = anneauDepuisLeBouton(nombre);
 
   const noms = main.sieges.map((s) => s.nom);
   if (new Set(noms).size !== noms.length) {
-    refuser('noms-en-double', 'deux joueurs portent le même nom à cette table');
+    refuser('noms-en-double', t('diag.noms_en_double'));
   }
 
   // Les numéros de siège croissent dans le sens de la table : trier puis faire tourner jusqu'au
@@ -104,7 +104,7 @@ export function monter(main: MainLue): MontageDeMain {
   const parNumero = [...main.sieges].sort((a, b) => a.numero - b.numero);
   const rangBouton = parNumero.findIndex((s) => s.numero === main.siegeBouton);
   if (rangBouton < 0) {
-    refuser('bouton-introuvable', `le siège ${main.siegeBouton} n'est pas à cette table`);
+    refuser('bouton-introuvable', t('diag.siege_bouton_absent', { siege: main.siegeBouton }));
   }
   const depuisBouton = [...parNumero.slice(rangBouton), ...parNumero.slice(0, rangBouton)];
 
@@ -118,10 +118,10 @@ export function monter(main: MainLue): MontageDeMain {
   // ─── Le héros ───────────────────────────────────────────────────────────────────────────────
   // Le modèle de Pokza a TOUJOURS exactement un héros (`Seat.isHero`) : sans lui, la main n'a pas
   // de point de vue, et le replayer n'aurait personne à désigner.
-  if (!main.hero) refuser('hero-introuvable', "le fichier ne montre les cartes de personne");
+  if (!main.hero) refuser('hero-introuvable', t('diag.aucune_carte_montree'));
   const heroPosition = positionParNom.get(main.hero!.nom);
   if (!heroPosition) {
-    refuser('hero-introuvable', `« ${main.hero!.nom} » n'est pas assis à cette table`);
+    refuser('hero-introuvable', t('diag.hero_absent', { nom: main.hero!.nom }));
   }
 
   // ⚠️ AUCUN NOM NE SORT DU FICHIER, HÉROS COMPRIS — tranché par Victor le 04/09/2026 :
@@ -149,7 +149,7 @@ export function monter(main: MainLue): MontageDeMain {
   }
   const idDe = (nom: string): string => {
     const id = siegeParNom.get(nom);
-    if (!id) refuser('joueur-inconnu', `« ${nom} » agit sans être assis à cette table`);
+    if (!id) refuser('joueur-inconnu', t('diag.joueur_absent', { nom }));
     return id!;
   };
 
@@ -183,24 +183,24 @@ export function monter(main: MainLue): MontageDeMain {
       && positionParNom.get(straddles[rangs.length - 1].nom) === 'BTN';
     if (!chaine && !auBouton) {
       refuser('mise-forcee-inconnue',
-        `straddle hors chaîne : ${straddles.map((m) => positionParNom.get(m.nom)).join(', ')}`);
+        t('diag.straddle_hors_chaine', { positions: straddles.map((m) => positionParNom.get(m.nom)).join(', ') }));
     }
     if (straddles.length > 3) {
-      refuser('mise-forcee-inconnue', `${straddles.length} straddles : Pokza en compte trois au plus`);
+      refuser('mise-forcee-inconnue', t('diag.trop_de_straddles', { n: straddles.length }));
     }
     if (enTournoi) {
       // `straddlePossible` l'interdit en tournoi : le formulaire ne pourrait pas relire la main.
-      refuser('mise-forcee-inconnue', 'straddle en tournoi : Pokza ne sait pas le dire');
+      refuser('mise-forcee-inconnue', t('diag.straddle_en_tournoi'));
     }
   }
   if (petites.length > 1 || grosses.length > 1) {
-    refuser('mise-forcee-inconnue', 'plus d\'une blinde du même genre (blinde morte ?)');
+    refuser('mise-forcee-inconnue', t('diag.blinde_en_double'));
   }
-  if (grosses.length === 0) refuser('mise-forcee-inconnue', 'aucune grosse blinde postée');
+  if (grosses.length === 0) refuser('mise-forcee-inconnue', t('diag.aucune_grosse_blinde'));
   // ⚠️ PIÈGE Nº 3 : dès 3 joueurs, `POSITION_SETS` a toujours un siège SB. Sans petite blinde
   // postée, ce siège existerait sans que personne n'y ait rien mis.
   if (petites.length === 0 && nombre >= 3) {
-    refuser('sans-petite-blinde', 'aucune petite blinde postée (siège levé ?)');
+    refuser('sans-petite-blinde', t('diag.aucune_petite_blinde'));
   }
 
   const actions: Action[] = [];
@@ -255,7 +255,7 @@ export function monter(main: MainLue): MontageDeMain {
                        amount: undefined, order: ++ordre });
         continue;
       }
-      if (lue.montant == null) refuser('ligne-incomprise', `${lue.genre} sans montant`);
+      if (lue.montant == null) refuser('ligne-incomprise', t('diag.action_sans_montant', { genre: lue.genre }));
       const total = roundMoney(lue.montantEst === 'increment' ? dejaMis + lue.montant! : lue.montant!);
 
       // Le texte a dit « à tapis » sans dire suivre ni relancer : c'est le total obtenu qui
@@ -272,7 +272,7 @@ export function monter(main: MainLue): MontageDeMain {
   // ─── Le board ───────────────────────────────────────────────────────────────────────────────
   const b = main.board;
   if (![0, 3, 4, 5].includes(b.length)) {
-    refuser('ligne-incomprise', `${b.length} cartes au board : impossible`);
+    refuser('ligne-incomprise', t('diag.trop_de_cartes_board', { n: b.length }));
   }
   const board: Board = {
     ...(b.length >= 3 ? { flop: [b[0], b[1], b[2]] as [Card, Card, Card] } : {}),
@@ -304,7 +304,7 @@ export function monter(main: MainLue): MontageDeMain {
   if (enTournoi && main.nomTournoi) {
     tournamentName = main.nomTournoi.slice(0, TOURNAMENT_NAME_MAX_LENGTH);
     if (tournamentName.length < main.nomTournoi.length) {
-      avertissements.push(`nom du tournoi raccourci à ${TOURNAMENT_NAME_MAX_LENGTH} caractères`);
+      avertissements.push(t('diag.nom_tournoi_raccourci', { n: TOURNAMENT_NAME_MAX_LENGTH }));
     }
   }
 
@@ -316,7 +316,7 @@ export function monter(main: MainLue): MontageDeMain {
     // Un PRIX ne se tronque pas : « 1000€ » coupé donnerait « 100€ », c'est-à-dire un faux. Trop
     // long, il est abandonné — l'auteur peut le retaper.
     if (somme.length <= BUY_IN_MAX_LENGTH) buyIn = somme;
-    else avertissements.push('buy-in trop long pour le champ : laissé vide');
+    else avertissements.push(t('diag.buy_in_trop_long'));
   }
 
   const hand: Hand = {
