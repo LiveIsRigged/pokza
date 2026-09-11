@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, radius, spacing } from '../theme/theme';
-import { LEGAL_DOCS, LEGAL_DRAFT, LEGAL_UPDATED, getLegalDoc, type LegalDoc, type LegalDocId } from './legalContent';
+import { LEGAL_DRAFT, type LegalDoc, type LegalDocId } from './legalContent';
+import { derniereMiseAJour, documentsLegaux, getLegalDoc } from './documents';
 import { useT } from '../i18n';
 
 interface LegalScreenProps {
@@ -56,20 +57,22 @@ export function LegalScreen({ initialDocId, onBack }: LegalScreenProps) {
 }
 
 function DocIndex({ onSelect }: { onSelect: (id: LegalDocId) => void }) {
+  const t = useT();
   return (
     <>
-      {LEGAL_DOCS.map((d) => (
+      {documentsLegaux().map((d: LegalDoc) => (
         <Pressable key={d.id} style={styles.indexRow} onPress={() => onSelect(d.id)}>
           <Text style={styles.indexLabel}>{d.title}</Text>
           <Text style={styles.indexChevron}>›</Text>
         </Pressable>
       ))}
-      <Text style={styles.updated}>Dernière mise à jour : {LEGAL_UPDATED}</Text>
+      <Text style={styles.updated}>{t('legal.derniere_mise_a_jour', { date: derniereMiseAJour() })}</Text>
     </>
   );
 }
 
 function DocBody({ doc }: { doc: LegalDoc }) {
+  const t = useT();
   return (
     <>
       <Text style={styles.docTitle}>{doc.title}</Text>
@@ -86,7 +89,7 @@ function DocBody({ doc }: { doc: LegalDoc }) {
           })}
         </View>
       ))}
-      <Text style={styles.updated}>Dernière mise à jour : {LEGAL_UPDATED}</Text>
+      <Text style={styles.updated}>{t('legal.derniere_mise_a_jour', { date: derniereMiseAJour() })}</Text>
     </>
   );
 }

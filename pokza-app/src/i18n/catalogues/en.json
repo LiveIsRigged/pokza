@@ -777,5 +777,6 @@
   "maintexte.entete_street": "{street}  {cartes}  (pot {pot})",
   "maintexte.gagne": "{nom} wins {montant}",
   "createur.virgule": "Decimal point",
-  "notif.quelquun": "Someone"
+  "notif.quelquun": "Someone",
+  "legal.derniere_mise_a_jour": "Last updated: {date}"
 }

@@ -26,13 +26,14 @@ export interface LegalDoc {
 }
 
 export const LEGAL_DRAFT = false;
-export const LEGAL_UPDATED = '22 août 2026';
+/** Date ISO : le FORMAT appartient à la langue du lecteur (cf. `documents.ts`), pas au texte. */
+export const LEGAL_UPDATED_ISO = '2026-08-22';
 
 // ── Coordonnées éditeur (à confirmer) ────────────────────────────────────────
-const EDITEUR = 'Victor Hoogstoël';
-const CONTACT_EMAIL = 'contact@pokza.app';
-const ABUSE_EMAIL = 'abuse@pokza.app';
-const PRIVACY_EMAIL = 'privacy@pokza.app';
+export const EDITEUR = 'Victor Hoogstoël';
+export const CONTACT_EMAIL = 'contact@pokza.app';
+export const ABUSE_EMAIL = 'abuse@pokza.app';
+export const PRIVACY_EMAIL = 'privacy@pokza.app';
 
 const mentions: LegalDoc = {
   id: 'mentions',
@@ -282,8 +283,9 @@ const jeuResponsable: LegalDoc = {
   ],
 };
 
-export const LEGAL_DOCS: LegalDoc[] = [cgu, confidentialite, mentions, jeuResponsable];
-
-export function getLegalDoc(id: LegalDocId): LegalDoc | undefined {
-  return LEGAL_DOCS.find((d) => d.id === id);
-}
+/**
+ * LA VERSION QUI ENGAGE. Les traductions (cf. `legalContent.en.ts`) la suivent, jamais l'inverse :
+ * modifier un texte ici sans modifier son jumeau les fait diverger, et c'est le français qui a
+ * raison. Les accès passent par `documents.ts`, qui choisit selon la langue du lecteur.
+ */
+export const LEGAL_DOCS_FR: LegalDoc[] = [cgu, confidentialite, mentions, jeuResponsable];

@@ -144,6 +144,7 @@ if (jamais.length > 0) {
 // les commentaires du code le sont tous.
 const HORS_PERIMETRE = [
   'src/legal/legalContent.ts',      // des documents, pas des étiquettes — traduits à part
+  'src/legal/legalContent.en.ts',   // la traduction de ces mêmes documents (cf. scripts/test-legal.js)
   'src/data/lieux.ts',              // des noms PROPRES : « Casino Barrière de Lille » ne se traduit pas
   'src/import/verification.ts',     // diagnostics affichés sous un refus, écrits pour diagnostiquer
   'src/import/montage.ts',
