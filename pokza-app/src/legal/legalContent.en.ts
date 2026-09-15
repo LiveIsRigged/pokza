@@ -111,7 +111,7 @@ const cgu: LegalDoc = {
     {
       heading: '6. Intellectual property',
       body: [
-        'You remain the owner of the rights to the content you publish. You grant Pokza a non-exclusive, royalty-free licence to host, display and technically adapt this content, for the sole purpose of operating the Service.',
+        'You remain the owner of the rights to the content you publish. You grant Pokza a non-exclusive, royalty-free licence to host, display, translate and technically adapt this content, for the sole purpose of operating the Service.',
         'You warrant that you hold the necessary rights to what you publish. GIFs are provided through the GIPHY service and remain subject to GIPHY’s terms.',
       ],
     },
@@ -193,12 +193,13 @@ const confidentialite: LegalDoc = {
         '• Resend (sending the e-mails needed to operate the Service), established in the United States — transfer covered by the standard contractual clauses;',
         '• GIPHY (supplying GIFs): when you display a GIF, a request is made to GIPHY, which may pass your IP address to that service;',
         '• Cloudflare (protecting the sign-in and sign-up forms against automated account creation, Turnstile service), established in the United States — transfer covered by the standard contractual clauses. During this check, your IP address and the technical signals of your browser are passed to that service.',
+        '• Cloudflare (Workers AI: detecting the language of every published hand and comment, including in a group or kept private, and translating this content when a reader asks for it), established in the United States — transfer covered by the standard contractual clauses. Only the text of this content is passed on, without your name or e-mail address.',
       ],
     },
     {
       heading: 'Transfers outside the European Union',
       body: [
-        'Our main data (database, authentication, storage) and our analytics are hosted in the European Union. However, sending the Service’s e-mails (Resend), displaying GIFs (GIPHY) and the anti-bot check at sign-in and sign-up (Cloudflare) rely on providers established in the United States: these transfers outside the European Union are covered by the safeguards provided for by the GDPR, in particular the European Commission’s standard contractual clauses.',
+        'Our main data (database, authentication, storage) and our analytics are hosted in the European Union. However, sending the Service’s e-mails (Resend), displaying GIFs (GIPHY), the anti-bot check at sign-in and sign-up, and the language detection and translation of published content (Cloudflare) rely on providers established in the United States: these transfers outside the European Union are covered by the safeguards provided for by the GDPR, in particular the European Commission’s standard contractual clauses.',
       ],
     },
     {

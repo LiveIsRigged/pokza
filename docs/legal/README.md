@@ -293,3 +293,22 @@ migration — c'est noté en tête du fichier de test.
 le droit d'INSERT sur la table et de passer `create_profile` en `SECURITY DEFINER` — changement de
 posture volontairement écarté. Ce qui est verrouillé, c'est l'**altération après coup** d'une trace
 existante.
+
+### Traduction du contenu — ajouté le 15/09/2026, SANS relecture du juriste (décision de Victor)
+
+La traduction à la demande des mains et des commentaires (Cloudflare Workers AI) est en ligne depuis le
+15/09 (commit `0043669`). Trois ajouts à droit constant, en français ET en anglais (`test-legal.js`
+passe) :
+
+- **CGU, licence sur les contenus** : « héberger, afficher, **traduire** et adapter techniquement ».
+- **Confidentialité, « Qui a accès à tes données »** : une puce Cloudflare Workers AI — détection de la
+  langue de chaque main et commentaire publiés (groupe et privé compris), traduction à la demande d'un
+  lecteur, prestataire établi aux États-Unis, clauses contractuelles types ; seul le TEXTE est transmis,
+  ni nom ni adresse e-mail (vérifié dans le code de la fonction `traduire`).
+- **Confidentialité, « Transferts hors Union européenne »** : la détection de langue et la traduction
+  ajoutées à la liste des services reposant sur un prestataire américain.
+
+**Pas de relecture du juriste pour ces ajouts, et c'est tranché** (Victor, 15/09 : « Alexis ne relira
+pas ça pour 3 détails ») : ils décrivent un traitement réel sans rien changer au droit applicable ni
+aux engagements pris. La règle de l'en-tête de `legalContent.ts` reste valable pour une modification
+de fond.

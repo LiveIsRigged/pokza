@@ -122,7 +122,7 @@ const cgu: LegalDoc = {
     {
       heading: '6. Propriété intellectuelle',
       body: [
-        "Tu restes titulaire des droits sur les contenus que tu publies. Tu accordes à Pokza une licence non exclusive et gratuite pour héberger, afficher et adapter techniquement ces contenus, aux seules fins de faire fonctionner le Service.",
+        "Tu restes titulaire des droits sur les contenus que tu publies. Tu accordes à Pokza une licence non exclusive et gratuite pour héberger, afficher, traduire et adapter techniquement ces contenus, aux seules fins de faire fonctionner le Service.",
         "Tu garantis disposer des droits nécessaires sur ce que tu publies. Les GIF proposés le sont via le service GIPHY et restent soumis aux conditions de GIPHY.",
       ],
     },
@@ -203,12 +203,13 @@ const confidentialite: LegalDoc = {
         "• Resend (envoi des e-mails liés au fonctionnement du Service), établi aux États-Unis — transfert encadré par les clauses contractuelles types ;",
         "• GIPHY (fourniture des GIF) : lorsque tu affiches un GIF, une requête est faite vers GIPHY, ce qui peut transmettre ton adresse IP à ce service ;",
         "• Cloudflare (protection du formulaire de connexion et d'inscription contre les créations de comptes automatisées, service Turnstile), établi aux États-Unis — transfert encadré par les clauses contractuelles types. Lors de cette vérification, ton adresse IP et les signaux techniques de ton navigateur sont transmis à ce service.",
+        "• Cloudflare (Workers AI : détection de la langue de chaque main et commentaire publiés, y compris dans un groupe ou en privé, et traduction de ces contenus à la demande d'un lecteur), établi aux États-Unis — transfert encadré par les clauses contractuelles types. Seul le texte de ces contenus est transmis, sans ton nom ni ton adresse e-mail.",
       ],
     },
     {
       heading: 'Transferts hors Union européenne',
       body: [
-        "Nos données principales (base de données, authentification, stockage) et la mesure d'audience sont hébergées dans l'Union européenne. En revanche, l'envoi des e-mails du service (Resend), l'affichage des GIF (GIPHY) et la vérification anti-robots à la connexion et à l'inscription (Cloudflare) reposent sur des prestataires établis aux États-Unis : ces transferts hors Union européenne sont encadrés par les garanties prévues par le RGPD, notamment les clauses contractuelles types de la Commission européenne.",
+        "Nos données principales (base de données, authentification, stockage) et la mesure d'audience sont hébergées dans l'Union européenne. En revanche, l'envoi des e-mails du service (Resend), l'affichage des GIF (GIPHY), la vérification anti-robots à la connexion et à l'inscription ainsi que la détection de langue et la traduction des contenus publiés (Cloudflare) reposent sur des prestataires établis aux États-Unis : ces transferts hors Union européenne sont encadrés par les garanties prévues par le RGPD, notamment les clauses contractuelles types de la Commission européenne.",
       ],
     },
     {
