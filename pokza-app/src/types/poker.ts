@@ -216,6 +216,10 @@ export interface Post {
   modStatus?: ModStatus;
   /** Requis si `visibility === 'group'`. */
   groupId?: string;
+  /** Langue du texte (titre, description, sondage), LUE PAR LE MODÈLE à la publication — `zxx` = rien
+   * à traduire. Décide seule si le bouton « Traduire » apparaît (cf. `proposerTraduction`). Absente
+   * tant que la migration n'est pas passée ou que la main n'a pas encore été lue : pas de bouton. */
+  language?: string;
   /** Nom du groupe, pour la pastille 👥. Renseigné dans le feed principal (vue `posts_ranked`) et
    * sur la page de profil (complété par `attachGroupNames`) — volontairement absent sur la page du
    * groupe lui-même, où rappeler le groupe n'aurait aucun sens. */
@@ -255,6 +259,8 @@ export interface Comment {
   /** État de modération (cf. `ModStatus`). Comme pour `Post` : non `visible` n'arrive au client que
    * pour l'auteur du commentaire, à qui on affiche un bandeau à la place du contenu. */
   modStatus?: ModStatus;
+  /** Langue du texte, lue par le modèle à la publication (cf. `Post.language`). */
+  language?: string;
   /** Lien signé temporaire (bucket privé) vers la photo jointe — absent si le commentaire n'en a
    * pas. Régénéré à chaque chargement, ne jamais le mettre en cache au-delà de la session. */
   imageUrl?: string;

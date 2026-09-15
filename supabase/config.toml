@@ -24,3 +24,9 @@ verify_jwt = true
 # et elle est publique (c'était le mécanisme de F-01). La fonction revérifie donc l'utilisateur.
 [functions.giphy]
 verify_jwt = true
+
+# Traduction du contenu. Deux appelants : l'app (bouton « Traduire », jeton du lecteur, revérifié
+# par la fonction comme pour giphy) et les triggers de détection de langue (secret partagé
+# `x-webhook-secret`, sans jeton) — d'où `verify_jwt = false`, chaque mode s'authentifiant lui-même.
+[functions.traduire]
+verify_jwt = false

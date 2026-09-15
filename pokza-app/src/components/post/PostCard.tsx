@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../ui/Pressable';
 import type { Post } from '../../types/poker';
@@ -24,6 +24,7 @@ import { etapesCorrigibles } from '../../creator/rehydrate';
 import type { Phase } from '../../creator/types';
 import { friendEchoLabel } from '../../utils/friendEchoLabel';
 import { useT } from '../../i18n';
+import { messageEchecTraduction, proposerTraduction, traduirePost, type TraductionPost } from '../../data/traduction';
 import { BlockIcon, CommentIcon, CopyIcon, FlagIcon, GroupTableIcon, HeartIcon, PencilIcon, ShareIcon, SpadeIcon, TextLinesIcon, TrashIcon } from '../ui/icons';
 import { MainEnTexteScreen } from './MainEnTexteScreen';
 
@@ -212,6 +213,50 @@ function PostCardInner({
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
 
   const voteOptions = post.voteOptions && post.voteOptions.length >= 2 ? post.voteOptions : ['Oui', 'Non'];
+
+  // ── Traduire (décisions du 15/09) ────────────────────────────────────────────────────────────
+  // UN bouton traduit d'un coup le titre, la description et le sondage, puis devient « Voir
+  // l'original » — sans autre mention : on sait qu'on a traduit, on vient de toucher le bouton. Il
+  // n'existe que sur une main écrite dans une autre langue que celle du lecteur, langue lue par le
+  // modèle à la publication (cf. `proposerTraduction`). La traduction reçue est gardée : revenir à
+  // l'original puis retraduire ne rappelle pas le serveur.
+  const [traduction, setTraduction] = useState<TraductionPost | null>(null);
+  const [afficheTraduction, setAfficheTraduction] = useState(false);
+  const [traductionEnCours, setTraductionEnCours] = useState(false);
+  const [messageTraduction, setMessageTraduction] = useState<string | null>(null);
+  const peutTraduire = proposerTraduction(post.language);
+  const traductionVisible = afficheTraduction ? traduction : null;
+  // Les libellés traduits ne remplacent les options que s'ils leur correspondent un à un : le vote,
+  // lui, part toujours avec l'option d'origine (cf. `VotePoll`).
+  const libellesSondage =
+    traductionVisible && traductionVisible.options.length === voteOptions.length ? traductionVisible.options : undefined;
+
+  // Une main retouchée n'est plus le texte qui a été traduit : on repart de l'original.
+  useEffect(() => {
+    setTraduction(null);
+    setAfficheTraduction(false);
+  }, [post.title, post.description, post.voteQuestion]);
+
+  const basculerTraduction = async () => {
+    if (traductionEnCours) return;
+    if (afficheTraduction || traduction) {
+      setAfficheTraduction(!afficheTraduction);
+      return;
+    }
+    setMessageTraduction(null);
+    setTraductionEnCours(true);
+    const issue = await traduirePost(post.id).catch(() => ({ statut: 'echec' as const }));
+    setTraductionEnCours(false);
+    if (issue.statut === 'traduit') {
+      setTraduction(issue.valeur);
+      setAfficheTraduction(true);
+      return;
+    }
+    // Tout ou rien : la main reste en original et le message dit pourquoi, le temps de le lire
+    // (même durée que l'échec d'un partage).
+    setMessageTraduction(messageEchecTraduction(issue.statut));
+    setTimeout(() => setMessageTraduction(null), 3500);
+  };
 
   // Corriger le déroulé REPUBLIE la main : la base ne laisse pas réécrire `hand` après coup (F-21),
   // et c'est voulu — sinon un auteur pourrait changer une mise sous les commentaires qui la
@@ -480,10 +525,23 @@ function PostCardInner({
         `numberOfLines` la rend sans conséquence sur la mise en page.
       */}
       <Text style={[typography.postTitle, styles.title]} numberOfLines={1}>
-        {post.title}
+        {traductionVisible?.titre ?? post.title}
       </Text>
 
-      {post.description && <ExpandableDescription text={post.description} />}
+      {post.description && <ExpandableDescription text={traductionVisible?.description ?? post.description} />}
+
+      {/* Sous le texte (option B du 15/09) : là où le lecteur découvre que ce n'est pas sa langue, et
+          où la traduction apparaît. Cette ligne n'existe que sur une main étrangère. */}
+      {peutTraduire && (
+        <View style={styles.traductionLigne}>
+          <Pressable onPress={basculerTraduction} disabled={traductionEnCours} hitSlop={8}>
+            <Text style={styles.traductionLien}>
+              {t(traductionEnCours ? 'traduction.en_cours' : afficheTraduction ? 'traduction.voir_original' : 'traduction.traduire')}
+            </Text>
+          </Pressable>
+          {messageTraduction && <Text style={styles.traductionMessage}>{messageTraduction}</Text>}
+        </View>
+      )}
 
       <View style={styles.replayerWrapper}>
         <HandReplayer hand={post.hand} onDeroule={onDeroule ? () => onDeroule(post.id) : undefined} />
@@ -493,8 +551,9 @@ function PostCardInner({
         <VotePoll
           postId={post.id}
           currentUserId={currentUserId}
-          question={post.voteQuestion}
+          question={traductionVisible?.question ?? post.voteQuestion}
           options={voteOptions}
+          libelles={libellesSondage}
           initialCounts={post.voteCounts}
           myVote={post.myVote}
           isAuthor={isOwnPost}
@@ -780,6 +839,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '700',
     color: colors.action,
+  },
+  // « Traduire » a le poids de « voir plus » : un geste de lecture, pas une action sociale.
+  traductionLigne: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    columnGap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  traductionLien: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    color: colors.action,
+  },
+  traductionMessage: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
   replayerWrapper: {
     borderRadius: radius.lg,

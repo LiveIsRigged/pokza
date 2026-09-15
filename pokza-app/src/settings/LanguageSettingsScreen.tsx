@@ -44,7 +44,6 @@ export function LanguageSettingsScreen({ onBack }: LanguageSettingsScreenProps) 
           </Pressable>
         ))}
 
-        <Text style={styles.hint}>{t('langue.contenu_non_traduit')}</Text>
       </ScrollView>
     </View>
   );
@@ -93,11 +92,5 @@ const styles = StyleSheet.create({
   check: {
     fontSize: 15,
     color: colors.textPrimary,
-  },
-  hint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 16,
-    lineHeight: 17,
   },
 });

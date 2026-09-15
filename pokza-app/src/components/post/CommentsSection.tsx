@@ -27,6 +27,7 @@ import { COMMENT_MAX_LENGTH } from '../../constants/limits';
 import { aplatirFil, descendance } from './filCommentaires';
 import { CameraIcon, HeartIcon, TrashIcon } from '../ui/icons';
 import { useT } from '../../i18n';
+import { messageEchecTraduction, proposerTraduction, traduireCommentaire } from '../../data/traduction';
 
 // Cœur d'un commentaire : plus petit que celui d'une main (24), mais assez grand pour être vu et
 // visé. 18 + 2 × 9 = 36 pt de surface tactile — on ne peut pas monter aux 44 recommandés sans que
@@ -136,6 +137,32 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onShow
   const mediaUri = comment.imageUrl ?? comment.gifUrl;
   const openProfile = onSelectProfile ? () => onSelectProfile(comment.authorId) : undefined;
 
+  // Traduire (décisions du 15/09) : un bouton par commentaire, qui devient « Voir l'original ». Posé
+  // AVANT le retour anticipé du commentaire modéré : un hook ne se déclare pas sous condition.
+  const [traduit, setTraduit] = useState<string | null>(null);
+  const [afficheTraduit, setAfficheTraduit] = useState(false);
+  const [traductionEnCours, setTraductionEnCours] = useState(false);
+  const [messageTraduction, setMessageTraduction] = useState<string | null>(null);
+  const peutTraduire = comment.body.length > 0 && proposerTraduction(comment.language);
+  const basculerTraduction = async () => {
+    if (traductionEnCours) return;
+    if (afficheTraduit || traduit) {
+      setAfficheTraduit(!afficheTraduit);
+      return;
+    }
+    setMessageTraduction(null);
+    setTraductionEnCours(true);
+    const issue = await traduireCommentaire(comment.id).catch(() => ({ statut: 'echec' as const }));
+    setTraductionEnCours(false);
+    if (issue.statut === 'traduit') {
+      setTraduit(issue.valeur);
+      setAfficheTraduit(true);
+      return;
+    }
+    setMessageTraduction(messageEchecTraduction(issue.statut));
+    setTimeout(() => setMessageTraduction(null), 3500);
+  };
+
   // Commentaire modéré : la RLS ne le laisse voir qu'à son auteur → bandeau à la place du contenu,
   // sans média, sans actions (like/répondre/supprimer). Invisible pour tous les autres.
   if (comment.modStatus && comment.modStatus !== 'visible') {
@@ -171,7 +198,7 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onShow
             onPress={() => onOpenMedia(mediaUri)}
           />
         )}
-        {comment.body.length > 0 && <Text style={styles.commentBody}>{comment.body}</Text>}
+        {comment.body.length > 0 && <Text style={styles.commentBody}>{afficheTraduit && traduit ? traduit : comment.body}</Text>}
         <View style={styles.commentActionsRow}>
           <Pressable
             style={[styles.commentLikeHeart, comment.likeCount === 0 && styles.commentLikeHeartAlone]}
@@ -193,12 +220,21 @@ function CommentRow({ comment, indented, onReply, onDelete, onToggleLike, onShow
           <Pressable style={styles.commentAction} onPress={onReply}>
             <Text style={styles.replyLink}>{t('commentaire.repondre')}</Text>
           </Pressable>
+          {/* Gris comme « Signaler » : « Répondre » reste le geste principal de la ligne. */}
+          {peutTraduire && (
+            <Pressable style={styles.commentAction} onPress={basculerTraduction} disabled={traductionEnCours}>
+              <Text style={styles.reportLink}>
+                {t(traductionEnCours ? 'traduction.en_cours' : afficheTraduit ? 'traduction.voir_original' : 'traduction.traduire')}
+              </Text>
+            </Pressable>
+          )}
           {onReport && (
             <Pressable style={styles.commentAction} onPress={onReport}>
               <Text style={styles.reportLink}>{t('commentaire.signaler')}</Text>
             </Pressable>
           )}
         </View>
+        {messageTraduction && <Text style={styles.commentTraductionMessage}>{messageTraduction}</Text>}
       </View>
       {canDelete && (
         <Pressable onPress={onDelete} hitSlop={8}>
@@ -685,6 +721,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.action,
+  },
+  commentTraductionMessage: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   reportLink: {
     fontSize: 11,

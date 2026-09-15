@@ -43,6 +43,9 @@ interface PostFeedRow {
   group_id?: string | null;
   /** Présent uniquement via la vue `posts_ranked` (feed principal) — cf. pastille 👥 du `PostCard`. */
   group_name?: string | null;
+  /** Ajouté en fin des 4 vues de lecture par la migration « traduction du contenu ». Optionnel pour la
+   * même raison qu'`edited_at` : sans lui, aucun bouton « Traduire » ne s'affiche. */
+  language?: string | null;
 }
 
 function rowToPost(row: PostFeedRow): Post {
@@ -73,6 +76,7 @@ function rowToPost(row: PostFeedRow): Post {
     groupName: row.group_name ?? undefined,
     authorIsFriend: row.author_is_friend,
     mutualFriendCount: row.mutual_friend_count,
+    language: row.language ?? undefined,
   };
 }
 

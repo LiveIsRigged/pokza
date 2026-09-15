@@ -12,6 +12,11 @@ interface VotePollProps {
   currentUserId: string;
   question: string;
   options: string[];
+  /** Libellés AFFICHÉS, dans l'ordre de `options` : la traduction du sondage quand le lecteur l'a
+   * demandée. Le vote s'enregistre TOUJOURS avec l'option d'origine — la base refuse un vote dont le
+   * texte n'est pas une option de la main (F-10) : un « All-in » envoyé tel quel échouerait, alors
+   * que la main propose « Tapis ». Les compteurs restent donc indexés par l'original. */
+  libelles?: string[];
   initialCounts?: Record<string, number>;
   /** Option déjà votée par l'utilisateur courant lors d'une session précédente (cf. `posts_feed`) —
    * permet de rouvrir un post déjà voté directement sur les résultats, sans réanimer l'apparition. */
@@ -43,6 +48,7 @@ export function VotePoll({
   currentUserId,
   question,
   options,
+  libelles,
   initialCounts,
   myVote,
   isAuthor,
@@ -175,9 +181,9 @@ export function VotePoll({
       {!showResults ? (
         <View>
           <View style={styles.buttonsRow}>
-            {options.map((option) => (
+            {options.map((option, i) => (
               <Pressable key={option} style={styles.bubble} onPress={() => handleVote(option)}>
-                <Text style={styles.bubbleText}>{option}</Text>
+                <Text style={styles.bubbleText}>{libelles?.[i] ?? option}</Text>
               </Pressable>
             ))}
           </View>
@@ -191,7 +197,7 @@ export function VotePoll({
             transform: [{ scale: resultsAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }],
           }}
         >
-          {options.map((option) => {
+          {options.map((option, i) => {
             const count = counts[option] ?? 0;
             const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
             const isSelected = voted === option;
@@ -211,7 +217,7 @@ export function VotePoll({
                 <View style={styles.resultLabelRow}>
                   <Text style={[styles.resultLabel, isSelected && styles.resultLabelActive]}>
                     {isSelected ? '✓ ' : ''}
-                    {option}
+                    {libelles?.[i] ?? option}
                   </Text>
                   <Text style={[styles.resultPct, isSelected && styles.resultLabelActive]}>
                     {count} · {pct}%
@@ -238,6 +244,7 @@ export function VotePoll({
         onClose={() => setVotersOpen(false)}
         postId={postId}
         options={options}
+        libelles={libelles}
         onSelectProfile={
           onSelectProfile
             ? (profileId) => {

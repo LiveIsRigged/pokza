@@ -1,0 +1,87 @@
+{
+  "_lisez_moi": "Glossaire de la traduction du CONTENU écrit par les joueurs (titres, descriptions, sondages, commentaires). Rien à voir avec les catalogues de `src/i18n/`, qui sont l'interface et s'écrivent à la main : ici on guide une machine. Les clés qui commencent par `_` ne partent JAMAIS au modèle ; tout le reste part dans la consigne, rédigée en anglais parce que c'est la langue dans laquelle les modèles suivent le mieux une instruction — et pour qu'aucune explication française ne déteigne sur une traduction allemande. Trois étages, un seul coûte quelque chose par langue ajoutée : `jamais_traduire` et `faux_amis_source` valent pour N'IMPORTE QUELLE langue cible ; `notes_par_langue` est un raffinement FACULTATIF.",
+
+  "_filtrage": "La consigne n'emporte que les entrées dont le mot apparaît dans les textes à traduire (`consigne.ts`). Ce n'est pas une économie qui coûte de la fidélité : une règle sur « abattage » n'apporte rien à un texte qui ne contient pas « abattage », et elle dilue l'attention d'un petit modèle. Le repérage est volontairement LARGE (racine du mot, début de mot, accents ignorés) : inclure une règle inutile coûte quelques tokens, en oublier une coûte une traduction fausse. `formes` ajoute ce qu'une racine ne peut pas deviner (« je suis » pour suivre).",
+
+  "faux_amis_source": {
+    "_note": "⚠️ LE PIÈGE PRINCIPAL, dans le sens INVERSE de celui qu'on attend. On redoute qu'une machine traduise le jargon anglais ; en réalité le français est la seule de nos langues à avoir ses propres mots de poker, et ce sont des mots ordinaires par ailleurs. « J'ai mis tapis » traduit littéralement donne « ich habe Teppich gelegt ». Chaque entrée dit le CONCEPT, jamais sa traduction : c'est au modèle de rendre le concept dans le mot que les joueurs de la langue cible emploient (en espagnol, une couleur se dit bien « color »). ⚠️ « tapis » a DEUX sens et le premier jet de ce fichier n'en avait qu'un : « mon tapis » est un stack, « faire tapis » est un all-in.",
+    "tapis": "a player's stack of chips (mon tapis = my stack, tapis moyen = average stack, petit tapis = short stack); faire tapis / mettre tapis / être à tapis = to go all-in. Never a carpet or a rug.",
+    "abattage": "the showdown. Never the slaughter of animals.",
+    "suivre": "to call a bet (« je suis » in a hand usually means « I call », not « I am »). Never to follow someone.",
+    "payer": "to call a bet (« je paye » = I call). Not a purchase.",
+    "relance": "a raise. Never an economic stimulus, a reminder or a revival.",
+    "relancer": "to raise.",
+    "sur-relance": "a re-raise (a 3-bet).",
+    "miser": "to bet.",
+    "mise": "a bet, or the amount put in the pot.",
+    "se coucher": "to fold. Never to go to bed or to lie down.",
+    "parole": "check (« parole » = I check). Never a word or a speech.",
+    "blinde": "a blind (petite blinde = small blind, grosse blinde = big blind).",
+    "jeton": "a poker chip.",
+    "cave": "the buy-in, the money brought to the table. Never a cellar.",
+    "recave": "a rebuy (se recaver = to rebuy).",
+    "bouton": "the button, the BTN position. Never a clothing or interface button.",
+    "main": "a poker hand. Never the body part. But « Main Event » is English and stays « Main Event ».",
+    "donneur": "the dealer.",
+    "croupier": "the dealer (casino employee).",
+    "tour": "a betting round (tour de mise) or a player's turn to act.",
+    "rue": "a street (preflop, flop, turn, river).",
+    "tirage": "a draw (tirage couleur = flush draw, tirage quinte = straight draw). Never a lottery draw or a print run.",
+    "tirer": "to draw to a hand (tirer à la couleur = to draw to a flush). Never to shoot or to pull.",
+    "couleur": "a flush — unless the text is literally about colour (la couleur des jetons = the colour of the chips).",
+    "quinte": "a straight (quinte flush = straight flush, quinte par les deux bouts = open-ended straight draw).",
+    "ventrale": "quinte ventrale = a gutshot, an inside straight draw.",
+    "brelan": "three of a kind (a set or trips).",
+    "carré": "four of a kind, quads. Never a square.",
+    "full": "a full house.",
+    "paire": "a pair (deux paires = two pair, surpaire = overpair).",
+    "hauteur": "high card (hauteur as = ace high).",
+    "dépareillé": "offsuit.",
+    "assorti": "suited.",
+    "pot commun": "the main pot.",
+    "pot secondaire": "a side pot.",
+    "toucher": "to hit (toucher le flop = to hit the flop).",
+    "rentrer": "to come in, to hit (ma couleur rentre = my flush comes in). Never to go home.",
+    "tableau": "the board, the community cards. Never a painting or a chart.",
+    "cote": "the odds (cote du pot = pot odds). Never a coast or a rating.",
+    "bulle": "the bubble of a tournament, the last place before the money.",
+    "sec": "a dry board.",
+    "humide": "a wet board.",
+    "arc-en-ciel": "a rainbow board (three different suits).",
+    "sous le gun": "the UTG position (under the gun): write UTG or the term players of the target language use, never a literal translation of « sous le ».",
+    "hors de position": "out of position (OOP); en position = in position (IP).",
+    "effectif": "effective (tapis effectif = effective stack).",
+    "doubler": "to double up.",
+    "table finale": "the final table.",
+    "nuts": "la nuts / les nuts = the nuts, the best possible hand.",
+    "chatte": "(vulgar slang) luck; avoir de la chatte = to be very lucky. Render it with an equally crude slang word for luck in the target language, never literally.",
+    "mdr": "French chat abbreviation for « lol » (mort de rire): write the equivalent readers of the target language use (lol, haha, jaja...), never leave « mdr »."
+  },
+
+  "formes": {
+    "_note": "Formes qu'une racine ne retrouve pas : « suis » n'a pas la racine de « suivre ». Ne servent qu'au repérage, jamais envoyées au modèle.",
+    "suivre": ["suis", "suit"],
+    "payer": ["paye", "paie"],
+    "sur-relance": ["surrelance", "sur relance"],
+    "cave": ["caver"],
+    "mdr": ["mdrr", "mdrrr"],
+    "blinde": ["blindes"]
+  },
+
+  "jamais_traduire": {
+    "_note": "Termes qui restent en anglais dans les QUATRE langues servies, français compris — c'est le test strict. Un terme que le français traduit (all-in → tapis, showdown → abattage) n'est PAS ici : il est dans `faux_amis_source` et dans les notes de langue. Ces mots se préservent quand ils NOMMENT une notion de poker, pas quand ils sont le nom commun ordinaire de la phrase — nuance qu'un glossaire de substitution ne sait pas faire, et un modèle si. La notation des cartes n'est pas une liste : c'est une règle fixe de la consigne.",
+    "rues_et_board": ["preflop", "flop", "turn", "river", "board", "runout", "street", "double board", "bomb pot"],
+    "positions": ["UTG", "UTG+1", "MP", "LJ", "HJ", "CO", "BTN", "BU", "SB", "BB", "straddle"],
+    "formats": ["Hold'em", "NLHE", "PLO", "PLO4", "PLO5", "Omaha", "Stud", "Razz", "Spin", "Sit & Go", "MTT", "freeroll", "bounty", "rebuy", "add-on", "ante", "rake", "buy-in", "stack", "ICM", "heads-up", "6-max", "9-max", "deepstack"],
+    "actions": ["check", "fold", "3-bet", "4-bet", "5-bet", "c-bet", "check-raise", "donk bet", "limp", "squeeze", "isolate", "float", "barrel", "shove", "jam", "snap-call", "min-raise", "cold call", "overbet", "open", "open-raise"],
+    "concepts": ["bluff", "semi-bluff", "value", "value bet", "bluff-catcher", "range", "equity", "fold equity", "pot odds", "implied odds", "pot committed", "GTO", "exploit", "cooler", "bad beat", "tilt", "punt", "brick", "blank", "kicker", "backdoor", "gutshot", "open-ended", "overpair", "top pair", "set", "trips", "boat", "runner-runner", "showdown value"],
+    "joueurs": ["Hero", "Villain", "reg", "fish", "nit", "LAG", "TAG", "whale", "grinder"]
+  },
+
+  "notes_par_langue": {
+    "_note": "FACULTATIF. Une langue absente d'ici se traduit quand même — c'est ce qui permet d'en ajouter une sans travail. Ces notes décrivent comment les joueurs PARLENT, pas les libellés de l'interface : un contenu se traduit en miroir de son auteur. À corriger quand on VOIT une traduction ratée, pas par précaution.",
+    "fr": "French players mix French poker words (tapis, suivre or payer, relancer, miser, se coucher, abattage, blindes) with English ones (all-in, call, raise, bet, fold, showdown, blinds). Mirror the original: a poker term written in English can stay in English. Check, fold, flop, turn, river, board, street, Hero and reg stay in English.",
+    "de": "German players keep English poker terms (Call, Raise, Bet, All-in, Showdown, Fold, Check, Street, Reg) and use them as German words: nouns are capitalized with German articles and cases (der Call, den Straddle, die Blinds), verbs are conjugated the German way (callen, gecallt, raisen, gefoldet).",
+    "es": "Spanish-speaking players mix English poker terms (all-in, call, fold, check, bet, raise, board) with Spanish ones (pagar, subir, apostar, retirarse, ciegas; color = a flush, póker = four of a kind). Mirror the original. Use neutral Spanish, understood in Spain and in Latin America."
+  }
+}

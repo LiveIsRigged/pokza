@@ -15,6 +15,9 @@ interface VotersSheetProps {
   postId: string;
   /** Les options du sondage, dans l'ordre où elles sont proposées — c'est l'ordre des sections. */
   options: string[];
+  /** Libellés affichés dans l'ordre de `options` (sondage traduit) ; les votes restent groupés par
+   * l'option d'origine, qui est ce que la base enregistre. */
+  libelles?: string[];
   onSelectProfile?: (profileId: string) => void;
 }
 
@@ -26,7 +29,7 @@ interface VotersSheetProps {
  * de mon avis », pas « qui a voté en dernier ». Une option sans voix garde sa section, avec un
  * zéro — son absence se lirait comme un oubli.
  */
-export function VotersSheet({ visible, onClose, postId, options, onSelectProfile }: VotersSheetProps) {
+export function VotersSheet({ visible, onClose, postId, options, libelles, onSelectProfile }: VotersSheetProps) {
   const t = useT();
   const { dragY, grabHandlers } = useSheetDismiss(visible, onClose);
   const [voters, setVoters] = useState<Voter[]>([]);
@@ -77,12 +80,12 @@ export function VotersSheet({ visible, onClose, postId, options, onSelectProfile
             ) : error ? (
               <Text style={styles.statusText}>{error}</Text>
             ) : (
-              options.map((option) => {
+              options.map((option, i) => {
                 const forThisOption = voters.filter((v) => v.option === option);
                 return (
                   <View key={option} style={styles.section}>
                     <View style={styles.sectionHeader}>
-                      <Text style={styles.sectionTitle}>{option}</Text>
+                      <Text style={styles.sectionTitle}>{libelles?.[i] ?? option}</Text>
                       <Text style={styles.sectionCount}>{forThisOption.length}</Text>
                     </View>
                     {forThisOption.length === 0 ? (

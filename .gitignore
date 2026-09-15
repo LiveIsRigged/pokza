@@ -22,3 +22,6 @@ scripts/lv/
 scripts/i18n/
 scripts/i18n-*.csv
 scripts/legal/
+
+# Banc de traduction : résultats et journal des neurons dépensés (regénérés, cf. scripts/traduction-banc.mjs)
+scripts/traduction/

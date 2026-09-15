@@ -26,6 +26,8 @@ interface CommentFeedRow {
   liked_by_me: boolean;
   /** Ajouté en fin de la vue `comments_feed` par la migration modération. */
   mod_status?: ModStatus;
+  /** Ajouté par la migration « traduction du contenu » ; absent = pas de bouton « Traduire ». */
+  language?: string | null;
 }
 
 function rowToComment(
@@ -48,6 +50,7 @@ function rowToComment(
     likeCount: row.like_count,
     likedByMe: row.liked_by_me,
     modStatus: row.mod_status ?? 'visible',
+    language: row.language ?? undefined,
     imageUrl,
     gifUrl,
     mediaWidth,
