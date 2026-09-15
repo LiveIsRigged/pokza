@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from './Pressable';
-import { borders, colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, placeholderText, radius, spacing } from '../../theme/theme';
 import { listeDesPays, flagEmoji, type Country } from '../../data/countries';
 import { useLangue, useT } from '../../i18n';
 import { fold } from '../../utils/recherche';
@@ -73,6 +73,7 @@ export function CountryPicker({ visible, selectedCode, onSelect, onClose, allowC
               autoComplete="off"
               style={styles.search}
               placeholder={t('pays.rechercher')}
+              placeholderTextColor={placeholderText}
               value={query}
               onChangeText={setQuery}
               autoCapitalize="none"

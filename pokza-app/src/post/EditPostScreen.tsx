@@ -18,7 +18,7 @@ import {
   VOTE_QUESTION_MAX_LENGTH,
 } from '../constants/limits';
 import { normaliserBuyIn } from '../utils/buyIn';
-import { borders, colors } from '../theme/theme';
+import { borders, colors, placeholderText } from '../theme/theme';
 import { useT } from '../i18n';
 import { t } from '../i18n/traduire';
 
@@ -230,6 +230,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
                 autoComplete="off"
                 style={styles.input}
                 placeholder={t('createur.tournoi_exemple')}
+                placeholderTextColor={placeholderText}
                 maxLength={TOURNAMENT_NAME_MAX_LENGTH}
                 value={tournamentName}
                 onChangeText={setTournamentName}
@@ -238,7 +239,8 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
               <TextInput
                 autoComplete="off"
                 style={styles.input}
-                placeholder="Ex : 100€"
+                placeholder={t('createur.buy_in_exemple')}
+                placeholderTextColor={placeholderText}
                 maxLength={BUY_IN_MAX_LENGTH}
                 value={buyIn}
                 onChangeText={setBuyIn}
@@ -258,6 +260,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
                 autoComplete="off"
                 style={styles.input}
                 placeholder={t('post.niveau_exemple')}
+                placeholderTextColor={placeholderText}
                 maxLength={LEVEL_MAX_LENGTH}
                 value={level}
                 onChangeText={setLevel}
@@ -270,6 +273,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
             autoComplete="off"
             style={styles.input}
             placeholder={t('createur.question_vote_exemple')}
+            placeholderTextColor={placeholderText}
             maxLength={VOTE_QUESTION_MAX_LENGTH}
             value={voteQuestion}
             onChangeText={setVoteQuestion}
@@ -283,7 +287,8 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
                   autoComplete="off"
                   key={i}
                   style={[styles.input, styles.optionInput]}
-                  placeholder={i < 2 ? `Réponse ${i + 1}` : `Réponse ${i + 1} (optionnel)`}
+                  placeholder={t(i < 2 ? 'createur.reponse_n' : 'createur.reponse_n_optionnel', { n: i + 1 })}
+                  placeholderTextColor={placeholderText}
                   value={voteOptions[i] ?? ''}
                   onChangeText={(t) => updateOption(i, t)}
                   maxLength={VOTE_OPTION_MAX_LENGTH}
@@ -303,9 +308,7 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
                   doit d'abord répondre à « laquelle ? » avant d'expliquer pourquoi elle est figée. */}
               <Text style={styles.audienceValeur}>{visibilityLabel(post)}</Text>
               <Text style={styles.audienceVerrou}>
-                Sauf main privée, la visibilité d’une main n’est pas modifiable, pour respecter la
-                confidentialité de ceux qui ont réagi. Tu peux en revanche la republier ailleurs :
-                ⋯ puis « Dupliquer la main ».
+                {t('post.audience_verrou', { action: t('post.menu_dupliquer_main') })}
               </Text>
             </>
           ) : (

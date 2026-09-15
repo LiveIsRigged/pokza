@@ -237,8 +237,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
           )}
 
           <Text style={styles.footnote}>
-            « Actif » = connecté récemment. Proxy correct pour un beta, mais qui surestime un peu —
-            pour l'engagement réel, fie-toi aux posteurs uniques.
+            {t('stats.note_actifs')}
           </Text>
         </>
       ) : null}

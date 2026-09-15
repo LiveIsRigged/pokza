@@ -3,7 +3,7 @@ import { Modal, Platform, StyleSheet, Text, TextInput, View } from 'react-native
 import { Pressable } from '../components/ui/Pressable';
 import { OptionalDecimalTextInput } from '../components/ui/ChipAmountInput';
 import { OPPONENT_NAME_MAX_LENGTH } from '../constants/limits';
-import { borders, colors, radius, spacing } from '../theme/theme';
+import { borders, colors, placeholderText, radius, spacing } from '../theme/theme';
 import type { GameType } from '../types/poker';
 import { formatChipInput } from '../utils/chipFormat';
 import { LARGEUR_MAX } from '../components/ui/Colonne';
@@ -83,7 +83,7 @@ export function FicheJoueur({
         <Pressable style={styles.backdropFill} onPress={onFermer} />
         <View style={styles.sheet}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{estHero ? `${libelle} (toi)` : libelle}</Text>
+            <Text style={styles.headerTitle}>{estHero ? t('createur.position_toi', { position: libelle }) : libelle}</Text>
             <Pressable onPress={onFermer} hitSlop={8}>
               <Text style={styles.closeButton}>✕</Text>
             </Pressable>
@@ -96,7 +96,8 @@ export function FicheJoueur({
               style={styles.input}
               // Le héros est le seul dont le champ annonce sa valeur par défaut : laissé vide, il
               // s'affiche « Hero » partout dans la main (cf. `SeatView`).
-              placeholder={estHero ? 'Hero' : 'Nom'}
+              placeholder={estHero ? 'Hero' : t('createur.fiche_nom')}
+              placeholderTextColor={placeholderText}
               maxLength={OPPONENT_NAME_MAX_LENGTH}
               value={nom}
               onChangeText={onNom}

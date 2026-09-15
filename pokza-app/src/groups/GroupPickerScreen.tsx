@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing, tints, typography } from '../theme/theme';
+import { borders, colors, placeholderText, radius, spacing, tints, typography } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import { NewGroupForm } from './NewGroupForm';
 import type { Group } from '../data/groups';
@@ -49,6 +49,7 @@ export function GroupPickerScreen({ groups, selectedId, onSelect, onCreateGroup,
         autoComplete="off"
         style={styles.search}
         placeholder={t('groupe.rechercher')}
+        placeholderTextColor={placeholderText}
         value={query}
         onChangeText={setQuery}
         autoCorrect={false}

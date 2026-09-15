@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing } from '../theme/theme';
+import { borders, colors, placeholderText, radius, spacing } from '../theme/theme';
 import { updateGroupDescription } from '../data/groups';
 
 import { GROUP_DESCRIPTION_MAX_LENGTH as DESCRIPTION_MAX_LENGTH } from '../constants/limits';
@@ -60,6 +60,7 @@ export function EditGroupScreen({ groupId, initialDescription, onCancel, onSaved
           value={description}
           onChangeText={(text) => setDescription(text.slice(0, DESCRIPTION_MAX_LENGTH))}
           placeholder={t('groupe.description_placeholder')}
+          placeholderTextColor={placeholderText}
           multiline
           maxLength={DESCRIPTION_MAX_LENGTH}
         />

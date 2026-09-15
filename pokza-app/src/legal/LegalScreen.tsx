@@ -43,8 +43,7 @@ export function LegalScreen({ initialDocId, onBack }: LegalScreenProps) {
       {LEGAL_DRAFT && (
         <View style={styles.draftBanner}>
           <Text style={styles.draftText}>
-            ⚠️ Version provisoire, en cours de relecture juridique. Certaines informations restent à
-            compléter.
+            {t('legal.version_provisoire')}
           </Text>
         </View>
       )}

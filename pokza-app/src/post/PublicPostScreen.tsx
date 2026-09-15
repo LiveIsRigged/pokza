@@ -100,7 +100,7 @@ export function PublicPostScreen({ postId, shareToken, onJoin, dejaConnecte }: P
           <>
             <Text style={styles.invitationTitre}>{t('public.deja_sur_pokza')}</Text>
             <Text style={styles.invitationTexte}>
-              Cette page est ce que verront les personnes à qui tu envoies le lien.
+              {t('public.deja_connecte_texte')}
             </Text>
             <Pressable style={styles.bouton} onPress={onJoin}>
               <Text style={styles.boutonTexte}>{t('public.retour')}</Text>
@@ -110,7 +110,7 @@ export function PublicPostScreen({ postId, shareToken, onJoin, dejaConnecte }: P
           <>
             <Text style={styles.invitationTitre}>{t('public.partage_tes_mains')}</Text>
             <Text style={styles.invitationTexte}>
-              Crée un compte pour commenter cette main, voter sur la décision, et publier les tiennes.
+              {t('public.creer_compte_texte')}
             </Text>
             <Pressable style={styles.bouton} onPress={onJoin}>
               <Text style={styles.boutonTexte}>{t('public.creer_compte')}</Text>

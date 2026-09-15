@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleProp, TextInput, TextStyle } from 'react-native';
 import type { GameType } from '../../types/poker';
 import { formatChipInput, parseChipAmount } from '../../utils/chipFormat';
+import { placeholderText } from '../../theme/theme';
 
 /**
  * LES CHAMPS DE MONTANT EN JETONS — blindes, tapis, antes.
@@ -48,6 +49,7 @@ export function DecimalTextInput({
       style={style}
       keyboardType="decimal-pad"
       placeholder={placeholder}
+      placeholderTextColor={placeholderText}
       value={text}
       onChangeText={(t) => {
         setText(t);
@@ -100,6 +102,7 @@ export function OptionalDecimalTextInput({
       style={style}
       keyboardType="decimal-pad"
       placeholder={placeholder}
+      placeholderTextColor={placeholderText}
       editable={editable}
       value={text}
       onChangeText={(t) => {

@@ -89,7 +89,7 @@ export function VotersSheet({ visible, onClose, postId, options, libelles, onSel
                       <Text style={styles.sectionCount}>{forThisOption.length}</Text>
                     </View>
                     {forThisOption.length === 0 ? (
-                      <Text style={styles.sectionEmpty}>Personne pour l'instant.</Text>
+                      <Text style={styles.sectionEmpty}>{t('vote.personne_pour_linstant')}</Text>
                     ) : (
                       forThisOption.map((voter) => (
                         <Pressable

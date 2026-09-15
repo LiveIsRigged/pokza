@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing } from '../theme/theme';
+import { borders, colors, placeholderText, radius, spacing } from '../theme/theme';
 import { updateProfile, type ProfileDetails } from '../data/profiles';
 import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
@@ -81,6 +81,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
           onChangeText={setPseudo}
           autoCapitalize="none"
           placeholder={t('profil.pseudo_placeholder')}
+          placeholderTextColor={placeholderText}
           maxLength={PSEUDO_MAX_LENGTH}
         />
 
@@ -117,6 +118,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
           value={bio}
           onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
           placeholder={t('profil.description_placeholder')}
+          placeholderTextColor={placeholderText}
           multiline
           maxLength={BIO_MAX_LENGTH}
         />

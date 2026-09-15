@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing } from '../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, placeholderText, radius, spacing } from '../theme/theme';
 import { GROUP_NAME_MAX_LENGTH } from '../constants/limits';
 import { errorMessage } from '../utils/errorMessage';
 import { autoFocusUtile } from '../web/clavierVirtuel';
@@ -44,6 +44,7 @@ export function NewGroupForm({ onCreate, onCancel }: NewGroupFormProps) {
         autoComplete="off"
         style={styles.input}
         placeholder={t('groupe.nom_placeholder')}
+        placeholderTextColor={placeholderText}
         value={name}
         onChangeText={(t) => setName(t.slice(0, GROUP_NAME_MAX_LENGTH))}
         maxLength={GROUP_NAME_MAX_LENGTH}

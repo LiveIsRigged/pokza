@@ -1417,7 +1417,7 @@ function AppContent() {
       >
         {postsError && <Text style={styles.statusText}>{postsError}</Text>}
         {postsLoading ? (
-          <Text style={styles.statusText}>Chargement des mains…</Text>
+          <Text style={styles.statusText}>{t('post.chargement_mains')}</Text>
         ) : posts.length === 0 ? (
           <Text style={styles.statusText}>{t('profil.aucune_main')}</Text>
         ) : (

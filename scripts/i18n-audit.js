@@ -264,7 +264,8 @@ const BRUIT = [
   /^\(.*:.*\)$/,                         // media queries
   /must be used within|requires /,       // messages destinés au développeur
   /^(?:image\/\w+|Fraunces_\w+|System|Enter|MacIntel|PushManager|Notification|top right)$/,
-  /^(?:Hero|Pokza|GIF|NLHE|PLO5?|Pot|Check|Fold|Board \d|BB ante|BTN straddle|PRÉFLOP)$/,
+  /^(?:Hero|Pokza|GIF|NLHE|PLO5?|Pot|Check|Fold|Board \d|BB ante|BTN straddle|BTN Straddle|Straddle|Bomb pot|ALL-IN|PRÉFLOP)$/,
+  /^Reset$/,                             // bouton de la fiche joueur : choisi par Victor le 01/09, cf. FicheJoueur.tsx
 ];
 const MOTS = /[A-Za-zÀ-ÿ]{2,}/g;
 const litteralJsx = [];
@@ -289,6 +290,75 @@ if (litteralJsx.length > 0) {
   console.log(`Texte littéral encore dans le code (${litteralJsx.length}) — informatif :`);
   for (const l of litteralJsx.slice(0, plafondJsx)) console.log(`      ${l}`);
   if (litteralJsx.length > plafondJsx) console.log(`      … et ${litteralJsx.length - plafondJsx} de plus (--tout)`);
+  console.log('');
+}
+
+// ── Le texte JSX renvoyé à la ligne, ou sans accent ─────────────────────────────────────────────
+// LE HUITIÈME AVEUGLEMENT, trouvé le 15/09/2026 : 16 phrases françaises affichées à tous les joueurs
+// — dont la case de consentement de la complétion du profil — n'apparaissaient dans AUCUN contrôle.
+// « Français restant » lit ligne par ligne et veut `>`, `<` ET un accent sur la même ligne ; « Texte
+// littéral » ne regarde que les chaînes entre guillemets. Or dès qu'un texte ne tient plus entre ses
+// balises, il passe sur sa propre ligne :
+//     <Text style={styles.hint}>
+//       Les notifications ne sont pas disponibles sur cet appareil.
+//     </Text>
+// et un texte court sans accent (`>Recevoir un push pour…<`) passait même tenu sur une ligne.
+//
+// Celle-ci lit chaque fichier d'un bloc et suit les VRAIES balises : un `<Nom` collé à un identifiant
+// est un générique (`useState<string>`), pas une balise ; la fin d'une balise se cherche en comptant
+// les accolades, sinon le `>` d'un `() =>` dans un attribut la couperait ; et une PILE ne laisse lire
+// du texte qu'entre une ouverture et sa fermeture — sans elle, le code qui suit le dernier `</View>`
+// d'un composant passait pour une phrase.
+//
+// Limite connue : un mot court dans une expression (`isHero ? 'Hero' : 'Nom'`) ou dans un gabarit
+// (`${label} (toi)`) reste invisible à tous les contrôles — c'est ainsi que ces deux-là ont survécu.
+const texteJsx = [];
+for (const f of fichiers) {
+  if (!f.endsWith('.tsx')) continue;
+  const relatif = path.relative(RACINE, f).split(path.sep).join('/');
+  if (HORS_PERIMETRE.some((h) => relatif.startsWith(h))) continue;
+  // Commentaires blanchis en GARDANT les retours à la ligne, pour que les numéros restent justes.
+  // Un `//` précédé de `:` est celui d'une adresse (`https://`), pas un commentaire.
+  const src = fs
+    .readFileSync(f, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (c, avant) => avant + ' '.repeat(c.length - avant.length));
+  const pile = [];
+  const balise = /<(\/?)([A-Za-z][\w.]*)?/g;
+  let m;
+  while ((m = balise.exec(src))) {
+    const fermante = m[1] === '/';
+    // `<>` et `</>` sont des fragments ; `a < b` n'est pas une balise.
+    if (!m[2] && src[balise.lastIndex] !== '>') continue;
+    if (!fermante && /[\w$)\]]/.test(src[m.index - 1] ?? '')) continue;
+    let fin = balise.lastIndex;
+    for (let profondeur = 0; fin < src.length; fin++) {
+      if (src[fin] === '{') profondeur++;
+      else if (src[fin] === '}') profondeur--;
+      else if (src[fin] === '>' && profondeur === 0) break;
+    }
+    if (fin >= src.length) break;
+    balise.lastIndex = fin + 1;
+    if (fermante) pile.pop();
+    else if (src[fin - 1] !== '/') pile.push(m[2] ?? '');
+    if (pile.length === 0) continue;
+    const texte = src.slice(fin + 1).match(/^[^<{]*/)[0];
+    const net = texte.replace(/\s+/g, ' ').trim();
+    if (!net || BRUIT.some((b) => b.test(net))) continue;
+    // Le code d'une expression qui suit une balise (`) : liste.length === 0 ? (`) n'est pas une
+    // phrase : il commence par une parenthèse fermante ou porte un opérateur qu'aucun texte n'a.
+    if (/^\)|=>|===|!==|&&|\|\||\?\s*\(|\)\s*:/.test(net)) continue;
+    const mots = net.match(MOTS) ?? [];
+    const humain = mots.length >= 2 || (mots.length === 1 && mots[0].length >= 4 && /^[A-ZÀ-Þ]/.test(mots[0]));
+    const ligne = src.slice(0, fin + 1 + texte.search(/\S/)).split('\n').length;
+    if (humain) texteJsx.push(`${relatif}:${ligne}  ${net.slice(0, 90)}`);
+  }
+}
+if (texteJsx.length > 0) {
+  const plafondTexte = process.argv.includes('--tout') ? texteJsx.length : 25;
+  console.log(`Texte JSX renvoyé à la ligne ou sans accent (${texteJsx.length}) — informatif :`);
+  for (const l of texteJsx.slice(0, plafondTexte)) console.log(`      ${l}`);
+  if (texteJsx.length > plafondTexte) console.log(`      … et ${texteJsx.length - plafondTexte} de plus (--tout)`);
   console.log('');
 }
 

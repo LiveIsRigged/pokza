@@ -175,8 +175,7 @@ export function StreetCorrectionStep({
           <Text style={styles.refaireTexte}>{t('createur.refaire_les_mises')}</Text>
         </Pressable>
         <Text style={styles.avertissement}>
-          Refaire les mises efface celles de cette street et des suivantes. Les cartes, elles, sont
-          conservées.
+          {t('createur.refaire_les_mises_avertissement')}
         </Text>
       </View>
     </WizardScreen>

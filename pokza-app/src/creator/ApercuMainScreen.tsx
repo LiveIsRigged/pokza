@@ -44,7 +44,7 @@ export function ApercuMainScreen({ hand, onFermer }: ApercuMainScreenProps) {
           <HandReplayer hand={hand} />
         </View>
         <Text style={styles.note}>
-          Rien n'est publié : cet aperçu est là pour vérifier, et se referme sans rien changer.
+          {t('createur.apercu_rien_publie')}
         </Text>
       </ScrollView>
     </View>

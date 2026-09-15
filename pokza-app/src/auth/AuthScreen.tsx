@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../analytics';
-import { borders, colors, iconMuted, radius, tints } from '../theme/theme';
+import { borders, colors, iconMuted, placeholderText, radius, tints } from '../theme/theme';
 import { webOrigin, readInitialDeepLink } from '../navigation/deepLink';
 import { openPublicReport, type PublicReportTarget } from '../utils/publicReport';
 import { passwordError } from './passwordRules';
@@ -284,7 +284,7 @@ export function AuthScreen() {
                 <TextInput
                   style={styles.inputField}
                   placeholder={t('auth.champ_email')}
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={placeholderText}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="email-address"
@@ -332,7 +332,7 @@ export function AuthScreen() {
           <TextInput
             style={styles.inputField}
             placeholder={t('auth.champ_email')}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={placeholderText}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
@@ -352,7 +352,7 @@ export function AuthScreen() {
               ref={confirmEmailRef}
               style={styles.inputField}
               placeholder={t('auth.champ_confirme_email')}
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={placeholderText}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
@@ -379,7 +379,7 @@ export function AuthScreen() {
             ref={passwordRef}
             style={styles.inputField}
             placeholder={t('auth.champ_mot_de_passe')}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={placeholderText}
             secureTextEntry={!showPassword}
             autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
             textContentType={mode === 'signUp' ? 'newPassword' : 'password'}
@@ -397,7 +397,7 @@ export function AuthScreen() {
               ref={confirmPasswordRef}
               style={styles.inputField}
               placeholder={t('auth.champ_confirme_mot_de_passe')}
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={placeholderText}
               secureTextEntry={!showPassword}
               autoComplete="new-password"
               textContentType="newPassword"

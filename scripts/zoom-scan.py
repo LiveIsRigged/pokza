@@ -6,6 +6,10 @@ RÈGLE 3 — `autoFocus` (nu → sur iOS le champ prend le focus SANS ouvrir le 
 `AjusteurHauteur` réserve alors la place d'un clavier qui ne vient pas : un espace blanc s'ouvre
 puis se referme. Il faut `autoFocus={autoFocusUtile()}`, cf. `src/web/clavierVirtuel.ts`).
 
+RÈGLE 4 — la couleur de l'exemple (`placeholder` sans `placeholderTextColor={placeholderText}` →
+`react-native-web` n'applique aucune couleur d'exemple, qui hérite alors du noir du texte tapé : le
+champ vide a l'air rempli. 47 champs sur 55 jusqu'au 15/09/2026. Cf. `placeholderText` dans le thème).
+
 RÈGLE 2 — `autoComplete` (absent → `react-native-web` pose `autocomplete="on"` D'OFFICE, ce qui
 INVITE Safari à deviner : une carte bancaire près d'un bouton d'envoi, un contact devant un pavé
 numérique). Cf. `TextInput/index.js:347` : `autoComplete || autoCompleteType || 'on'`.
@@ -78,7 +82,10 @@ for path in sorted(ROOT.rglob('*.tsx')):
         # `autoFocus` NU (sans accolade) ou gardé par autre chose que `autoFocusUtile()`.
         af = re.search(r'\bautoFocus(\s*=\s*\{([^{}]*)\})?', tag)
         focus_nu = bool(af) and 'autoFocusUtile' not in (af.group(2) or '')
-        rows.append((str(path), line, m.group(1), ' + '.join(refs), eff, origin, passthrough, declare, focus_nu, tag))
+        # Un exemple qui ne porte pas LE jeton du thème : absent, ou une autre couleur posée à la main.
+        exemple_pale = (bool(re.search(r'\bplaceholder\s*=', tag))
+                        and not re.search(r'placeholderTextColor=\{placeholderText\}', tag))
+        rows.append((str(path), line, m.group(1), ' + '.join(refs), eff, origin, passthrough, declare, focus_nu, tag, exemple_pale))
 
 # ⚠️ LES DEUX SEULES EXCEPTIONS, ET ELLES SONT UN CHOIX : « Prénom » et « Nom » de la complétion de
 # profil. C'est la VRAIE identité de la personne, le remplissage lui rend service (tranché le
@@ -106,6 +113,9 @@ muets = [r for r in rows
 # ⚠️ Toutes les balises, pas seulement `TextInput` : une enveloppe maison peut relayer `autoFocus`
 # depuis son point d'appel, et c'est là qu'il faut le garder.
 focus = [r for r in rows if r[8]]
+# Même raison que la règle 2 : seul le `TextInput` primitif reçoit la couleur. Une enveloppe maison
+# (`DecimalTextInput`, `LocationInput`) relaie son `placeholder` à son propre `TextInput`, scanné là.
+pales = [r for r in rows if r[2] == 'TextInput' and r[10]]
 
 bad = [r for r in rows if not r[6] and (r[4] is None or r[4] < SEUIL)]
 relay = [r for r in rows if r[6]]
@@ -141,6 +151,15 @@ if focus:
 else:
     print('✅ tout `autoFocus` est gardé\n')
 
+if pales:
+    print('*** EXEMPLE SANS `placeholderTextColor={placeholderText}` — IL A L\'AIR D\'ÊTRE REMPLI ***')
+    print('-' * 96)
+    for r in pales:
+        print(f'       <{r[2]}>  {r[0]}:{r[1]}')
+    print("       → ajouter `placeholderTextColor={placeholderText}` (src/theme/theme.ts)\n")
+else:
+    print('✅ tout exemple porte la couleur du thème\n')
+
 print('RELAIS — leur police vient de l\'appelant, vérifié ci-dessous')
 print('-' * 96)
 for p, l, tag, *_ in relay:
@@ -156,5 +175,5 @@ for p, l, tag, refs, eff, origin, *_ in ok:
 # une SECONDE fois (le champ de l'import, à 12px, trouvé par Victor sur iPhone : Safari zoome et ne
 # dézoome jamais). Le script existait, il était documenté dans le thème, et personne ne l'a relancé.
 # Un relevé qu'on doit penser à lire ne garde rien ; un code de sortie, si.
-if bad or muets or focus:
+if bad or muets or focus or pales:
     sys.exit(1)

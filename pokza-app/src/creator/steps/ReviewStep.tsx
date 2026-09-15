@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { borders, colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, placeholderText, radius, spacing } from '../../theme/theme';
 import type { Group } from '../../data/groups';
 import { GroupChoice } from '../../groups/GroupChoice';
 import { Chip } from '../Chip';
@@ -156,6 +156,7 @@ export function ReviewStep({
           autoComplete="off"
           style={styles.input}
           placeholder={t('createur.titre_exemple')}
+          placeholderTextColor={placeholderText}
           maxLength={TITLE_MAX_LENGTH}
           value={value.title}
           onChangeText={(t) => update({ title: t })}
@@ -171,6 +172,7 @@ export function ReviewStep({
           autoComplete="off"
           style={[styles.input, styles.descriptionInput]}
           placeholder={t('createur.description_exemple')}
+          placeholderTextColor={placeholderText}
           value={value.description ?? ''}
           onChangeText={(t) => update({ description: t.slice(0, DESCRIPTION_MAX_LENGTH) })}
           maxLength={DESCRIPTION_MAX_LENGTH}
@@ -183,6 +185,7 @@ export function ReviewStep({
           autoComplete="off"
           style={styles.input}
           placeholder={t('createur.question_vote_exemple')}
+          placeholderTextColor={placeholderText}
           maxLength={VOTE_QUESTION_MAX_LENGTH}
           value={value.voteQuestion ?? ''}
           onChangeText={(t) => update({ voteQuestion: t })}
@@ -197,6 +200,7 @@ export function ReviewStep({
                 key={i}
                 style={[styles.input, styles.optionInput]}
                 placeholder={t(i < 2 ? 'createur.reponse_n' : 'createur.reponse_n_optionnel', { n: i + 1 })}
+                placeholderTextColor={placeholderText}
                 value={voteOptions[i] ?? ''}
                 onChangeText={(t) => updateOption(i, t)}
                 maxLength={VOTE_OPTION_MAX_LENGTH}

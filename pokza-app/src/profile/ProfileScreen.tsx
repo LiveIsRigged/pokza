@@ -553,7 +553,7 @@ export function ProfileScreen({
                   {/* Le retrait d'ami n'est plus déclenché ici : il vit désormais dans le menu ⋯
                       en haut de l'écran, pour ne pas laisser une option destructive en accès direct
                       sur la page. */}
-                  {friendStatus === 'friends' && <Text style={styles.friendsLabel}>✓ Amis</Text>}
+                  {friendStatus === 'friends' && <Text style={styles.friendsLabel}>{t('profil.deja_amis')}</Text>}
                 </View>
               )}
 

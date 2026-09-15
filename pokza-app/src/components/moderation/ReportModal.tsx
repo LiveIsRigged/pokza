@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../ui/Pressable';
-import { borders, colors, radius, spacing, tints } from '../../theme/theme';
+import { borders, colors, placeholderText, radius, spacing, tints } from '../../theme/theme';
 import { errorMessage } from '../../utils/errorMessage';
 import { REPORT_REASONS, submitReport, type ReportReason, type ReportTargetType } from '../../data/reports';
 import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
@@ -88,8 +88,7 @@ export function ReportModal({
             <View style={styles.doneWrap}>
               <Text style={styles.doneTitle}>{t('signalement.merci')}</Text>
               <Text style={styles.doneText}>
-                Ton signalement a été transmis à la modération. Nous examinons chaque signalement et
-                agissons quand une règle n'est pas respectée.
+                {t('signalement.merci_texte')}
               </Text>
               <Pressable style={styles.submitButton} onPress={onClose}>
                 <Text style={styles.submitButtonText}>{t('commun.fermer')}</Text>
@@ -127,6 +126,7 @@ export function ReportModal({
                   autoComplete="off"
                   style={styles.detailsInput}
                   placeholder={t('signalement.precision_placeholder')}
+                  placeholderTextColor={placeholderText}
                   value={details}
                   onChangeText={(t) => setDetails(t.slice(0, DETAILS_MAX))}
                   multiline

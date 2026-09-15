@@ -128,11 +128,11 @@ export function NotificationSettingsScreen({ userId, onBack }: NotificationSetti
             </View>
             {perm === 'denied' && (
               <Text style={styles.hint}>
-                Bloquées dans les réglages de ton navigateur — Pokza ne peut plus te les redemander directement.
+                {t('notif.bloquees_navigateur_aide')}
               </Text>
             )}
 
-            <Text style={styles.subLabel}>Recevoir un push pour…</Text>
+            <Text style={styles.subLabel}>{t('notif.recevoir_push_pour')}</Text>
             {FAMILY_ROWS.map((f) => (
               <View key={f.key} style={[styles.row, !deviceOn && styles.rowMuted]}>
                 <Text style={styles.rowLabel}>{t(f.cle)}</Text>
@@ -152,7 +152,7 @@ export function NotificationSettingsScreen({ userId, onBack }: NotificationSetti
             {prefsError && <Text style={styles.error}>{prefsError}</Text>}
           </>
         ) : (
-          <Text style={styles.hint}>Les notifications ne sont pas disponibles sur cet appareil.</Text>
+          <Text style={styles.hint}>{t('notif.indisponibles_appareil')}</Text>
         )}
       </ScrollView>
     </View>

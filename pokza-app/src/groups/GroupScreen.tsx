@@ -337,8 +337,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
         {showPublishedNotice && (
           <View style={styles.publishedNotice}>
             <Text style={styles.publishedNoticeText}>
-              Ta main est publiée ici. Tu es seul dans ce groupe pour l'instant — invite des joueurs
-              pour qu'ils la voient.
+              {t('groupe.main_publiee_seul')}
             </Text>
           </View>
         )}

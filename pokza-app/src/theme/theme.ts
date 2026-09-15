@@ -61,6 +61,19 @@ export const tints = {
 /** Teinte des icônes secondaires (champs de connexion, décor). */
 export const iconMuted = navy(0.45);
 
+/**
+ * Texte d'exemple des champs (`placeholderTextColor`). Même opacité que `iconMuted`, mais un rôle à
+ * part : une icône et un exemple n'ont aucune raison de bouger ensemble.
+ *
+ * ⚠️ À POSER SUR TOUT `TextInput` QUI A UN `placeholder`. Sans lui, `react-native-web` n'applique
+ * AUCUNE couleur d'exemple — sa règle est `color: var(--placeholderTextColor)`, et la variable n'est
+ * définie que si la prop est passée — donc l'exemple hérite du noir du texte tapé : un champ vide ne
+ * se distingue plus d'un champ rempli. C'était le cas de 47 champs sur 55 jusqu'au 15/09/2026, remonté
+ * par un testeur (« on dirait qu'ils sont déjà remplis »). Gris tranché par Victor le même jour, sur
+ * comparaison de trois teintes. `python3 scripts/zoom-scan.py` sort en erreur sur tout oubli.
+ */
+export const placeholderText = navy(0.45);
+
 // Rayons et espacements alignés sur DESIGN_SYSTEM.md (base 4px)
 export const radius = {
   sm: 4,

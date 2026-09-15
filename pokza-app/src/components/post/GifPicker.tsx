@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Pressable } from '../ui/Pressable';
-import { borders, colors, radius, spacing, tints } from '../../theme/theme';
+import { borders, colors, placeholderText, radius, spacing, tints } from '../../theme/theme';
 import { fetchTrendingGifs, searchGifs, type GifResult } from '../../data/gifs';
 import { sheetGrabStyle, useSheetDismiss } from '../ui/useSheetDismiss';
 import { LARGEUR_MAX } from '../ui/Colonne';
@@ -81,6 +81,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
                 autoComplete="off"
                 style={styles.searchInput}
                 placeholder={t('gif.chercher')}
+                placeholderTextColor={placeholderText}
                 value={query}
                 onChangeText={handleQueryChange}
                 autoFocus={autoFocusUtile()}

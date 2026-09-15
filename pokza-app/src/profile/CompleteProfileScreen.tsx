@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
 import { countryByCode, flagEmoji } from '../data/countries';
-import { borders, colors, radius, tints } from '../theme/theme';
+import { borders, colors, placeholderText, radius, tints } from '../theme/theme';
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
@@ -33,6 +33,7 @@ function parseBirthDate(day: string, month: string, year: string): string | null
 const MINIMUM_AGE = 18;
 import { BIO_MAX_LENGTH, PSEUDO_MAX_LENGTH } from '../constants/limits';
 import { useT } from '../i18n';
+import { decouper } from '../i18n/noeuds';
 
 /** Compare année/mois/jour un à un plutôt que de soustraire des millisecondes — insensible aux
  * fuseaux horaires et aux années bissextiles, qui rendraient un calcul par différence peu fiable
@@ -171,7 +172,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable style={styles.backButton} onPress={onBack} hitSlop={8} disabled={submitting}>
-          <Text style={styles.backText}>‹ Retour</Text>
+          <Text style={styles.backText}>{t('createur.retour')}</Text>
         </Pressable>
 
         <Text style={styles.title}>{t('profil.completer_titre')}</Text>
@@ -185,14 +186,15 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
           onChangeText={setPseudo}
           autoCapitalize="none"
           placeholder={t('profil.pseudo_placeholder')}
+          placeholderTextColor={placeholderText}
           maxLength={PSEUDO_MAX_LENGTH}
         />
 
         <Text style={styles.label}>{t('profil.prenom')}</Text>
-        <TextInput style={styles.input} value={prenom} onChangeText={setPrenom} placeholder={t('profil.prenom')} />
+        <TextInput style={styles.input} value={prenom} onChangeText={setPrenom} placeholder={t('profil.prenom')} placeholderTextColor={placeholderText} />
 
         <Text style={styles.label}>{t('profil.nom')}</Text>
-        <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder={t('profil.nom')} />
+        <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder={t('profil.nom')} placeholderTextColor={placeholderText} />
 
         <Text style={styles.label}>{t('profil.afficher_sur_pokza')}</Text>
         <View style={styles.row}>
@@ -201,7 +203,9 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
         </View>
         {apercuNomAffiche ? (
           <Text style={styles.reassurance}>
-            Tu apparaîtras comme <Text style={styles.reassuranceFort}>{apercuNomAffiche}</Text>.
+            {decouper(t('profil.apparaitras_comme'), {
+              nom: <Text style={styles.reassuranceFort}>{apercuNomAffiche}</Text>,
+            })}
           </Text>
         ) : null}
 
@@ -225,6 +229,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             value={day}
             onChangeText={setDay}
             placeholder={t('profil.jour_court')}
+            placeholderTextColor={placeholderText}
             keyboardType="number-pad"
             maxLength={2}
           />
@@ -234,6 +239,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             value={month}
             onChangeText={setMonth}
             placeholder={t('profil.mois_court')}
+            placeholderTextColor={placeholderText}
             keyboardType="number-pad"
             maxLength={2}
           />
@@ -243,6 +249,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             value={year}
             onChangeText={setYear}
             placeholder={t('profil.annee_court')}
+            placeholderTextColor={placeholderText}
             keyboardType="number-pad"
             maxLength={4}
           />
@@ -254,12 +261,13 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             {identityConsent && <Text style={styles.checkboxTick}>✓</Text>}
           </View>
           <Text style={styles.consentText}>
-            Je consens à ce que Pokza traite mes données personnelles, dont mon prénom, mon nom et ma date de
-            naissance, afin de vérifier ma majorité — voir la{' '}
-            <Text style={styles.consentLink} onPress={() => setLegalDoc('confidentialite')}>
-              politique de confidentialité
-            </Text>
-            .
+            {decouper(t('profil.consentement_identite'), {
+              confidentialite: (
+                <Text style={styles.consentLink} onPress={() => setLegalDoc('confidentialite')}>
+                  {t('auth.consentement_confidentialite')}
+                </Text>
+              ),
+            })}
           </Text>
         </Pressable>
 
@@ -275,6 +283,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
           value={bio}
           onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
           placeholder={t('profil.description_placeholder')}
+          placeholderTextColor={placeholderText}
           multiline
           maxLength={BIO_MAX_LENGTH}
         />

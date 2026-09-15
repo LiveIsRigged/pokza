@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing } from '../theme/theme';
+import { borders, colors, placeholderText, radius, spacing } from '../theme/theme';
 import {
   getReportContext,
   resolveReport,
@@ -287,6 +287,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
             autoComplete="off"
             style={styles.noteInput}
             placeholder={t('admin.note_placeholder')}
+            placeholderTextColor={placeholderText}
             value={note}
             onChangeText={setNote}
             multiline

@@ -55,7 +55,7 @@ export function GroupChoice({ groups, selectedId, onSelect, onCreateGroup, onOpe
     return (
       <View style={styles.emptyBlock}>
         <Text style={styles.emptyHint}>
-          Tu n'es encore dans aucun groupe privé. Crées-en un ici : cette main y sera publiée.
+          {t('groupe.aucun_creer_ici')}
         </Text>
         {creating ? (
           <NewGroupForm onCreate={create} onCancel={() => setCreating(false)} />

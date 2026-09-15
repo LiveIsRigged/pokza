@@ -7,7 +7,7 @@ import { LocationInput } from '../../components/ui/LocationInput';
 import { devise } from '../../utils/currency';
 import type { Position } from '../../types/poker';
 import { holeCardCount } from '../../types/poker';
-import { borders, colors, tints } from '../../theme/theme';
+import { borders, colors, placeholderText, tints } from '../../theme/theme';
 import { Chip } from '../Chip';
 import { TableVue } from '../../components/table/TableVue';
 import { GABARIT_CONTEXTE, hauteurTableContexte } from '../../engine/layout';
@@ -72,6 +72,7 @@ function LevelNumberInput({
         style={[styles.input, styles.levelInputField]}
         keyboardType="number-pad"
         placeholder="12"
+        placeholderTextColor={placeholderText}
         maxLength={LEVEL_DIGITS_MAX}
         value={digits}
         onChangeText={(t) => {
@@ -599,7 +600,7 @@ export function ContextStep({
             </View>
             {value.doubleBoard && (
               <Text style={styles.helperText}>
-                Deux boards : chacun remporte la moitié du pot (gagner les deux = scoop).
+                {t('createur.deux_boards_aide')}
               </Text>
             )}
           </>
@@ -918,7 +919,7 @@ export function ContextStep({
           const label = straddleLabelForPosition(pos);
           return (
             <View key={pos} style={styles.playerRow}>
-              <Text style={styles.playerRowLabel}>{isHero ? `${label} (toi)` : label}</Text>
+              <Text style={styles.playerRowLabel}>{isHero ? t('createur.position_toi', { position: label }) : label}</Text>
               {/* Le héros a droit à son nom comme les autres, mais son champ est le seul à annoncer
                   sa valeur par défaut : laissé vide, il s'affiche « Hero » partout dans la main.
                   Son nom est rangé à part (`heroName`) et non dans `opponentNames`, indexé par
@@ -926,7 +927,8 @@ export function ContextStep({
               <TextInput
                 autoComplete="off"
                 style={[styles.input, styles.playerNameInput]}
-                placeholder={isHero ? 'Hero' : 'Nom'}
+                placeholder={isHero ? 'Hero' : t('createur.fiche_nom')}
+                placeholderTextColor={placeholderText}
                 maxLength={OPPONENT_NAME_MAX_LENGTH}
                 value={(isHero ? value.heroName : value.opponentNames?.[pos]) ?? ''}
                 onChangeText={(t) => changerNom(pos, t)}
@@ -993,6 +995,7 @@ export function ContextStep({
               autoComplete="off"
               style={styles.input}
               placeholder={t('createur.tournoi_exemple')}
+              placeholderTextColor={placeholderText}
               maxLength={TOURNAMENT_NAME_MAX_LENGTH}
               value={value.tournamentName ?? ''}
               onChangeText={(t) => update({ tournamentName: t })}
@@ -1033,6 +1036,7 @@ export function ContextStep({
               autoComplete="off"
               style={styles.input}
               placeholder={t('createur.buy_in_exemple')}
+              placeholderTextColor={placeholderText}
               maxLength={BUY_IN_MAX_LENGTH}
               value={value.buyIn ?? ''}
               onChangeText={(t) => update({ buyIn: t })}

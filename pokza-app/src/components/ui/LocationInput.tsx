@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
 import { Pressable } from './Pressable';
-import { borders, colors, radius, spacing } from '../../theme/theme';
+import { borders, colors, placeholderText, radius, spacing } from '../../theme/theme';
 import { chercherLieux, LIEU_MIN_CARACTERES } from '../../data/lieux';
 import { LOCATION_MAX_LENGTH } from '../../constants/limits';
 
@@ -121,6 +121,7 @@ export function LocationInput({
         autoComplete="off"
         style={style}
         placeholder={placeholder}
+        placeholderTextColor={placeholderText}
         maxLength={LOCATION_MAX_LENGTH}
         value={value}
         onChangeText={onChangeText}

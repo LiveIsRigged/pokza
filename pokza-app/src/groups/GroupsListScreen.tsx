@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, placeholderText, radius, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';
 import { NewGroupForm } from './NewGroupForm';
@@ -98,6 +98,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
           autoComplete="off"
           style={styles.search}
           placeholder={t('groupe.rechercher')}
+          placeholderTextColor={placeholderText}
           value={query}
           onChangeText={setQuery}
           autoCorrect={false}

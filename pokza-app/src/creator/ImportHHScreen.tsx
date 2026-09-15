@@ -7,7 +7,7 @@ import { ErreurDeLecture } from '../import/formeNeutre';
 import { texteDuFichier } from '../import/fichier';
 import { messageDAvertissement, messageDeRefus, type Provenance } from '../import/messages';
 import type { SourceDeSeed } from './rehydrate';
-import { borders, colors, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, placeholderText, radius, spacing, typography } from '../theme/theme';
 import { LARGEUR_MAX_IMPORT } from '../components/ui/Colonne';
 import { useT } from '../i18n';
 
@@ -231,7 +231,7 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
                   ? t('import.placeholder_avec_fichier')
                   : t('import.placeholder_sans_fichier')
               }
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={placeholderText}
               multiline
               autoCorrect={false}
               autoCapitalize="none"

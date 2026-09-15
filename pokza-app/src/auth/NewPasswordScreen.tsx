@@ -3,7 +3,7 @@ import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-nat
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
-import { borders, colors, radius } from '../theme/theme';
+import { borders, colors, placeholderText, radius } from '../theme/theme';
 import { clearDeepLinkFromUrl } from '../navigation/deepLink';
 import { passwordError } from './passwordRules';
 import { useT } from '../i18n';
@@ -64,7 +64,7 @@ export function NewPasswordScreen({ onDone, onCancel }: NewPasswordScreenProps) 
         autoComplete="new-password"
         textContentType="newPassword"
         placeholder={t('motdepasse.champ_nouveau')}
-        placeholderTextColor={colors.textSecondary}
+        placeholderTextColor={placeholderText}
         secureTextEntry
         returnKeyType="next"
         onSubmitEditing={() => confirmPasswordRef.current?.focus()}
@@ -79,7 +79,7 @@ export function NewPasswordScreen({ onDone, onCancel }: NewPasswordScreenProps) 
         autoComplete="new-password"
         textContentType="newPassword"
         placeholder={t('auth.champ_confirme_mot_de_passe')}
-        placeholderTextColor={colors.textSecondary}
+        placeholderTextColor={placeholderText}
         secureTextEntry
         returnKeyType="go"
         onSubmitEditing={handleSubmit}

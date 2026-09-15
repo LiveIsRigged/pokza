@@ -45,7 +45,7 @@ export function FriendsListScreen({ userId, onBack, onSelectProfile }: FriendsLi
         <Pressable onPress={onBack} hitSlop={8}>
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Mes amis{friends.length > 0 ? ` · ${friends.length}` : ''}</Text>
+        <Text style={styles.title}>{friends.length > 0 ? t('profil.mes_amis_compte', { n: friends.length }) : t('profil.mes_amis')}</Text>
       </View>
 
       {error && <Text style={styles.statusText}>{error}</Text>}
