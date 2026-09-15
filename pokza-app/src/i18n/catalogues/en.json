@@ -374,8 +374,6 @@
   "profil.description_aide": "Shown on your profile. You can leave it empty and write it later.",
   "profil.format_favori": "Favourite format",
   "profil.variante_preferee": "Preferred variant",
-  "profil.variante_aide_creation": "Hands of this variant will move up a little in your feed. Changeable at any time.",
-  "profil.variante_aide_edition": "Hands of this variant move up a little in your feed.",
   "profil.frequence_question": "How often do you play poker?",
   "profil.valider_mon_profil": "Confirm my profile",
   "profil.erreur_date_invalide": "Invalid date of birth.",

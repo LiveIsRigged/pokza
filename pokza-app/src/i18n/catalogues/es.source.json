@@ -374,8 +374,6 @@
   "profil.description_aide": "Affichée sur ton profil. Tu peux la laisser vide et l'écrire plus tard.",
   "profil.format_favori": "Format favori",
   "profil.variante_preferee": "Variante préférée",
-  "profil.variante_aide_creation": "Les mains de cette variante remonteront un peu dans ton fil. Modifiable à tout moment.",
-  "profil.variante_aide_edition": "Les mains de cette variante remontent un peu dans ton fil.",
   "profil.frequence_question": "À quelle fréquence joues-tu au poker ?",
   "profil.valider_mon_profil": "Valider mon profil",
   "profil.erreur_date_invalide": "Date de naissance invalide.",

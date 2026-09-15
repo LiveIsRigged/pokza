@@ -58,8 +58,9 @@ for path in sorted(ROOT.rglob('*.tsx')):
     # toute balise dont le nom FINIT par « Input » : TextInput, DecimalTextInput, LevelNumberInput…
     # (finit par, et non contient : sinon on ramasse des types comme TextInputKeyPressEventData)
     for m in re.finditer(r'<([A-Z]\w*Input)\b', src):
-        # `useRef<TextInput>(null)` n'est pas un champ, c'est une annotation de type
-        if src[max(0, m.start() - 6):m.start()] == 'useRef': continue
+        # `useRef<TextInput>(null)` ou `RefObject<TextInput | null>` : pas un champ, une annotation de
+        # type. Un `<` collé à un identifiant ouvre des arguments de type ; une balise JSX, jamais.
+        if m.start() > 0 and (src[m.start() - 1].isalnum() or src[m.start() - 1] in '_$'): continue
         j, depth = m.end(), 0
         while j < len(src):
             if src[j] == '{': depth += 1

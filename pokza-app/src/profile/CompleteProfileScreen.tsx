@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
@@ -9,6 +10,26 @@ import { borders, colors, placeholderText, radius, tints } from '../theme/theme'
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocId } from '../legal/legalContent';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
+
+/**
+ * Date de naissance : effacer dans une case VIDE rend la main à la case d'avant, le curseur après ses
+ * chiffres pour que l'effacement suivant en retire un. `preventDefault` : la touche ramène et n'efface
+ * rien au passage — une fois le focus déplacé, rien ne garantit que le navigateur n'applique pas
+ * l'effacement à la case d'avant.
+ */
+function revenirSiVide(valeur: string, precedente: React.RefObject<TextInput | null>, valeurPrecedente: string) {
+  return (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+    const champ = precedente.current;
+    if (e.nativeEvent.key !== 'Backspace' || valeur !== '' || !champ) return;
+    e.preventDefault();
+    champ.focus();
+    const fin = valeurPrecedente.length;
+    // Sur le web, la référence EST l'`<input>`, et react-native-web n'y pose pas `setSelection`.
+    const input = champ as unknown as { setSelectionRange?: (debut: number, fin: number) => void };
+    if (input.setSelectionRange) input.setSelectionRange(fin, fin);
+    else champ.setSelection(fin, fin);
+  };
+}
 
 interface CompleteProfileScreenProps {
   onComplete: () => void;
@@ -61,6 +82,13 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
+  // Le jour et le mois passent au champ suivant dès leur deuxième chiffre, et effacer dans une case
+  // vide ramène à la précédente (demandes de Victor, 15/09/2026) : il fallait toucher chaque case.
+  // Le `focus()` part pendant la frappe, jamais après un `await` ni dans un `setTimeout` : iOS
+  // n'ouvre le clavier que pour un focus donné pendant un geste de l'utilisateur.
+  const dayRef = useRef<TextInput>(null);
+  const monthRef = useRef<TextInput>(null);
+  const yearRef = useRef<TextInput>(null);
   const [formatFavori, setFormatFavori] = useState<string | null>(null);
   // Variante préférée : pré-sélectionnée sur Hold'em (le défaut) pour ne pas ajouter de friction —
   // le champ n'est donc jamais vide et n'entre pas dans `canSubmit`.
@@ -224,30 +252,41 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
         <Text style={styles.label}>{t('profil.date_de_naissance')}</Text>
         <View style={styles.dobRow}>
           <TextInput
+            ref={dayRef}
             autoComplete="off"
             style={styles.dobInput}
             value={day}
-            onChangeText={setDay}
+            onChangeText={(text) => {
+              setDay(text);
+              if (text.length === 2) monthRef.current?.focus();
+            }}
             placeholder={t('profil.jour_court')}
             placeholderTextColor={placeholderText}
             keyboardType="number-pad"
             maxLength={2}
           />
           <TextInput
+            ref={monthRef}
             autoComplete="off"
             style={styles.dobInput}
             value={month}
-            onChangeText={setMonth}
+            onChangeText={(text) => {
+              setMonth(text);
+              if (text.length === 2) yearRef.current?.focus();
+            }}
+            onKeyPress={revenirSiVide(month, dayRef, day)}
             placeholder={t('profil.mois_court')}
             placeholderTextColor={placeholderText}
             keyboardType="number-pad"
             maxLength={2}
           />
           <TextInput
+            ref={yearRef}
             autoComplete="off"
             style={[styles.dobInput, styles.dobInputYear]}
             value={year}
             onChangeText={setYear}
+            onKeyPress={revenirSiVide(year, monthRef, month)}
             placeholder={t('profil.annee_court')}
             placeholderTextColor={placeholderText}
             keyboardType="number-pad"
@@ -302,7 +341,6 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             <Chip key={opt.value} label={t(opt.cle)} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
           ))}
         </View>
-        <Text style={styles.reassurance}>{t('profil.variante_aide_creation')}</Text>
 
         <Text style={styles.label}>{t('profil.frequence_question')}</Text>
         <View style={styles.column}>

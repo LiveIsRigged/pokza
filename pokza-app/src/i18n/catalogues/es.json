@@ -374,8 +374,6 @@
   "profil.description_aide": "Se muestra en tu perfil. Puedes dejarla vacía y escribirla más tarde.",
   "profil.format_favori": "Formato favorito",
   "profil.variante_preferee": "Variante preferida",
-  "profil.variante_aide_creation": "Las manos de esta variante subirán un poco en tu feed. Puedes cambiarlo cuando quieras.",
-  "profil.variante_aide_edition": "Las manos de esta variante suben un poco en tu feed.",
   "profil.frequence_question": "¿Con qué frecuencia juegas al póker?",
   "profil.valider_mon_profil": "Confirmar mi perfil",
   "profil.erreur_date_invalide": "Fecha de nacimiento no válida.",

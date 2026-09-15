@@ -135,7 +135,6 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
             <Chip key={opt.value} label={t(opt.cle)} selected={varianteFavorite === opt.value} onPress={() => setVarianteFavorite(opt.value)} />
           ))}
         </View>
-        <Text style={styles.hint}>{t('profil.variante_aide_edition')}</Text>
 
         <Text style={styles.label}>{t('profil.frequence_question')}</Text>
         <View style={styles.column}>
