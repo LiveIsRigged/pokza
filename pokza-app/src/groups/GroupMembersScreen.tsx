@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { colors, radius, spacing } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { colors, radius, SCREEN_TOP, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import type { GroupMember } from '../data/groups';
@@ -41,9 +42,7 @@ export function GroupMembersScreen({
     <View style={styles.overlay}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topRow}>
-          <Pressable onPress={onBack} hitSlop={8}>
-            <Text style={styles.backArrow}>←</Text>
-          </Pressable>
+          <BackButton onPress={onBack} />
         </View>
 
         <Text style={styles.title}>{canManage ? t('groupe.exclure_membre') : t('groupe.membres_titre')}</Text>
@@ -99,16 +98,11 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 14,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     paddingBottom: 60,
   },
   topRow: {
-    marginBottom: 10,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 20,
   },
   title: {
     fontSize: 22,

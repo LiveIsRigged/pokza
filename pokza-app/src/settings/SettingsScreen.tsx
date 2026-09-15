@@ -1,7 +1,8 @@
 import React, { useImperativeHandle, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { borders, colors, radius, SCREEN_TOP, spacing } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { LegalScreen } from '../legal/LegalScreen';
@@ -110,9 +111,7 @@ export const SettingsScreen = React.forwardRef<SettingsScreenHandle, SettingsScr
     <View style={styles.overlay}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topRow}>
-          <Pressable onPress={onBack} hitSlop={8}>
-            <Text style={styles.backArrow}>←</Text>
-          </Pressable>
+          <BackButton onPress={onBack} />
           <Text style={styles.headerTitle}>{t('reglages.titre')}</Text>
         </View>
 
@@ -177,19 +176,14 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 24,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     paddingBottom: 60,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: 20,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 30,
   },
   // 18px noir : le standard des écrans empilés (Mes groupes privés, Mes amis, Mes invitations,
   // Ajouter des amis, Informations légales, Signalements, Journal d'audit). Ces deux écrans de

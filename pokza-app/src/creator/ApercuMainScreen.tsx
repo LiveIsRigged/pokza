@@ -1,8 +1,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Pressable } from '../components/ui/Pressable';
+import { BackButton } from '../components/ui/HeaderButton';
 import { HandReplayer } from '../components/replayer/HandReplayer';
-import { colors, spacing, typography } from '../theme/theme';
+import { colors, SCREEN_TOP, spacing, typography } from '../theme/theme';
 import type { Hand } from '../types/poker';
 import { useT } from '../i18n';
 
@@ -33,9 +33,7 @@ export function ApercuMainScreen({ hand, onFermer }: ApercuMainScreenProps) {
   return (
     <View style={styles.overlay}>
       <View style={styles.topRow}>
-        <Pressable onPress={onFermer} hitSlop={8}>
-          <Text style={styles.retour}>←</Text>
-        </Pressable>
+        <BackButton onPress={onFermer} />
         <Text style={styles.titre}>{t('createur.revoir_titre')}</Text>
       </View>
 
@@ -59,7 +57,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: colors.feedBackground,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     zIndex: 10,
   },
   topRow: {
@@ -67,11 +65,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginHorizontal: 14,
-    marginBottom: spacing.md,
-  },
-  retour: {
-    fontSize: 22,
-    color: colors.textPrimary,
+    marginBottom: 26,
   },
   titre: {
     ...typography.postTitle,

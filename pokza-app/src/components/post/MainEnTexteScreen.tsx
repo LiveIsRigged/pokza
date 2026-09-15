@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Pressable } from '../ui/Pressable';
+import { BackButton } from '../ui/HeaderButton';
 import { mainEnTexte, scinderSignature } from '../../engine/mainEnTexte';
 import type { PartieDecrite } from '../../utils/denomination';
-import { borders, colors, radius, spacing, typography } from '../../theme/theme';
+import { borders, colors, radius, SCREEN_TOP, spacing, typography } from '../../theme/theme';
 import { LARGEUR_MAX } from '../ui/Colonne';
 import { useT } from '../../i18n';
 
@@ -59,9 +60,7 @@ export function MainEnTexteScreen({ visible, partie, onFermer }: MainEnTexteScre
       <View style={styles.page}>
         <View style={styles.colonne}>
           <View style={styles.topRow}>
-            <Pressable onPress={onFermer} hitSlop={8}>
-              <Text style={styles.fermer}>←</Text>
-            </Pressable>
+            <BackButton onPress={onFermer} />
             <Text style={styles.titre}>{t('post.main_en_texte_titre')}</Text>
           </View>
 
@@ -114,7 +113,7 @@ const styles = StyleSheet.create({
     // (`colonne` ci-dessous).
     alignItems: 'center',
     backgroundColor: colors.feedBackground,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
   },
   colonne: {
     flex: 1,
@@ -126,11 +125,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginHorizontal: 14,
-    marginBottom: spacing.md,
-  },
-  fermer: {
-    fontSize: 22,
-    color: colors.textPrimary,
+    marginBottom: 26,
   },
   titre: {
     ...typography.postTitle,

@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
+import { BackButton } from '../components/ui/HeaderButton';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
-import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, tints, typography } from '../theme/theme';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, SCREEN_TOP, spacing, tints, typography } from '../theme/theme';
 import { Chip } from '../creator/Chip';
 import { Avatar } from '../components/ui/Avatar';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../utils/share';
@@ -49,9 +50,7 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <Pressable onPress={onBack} hitSlop={8}>
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
+        <BackButton onPress={onBack} />
         <Text style={styles.title}>{t('menu.ajouter_des_amis')}</Text>
       </View>
 
@@ -269,19 +268,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.feedBackground,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginHorizontal: 14,
-    marginBottom: 10,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 20,
   },
   title: {
     fontSize: 18,

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, spacing, tints } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { borders, colors, SCREEN_TOP, spacing, tints } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { enablePush, disablePush, isDeviceSubscribed, pushState, pushSupported, type PushState } from '../web/push';
 import { fetchNotificationPrefs, updateNotificationPrefs, type NotificationPrefs } from '../data/notificationPrefs';
@@ -102,9 +102,7 @@ export function NotificationSettingsScreen({ userId, onBack }: NotificationSetti
     <View style={styles.overlay}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topRow}>
-          <Pressable onPress={onBack} hitSlop={8}>
-            <Text style={styles.backArrow}>←</Text>
-          </Pressable>
+          <BackButton onPress={onBack} />
           <Text style={styles.headerTitle}>{t('notif.titre')}</Text>
         </View>
 
@@ -166,19 +164,14 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 24,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     paddingBottom: 60,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: 20,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 30,
   },
   // 18px noir : le standard des écrans empilés (Mes groupes privés, Mes amis, Mes invitations,
   // Ajouter des amis, Informations légales, Signalements, Journal d'audit). Ces deux écrans de

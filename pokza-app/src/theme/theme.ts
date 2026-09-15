@@ -107,6 +107,20 @@ export const HIT_SLOP = 8;
 export const hitSlopPairLeft = { top: HIT_SLOP, bottom: HIT_SLOP, left: HIT_SLOP, right: spacing.sm / 2 } as const;
 export const hitSlopPairRight = { top: HIT_SLOP, bottom: HIT_SLOP, left: spacing.sm / 2, right: HIT_SLOP } as const;
 
+/**
+ * Haut des écrans empilés : l'espace entre le haut de la page et la rangée du bouton de retour. C'est
+ * celui de la barre du feed (`FeedHeader`, 22 déployée), pour que les boutons ronds tombent à la même
+ * hauteur d'un écran à l'autre : rangée de 44 (la zone de toucher de `HeaderButton`), centre à 44 px.
+ *
+ * Remplace les `paddingTop: 50` écrits en dur jusqu'au 15/09/2026, du temps de la flèche « ← » en
+ * caractère (rangée de 26). Pour que le contenu ne bouge pas, la marge SOUS la rangée a pris 10 px de
+ * plus : 22 + 44 + (marge + 10) = 50 + 26 + marge.
+ *
+ * ⚠️ Pas encore la zone système : en natif, il faudra y ajouter `useSafeAreaInsets().top` comme le fait
+ * `FeedHeader`. Sur la PWA en bande blanche, elle vaut 0.
+ */
+export const SCREEN_TOP = 22;
+
 // Jetons alignés sur la palette officielle (gold/orange/navy) plutôt que des couleurs
 // "poker cliché" arbitraires — cohérence visuelle avec le reste du produit.
 export const chipColors = {

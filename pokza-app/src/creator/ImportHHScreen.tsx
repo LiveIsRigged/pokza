@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Pressable } from '../components/ui/Pressable';
+import { BackButton } from '../components/ui/HeaderButton';
 import { importerMain, compterLesMains } from '../import';
 import { ErreurDeLecture } from '../import/formeNeutre';
 import { texteDuFichier } from '../import/fichier';
 import { messageDAvertissement, messageDeRefus, type Provenance } from '../import/messages';
 import type { SourceDeSeed } from './rehydrate';
-import { borders, colors, placeholderText, radius, spacing, typography } from '../theme/theme';
+import { borders, colors, placeholderText, radius, SCREEN_TOP, spacing, typography } from '../theme/theme';
 import { LARGEUR_MAX_IMPORT } from '../components/ui/Colonne';
 import { useT } from '../i18n';
 
@@ -194,9 +195,7 @@ export function ImportHHScreen({ onFermer, onImportee }: ImportHHScreenProps) {
       <View style={styles.page}>
         <View style={styles.colonne}>
           <View style={styles.topRow}>
-            <Pressable onPress={onFermer} hitSlop={8}>
-              <Text style={styles.fermer}>←</Text>
-            </Pressable>
+            <BackButton onPress={onFermer} />
             <Text style={styles.titre}>{t('import.titre')}</Text>
           </View>
 
@@ -316,7 +315,7 @@ const styles = StyleSheet.create({
     // (`colonne` ci-dessous).
     alignItems: 'center',
     backgroundColor: colors.feedBackground,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
   },
   colonne: {
     flex: 1,
@@ -328,11 +327,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginHorizontal: 14,
-    marginBottom: spacing.md,
-  },
-  fermer: {
-    fontSize: 22,
-    color: colors.textPrimary,
+    marginBottom: 26,
   },
   titre: {
     ...typography.postTitle,

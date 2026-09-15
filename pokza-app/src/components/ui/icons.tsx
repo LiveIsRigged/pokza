@@ -385,3 +385,28 @@ export function TextLinesIcon({ size = DEFAULT_SIZE, color = colors.textPrimary 
     </Svg>
   );
 }
+
+/**
+ * Chevron de retour — dans la pastille des en-têtes d'écran (`HeaderButton`). Trait plus appuyé que la
+ * règle commune (2,1 au lieu de 1,8) : il est seul dans son rond et non dans une rangée d'icônes, et
+ * c'est ce dessin-là que Victor a choisi le 15/09/2026. Étroit par nature : la règle des ~21 unités
+ * d'encre vaut pour les icônes qui cohabitent sur une rangée, pas pour lui.
+ */
+export function ChevronLeftIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M14.5 4.5 L7.5 12 L14.5 19.5" {...line(color)} strokeWidth={2.1} />
+    </Svg>
+  );
+}
+
+/** Trois points — menu « ⋯ » des en-têtes de profil et de groupe, dans la même pastille que le retour. */
+export function MoreIcon({ size = DEFAULT_SIZE, color = colors.textPrimary }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={6} cy={12} r={1.8} fill={color} />
+      <Circle cx={12} cy={12} r={1.8} fill={color} />
+      <Circle cx={18} cy={12} r={1.8} fill={color} />
+    </Svg>
+  );
+}

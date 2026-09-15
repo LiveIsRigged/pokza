@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, placeholderText, radius, spacing, typography } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { borders, colors, placeholderText, radius, SCREEN_TOP, spacing, typography } from '../theme/theme';
 import { createGroup, fetchMyGroups, type Group } from '../data/groups';
 import { Avatar } from '../components/ui/Avatar';
 import { NewGroupForm } from './NewGroupForm';
@@ -83,9 +84,7 @@ export function GroupsListScreen({ currentUserId, onBack, onSelectGroup }: Group
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <Pressable onPress={onBack} hitSlop={8}>
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
+        <BackButton onPress={onBack} />
         <Text style={styles.title}>{t('menu.mes_groupes_prives')}</Text>
       </View>
 
@@ -161,19 +160,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.feedBackground,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginHorizontal: 14,
-    marginBottom: 10,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 20,
   },
   title: {
     fontSize: 18,

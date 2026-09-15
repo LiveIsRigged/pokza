@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, placeholderText, radius, spacing } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { borders, colors, placeholderText, radius, SCREEN_TOP, spacing } from '../theme/theme';
 import {
   getReportContext,
   resolveReport,
@@ -103,9 +104,7 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <Pressable onPress={onBack} hitSlop={8}>
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
+        <BackButton onPress={onBack} />
         <Text style={styles.title}>{t('admin.detail_titre')}</Text>
       </View>
 
@@ -342,9 +341,8 @@ export function AdminReportDetailScreen({ reportId, onBack, onOpenUser }: AdminR
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.feedBackground, paddingTop: 50 },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: 14, marginBottom: 10 },
-  backArrow: { fontSize: 22, color: colors.textPrimary, paddingHorizontal: 4 },
+  container: { flex: 1, backgroundColor: colors.feedBackground, paddingTop: SCREEN_TOP },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: 14, marginBottom: 20 },
   title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
   content: { paddingHorizontal: 14, paddingBottom: 60 },
   statusText: { marginTop: 20, marginHorizontal: 14, fontSize: 14, color: colors.textSecondary, textAlign: 'center' },

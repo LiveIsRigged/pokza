@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import type { Phase } from '../creator/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Pressable } from '../components/ui/Pressable';
-import { colors, spacing } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { colors, SCREEN_TOP, spacing } from '../theme/theme';
 import { deletePost, fetchPost, setLiked } from '../data/posts';
 import { markPostRead } from '../data/postViews';
 import type { Post } from '../types/poker';
@@ -103,9 +103,7 @@ export function PostScreen({
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.topRow}>
-          <Pressable onPress={onBack} hitSlop={8}>
-            <Text style={styles.backArrow}>←</Text>
-          </Pressable>
+          <BackButton onPress={onBack} />
           <Text style={styles.title}>{t('post.la_main')}</Text>
         </View>
 
@@ -144,7 +142,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.feedBackground,
   },
   scrollContent: {
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     paddingBottom: 40,
   },
   topRow: {
@@ -152,12 +150,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginHorizontal: 14,
-    marginBottom: 10,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 20,
   },
   title: {
     fontSize: 18,

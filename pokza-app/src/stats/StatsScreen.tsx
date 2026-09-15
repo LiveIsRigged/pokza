@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, radius, spacing, tints } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { borders, colors, radius, SCREEN_TOP, spacing, tints } from '../theme/theme';
 import { errorMessage } from '../utils/errorMessage';
 import { fetchAdminStats, type AdminStats, type DayCount } from '../data/stats';
 import { formatLabel } from '../profile/profileOptions';
@@ -131,9 +132,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topRow}>
-        <Pressable onPress={onBack} hitSlop={8}>
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
+        <BackButton onPress={onBack} />
         <Pressable onPress={load} hitSlop={8} disabled={loading}>
           <Text style={styles.refresh}>{loading ? '…' : t('stats.rafraichir')}</Text>
         </Pressable>
@@ -250,7 +249,7 @@ const TILE_MIN_WIDTH = 100;
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     paddingBottom: 60,
     backgroundColor: colors.feedBackground,
     minHeight: '100%',
@@ -259,12 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 18,
   },
   refresh: {
     fontSize: 14,

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, placeholderText, radius, spacing } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { borders, colors, placeholderText, radius, SCREEN_TOP, spacing } from '../theme/theme';
 import { updateProfile, type ProfileDetails } from '../data/profiles';
 import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
@@ -66,9 +67,7 @@ export function EditProfileScreen({ profile, userId, onCancel, onSaved }: EditPr
     <View style={styles.overlay}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topRow}>
-          <Pressable onPress={onCancel} hitSlop={8}>
-            <Text style={styles.backArrow}>←</Text>
-          </Pressable>
+          <BackButton onPress={onCancel} />
         </View>
 
         <Text style={styles.title}>{t('profil.modifier')}</Text>
@@ -179,16 +178,11 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 24,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     paddingBottom: 60,
   },
   topRow: {
-    marginBottom: 10,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 20,
   },
   title: {
     fontSize: 22,

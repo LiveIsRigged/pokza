@@ -1,7 +1,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, spacing } from '../theme/theme';
+import { BackButton } from '../components/ui/HeaderButton';
+import { borders, colors, SCREEN_TOP, spacing } from '../theme/theme';
 import { useLangue, useT } from '../i18n';
 import { LANGUES, type Langue } from '../i18n/langues';
 
@@ -31,9 +32,7 @@ export function LanguageSettingsScreen({ onBack }: LanguageSettingsScreenProps) 
     <View style={styles.overlay}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topRow}>
-          <Pressable onPress={onBack} hitSlop={8}>
-            <Text style={styles.backArrow}>←</Text>
-          </Pressable>
+          <BackButton onPress={onBack} />
           <Text style={styles.headerTitle}>{t('langue.titre')}</Text>
         </View>
 
@@ -56,19 +55,14 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 24,
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     paddingBottom: 60,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: 20,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
+    marginBottom: 30,
   },
   headerTitle: {
     fontSize: 18,

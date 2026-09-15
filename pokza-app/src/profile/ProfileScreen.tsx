@@ -3,7 +3,8 @@ import { errorMessage } from '../utils/errorMessage';
 import type { Phase } from '../creator/types';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
-import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing, tints, typography } from '../theme/theme';
+import { BackButton, MoreButton } from '../components/ui/HeaderButton';
+import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, SCREEN_TOP, spacing, tints, typography } from '../theme/theme';
 import { fetchProfile, type ProfileDetails } from '../data/profiles';
 import { EditProfileScreen } from './EditProfileScreen';
 import {
@@ -457,13 +458,9 @@ export function ProfileScreen({
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.topRow}>
-          <Pressable onPress={onBack} hitSlop={8}>
-            <Text style={styles.backArrow}>←</Text>
-          </Pressable>
+          <BackButton onPress={onBack} />
           {!isOwnProfile && (
-            <Pressable ref={menuButtonRef} onPress={openMenu} hitSlop={8}>
-              <Text style={styles.overflowIcon}>⋯</Text>
-            </Pressable>
+            <MoreButton ref={menuButtonRef} onPress={openMenu} />
           )}
         </View>
 
@@ -714,7 +711,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.feedBackground,
   },
   scrollContent: {
-    paddingTop: 50,
+    paddingTop: SCREEN_TOP,
     paddingBottom: 40,
   },
   topRow: {
@@ -722,19 +719,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginHorizontal: 14,
-    marginBottom: 10,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.textPrimary,
-    paddingHorizontal: 4,
-  },
-  overflowIcon: {
-    fontSize: 22,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    paddingHorizontal: 4,
+    marginBottom: 20,
   },
   blockedNotice: {
     marginHorizontal: 14,
