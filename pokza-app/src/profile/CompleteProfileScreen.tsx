@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
 import { Chip } from '../creator/Chip';
@@ -12,6 +12,30 @@ import type { LegalDocId } from '../legal/legalContent';
 import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOptions';
 
 /**
+ * Donne le focus à une case de la date de naissance, et place le curseur si on le demande.
+ *
+ * `preventScroll` : sans lui, `focus()` fait défiler la page pour révéler la case, et `AjusteurHauteur`
+ * la remet en haut à l'évènement suivant du viewport. C'est l'explication retenue du saut signalé par
+ * Victor le 15/09/2026 (vers le haut puis retour, à chaque changement de case), à confirmer sur iPhone.
+ * Les trois cases sont sur la même rangée, déjà visible : il n'y a rien à révéler. iOS respecte
+ * l'option depuis Safari 15.5 (bug WebKit 236584).
+ *
+ * Sur le web, la référence EST l'`<input>` : react-native-web ne redéfinit pas `focus` et ne fournit
+ * pas `setSelection`.
+ */
+function focaliser(champ: TextInput | null, curseur?: number) {
+  if (!champ) return;
+  if (Platform.OS === 'web') {
+    const input = champ as unknown as HTMLInputElement;
+    input.focus({ preventScroll: true });
+    if (curseur !== undefined) input.setSelectionRange(curseur, curseur);
+    return;
+  }
+  champ.focus();
+  if (curseur !== undefined) champ.setSelection(curseur, curseur);
+}
+
+/**
  * Date de naissance : effacer dans une case VIDE rend la main à la case d'avant, le curseur après ses
  * chiffres pour que l'effacement suivant en retire un. `preventDefault` : la touche ramène et n'efface
  * rien au passage — une fois le focus déplacé, rien ne garantit que le navigateur n'applique pas
@@ -19,15 +43,9 @@ import { FORMAT_OPTIONS, FREQUENCE_OPTIONS, VARIANTE_OPTIONS } from './profileOp
  */
 function revenirSiVide(valeur: string, precedente: React.RefObject<TextInput | null>, valeurPrecedente: string) {
   return (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-    const champ = precedente.current;
-    if (e.nativeEvent.key !== 'Backspace' || valeur !== '' || !champ) return;
+    if (e.nativeEvent.key !== 'Backspace' || valeur !== '' || !precedente.current) return;
     e.preventDefault();
-    champ.focus();
-    const fin = valeurPrecedente.length;
-    // Sur le web, la référence EST l'`<input>`, et react-native-web n'y pose pas `setSelection`.
-    const input = champ as unknown as { setSelectionRange?: (debut: number, fin: number) => void };
-    if (input.setSelectionRange) input.setSelectionRange(fin, fin);
-    else champ.setSelection(fin, fin);
+    focaliser(precedente.current, valeurPrecedente.length);
   };
 }
 
@@ -258,7 +276,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             value={day}
             onChangeText={(text) => {
               setDay(text);
-              if (text.length === 2) monthRef.current?.focus();
+              if (text.length === 2) focaliser(monthRef.current);
             }}
             placeholder={t('profil.jour_court')}
             placeholderTextColor={placeholderText}
@@ -272,7 +290,7 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
             value={month}
             onChangeText={(text) => {
               setMonth(text);
-              if (text.length === 2) yearRef.current?.focus();
+              if (text.length === 2) focaliser(yearRef.current);
             }}
             onKeyPress={revenirSiVide(month, dayRef, day)}
             placeholder={t('profil.mois_court')}
