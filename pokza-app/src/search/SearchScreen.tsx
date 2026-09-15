@@ -7,10 +7,25 @@ import { borders, colors, radius, SCREEN_TOP, spacing } from '../theme/theme';
 import { Avatar } from '../components/ui/Avatar';
 import { searchProfiles, type ProfileSummary } from '../data/profiles';
 import { fetchFriends } from '../data/friends';
-import { fetchGroupMembers } from '../data/groups';
+import {
+  cancelGroupInvite,
+  fetchGroupMembers,
+  inviteToGroup,
+  type GroupMember,
+  type GroupMemberStatus,
+} from '../data/groups';
+import { refusedMessage } from '../data/writeGuard';
 import { Popover } from '../components/ui/Popover';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
+import { PersonIcon } from '../components/ui/icons';
+import { PastilleEtat } from '../components/ui/PastilleEtat';
 import { autoFocusUtile } from '../web/clavierVirtuel';
 import { useT } from '../i18n';
+
+/** Où en est chacun dans le groupe, par id de profil. */
+function statusById(members: GroupMember[]): Map<string, GroupMemberStatus> {
+  return new Map(members.map((m) => [m.userId, m.status] as const));
+}
 
 interface SearchScreenProps {
   onBack: () => void;
@@ -21,14 +36,14 @@ interface SearchScreenProps {
   /** Variante `'sheet'` uniquement : contrôle l'ouverture/fermeture de la feuille. */
   visible?: boolean;
   onClose?: () => void;
-  /** Mode "inviter dans un groupe" : la ligne affiche un bouton Inviter au lieu de naviguer vers
-   * le profil au clic. */
+  /** Mode "inviter dans un groupe" : au lieu de mener au profil, chaque ligne dit où en est la
+   * personne dans le groupe — « Inviter », « Invité ✓ » (le toucher propose d'annuler) ou « Déjà
+   * membre ». L'écran invite et annule lui-même, pour montrer le résultat là où l'on a touché. */
   inviteMode?: boolean;
-  onInvite?: (profileId: string) => void;
   /** En mode invitation, on affiche d'emblée la liste d'amis (moins ceux déjà dans le groupe) tant
    * que rien n'est tapé — inviter un ami ne devrait pas obliger à retaper son nom. */
   currentUserId?: string;
-  excludeGroupId?: string;
+  inviteGroupId?: string;
 }
 
 export function SearchScreen({
@@ -38,9 +53,8 @@ export function SearchScreen({
   visible,
   onClose,
   inviteMode,
-  onInvite,
   currentUserId,
-  excludeGroupId,
+  inviteGroupId,
 }: SearchScreenProps) {
   const t = useT();
   const [query, setQuery] = useState('');
@@ -53,7 +67,16 @@ export function SearchScreen({
   // de « tes amis sont tous déjà dans le groupe » : la liste filtrée est vide dans les deux cas, et
   // l'app affirmait la seconde à quelqu'un qui venait de s'inscrire.
   const [friendCount, setFriendCount] = useState<number | null>(null);
-  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
+  // Mode invitation. `null` tant que ce n'est pas chargé : aucun bouton avant, il proposerait
+  // d'inviter quelqu'un qui est déjà dans le groupe.
+  const [memberStatus, setMemberStatus] = useState<Map<string, GroupMemberStatus> | null>(null);
+  // Invitations parties dont le serveur n'a pas encore répondu : leur bouton ne reprend pas d'appui.
+  const [sendingIds, setSendingIds] = useState<Set<string>>(new Set());
+  // Feuille « Annuler l'invitation ». La personne visée survit à la fermeture : la feuille met
+  // 220 ms à redescendre, et son titre perdrait le nom en route.
+  const [cancelTarget, setCancelTarget] = useState<ProfileSummary | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   // Recherche à la volée, avec un léger débounce pour ne pas envoyer une requête à chaque frappe.
   useEffect(() => {
@@ -78,18 +101,21 @@ export function SearchScreen({
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Chargement (une fois) des amis invitables : ceux qui ne sont pas déjà membres/invités du groupe.
+  // Chargement (une fois) de l'état du groupe et des amis invitables : ceux qui n'en sont ni membres
+  // ni invités À L'OUVERTURE. La liste reste figée ensuite, pour qu'un ami invité d'ici y reste avec
+  // « Invité ✓ » : le faire disparaître laissait croire que rien n'était parti (Victor, 15/09/2026).
   useEffect(() => {
-    if (!inviteMode || !currentUserId || !excludeGroupId) return;
+    if (!inviteMode || !currentUserId || !inviteGroupId) return;
     let cancelled = false;
-    Promise.all([fetchFriends(currentUserId), fetchGroupMembers(excludeGroupId)])
+    Promise.all([fetchFriends(currentUserId), fetchGroupMembers(inviteGroupId)])
       .then(([friends, members]) => {
         if (cancelled) return;
-        const memberIds = new Set(members.map((m) => m.userId));
+        const statuses = statusById(members);
+        setMemberStatus(statuses);
         setFriendCount(friends.length);
         setInvitableFriends(
           friends
-            .filter((f) => !memberIds.has(f.id))
+            .filter((f) => !statuses.has(f.id))
             .map((f) => ({ id: f.id, displayName: f.displayName, avatarUrl: f.avatarUrl }))
         );
       })
@@ -99,16 +125,91 @@ export function SearchScreen({
     return () => {
       cancelled = true;
     };
-  }, [inviteMode, currentUserId, excludeGroupId]);
+  }, [inviteMode, currentUserId, inviteGroupId]);
 
-  const handleInvite = (profileId: string) => {
-    setInvitedIds((s) => new Set(s).add(profileId));
-    onInvite?.(profileId);
+  // Les erreurs s'affichent ICI. Elles partaient sur le fil, où on les découvrait plus tard et hors
+  // contexte, pendant que cet écran laissait croire que l'invitation était partie.
+  const handleInvite = async (profileId: string) => {
+    if (!currentUserId || !inviteGroupId) return;
+    setError(null);
+    setSendingIds((s) => new Set(s).add(profileId));
+    try {
+      await inviteToGroup(inviteGroupId, profileId, currentUserId);
+      setMemberStatus((m) => new Map(m).set(profileId, 'pending'));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSendingIds((s) => {
+        const next = new Set(s);
+        next.delete(profileId);
+        return next;
+      });
+    }
+  };
+
+  const confirmCancel = async () => {
+    if (!inviteGroupId || !cancelTarget) return;
+    const profileId = cancelTarget.id;
+    setError(null);
+    setCancelling(true);
+    try {
+      if (await cancelGroupInvite(inviteGroupId, profileId)) {
+        setMemberStatus((m) => {
+          const next = new Map(m);
+          next.delete(profileId);
+          return next;
+        });
+      } else {
+        // Rien d'annulé : la personne a répondu entre-temps, ou la suppression a été refusée. On relit
+        // plutôt que de deviner — « Déjà membre » si elle a accepté, « Inviter » si elle a refusé.
+        const statuses = statusById(await fetchGroupMembers(inviteGroupId));
+        setMemberStatus(statuses);
+        if (statuses.get(profileId) === 'pending') setError(refusedMessage(t('erreur.appartenance_groupe')));
+      }
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setCancelling(false);
+      setCancelOpen(false);
+    }
   };
 
   // En mode invitation avec recherche vide : on montre les amis plutôt qu'un écran vide.
   const showFriendsList = inviteMode && query.trim().length === 0;
-  const displayed = (showFriendsList ? invitableFriends ?? [] : results).filter((p) => !invitedIds.has(p.id));
+  // On ne se trouve pas soi-même en cherchant qui inviter : la base refuse qu'on s'invite.
+  const displayed = showFriendsList
+    ? invitableFriends ?? []
+    : inviteMode
+    ? results.filter((p) => p.id !== currentUserId)
+    : results;
+
+  const renderInviteAction = (profile: ProfileSummary) => {
+    if (!memberStatus) return null;
+    const status = memberStatus.get(profile.id);
+    if (status === 'accepted') return <Text style={styles.memberText}>{t('groupe.deja_membre')}</Text>;
+    if (status === 'pending') {
+      return (
+        <PastilleEtat
+          label={t('groupe.invitation_envoyee')}
+          onPress={() => {
+            setCancelTarget(profile);
+            setCancelOpen(true);
+          }}
+        />
+      );
+    }
+    const sending = sendingIds.has(profile.id);
+    return (
+      <Pressable
+        style={[styles.inviteButton, sending && styles.inviteButtonSending]}
+        onPress={() => void handleInvite(profile.id)}
+        disabled={sending}
+        hitSlop={8}
+      >
+        <Text style={styles.inviteButtonText}>{t('groupe.inviter')}</Text>
+      </Pressable>
+    );
+  };
 
   const renderInput = (style: any) => (
     <TextInput
@@ -172,15 +273,27 @@ export function SearchScreen({
                 <Avatar url={profile.avatarUrl} name={profile.displayName} size={40} />
                 <Text style={styles.pseudo}>{profile.displayName}</Text>
               </View>
-              {inviteMode && (
-                <Pressable style={styles.inviteButton} onPress={() => handleInvite(profile.id)} hitSlop={8}>
-                  <Text style={styles.inviteButtonText}>{t('groupe.inviter')}</Text>
-                </Pressable>
-              )}
+              {inviteMode && renderInviteAction(profile)}
             </Pressable>
           ))
         )}
       </ScrollView>
+
+      {inviteMode && (
+        <ConfirmSheet
+          visible={cancelOpen}
+          icon={PersonIcon}
+          title={t('groupe.annuler_invitation_titre', { nom: cancelTarget?.displayName ?? '' })}
+          message={t('groupe.annuler_invitation_message')}
+          confirmLabel={t('groupe.annuler_invitation')}
+          cancelLabel={t('groupe.garder_invitation')}
+          // Orange, pas rouge : l'annulation se rattrape en réinvitant (tranché par Victor, 15/09/2026).
+          destructive={false}
+          loading={cancelling}
+          onCancel={() => setCancelOpen(false)}
+          onConfirm={() => void confirmCancel()}
+        />
+      )}
     </>
   );
 
@@ -300,6 +413,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  inviteButtonSending: {
+    opacity: 0.6,
+  },
+  memberText: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   pseudo: {
     fontSize: 15,

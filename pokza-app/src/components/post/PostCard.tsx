@@ -48,17 +48,19 @@ interface PostCardProps {
   /** Vrai si l'auteur est le fondateur du groupe dans lequel ce post est affiché — même distinction
    * (👑) que dans la liste des membres du groupe, cf. GroupScreen. */
   isGroupFounder?: boolean;
-  onEdit?: () => void;
+  /** Les gestes de la carte peuvent rejeter : la carte affiche alors l'échec elle-même (cf.
+   * `signalerEchec`). */
+  onEdit?: () => void | Promise<void>;
   /** Rouvre la main dans le créateur À L'ÉTAPE DEMANDÉE pour en refaire le déroulé, puis la
    * republie (cf. `mode` « correct » dans App.tsx). Distinct d'`onEdit`, qui ne touche qu'au texte
    * du post. L'étape est choisie dans la feuille de confirmation, avant d'entrer. */
-  onCorrect?: (depuis: Phase) => void;
+  onCorrect?: (depuis: Phase) => void | Promise<void>;
   /** Republie une COPIE de la main devant l'audience de son choix. C'est la sortie de secours du
    * verrou d'audience : une main publiée ne change plus de public, mais son auteur peut toujours
    * en refaire une neuve ailleurs. L'originale reste où elle est, avec ses commentaires. */
-  onDuplicate?: () => void;
-  onDelete?: () => void;
-  onToggleLike?: () => void;
+  onDuplicate?: () => void | Promise<void>;
+  onDelete?: () => void | Promise<void>;
+  onToggleLike?: () => void | Promise<void>;
   onPressAuthor?: () => void;
   /** Ouvre les commentaires dès l'affichage — utilisé quand la carte est atteinte depuis une
    * notification de commentaire, où le commentaire EST ce qu'on vient lire. */
@@ -211,6 +213,24 @@ function PostCardInner({
   const [commentCountDelta, setCommentCountDelta] = useState(0);
   const commentCount = post.commentCount + commentCountDelta;
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+  // Un geste qui échoue le dit DANS LA CARTE, près de ce qu'on vient de toucher : sous l'en-tête pour
+  // le menu ⋯, sous la rangée du cœur pour « j'aime ». Une carte est plus haute qu'un écran, et
+  // l'erreur partait en haut du fil, du profil ou du groupe — ou sur le fil seul quand on agissait
+  // ailleurs : hors de vue dans les deux cas (constaté le 15/09/2026).
+  const [menuFeedback, setMenuFeedback] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const signalerEchec = async (
+    geste: (() => void | Promise<void>) | undefined,
+    afficher: (message: string | null) => void
+  ) => {
+    if (!geste) return;
+    try {
+      await geste();
+    } catch (err) {
+      afficher(errorMessage(err));
+      setTimeout(() => afficher(null), 3500);
+    }
+  };
 
   const voteOptions = post.voteOptions && post.voteOptions.length >= 2 ? post.voteOptions : ['Oui', 'Non'];
 
@@ -329,15 +349,12 @@ function PostCardInner({
     await creerLienEtEnvoyer();
   };
 
-  const handleBlockAuthor = async () => {
-    try {
+  // Parti du menu ⋯ : son échec s'affiche sous l'en-tête, comme les autres gestes du menu.
+  const handleBlockAuthor = () =>
+    signalerEchec(async () => {
       await blockUser(currentUserId, post.authorId);
       onBlockAuthor?.(post.authorId);
-    } catch (err) {
-      setShareFeedback(errorMessage(err));
-      setTimeout(() => setShareFeedback(null), 2500);
-    }
-  };
+    }, setMenuFeedback);
 
   // Un seul bouton ⋯ pour toutes les mains ; son menu change selon qu'on en est l'auteur ou non.
   // Sur sa propre main : modifier / corriger / supprimer. Sur celle d'un autre : signaler
@@ -361,7 +378,9 @@ function PostCardInner({
   // trois.
   const menuItems: OverflowMenuItem[] = isOwnPost
     ? [
-        ...(onEdit ? [{ label: t('post.menu_modifier_post'), icon: PencilIcon, onPress: onEdit }] : []),
+        ...(onEdit
+          ? [{ label: t('post.menu_modifier_post'), icon: PencilIcon, onPress: () => void signalerEchec(onEdit, setMenuFeedback) }]
+          : []),
         ...(onCorrect
           ? [{
               label: t('post.menu_corriger_main'),
@@ -379,7 +398,9 @@ function PostCardInner({
               },
             }]
           : []),
-        ...(onDuplicate ? [{ label: t('post.menu_dupliquer_main'), icon: CopyIcon, onPress: onDuplicate }] : []),
+        ...(onDuplicate
+          ? [{ label: t('post.menu_dupliquer_main'), icon: CopyIcon, onPress: () => void signalerEchec(onDuplicate, setMenuFeedback) }]
+          : []),
         { label: t('post.menu_main_en_texte'), icon: TextLinesIcon, onPress: () => setTexteOuvert(true) },
         ...(onDelete
           ? [{ label: t('post.menu_supprimer_main'), icon: TrashIcon, destructive: true, onPress: () => setConfirmingDelete(true) }]
@@ -510,6 +531,8 @@ function PostCardInner({
         )}
       </View>
 
+      {menuFeedback && <Text style={styles.shareFeedback}>{menuFeedback}</Text>}
+
       <Text style={[typography.contextLine, styles.muted, styles.contextLine]}>
         {formatContextLine(post, { withLocation: false })}
       </Text>
@@ -568,7 +591,7 @@ function PostCardInner({
             6 pt qui les séparent sans se recouvrir, et l'ensemble occupe exactement la place de
             l'ancien bouton unique (8 + icône + 6 + chiffre + 8). */}
         <View style={styles.likeGroup}>
-          <Pressable style={styles.likeHeart} onPress={onToggleLike}>
+          <Pressable style={styles.likeHeart} onPress={() => void signalerEchec(onToggleLike, setShareFeedback)}>
             <HeartIcon
               size={ENGAGEMENT_ICON_SIZE}
               color={post.likedByMe ? colors.action : colors.textSecondary}
@@ -647,7 +670,7 @@ function PostCardInner({
           onCancel={() => setConfirmingCorrect(false)}
           onConfirm={() => {
             setConfirmingCorrect(false);
-            onCorrect(etapeChoisie);
+            void signalerEchec(() => onCorrect(etapeChoisie), setMenuFeedback);
           }}
         >
           <View style={styles.etapesRow}>
@@ -673,10 +696,15 @@ function PostCardInner({
           title={t('post.suppression_titre')}
           message={t('commun.action_definitive')}
           confirmLabel={t('commun.supprimer')}
+          // La feuille attend la suppression (indicateur sur le bouton) : la carte ne disparaît qu'une
+          // fois la main supprimée, et reste là pour dire l'échec s'il y en a un.
+          loading={deleting}
           onCancel={() => setConfirmingDelete(false)}
-          onConfirm={() => {
+          onConfirm={async () => {
+            setDeleting(true);
+            await signalerEchec(onDelete, setMenuFeedback);
+            setDeleting(false);
             setConfirmingDelete(false);
-            onDelete?.();
           }}
         />
       )}

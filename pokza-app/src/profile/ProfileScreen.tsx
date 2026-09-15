@@ -32,6 +32,7 @@ import {
 import type { Post } from '../types/poker';
 import { PostCard } from '../components/post/PostCard';
 import { Avatar } from '../components/ui/Avatar';
+import { PastilleEtat } from '../components/ui/PastilleEtat';
 import { AvatarCropper } from '../components/ui/AvatarCropper';
 import { OverflowMenu, type OverflowMenuItem, type OverflowAnchor } from '../components/ui/OverflowMenu';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
@@ -68,9 +69,10 @@ interface ProfileScreenProps {
   currentUserId: string;
   currentUserName: string;
   onBack: () => void;
-  onEditPost: (postId: string) => void;
-  onCorrectPost: (postId: string, depuis: Phase) => void;
-  onDuplicatePost: (postId: string) => void;
+  /** Rejettent si la main ne peut pas s'ouvrir : la carte d'où part le geste l'affiche. */
+  onEditPost: (postId: string) => void | Promise<void>;
+  onCorrectPost: (postId: string, depuis: Phase) => void | Promise<void>;
+  onDuplicatePost: (postId: string) => void | Promise<void>;
   onSelectProfile?: (profileId: string) => void;
   /** Ouvre la page du groupe depuis la pastille 👥 d'une main de groupe. */
   onOpenGroup?: (groupId: string) => void;
@@ -189,31 +191,33 @@ export function ProfileScreen({
     };
   }, [profileId]);
 
-  const handleAcceptPending = async (senderId: string) => {
-    const previous = pendingRequests;
-    setPendingRequests((r) => r.filter((req) => req.senderId !== senderId));
-    // Le compte d'amis augmente immédiatement : la demande vient d'être acceptée, inutile
-    // d'attendre un rechargement pour le voir reflété.
-    setFriendCount((c) => c + 1);
-    try {
-      await acceptFriendRequest(senderId, currentUserId);
-    } catch (err) {
-      setPendingRequests(previous);
-      setFriendCount((c) => c - 1);
-      setError(errorMessage(err));
-    }
-  };
+  // Une demande traitée reste dans la section, sa pastille à la place des boutons, le temps de
+  // l'écran : la section ne recharge que les demandes encore en attente (cf. `PastilleEtat`). La
+  // pastille attend la réponse du serveur ; en attendant, les boutons s'estompent.
+  const [pendingOutcomes, setPendingOutcomes] = useState<Map<string, 'accepted' | 'declined'>>(new Map());
+  const [busyPendingIds, setBusyPendingIds] = useState<Set<string>>(new Set());
 
-  const handleDeclinePending = async (senderId: string) => {
-    const previous = pendingRequests;
-    setPendingRequests((r) => r.filter((req) => req.senderId !== senderId));
+  const handlePending = async (senderId: string, outcome: 'accepted' | 'declined', action: () => Promise<void>) => {
+    setBusyPendingIds((s) => new Set(s).add(senderId));
     try {
-      await deleteFriendRelation(currentUserId, senderId);
+      await action();
+      setPendingOutcomes((m) => new Map(m).set(senderId, outcome));
+      // Le compte d'amis suit l'acceptation, une fois celle-ci faite.
+      if (outcome === 'accepted') setFriendCount((c) => c + 1);
     } catch (err) {
-      setPendingRequests(previous);
       setError(errorMessage(err));
+    } finally {
+      setBusyPendingIds((s) => {
+        const next = new Set(s);
+        next.delete(senderId);
+        return next;
+      });
     }
   };
+  const handleAcceptPending = (senderId: string) =>
+    handlePending(senderId, 'accepted', () => acceptFriendRequest(senderId, currentUserId));
+  const handleDeclinePending = (senderId: string) =>
+    handlePending(senderId, 'declined', () => deleteFriendRelation(currentUserId, senderId));
 
   useEffect(() => {
     if (isOwnProfile) return;
@@ -418,15 +422,11 @@ export function ProfileScreen({
     onProfileChanged?.();
   };
 
+  // La main ne quitte la liste qu'une fois supprimée : en cas d'échec, la carte est encore là pour le
+  // dire (cf. `PostCard`). L'erreur partait en haut de l'écran, hors de vue sous une longue liste.
   const handleDelete = async (postId: string) => {
-    const previous = posts;
+    await deletePost(postId);
     setPosts((p) => p.filter((post) => post.id !== postId));
-    try {
-      await deletePost(postId);
-    } catch (err) {
-      setPosts(previous);
-      setError(errorMessage(err));
-    }
   };
 
   const handleToggleLike = async (postId: string) => {
@@ -450,7 +450,8 @@ export function ProfileScreen({
             : post
         )
       );
-      setError(errorMessage(err));
+      // La carte affiche l'échec près du cœur (cf. `PostCard`).
+      throw err;
     }
   };
 
@@ -586,22 +587,37 @@ export function ProfileScreen({
                       <Avatar url={req.senderAvatarUrl} name={req.senderDisplayName} size={34} />
                       <Text style={styles.pendingPseudo}>{req.senderDisplayName}</Text>
                     </Pressable>
-                    <View style={styles.pendingActions}>
-                      <Pressable
-                        style={styles.pendingDeclineButton}
-                        onPress={() => handleDeclinePending(req.senderId)}
-                        hitSlop={hitSlopPairLeft}
+                    {pendingOutcomes.has(req.senderId) ? (
+                      <PastilleEtat
+                        compacte
+                        label={
+                          pendingOutcomes.get(req.senderId) === 'accepted'
+                            ? t('profil.deja_amis')
+                            : t('invitations.etat_refuse')
+                        }
+                      />
+                    ) : (
+                      <View
+                        style={[styles.pendingActions, busyPendingIds.has(req.senderId) && styles.pendingActionsBusy]}
                       >
-                        <Text style={styles.pendingDeclineText}>{t('commun.refuser')}</Text>
-                      </Pressable>
-                      <Pressable
-                        style={styles.pendingAcceptButton}
-                        onPress={() => handleAcceptPending(req.senderId)}
-                        hitSlop={hitSlopPairRight}
-                      >
-                        <Text style={styles.pendingAcceptText}>{t('commun.accepter')}</Text>
-                      </Pressable>
-                    </View>
+                        <Pressable
+                          style={styles.pendingDeclineButton}
+                          onPress={() => void handleDeclinePending(req.senderId)}
+                          disabled={busyPendingIds.has(req.senderId)}
+                          hitSlop={hitSlopPairLeft}
+                        >
+                          <Text style={styles.pendingDeclineText}>{t('commun.refuser')}</Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.pendingAcceptButton}
+                          onPress={() => void handleAcceptPending(req.senderId)}
+                          disabled={busyPendingIds.has(req.senderId)}
+                          hitSlop={hitSlopPairRight}
+                        >
+                          <Text style={styles.pendingAcceptText}>{t('commun.accepter')}</Text>
+                        </Pressable>
+                      </View>
+                    )}
                   </View>
                 ))}
               </View>
@@ -944,6 +960,10 @@ const styles = StyleSheet.create({
   pendingActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  // Réponse du serveur en attente : même estompe qu'« Inviter » pendant son envoi.
+  pendingActionsBusy: {
+    opacity: 0.6,
   },
   pendingDeclineButton: {
     paddingHorizontal: 10,

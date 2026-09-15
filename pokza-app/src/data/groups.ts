@@ -156,6 +156,24 @@ export async function inviteToGroup(groupId: string, userId: string, invitedBy: 
   if (error) throw error;
 }
 
+/**
+ * Annuler une invitation envoyée, et rien d'autre : le filtre sur `pending` protège quelqu'un qui a
+ * accepté entre-temps, que « Annuler l'invitation » exclurait sinon du groupe sans passer par la
+ * confirmation d'exclusion. Renvoie `false` si aucune invitation en attente n'a été supprimée — la
+ * personne a répondu depuis, ou la suppression a été refusée : à l'appelant de relire l'état réel.
+ */
+export async function cancelGroupInvite(groupId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('group_members')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .select('group_id');
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
+
 export async function acceptGroupInvite(groupId: string, userId: string): Promise<void> {
   const { data, error } = await supabase
     .from('group_members')

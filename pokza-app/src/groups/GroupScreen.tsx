@@ -39,9 +39,10 @@ interface GroupScreenProps {
   currentUserId: string;
   currentUserName: string;
   onBack: () => void;
-  onEditPost: (postId: string) => void;
-  onCorrectPost: (postId: string, depuis: Phase) => void;
-  onDuplicatePost: (postId: string) => void;
+  /** Rejettent si la main ne peut pas s'ouvrir : la carte d'où part le geste l'affiche. */
+  onEditPost: (postId: string) => void | Promise<void>;
+  onCorrectPost: (postId: string, depuis: Phase) => void | Promise<void>;
+  onDuplicatePost: (postId: string) => void | Promise<void>;
   onInviteMembers: (groupId: string) => void;
   /** Ouvre le profil d'un membre ou de l'auteur d'une main — comme le clic sur un auteur dans le feed. */
   onSelectProfile: (profileId: string) => void;
@@ -281,19 +282,25 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
       ? { label: t('groupe.supprimer'), icon: TrashIcon, destructive: true, onPress: () => setConfirmingLeave(true) }
       : { label: t('groupe.quitter'), icon: ExitIcon, destructive: true, onPress: () => setConfirmingLeave(true) },
     ...(isOwner
-      ? [{ label: t('groupe.exclure_membre'), icon: GroupTableIcon, onPress: () => setManagingMembers(true) }]
+      ? [
+          {
+            label: t('groupe.exclure_membre'),
+            icon: GroupTableIcon,
+            // Une erreur d'avant (chargement, j'aime…) n'a rien à faire en tête de la liste des membres.
+            onPress: () => {
+              setError(null);
+              setManagingMembers(true);
+            },
+          },
+        ]
       : []),
   ];
 
+  // La main ne quitte la liste qu'une fois supprimée : en cas d'échec, la carte est encore là pour le
+  // dire (cf. `PostCard`). L'erreur partait en haut de l'écran, hors de vue sous une longue liste.
   const handleDelete = async (postId: string) => {
-    const previous = posts;
+    await deletePost(postId);
     setPosts((p) => p.filter((post) => post.id !== postId));
-    try {
-      await deletePost(postId);
-    } catch (err) {
-      setPosts(previous);
-      setError(errorMessage(err));
-    }
   };
 
   const handleToggleLike = async (postId: string) => {
@@ -317,7 +324,8 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
             : post
         )
       );
-      setError(errorMessage(err));
+      // La carte affiche l'échec près du cœur (cf. `PostCard`).
+      throw err;
     }
   };
 
@@ -499,6 +507,7 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
           currentUserId={currentUserId}
           canManage
           onRemoveMember={handleRemoveMember}
+          error={error}
           onSelectProfile={onSelectProfile}
           onBack={() => setManagingMembers(false)}
         />

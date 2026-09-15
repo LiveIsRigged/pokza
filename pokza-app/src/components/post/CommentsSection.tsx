@@ -412,8 +412,9 @@ export function CommentsSection({
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {loading && <ActivityIndicator color={colors.textSecondary} />}
-            {error && <Text style={styles.error}>{error}</Text>}
-            {!loading && comments.length === 0 && (
+            {/* « Aucun commentaire » se tait quand le chargement a échoué : il affirmerait un vide que
+                rien ne prouve. */}
+            {!loading && !error && comments.length === 0 && (
               <Text style={styles.empty}>{t('commentaire.aucun')}</Text>
             )}
             {topLevelComments.map((comment) => (
@@ -448,6 +449,9 @@ export function CommentsSection({
             ))}
           </ScrollView>
 
+          {/* Au-dessus du champ, qui reste toujours à l'écran : en tête de la liste, l'échec d'une
+              suppression ou d'un « j'aime » plus bas restait hors de vue. */}
+          {error && <Text style={styles.error}>{error}</Text>}
           {replyingTo && (
             <View style={styles.replyingBanner}>
               <Text style={styles.replyingText}>{t('commentaire.reponse_a', { nom: replyingTo.authorName })}</Text>
@@ -625,6 +629,7 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 12,
     color: '#C0392B',
+    marginHorizontal: spacing.md,
     marginBottom: spacing.xs,
   },
   empty: {

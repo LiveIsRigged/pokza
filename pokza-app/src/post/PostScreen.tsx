@@ -17,9 +17,10 @@ interface PostScreenProps {
   /** Ouvre directement le fil de commentaires (arrivée depuis une notification de commentaire). */
   openComments?: boolean;
   onBack: () => void;
-  onEditPost: (postId: string) => void;
-  onCorrectPost: (postId: string, depuis: Phase) => void;
-  onDuplicatePost: (postId: string) => void;
+  /** Rejettent si la main ne peut pas s'ouvrir : la carte d'où part le geste l'affiche. */
+  onEditPost: (postId: string) => void | Promise<void>;
+  onCorrectPost: (postId: string, depuis: Phase) => void | Promise<void>;
+  onDuplicatePost: (postId: string) => void | Promise<void>;
   onSelectProfile: (profileId: string) => void;
   /** Remonte la main chargée pour que l'écran de modification puisse s'en servir même quand elle
    * n'est pas dans le feed (feed chargé une seule fois, main publiée depuis un autre appareil). */
@@ -78,13 +79,10 @@ export function PostScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
+  // Un échec REJETTE : la carte l'affiche, près du menu d'où part le geste (cf. `PostCard`).
   const handleDelete = async () => {
-    try {
-      await deletePost(postId);
-      onBack();
-    } catch (err) {
-      setError(errorMessage(err));
-    }
+    await deletePost(postId);
+    onBack();
   };
 
   const handleToggleLike = async () => {
@@ -95,7 +93,8 @@ export function PostScreen({
       await setLiked(postId, currentUserId, nextLiked);
     } catch (err) {
       setPost(post); // `post` est la valeur capturée avant la mise à jour optimiste
-      setError(errorMessage(err));
+      // La carte affiche l'échec près du cœur (cf. `PostCard`).
+      throw err;
     }
   };
 

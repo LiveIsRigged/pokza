@@ -69,7 +69,7 @@ import { ScrollToTopButton } from './src/components/ui/ScrollToTopButton';
 import { ConnectionErrorScreen } from './src/components/ui/ConnectionErrorScreen';
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
 import { GroupScreen, type GroupScreenHandle } from './src/groups/GroupScreen';
-import { createGroup, fetchMyGroups, fetchPendingGroupInvites, inviteToGroup, type Group } from './src/data/groups';
+import { createGroup, fetchMyGroups, fetchPendingGroupInvites, type Group } from './src/data/groups';
 import { fetchPendingRequests } from './src/data/friends';
 import { AddFriendsScreen } from './src/friends/AddFriendsScreen';
 import { FriendsListScreen } from './src/friends/FriendsListScreen';
@@ -445,19 +445,14 @@ function AppContent() {
     depuis: Phase
   ) => {
     const local = posts.find((p) => p.id === postId) ?? (editingPostFallback?.id === postId ? editingPostFallback : null);
-    try {
-      const post = local ?? (await fetchPost(postId));
-      if (!post) {
-        setPostsError(t('post.introuvable'));
-        return;
-      }
-      setCorrectingPost(post);
-      setCorrectReturnMode(retour);
-      setCorrectFromPhase(depuis);
-      setMode('correct');
-    } catch (err) {
-      setPostsError(errorMessage(err));
-    }
+    // Un échec REJETTE : la carte d'où part le geste l'affiche (cf. `PostCard`). Il partait dans
+    // l'erreur du fil, invisible quand on agissait depuis un profil, un groupe ou la page d'une main.
+    const post = local ?? (await fetchPost(postId));
+    if (!post) throw new Error(t('post.introuvable'));
+    setCorrectingPost(post);
+    setCorrectReturnMode(retour);
+    setCorrectFromPhase(depuis);
+    setMode('correct');
   };
 
   /**
@@ -470,39 +465,27 @@ function AppContent() {
    */
   const openEdition = async (postId: string, retour: 'feed' | 'profile' | 'group' | 'post') => {
     const local = posts.find((p) => p.id === postId) ?? (editingPostFallback?.id === postId ? editingPostFallback : null);
-    try {
-      const post = local ?? (await fetchPost(postId));
-      if (!post) {
-        setPostsError(t('post.introuvable'));
-        return;
-      }
-      // Renseigner le repli MÊME quand la main vient du feed : c'est lui que `editingPost`
-      // consultera si la liste change sous les pieds de l'écran d'édition.
-      setEditingPostFallback(post);
-      setEditingPostId(postId);
-      setEditReturnMode(retour);
-      setMode('edit');
-    } catch (err) {
-      setPostsError(errorMessage(err));
-    }
+    // Un échec REJETTE : la carte d'où part le geste l'affiche (cf. `openCorrection`).
+    const post = local ?? (await fetchPost(postId));
+    if (!post) throw new Error(t('post.introuvable'));
+    // Renseigner le repli MÊME quand la main vient du feed : c'est lui que `editingPost`
+    // consultera si la liste change sous les pieds de l'écran d'édition.
+    setEditingPostFallback(post);
+    setEditingPostId(postId);
+    setEditReturnMode(retour);
+    setMode('edit');
   };
 
   // Même relecture que `openCorrection`, et pour la même raison : la main peut être affichée depuis
   // un profil ou un groupe sans être dans `posts`, et une copie a besoin de `hand`.
   const openDuplication = async (postId: string, retour: 'feed' | 'profile' | 'group' | 'post') => {
     const local = posts.find((p) => p.id === postId) ?? (editingPostFallback?.id === postId ? editingPostFallback : null);
-    try {
-      const post = local ?? (await fetchPost(postId));
-      if (!post) {
-        setPostsError(t('post.introuvable'));
-        return;
-      }
-      setDuplicatingPost(post);
-      setDuplicateReturnMode(retour);
-      setMode('duplicate');
-    } catch (err) {
-      setPostsError(errorMessage(err));
-    }
+    // Un échec REJETTE : la carte d'où part le geste l'affiche (cf. `openCorrection`).
+    const post = local ?? (await fetchPost(postId));
+    if (!post) throw new Error(t('post.introuvable'));
+    setDuplicatingPost(post);
+    setDuplicateReturnMode(retour);
+    setMode('duplicate');
   };
 
   /**
@@ -658,17 +641,12 @@ function AppContent() {
     setDeepLinkHandled(true);
   }, [hasProfile, deepLinkHandled, session]);
 
+  // La main ne quitte la liste qu'une fois supprimée. Elle disparaissait d'avance puis revenait en
+  // cas d'échec, avec une erreur en haut du fil, hors de vue : la carte, encore là, le dit elle-même
+  // (cf. `PostCard`).
   const handleDelete = async (postId: string) => {
-    const previous = posts;
+    await deletePost(postId);
     setPosts((p) => p.filter((post) => post.id !== postId));
-    try {
-      await deletePost(postId);
-    } catch (err) {
-      // Restaure la liste si la suppression échoue côté serveur (ex: coupure réseau) — l'utilisateur
-      // ne doit pas croire le post supprimé alors qu'il existe toujours réellement.
-      setPosts(previous);
-      setPostsError(errorMessage(err));
-    }
   };
 
   const handleToggleLike = async (postId: string) => {
@@ -694,7 +672,8 @@ function AppContent() {
             : post
         )
       );
-      setPostsError(errorMessage(err));
+      // La carte affiche l'échec près du cœur (cf. `PostCard`).
+      throw err;
     }
   };
 
@@ -848,47 +827,44 @@ function AppContent() {
             }
           }}
           onCreated={async (draftPost) => {
-            try {
-              const saved = await createPost(
-                {
-                  authorId: draftPost.authorId,
-                  location: draftPost.location,
-                  tournamentName: draftPost.tournamentName,
-                  buyIn: draftPost.buyIn,
-                  level: draftPost.level,
-                  title: draftPost.title,
-                  description: draftPost.description,
-                  hand: draftPost.hand,
-                  voteQuestion: draftPost.voteQuestion,
-                  voteOptions: draftPost.voteOptions,
-                  visibility: draftPost.visibility,
-                  groupId: draftPost.groupId,
-                },
-                draftPost.authorName,
-                myAvatarUrl
-              );
-              setPosts((p) => [saved, ...p]);
-              trackEvent('hand_created', { variant: saved.hand.variant, game_type: saved.hand.gameType });
-              const dansUnGroupe = saved.visibility === 'group' && !!saved.groupId;
-              // Groupe créé à l'instant : il n'a qu'un membre, son auteur. On ouvre sa page — seul
-              // endroit où « Inviter » est à portée, et seul moment où l'auteur a une raison d'y
-              // penser — avec le bandeau qui le dit. Ne concerne pas un groupe qu'on avait déjà.
-              const groupeNeuf = dansUnGroupe && groupsCreatedInCreator.current.has(saved.groupId!);
-              // Venu de la page d'un groupe : on y retourne, la main y est. Si l'auteur a changé de
-              // groupe à la dernière étape, c'est celui de la main qui gagne, pour la même raison.
-              // Basculé sur Public ou Privé, retour au feed comme partout ailleurs.
-              const retourAuGroupe = dansUnGroupe && (groupeNeuf || !!createFromGroupId);
-              groupsCreatedInCreator.current.clear();
-              setCreateFromGroupId(null);
-              if (retourAuGroupe) {
-                setViewingGroupId(saved.groupId!);
-                if (groupeNeuf) setShowPublishedNotice(true);
-                setMode('group');
-              } else {
-                setMode('feed');
-              }
-            } catch (err) {
-              setPostsError(errorMessage(err));
+            // Un échec REJETTE : le créateur l'affiche au-dessus de son bouton et reste ouvert.
+            const saved = await createPost(
+              {
+                authorId: draftPost.authorId,
+                location: draftPost.location,
+                tournamentName: draftPost.tournamentName,
+                buyIn: draftPost.buyIn,
+                level: draftPost.level,
+                title: draftPost.title,
+                description: draftPost.description,
+                hand: draftPost.hand,
+                voteQuestion: draftPost.voteQuestion,
+                voteOptions: draftPost.voteOptions,
+                visibility: draftPost.visibility,
+                groupId: draftPost.groupId,
+              },
+              draftPost.authorName,
+              myAvatarUrl
+            );
+            setPosts((p) => [saved, ...p]);
+            trackEvent('hand_created', { variant: saved.hand.variant, game_type: saved.hand.gameType });
+            const dansUnGroupe = saved.visibility === 'group' && !!saved.groupId;
+            // Groupe créé à l'instant : il n'a qu'un membre, son auteur. On ouvre sa page — seul
+            // endroit où « Inviter » est à portée, et seul moment où l'auteur a une raison d'y
+            // penser — avec le bandeau qui le dit. Ne concerne pas un groupe qu'on avait déjà.
+            const groupeNeuf = dansUnGroupe && groupsCreatedInCreator.current.has(saved.groupId!);
+            // Venu de la page d'un groupe : on y retourne, la main y est. Si l'auteur a changé de
+            // groupe à la dernière étape, c'est celui de la main qui gagne, pour la même raison.
+            // Basculé sur Public ou Privé, retour au feed comme partout ailleurs.
+            const retourAuGroupe = dansUnGroupe && (groupeNeuf || !!createFromGroupId);
+            groupsCreatedInCreator.current.clear();
+            setCreateFromGroupId(null);
+            if (retourAuGroupe) {
+              setViewingGroupId(saved.groupId!);
+              if (groupeNeuf) setShowPublishedNotice(true);
+              setMode('group');
+            } else {
+              setMode('feed');
             }
           }}
         />
@@ -916,21 +892,18 @@ function AppContent() {
           onCancel={onBack}
           onSave={async (edits) => {
             const postId = editingPost.id;
-            try {
-              // `editedAt` vient de la base et non de l'horloge du téléphone : c'est le trigger
-              // qui décide si le contenu a réellement changé (réenregistrer à l'identique ne
-              // marque rien), et lui seul a le droit d'écrire cette colonne.
-              const editedAt = await updatePost(postId, edits);
-              setPosts((p) =>
-                p.map((post) =>
-                  post.id === postId ? { ...post, ...edits, editedAt: editedAt ?? undefined } : post
-                )
-              );
-              setEditingPostId(null);
-              setMode(editReturnMode);
-            } catch (err) {
-              setPostsError(errorMessage(err));
-            }
+            // Un échec REJETTE : l'écran d'édition l'affiche au-dessus de son bouton et reste ouvert.
+            // `editedAt` vient de la base et non de l'horloge du téléphone : c'est le trigger
+            // qui décide si le contenu a réellement changé (réenregistrer à l'identique ne
+            // marque rien), et lui seul a le droit d'écrire cette colonne.
+            const editedAt = await updatePost(postId, edits);
+            setPosts((p) =>
+              p.map((post) =>
+                post.id === postId ? { ...post, ...edits, editedAt: editedAt ?? undefined } : post
+              )
+            );
+            setEditingPostId(null);
+            setMode(editReturnMode);
           }}
         />
         <StatusBar style="dark" />
@@ -984,16 +957,20 @@ function AppContent() {
               draftPost.authorName,
               myAvatarUrl
             );
+            let ancienneSupprimee = true;
             try {
               await deletePost(ancien.id);
             } catch (err) {
               // La correction EST publiée : on ne la présente pas comme un échec. On dit seulement
               // que l'ancienne version est encore là, ce que l'auteur peut corriger lui-même.
+              ancienneSupprimee = false;
               setPostsError(
                 t('post.correction_publiee_erreur')
               );
             }
-            setPosts((p) => [saved, ...p.filter((x) => x.id !== ancien.id)]);
+            // L'ancienne ne quitte la liste que si elle a vraiment disparu : sinon le message parlerait
+            // d'une version que l'auteur ne verrait plus, donc ne pourrait plus supprimer.
+            setPosts((p) => [saved, ...(ancienneSupprimee ? p.filter((x) => x.id !== ancien.id) : p)]);
             trackEvent('hand_corrected', { variant: saved.hand.variant, game_type: saved.hand.gameType });
             setCorrectingPost(null);
             // RETOUR À L'ÉCRAN D'ORIGINE. Le créateur remplace tout l'arbre (chaque mode sort par un
@@ -1004,6 +981,13 @@ function AppContent() {
             //
             // Seule exception, la page d'UNE main : la corrigée porte un nouvel identifiant, celle
             // d'origine n'existe plus. On y renvoie donc vers la nouvelle, qui est la même main.
+            if (!ancienneSupprimee) {
+              // Le message ne s'affiche que sur le fil : on y atterrit quand l'ancienne version n'a
+              // pas pu être supprimée, la nouvelle en tête. Il partait sur le fil pendant qu'on
+              // revenait au profil ou au groupe, où personne ne le voyait.
+              setMode('feed');
+              return;
+            }
             if (correctReturnMode === 'post') setViewingPostId(saved.id);
             setMode(correctReturnMode);
           }}
@@ -1038,37 +1022,34 @@ function AppContent() {
           onCreateGroup={createGroupInPlace}
           onCancel={onBack}
           onSave={async (edits) => {
-            try {
-              // `hand` vient de l'originale et n'a jamais transité par le formulaire : la copie a
-              // exactement le même déroulé, aucun chemin ne permet de le retoucher au passage.
-              const saved = await createPost(
-                {
-                  authorId: session.user.id,
-                  location: edits.location,
-                  tournamentName: edits.tournamentName,
-                  buyIn: edits.buyIn,
-                  level: edits.level,
-                  title: edits.title,
-                  description: edits.description,
-                  hand: original.hand,
-                  voteQuestion: edits.voteQuestion,
-                  voteOptions: edits.voteOptions,
-                  visibility: edits.visibility,
-                  groupId: edits.groupId,
-                },
-                displayName ?? t('commun.joueur'),
-                myAvatarUrl
-              );
-              setPosts((p) => [saved, ...p]);
-              trackEvent('hand_duplicated', { visibility: saved.visibility });
-              setDuplicatingPost(null);
-              // Retour au feed : la copie y est en tête, ce qui montre qu'elle existe VRAIMENT.
-              // Revenir sur la page d'origine afficherait l'ancienne main inchangée, et laisserait
-              // croire que le geste n'a rien fait.
-              setMode('feed');
-            } catch (err) {
-              setPostsError(errorMessage(err));
-            }
+            // Un échec REJETTE : l'écran de duplication l'affiche au-dessus de son bouton et reste ouvert.
+            // `hand` vient de l'originale et n'a jamais transité par le formulaire : la copie a
+            // exactement le même déroulé, aucun chemin ne permet de le retoucher au passage.
+            const saved = await createPost(
+              {
+                authorId: session.user.id,
+                location: edits.location,
+                tournamentName: edits.tournamentName,
+                buyIn: edits.buyIn,
+                level: edits.level,
+                title: edits.title,
+                description: edits.description,
+                hand: original.hand,
+                voteQuestion: edits.voteQuestion,
+                voteOptions: edits.voteOptions,
+                visibility: edits.visibility,
+                groupId: edits.groupId,
+              },
+              displayName ?? t('commun.joueur'),
+              myAvatarUrl
+            );
+            setPosts((p) => [saved, ...p]);
+            trackEvent('hand_duplicated', { visibility: saved.visibility });
+            setDuplicatingPost(null);
+            // Retour au feed : la copie y est en tête, ce qui montre qu'elle existe VRAIMENT.
+            // Revenir sur la page d'origine afficherait l'ancienne main inchangée, et laisserait
+            // croire que le geste n'a rien fait.
+            setMode('feed');
           }}
         />
         <StatusBar style="dark" />
@@ -1113,9 +1094,9 @@ function AppContent() {
           currentUserName={displayName ?? t('commun.joueur')}
           openComments={viewingPostComments}
           onBack={onBack}
-          onEditPost={(postId) => void openEdition(postId, 'post')}
-          onCorrectPost={(postId, depuis) => void openCorrection(postId, 'post', depuis)}
-          onDuplicatePost={(postId) => void openDuplication(postId, 'post')}
+          onEditPost={(postId) => openEdition(postId, 'post')}
+          onCorrectPost={(postId, depuis) => openCorrection(postId, 'post', depuis)}
+          onDuplicatePost={(postId) => openDuplication(postId, 'post')}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -1143,9 +1124,9 @@ function AppContent() {
           onProfileChanged={refetchProfile}
           onCreateHand={() => openCreator()}
           onBack={onBack}
-          onEditPost={(postId) => void openEdition(postId, 'profile')}
-          onCorrectPost={(postId, depuis) => void openCorrection(postId, 'profile', depuis)}
-          onDuplicatePost={(postId) => void openDuplication(postId, 'profile')}
+          onEditPost={(postId) => openEdition(postId, 'profile')}
+          onCorrectPost={(postId, depuis) => openCorrection(postId, 'profile', depuis)}
+          onDuplicatePost={(postId) => openDuplication(postId, 'profile')}
           onSelectProfile={(profileId) => {
             setViewingProfileId(profileId);
             setMode('profile');
@@ -1225,9 +1206,9 @@ function AppContent() {
           showPublishedNotice={showPublishedNotice}
           onCreateHand={() => openCreator(viewingGroupId)}
           onBack={onBack}
-          onEditPost={(postId) => void openEdition(postId, 'group')}
-          onCorrectPost={(postId, depuis) => void openCorrection(postId, 'group', depuis)}
-          onDuplicatePost={(postId) => void openDuplication(postId, 'group')}
+          onEditPost={(postId) => openEdition(postId, 'group')}
+          onCorrectPost={(postId, depuis) => openCorrection(postId, 'group', depuis)}
+          onDuplicatePost={(postId) => openDuplication(postId, 'group')}
           onInviteMembers={(groupId) => {
             setInvitingGroupId(groupId);
             setMode('inviteToGroup');
@@ -1251,16 +1232,9 @@ function AppContent() {
           onSelectProfile={() => {}}
           inviteMode
           currentUserId={session.user.id}
-          excludeGroupId={invitingGroupId}
-          onInvite={async (profileId) => {
-            // On reste sur l'écran d'invitation pour pouvoir en inviter plusieurs d'affilée ;
-            // la personne invitée disparaît de la liste (géré côté SearchScreen).
-            try {
-              await inviteToGroup(invitingGroupId, profileId, session.user.id);
-            } catch (err) {
-              setPostsError(errorMessage(err));
-            }
-          }}
+          // L'écran invite et annule lui-même, et y affiche ses erreurs : on y reste pour en inviter
+          // plusieurs d'affilée.
+          inviteGroupId={invitingGroupId}
         />
         <StatusBar style="dark" />
       </Screen>
@@ -1429,9 +1403,9 @@ function AppContent() {
               currentUserName={displayName ?? t('commun.joueur')}
               isOwnPost={post.authorId === session.user.id}
               onDelete={() => handleDelete(post.id)}
-              onEdit={() => void openEdition(post.id, 'feed')}
-              onCorrect={(depuis) => void openCorrection(post.id, 'feed', depuis)}
-              onDuplicate={() => void openDuplication(post.id, 'feed')}
+              onEdit={() => openEdition(post.id, 'feed')}
+              onCorrect={(depuis) => openCorrection(post.id, 'feed', depuis)}
+              onDuplicate={() => openDuplication(post.id, 'feed')}
               onToggleLike={() => handleToggleLike(post.id)}
               onPressAuthor={() => {
                 setViewingProfileId(post.authorId);

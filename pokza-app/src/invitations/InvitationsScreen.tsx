@@ -13,6 +13,7 @@ import {
 } from '../data/friends';
 import { acceptGroupInvite, fetchPendingGroupInvites, removeGroupMember, type PendingGroupInvite } from '../data/groups';
 import { GroupTableIcon } from '../components/ui/icons';
+import { PastilleEtat } from '../components/ui/PastilleEtat';
 import { useT } from '../i18n';
 
 interface InvitationsScreenProps {
@@ -37,8 +38,12 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
   const [groupInvites, setGroupInvites] = useState<PendingGroupInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [resolvedFriendIds, setResolvedFriendIds] = useState<Set<string>>(new Set());
-  const [resolvedGroupIds, setResolvedGroupIds] = useState<Set<string>>(new Set());
+  // Une demande traitée RESTE dans la liste, sa pastille à la place des boutons (« ✓ Amis »,
+  // « ✓ Membre », « Refusé ») : la ligne qui disparaissait laissait croire que rien n'était fait. Le
+  // temps de l'écran seulement : la liste ne recharge que les demandes encore en attente. Clés
+  // préfixées, pour qu'un id de profil et un id de groupe ne se confondent jamais.
+  const [outcomes, setOutcomes] = useState<Map<string, 'accepted' | 'declined'>>(new Map());
+  const [busyKeys, setBusyKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -59,68 +64,41 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
     };
   }, [currentUserId]);
 
-  const handleAcceptFriend = async (senderId: string) => {
-    setResolvedFriendIds((s) => new Set(s).add(senderId));
+  // La pastille n'apparaît qu'une fois la réponse du serveur arrivée ; en attendant, les deux boutons
+  // s'estompent et ne reprennent pas d'appui.
+  const handle = async (key: string, outcome: 'accepted' | 'declined', action: () => Promise<void>) => {
+    setError(null);
+    setBusyKeys((s) => new Set(s).add(key));
     try {
-      await acceptFriendRequest(senderId, currentUserId);
+      await action();
+      setOutcomes((m) => new Map(m).set(key, outcome));
       onInvitationHandled();
     } catch (err) {
-      setResolvedFriendIds((s) => {
+      setError(errorMessage(err));
+    } finally {
+      setBusyKeys((s) => {
         const next = new Set(s);
-        next.delete(senderId);
+        next.delete(key);
         return next;
       });
-      setError(errorMessage(err));
     }
   };
 
-  const handleDeclineFriend = async (senderId: string) => {
-    setResolvedFriendIds((s) => new Set(s).add(senderId));
-    try {
-      await deleteFriendRelation(currentUserId, senderId);
-      onInvitationHandled();
-    } catch (err) {
-      setResolvedFriendIds((s) => {
-        const next = new Set(s);
-        next.delete(senderId);
-        return next;
-      });
-      setError(errorMessage(err));
-    }
+  const renderActions = (key: string, libelleAccepte: string, onDecline: () => void, onAccept: () => void) => {
+    const outcome = outcomes.get(key);
+    if (outcome) return <PastilleEtat label={outcome === 'accepted' ? libelleAccepte : t('invitations.etat_refuse')} />;
+    const busy = busyKeys.has(key);
+    return (
+      <View style={[styles.actions, busy && styles.actionsBusy]}>
+        <Pressable style={styles.declineButton} onPress={onDecline} disabled={busy} hitSlop={hitSlopPairLeft}>
+          <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
+        </Pressable>
+        <Pressable style={styles.acceptButton} onPress={onAccept} disabled={busy} hitSlop={hitSlopPairRight}>
+          <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
+        </Pressable>
+      </View>
+    );
   };
-
-  const handleAcceptGroup = async (groupId: string) => {
-    setResolvedGroupIds((s) => new Set(s).add(groupId));
-    try {
-      await acceptGroupInvite(groupId, currentUserId);
-      onInvitationHandled();
-    } catch (err) {
-      setResolvedGroupIds((s) => {
-        const next = new Set(s);
-        next.delete(groupId);
-        return next;
-      });
-      setError(errorMessage(err));
-    }
-  };
-
-  const handleDeclineGroup = async (groupId: string) => {
-    setResolvedGroupIds((s) => new Set(s).add(groupId));
-    try {
-      await removeGroupMember(groupId, currentUserId);
-      onInvitationHandled();
-    } catch (err) {
-      setResolvedGroupIds((s) => {
-        const next = new Set(s);
-        next.delete(groupId);
-        return next;
-      });
-      setError(errorMessage(err));
-    }
-  };
-
-  const visibleFriendRequests = friendRequests.filter((r) => !resolvedFriendIds.has(r.senderId));
-  const visibleGroupInvites = groupInvites.filter((g) => !resolvedGroupIds.has(g.groupId));
 
   return (
     <View style={styles.container}>
@@ -139,10 +117,10 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
             {/* Les deux sections restent affichées même vides : sans elles, un écran qui ne dit que
                 « aucune invitation » n'apprend pas ce qu'il est censé contenir. */}
             <Text style={styles.sectionTitle}>{t('invitations.demandes_ami')}</Text>
-            {visibleFriendRequests.length === 0 ? (
+            {friendRequests.length === 0 ? (
               <Text style={styles.sectionEmpty}>{t('invitations.aucune_demande')}</Text>
             ) : (
-              visibleFriendRequests.map((req) => (
+              friendRequests.map((req) => (
                 <View key={req.senderId} style={styles.row}>
                   <Pressable style={styles.rowInfo} onPress={() => onSelectProfile(req.senderId)}>
                     <Avatar url={req.senderAvatarUrl} name={req.senderDisplayName} size={36} />
@@ -150,23 +128,21 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
                       {req.senderDisplayName}
                     </Text>
                   </Pressable>
-                  <View style={styles.actions}>
-                    <Pressable style={styles.declineButton} onPress={() => handleDeclineFriend(req.senderId)} hitSlop={hitSlopPairLeft}>
-                      <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
-                    </Pressable>
-                    <Pressable style={styles.acceptButton} onPress={() => handleAcceptFriend(req.senderId)} hitSlop={hitSlopPairRight}>
-                      <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
-                    </Pressable>
-                  </View>
+                  {renderActions(
+                    `ami:${req.senderId}`,
+                    t('profil.deja_amis'),
+                    () => void handle(`ami:${req.senderId}`, 'declined', () => deleteFriendRelation(currentUserId, req.senderId)),
+                    () => void handle(`ami:${req.senderId}`, 'accepted', () => acceptFriendRequest(req.senderId, currentUserId))
+                  )}
                 </View>
               ))
             )}
 
             <Text style={styles.sectionTitle}>{t('invitations.groupes_prives')}</Text>
-            {visibleGroupInvites.length === 0 ? (
+            {groupInvites.length === 0 ? (
               <Text style={styles.sectionEmpty}>{t('invitations.aucune_invitation')}</Text>
             ) : (
-              visibleGroupInvites.map((invite) => (
+              groupInvites.map((invite) => (
                 <View key={invite.groupId} style={styles.row}>
                   <View style={styles.rowInfo}>
                     <View style={styles.groupIconBubble}>
@@ -176,14 +152,12 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
                       {invite.groupName}
                     </Text>
                   </View>
-                  <View style={styles.actions}>
-                    <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(invite.groupId)} hitSlop={hitSlopPairLeft}>
-                      <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
-                    </Pressable>
-                    <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(invite.groupId)} hitSlop={hitSlopPairRight}>
-                      <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
-                    </Pressable>
-                  </View>
+                  {renderActions(
+                    `groupe:${invite.groupId}`,
+                    t('invitations.etat_membre'),
+                    () => void handle(`groupe:${invite.groupId}`, 'declined', () => removeGroupMember(invite.groupId, currentUserId)),
+                    () => void handle(`groupe:${invite.groupId}`, 'accepted', () => acceptGroupInvite(invite.groupId, currentUserId))
+                  )}
                 </View>
               ))
             )}
@@ -275,6 +249,10 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  // Réponse du serveur en attente : même estompe qu'« Inviter » pendant son envoi.
+  actionsBusy: {
+    opacity: 0.6,
   },
   declineButton: {
     paddingHorizontal: 12,

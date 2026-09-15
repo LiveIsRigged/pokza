@@ -18,6 +18,7 @@ import {
   VOTE_QUESTION_MAX_LENGTH,
 } from '../constants/limits';
 import { normaliserBuyIn } from '../utils/buyIn';
+import { errorMessage } from '../utils/errorMessage';
 import { borders, colors, placeholderText } from '../theme/theme';
 import { useT } from '../i18n';
 import { t } from '../i18n/traduire';
@@ -45,7 +46,8 @@ interface EditPostScreenProps {
    * déroulé de la main en écriture, qui n'est pas le sujet.
    */
   mode?: 'edit' | 'duplicate';
-  onSave: (edits: PostEdits) => void;
+  /** Rejette si l'enregistrement échoue : l'écran reste ouvert et le dit au-dessus du bouton. */
+  onSave: (edits: PostEdits) => Promise<void>;
   onCancel: () => void;
   groups: Group[];
   /** Crée un groupe sans quitter l'écran et renvoie son id — même raison qu'au créateur : partir
@@ -98,6 +100,8 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
   const [voteOptions, setVoteOptions] = useState<string[]>(post.voteOptions ?? ['', '']);
   const [visibility, setVisibility] = useState<Visibility>(post.visibility);
   const [groupId, setGroupId] = useState<string | undefined>(post.groupId);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [lastUsedGroupIds, setLastUsedGroupIds] = useState<string[]>([]);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
 
@@ -152,19 +156,31 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
     setVoteOptions(next);
   };
 
-  const handleSave = () => {
-    onSave({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      location: location.trim() || undefined,
-      tournamentName: tournamentName.trim() || undefined,
-      buyIn: buyIn.trim() || undefined,
-      level: level.trim() || undefined,
-      voteQuestion: voteQuestion.trim() || undefined,
-      voteOptions: hasVoteQuestion ? voteOptions.map((o) => o.trim()).filter(Boolean) : undefined,
-      visibility,
-      groupId: visibility === 'group' ? groupId : undefined,
-    });
+  // Verrou, et erreur affichée sur place. Sans verrou, deux appuis rapides sur « Republier »
+  // publiaient deux copies : rien côté base ne s'y oppose (même constat qu'au créateur, cf. son
+  // `submitting`). Et un échec partait dans l'état d'erreur du fil, invisible d'ici.
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        location: location.trim() || undefined,
+        tournamentName: tournamentName.trim() || undefined,
+        buyIn: buyIn.trim() || undefined,
+        level: level.trim() || undefined,
+        voteQuestion: voteQuestion.trim() || undefined,
+        voteOptions: hasVoteQuestion ? voteOptions.map((o) => o.trim()).filter(Boolean) : undefined,
+        visibility,
+        groupId: visibility === 'group' ? groupId : undefined,
+      });
+    } catch (err) {
+      setSaveError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Une main publiée avant l'entrée en vigueur de la limite peut afficher « 52/40 » : le compteur
@@ -181,9 +197,10 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
             ? t('post.dupliquer_aide')
             : t('post.modifier_aide')
         }
-        onNext={handleSave}
+        onNext={() => void handleSave()}
         nextLabel={mode === 'duplicate' ? t('createur.republier') : t('commun.enregistrer')}
-        nextDisabled={!title.trim() || titleTooLong || (visibility === 'group' && !groupId)}
+        nextDisabled={saving || !title.trim() || titleTooLong || (visibility === 'group' && !groupId)}
+        erreur={saveError}
         onBack={onCancel}
       >
         <View>

@@ -18,6 +18,9 @@ interface GroupMembersScreenProps {
    * fondateur : l'exclusion d'un membre ne vit qu'à cet unique endroit, pas en double. */
   canManage?: boolean;
   onRemoveMember?: (userId: string) => void;
+  /** L'échec d'un retrait, affiché DANS cette couche : sur la page du groupe, il restait caché
+   * derrière, et le nom retiré revenait sans un mot. */
+  error?: string | null;
   onSelectProfile: (profileId: string) => void;
   onBack: () => void;
 }
@@ -29,6 +32,7 @@ export function GroupMembersScreen({
   currentUserId,
   canManage = false,
   onRemoveMember,
+  error,
   onSelectProfile,
   onBack,
 }: GroupMembersScreenProps) {
@@ -46,6 +50,7 @@ export function GroupMembersScreen({
         </View>
 
         <Text style={styles.title}>{canManage ? t('groupe.exclure_membre') : t('groupe.membres_titre')}</Text>
+        {error && <Text style={styles.error}>{error}</Text>}
 
         {members.map((m) => (
           <View key={m.userId} style={styles.memberRow}>
@@ -110,6 +115,14 @@ const styles = StyleSheet.create({
     color: colors.tableFelt,
     marginBottom: 20,
     marginHorizontal: 10,
+  },
+  // Même allure que le message d'erreur de la page du groupe (`statusText` de `GroupScreen`).
+  error: {
+    marginHorizontal: 10,
+    marginBottom: 16,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   memberRow: {
     // Écart entre le bloc « profil » (étiré, cf. `flex: 1`) et le bouton d'action : au moins le

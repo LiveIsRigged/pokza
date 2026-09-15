@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useLayoutEffect, useRef, useState } from 'react';
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
@@ -36,6 +36,17 @@ const RAIL_CURSEUR_MIN = spacing.lg;
  *  lirait comme un épaississement de leur contour plutôt que comme un rail. */
 const RAIL_DECALAGE = spacing.sm;
 
+/**
+ * L'ÉCHEC DE CE QUE LE BOUTON VIENT DE LANCER (publier, enregistrer), affiché juste au-dessus de lui.
+ * Il partait dans l'état d'erreur du fil, que ces écrans ne montrent pas : sur un réseau coupé,
+ * « Publier » relâchait son verrou sans un mot (constaté le 15/09/2026).
+ *
+ * Par contexte, en plus de la prop `erreur` : le créateur publie depuis plusieurs étapes (la revue,
+ * et la publication directe d'une correction), et chacune rend son propre `WizardScreen`. Le
+ * contexte évite de faire traverser l'erreur à chacune.
+ */
+export const ErreurBoutonContext = createContext<string | null>(null);
+
 interface WizardScreenProps {
   title: string;
   subtitle?: string;
@@ -55,6 +66,8 @@ interface WizardScreenProps {
    * ANNONCÉ et non subi : un bouton qui change de rôle sous le doigt, sans un mot, fait mal taper.
    */
   footerNote?: string | null;
+  /** L'échec de la dernière action du bouton, en rouge juste au-dessus de lui (cf. `ErreurBoutonContext`). */
+  erreur?: string | null;
   /**
    * Une sortie SECONDAIRE, sous le bouton principal : un lien texte, pas une pastille. Sert aux
    * écrans de street, qui n'ont justement pas de bouton principal (leur sortie normale, c'est
@@ -113,6 +126,7 @@ export function WizardScreen({
   totalSteps,
   scrollRef,
   footerNote,
+  erreur,
   footerLink,
   actionTitre,
   zoneFixe,
@@ -123,6 +137,8 @@ export function WizardScreen({
   // Retour au glissement bord-gauche → droite, double du bouton ‹ Retour (étape précédente, ou
   // sortie du créateur à la première étape). Inerte quand l'étape n'a pas de retour.
   const backSwipe = useLeftEdgeSwipe(onBack ?? (() => {}), !!onBack);
+  const erreurContexte = useContext(ErreurBoutonContext);
+  const erreurAffichee = erreur ?? erreurContexte;
 
   /**
    * LA MESURE — la géométrie dans l'état, la POSITION dans une `Animated.Value`.
@@ -268,6 +284,7 @@ export function WizardScreen({
       </View>
       {socle ? <View style={styles.socle}>{socle}</View> : null}
       {footerNote ? <Text style={styles.footerNote}>{footerNote}</Text> : null}
+      {erreurAffichee ? <Text style={styles.erreur}>{erreurAffichee}</Text> : null}
       {onNext && (
         <Pressable
           onPress={onNext}
@@ -385,6 +402,14 @@ const styles = StyleSheet.create({
   footerNote: {
     fontSize: 13,
     color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  // Mêmes mesures que `footerNote`, dans le rouge des refus — celui des erreurs de connexion, de
+  // profil et de groupe, affichées elles aussi juste au-dessus de leur bouton.
+  erreur: {
+    fontSize: 13,
+    color: colors.error,
     textAlign: 'center',
     marginBottom: 8,
   },

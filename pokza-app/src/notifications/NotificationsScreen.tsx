@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing } from '../theme/theme';
 import { Popover } from '../components/ui/Popover';
+import { PastilleEtat } from '../components/ui/PastilleEtat';
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -138,8 +139,11 @@ export function NotificationsScreen({
   // réellement en attente — la source de vérité, pas la simple présence de la notification.
   const [pendingFriendActorIds, setPendingFriendActorIds] = useState<Set<string>>(new Set());
   const [pendingGroupIds, setPendingGroupIds] = useState<Set<string>>(new Set());
-  // Masque les boutons immédiatement après une action, avant même le rechargement des demandes.
-  const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
+  // Une demande traitée d'ici garde sa ligne (historique) et affiche sa pastille à la place des
+  // boutons (« ✓ Amis », « ✓ Membre », « Refusé »). Remises à zéro à chaque rechargement : le panneau
+  // reste monté entre deux ouvertures, et une pastille n'a de sens que juste après le geste.
+  const [outcomes, setOutcomes] = useState<Map<string, 'accepted' | 'declined'>>(new Map());
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   // Web Push : état de la permission sur cet appareil (web/PWA uniquement).
   const [perm, setPerm] = useState<PushState>(() => pushState());
   const [enabling, setEnabling] = useState(false);
@@ -171,6 +175,7 @@ export function NotificationsScreen({
         setNotifications(data);
         setPendingFriendActorIds(new Set(pendingFriends.map((r) => r.senderId)));
         setPendingGroupIds(new Set(pendingGroups.map((g) => g.groupId)));
+        setOutcomes(new Map());
         setLoading(false);
         const hasUnread = data.some((n) => !n.read);
         if (hasUnread) markAllNotificationsRead(currentUserId).catch(() => {});
@@ -185,62 +190,37 @@ export function NotificationsScreen({
     };
   }, [visible, currentUserId]);
 
-  const handleAccept = async (n: AppNotification) => {
-    setResolvedIds((s) => new Set(s).add(n.id));
+  // La pastille attend la réponse du serveur ; en attendant, les boutons s'estompent et ne reprennent
+  // pas d'appui.
+  const handleAction = async (n: AppNotification, outcome: 'accepted' | 'declined', action: () => Promise<void>) => {
+    setBusyIds((s) => new Set(s).add(n.id));
     try {
-      await acceptFriendRequest(n.actorId, currentUserId);
+      await action();
+      setOutcomes((m) => new Map(m).set(n.id, outcome));
     } catch (err) {
-      setResolvedIds((s) => {
+      setError(errorMessage(err));
+    } finally {
+      setBusyIds((s) => {
         const next = new Set(s);
         next.delete(n.id);
         return next;
       });
-      setError(errorMessage(err));
     }
   };
 
-  const handleDecline = async (n: AppNotification) => {
-    setResolvedIds((s) => new Set(s).add(n.id));
-    try {
-      await deleteFriendRelation(currentUserId, n.actorId);
-    } catch (err) {
-      setResolvedIds((s) => {
-        const next = new Set(s);
-        next.delete(n.id);
-        return next;
-      });
-      setError(errorMessage(err));
-    }
+  const handleAccept = (n: AppNotification) =>
+    handleAction(n, 'accepted', () => acceptFriendRequest(n.actorId, currentUserId));
+  const handleDecline = (n: AppNotification) =>
+    handleAction(n, 'declined', () => deleteFriendRelation(currentUserId, n.actorId));
+  const handleAcceptGroup = (n: AppNotification) => {
+    const groupId = n.groupId;
+    if (!groupId) return;
+    return handleAction(n, 'accepted', () => acceptGroupInvite(groupId, currentUserId));
   };
-
-  const handleAcceptGroup = async (n: AppNotification) => {
-    if (!n.groupId) return;
-    setResolvedIds((s) => new Set(s).add(n.id));
-    try {
-      await acceptGroupInvite(n.groupId, currentUserId);
-    } catch (err) {
-      setResolvedIds((s) => {
-        const next = new Set(s);
-        next.delete(n.id);
-        return next;
-      });
-      setError(errorMessage(err));
-    }
-  };
-
-  const handleDeclineGroup = async (n: AppNotification) => {
-    if (!n.groupId) return;
-    setResolvedIds((s) => new Set(s).add(n.id));
-    try {
-      await removeGroupMember(n.groupId, currentUserId);
-    } catch (err) {
-      setResolvedIds((s) => {
-        const next = new Set(s);
-        next.delete(n.id);
-        return next;
-      });
-      setError(errorMessage(err));
-    }
+  const handleDeclineGroup = (n: AppNotification) => {
+    const groupId = n.groupId;
+    if (!groupId) return;
+    return handleAction(n, 'declined', () => removeGroupMember(groupId, currentUserId));
   };
 
   // Une notification mène à ce dont elle parle. L'ordre compte : une notification liée à une main
@@ -274,11 +254,12 @@ export function NotificationsScreen({
     onSelectProfile(n.actorId);
   };
 
-  // Les lignes restent affichées (historique) ; seuls les boutons d'action apparaissent/disparaissent.
+  // Les lignes restent affichées (historique). Les boutons n'apparaissent que sur une demande encore en
+  // attente, et laissent place à la pastille une fois la demande traitée d'ici.
   const showFriendActions = (n: AppNotification) =>
-    n.type === 'friend_request' && pendingFriendActorIds.has(n.actorId) && !resolvedIds.has(n.id);
+    n.type === 'friend_request' && pendingFriendActorIds.has(n.actorId) && !outcomes.has(n.id);
   const showGroupActions = (n: AppNotification) =>
-    n.type === 'group_invite' && !!n.groupId && pendingGroupIds.has(n.groupId) && !resolvedIds.has(n.id);
+    n.type === 'group_invite' && !!n.groupId && pendingGroupIds.has(n.groupId) && !outcomes.has(n.id);
 
   return (
     <Popover visible={visible} onClose={onClose} width={320}>
@@ -323,24 +304,55 @@ export function NotificationsScreen({
                 </View>
               </Pressable>
               {showFriendActions(n) && (
-                <View style={styles.actions}>
-                  <Pressable style={styles.declineButton} onPress={() => handleDecline(n)} hitSlop={hitSlopPairLeft}>
+                <View style={[styles.actions, busyIds.has(n.id) && styles.actionsBusy]}>
+                  <Pressable
+                    style={styles.declineButton}
+                    onPress={() => void handleDecline(n)}
+                    disabled={busyIds.has(n.id)}
+                    hitSlop={hitSlopPairLeft}
+                  >
                     <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
                   </Pressable>
-                  <Pressable style={styles.acceptButton} onPress={() => handleAccept(n)} hitSlop={hitSlopPairRight}>
+                  <Pressable
+                    style={styles.acceptButton}
+                    onPress={() => void handleAccept(n)}
+                    disabled={busyIds.has(n.id)}
+                    hitSlop={hitSlopPairRight}
+                  >
                     <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
                   </Pressable>
                 </View>
               )}
               {showGroupActions(n) && (
-                <View style={styles.actions}>
-                  <Pressable style={styles.declineButton} onPress={() => handleDeclineGroup(n)} hitSlop={hitSlopPairLeft}>
+                <View style={[styles.actions, busyIds.has(n.id) && styles.actionsBusy]}>
+                  <Pressable
+                    style={styles.declineButton}
+                    onPress={() => void handleDeclineGroup(n)}
+                    disabled={busyIds.has(n.id)}
+                    hitSlop={hitSlopPairLeft}
+                  >
                     <Text style={styles.declineButtonText}>{t('commun.refuser')}</Text>
                   </Pressable>
-                  <Pressable style={styles.acceptButton} onPress={() => handleAcceptGroup(n)} hitSlop={hitSlopPairRight}>
+                  <Pressable
+                    style={styles.acceptButton}
+                    onPress={() => void handleAcceptGroup(n)}
+                    disabled={busyIds.has(n.id)}
+                    hitSlop={hitSlopPairRight}
+                  >
                     <Text style={styles.acceptButtonText}>{t('commun.accepter')}</Text>
                   </Pressable>
                 </View>
+              )}
+              {outcomes.has(n.id) && (
+                <PastilleEtat
+                  label={
+                    outcomes.get(n.id) === 'declined'
+                      ? t('invitations.etat_refuse')
+                      : n.type === 'group_invite'
+                      ? t('invitations.etat_membre')
+                      : t('profil.deja_amis')
+                  }
+                />
               )}
             </View>
           ))
@@ -446,6 +458,10 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  // Réponse du serveur en attente : même estompe qu'« Inviter » pendant son envoi.
+  actionsBusy: {
+    opacity: 0.6,
   },
   declineButton: {
     paddingHorizontal: 12,

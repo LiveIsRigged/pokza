@@ -30,6 +30,8 @@ import {
 } from '../groups/lastUsedGroups';
 import { CopyIcon, TrashIcon } from '../components/ui/icons';
 import { useT } from '../i18n';
+import { errorMessage } from '../utils/errorMessage';
+import { ErreurBoutonContext } from './WizardScreen';
 
 /**
  * QUATRE ÉTAPES, TOUJOURS — constat 7 de l'audit, tranché par Victor le 02/09/2026.
@@ -471,6 +473,12 @@ export function LiveHandCreator({
   // oppose — mesuré en production : deux insertions identiques simultanées sont toutes deux
   // acceptées. Le garde-fou ne peut donc être que côté client.
   const [submitting, setSubmitting] = useState(false);
+  // L'échec de la publication, affiché au-dessus du bouton de l'étape d'où elle est partie (cf.
+  // `ErreurBoutonContext`). Effacé dès qu'on change d'étape : il ne concerne que ce bouton-là.
+  const [publishError, setPublishError] = useState<string | null>(null);
+  useEffect(() => {
+    setPublishError(null);
+  }, [phase]);
 
   /** Aperçu plein écran ouvert depuis l'étape « Publier » (cf. `ApercuMainScreen`). */
   const [apercu, setApercu] = useState<Hand | null>(null);
@@ -573,6 +581,7 @@ export function LiveHandCreator({
     surcharge: Partial<Pick<Snapshot, 'context' | 'seats' | 'heroCards' | 'board2' | 'revealedCards'>> = {}
   ) => {
     if (submitting) return;
+    setPublishError(null);
     const ctx = surcharge.context ?? context;
     const hand = construitMain(finalActions, finalBoard, surcharge);
     const post: Post = {
@@ -602,8 +611,9 @@ export function LiveHandCreator({
       groupId: review.groupId,
       hand,
     };
-    // `onCreated` remonte l'erreur à l'écran appelant et laisse le créateur ouvert : on relâche le
-    // verrou dans tous les cas, sinon un échec réseau condamnerait le bouton pour de bon.
+    // `onCreated` rejette si la publication échoue, et le créateur reste ouvert : l'erreur s'affiche
+    // au-dessus du bouton qu'on vient de toucher. Le verrou se relâche dans tous les cas, sinon un
+    // échec réseau condamnerait le bouton pour de bon.
     setSubmitting(true);
     try {
       await onCreated(post);
@@ -613,6 +623,8 @@ export function LiveHandCreator({
         void rememberUsedGroup(groupId);
         setLastUsedGroupIds((ids) => [groupId, ...ids.filter((id) => id !== groupId)]);
       }
+    } catch (err) {
+      setPublishError(errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -1208,7 +1220,7 @@ export function LiveHandCreator({
 
   return (
     <>
-      {renderStep()}
+      <ErreurBoutonContext.Provider value={publishError}>{renderStep()}</ErreurBoutonContext.Provider>
       <ConfirmSheet
         visible={confirmingAbandon}
         icon={TrashIcon}

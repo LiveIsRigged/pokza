@@ -8,6 +8,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, SCREEN_TOP, spacing, tints, typography } from '../theme/theme';
 import { Chip } from '../creator/Chip';
 import { Avatar } from '../components/ui/Avatar';
+import { PastilleEtat } from '../components/ui/PastilleEtat';
 import { shareOrCopy, POKZA_WEB_ORIGIN } from '../utils/share';
 import { useT } from '../i18n';
 import {
@@ -93,7 +94,11 @@ function SuggestionsTab({
   const [suggestions, setSuggestions] = useState<SuggestedFriend[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  // Le chargement raté remplace l'onglet (il n'y a rien d'autre à montrer) ; l'échec d'Accepter ou de
+  // Refuser, lui, s'affiche en tête de liste. Les deux passaient par le même état, et un simple refus
+  // réseau effaçait tout l'onglet jusqu'à ce qu'on en change.
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,27 +121,32 @@ function SuggestionsTab({
     };
   }, [currentUserId]);
 
-  const handleAcceptPending = async (senderId: string) => {
-    const previous = pending;
-    setPending((r) => r.filter((req) => req.senderId !== senderId));
-    try {
-      await acceptFriendRequest(senderId, currentUserId);
-    } catch (err) {
-      setPending(previous);
-      setError(errorMessage(err));
-    }
-  };
+  // Une demande traitée reste affichée, sa pastille à la place des boutons, le temps de l'écran : la
+  // liste ne recharge que les demandes encore en attente (cf. `PastilleEtat`). La pastille attend la
+  // réponse du serveur ; en attendant, les boutons s'estompent et ne reprennent pas d'appui.
+  const [outcomes, setOutcomes] = useState<Map<string, 'accepted' | 'declined'>>(new Map());
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
-  const handleDeclinePending = async (senderId: string) => {
-    const previous = pending;
-    setPending((r) => r.filter((req) => req.senderId !== senderId));
+  const handlePending = async (senderId: string, outcome: 'accepted' | 'declined', action: () => Promise<void>) => {
+    setActionError(null);
+    setBusyIds((s) => new Set(s).add(senderId));
     try {
-      await deleteFriendRelation(currentUserId, senderId);
+      await action();
+      setOutcomes((m) => new Map(m).set(senderId, outcome));
     } catch (err) {
-      setPending(previous);
-      setError(errorMessage(err));
+      setActionError(errorMessage(err));
+    } finally {
+      setBusyIds((s) => {
+        const next = new Set(s);
+        next.delete(senderId);
+        return next;
+      });
     }
   };
+  const handleAcceptPending = (senderId: string) =>
+    handlePending(senderId, 'accepted', () => acceptFriendRequest(senderId, currentUserId));
+  const handleDeclinePending = (senderId: string) =>
+    handlePending(senderId, 'declined', () => deleteFriendRelation(currentUserId, senderId));
 
   if (loading) {
     return <ActivityIndicator style={styles.loader} color={colors.action} />;
@@ -148,6 +158,7 @@ function SuggestionsTab({
 
   return (
     <ScrollView contentContainerStyle={styles.suggestionsList}>
+      {actionError && <Text style={styles.explainer}>{actionError}</Text>}
       {pending.length > 0 && (
         <>
           <Text style={styles.sectionLabel}>{t('amis.demandes_recues')}</Text>
@@ -157,22 +168,30 @@ function SuggestionsTab({
                 <Avatar url={req.senderAvatarUrl} name={req.senderDisplayName} size={40} />
                 <Text style={styles.suggestionPseudo}>{req.senderDisplayName}</Text>
               </Pressable>
-              <View style={styles.pendingActions}>
-                <Pressable
-                  style={styles.declinePill}
-                  onPress={() => handleDeclinePending(req.senderId)}
-                  hitSlop={hitSlopPairLeft}
-                >
-                  <Text style={styles.declinePillText}>{t('commun.refuser')}</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.acceptPill}
-                  onPress={() => handleAcceptPending(req.senderId)}
-                  hitSlop={hitSlopPairRight}
-                >
-                  <Text style={styles.acceptPillText}>{t('commun.accepter')}</Text>
-                </Pressable>
-              </View>
+              {outcomes.has(req.senderId) ? (
+                <PastilleEtat
+                  label={outcomes.get(req.senderId) === 'accepted' ? t('profil.deja_amis') : t('invitations.etat_refuse')}
+                />
+              ) : (
+                <View style={[styles.pendingActions, busyIds.has(req.senderId) && styles.pendingActionsBusy]}>
+                  <Pressable
+                    style={styles.declinePill}
+                    onPress={() => void handleDeclinePending(req.senderId)}
+                    disabled={busyIds.has(req.senderId)}
+                    hitSlop={hitSlopPairLeft}
+                  >
+                    <Text style={styles.declinePillText}>{t('commun.refuser')}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.acceptPill}
+                    onPress={() => void handleAcceptPending(req.senderId)}
+                    disabled={busyIds.has(req.senderId)}
+                    hitSlop={hitSlopPairRight}
+                  >
+                    <Text style={styles.acceptPillText}>{t('commun.accepter')}</Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
           ))}
           {suggestions.length > 0 && <Text style={styles.sectionLabel}>{t('amis.suggestions')}</Text>}
@@ -371,6 +390,10 @@ const styles = StyleSheet.create({
   pendingActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  // Réponse du serveur en attente : même estompe qu'« Inviter » pendant son envoi.
+  pendingActionsBusy: {
+    opacity: 0.6,
   },
   declinePill: {
     paddingHorizontal: 12,
