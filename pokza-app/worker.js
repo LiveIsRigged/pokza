@@ -38,9 +38,9 @@
  */
 
 // Les noms sont ceux du `.env` de l'app, à la lettre : une seule source pour l'adresse et la clé,
-// et `wrangler dev` lit ce même fichier sans qu'on ait rien à y ajouter. La clé anon n'est pas un
-// secret (elle est dans le bundle, donc lisible par qui ouvre Pokza) mais elle n'est pas non plus
-// dans le dépôt : `npm run deploy:web` la passe en `--var` depuis le `.env` local.
+// et `wrangler dev` lit ce même fichier sans qu'on ait rien à y ajouter. En ligne, elles viennent
+// du tableau de bord Cloudflare — cf. l'avertissement en tête de `wrangler.jsonc`, qui dit aussi
+// pourquoi des SECRETS et pas des variables.
 const VARS = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY'];
 
 const PHRASE = 'Le réseau des joueurs de poker : partage tes mains, rejoue-les et demande l\'avis de la communauté.';
@@ -84,21 +84,28 @@ async function interroger(url, cle, chemin, corps) {
 }
 
 /**
- * Le titre et la description d'un chemin, ou `null` s'il n'y a rien à en dire.
+ * Le titre et la description d'un chemin, ou une CHAÎNE disant pourquoi il n'y en a pas.
  * Les quatre cas correspondent aux quatre portes qu'un visiteur SANS COMPTE peut pousser.
+ *
+ * Cette raison ressort en en-tête `x-pokza-apercu`, et ce n'est pas du confort : de l'extérieur,
+ * « le Worker ne tourne pas » et « le Worker tourne mais ne voit pas ses variables » rendent
+ * exactement la même page. Le 23/09 il a fallu un déploiement de plus pour distinguer les deux.
+ * En-tête absent = le Worker ne s'exécute pas ; `variables-absentes` = il s'exécute mais les deux
+ * valeurs ne lui parviennent pas (des variables de BUILD ne sont pas lisibles à l'exécution).
  */
 async function apercu(url, env) {
   const [porte, cle] = url.pathname.split('/').filter(Boolean);
   const base = env[VARS[0]];
   const anon = env[VARS[1]];
-  if (!base || !anon || !cle) return null;
+  if (!base || !anon) return 'variables-absentes';
+  if (!cle) return 'chemin-sans-cle';
 
   if (porte === 'g') {
     // Le lien d'un groupe. Le titre reprend MOT POUR MOT la phrase de la page d'atterrissage
     // (`groupes.accueil_titre`) : ce qu'on lit dans WhatsApp et ce qu'on lit après le clic doivent
     // être la même phrase, sinon le clic ressemble à une erreur.
     const g = await interroger(base, anon, '/rest/v1/rpc/group_link_preview', { p_token: cle });
-    if (!g || !g.group_name) return null;
+    if (!g || !g.group_name) return 'groupe-introuvable';
     return {
       titre: `${g.host_name} t'invite dans ${g.group_name}`,
       description: `${g.member_count} membre${g.member_count > 1 ? 's' : ''}. ${PHRASE}`,
@@ -107,7 +114,7 @@ async function apercu(url, env) {
 
   if (porte === 'invite') {
     const p = await interroger(base, anon, '/rest/v1/rpc/profile_invite_preview', { p_user: cle });
-    if (!p || !p.host_name) return null;
+    if (!p || !p.host_name) return 'profil-introuvable';
     // À zéro main, on ne dit pas « 0 main partagée » : ce serait un argument contre soi. Même règle
     // que l'écran (`InvitationProfilScreen`), qui masque la ligne dans ce cas.
     const mains = p.hand_count > 0 ? `${p.hand_count} main${p.hand_count > 1 ? 's' : ''} partagée${p.hand_count > 1 ? 's' : ''}. ` : '';
@@ -121,7 +128,7 @@ async function apercu(url, env) {
     // « les gens à qui on a donné le lien » et « les résultats de recherche » ne sont pas le même
     // public, et c'est cette ligne-là qu'on ne franchit pas.
     const m = await interroger(base, anon, '/rest/v1/rpc/post_by_share_token', { p_token: cle });
-    return m && m.title ? { titre: m.title, description: MAIN } : null;
+    return m && m.title ? { titre: m.title, description: MAIN } : 'partage-introuvable';
   }
 
   if (porte === 'post') {
@@ -130,10 +137,10 @@ async function apercu(url, env) {
     // identifiant ne doit pas plus avoir d'aperçu qu'elle n'a de page.
     const q = `/rest/v1/posts?id=eq.${encodeURIComponent(cle)}&visibility=eq.public&select=title&limit=1`;
     const m = await interroger(base, anon, q);
-    return m && m.title ? { titre: m.title, description: MAIN } : null;
+    return m && m.title ? { titre: m.title, description: MAIN } : 'main-introuvable';
   }
 
-  return null;
+  return 'chemin-inconnu';
 }
 
 function balises(a, url) {
@@ -163,12 +170,19 @@ export default {
     const url = new URL(request.url);
     // Les deux partent ENSEMBLE : la page n'attend alors que la plus lente des deux, pas leur somme.
     const page = env.ASSETS.fetch(request);
-    const a = await apercu(url, env).catch(() => null);
+    const a = await apercu(url, env).catch((e) => `echec: ${e && e.name}`);
     const reponse = await page;
 
-    if (!a || !(reponse.headers.get('content-type') || '').includes('text/html')) return reponse;
-
     const balisé = new Response(reponse.body, reponse);
+    // Toujours posé, même quand tout va bien : c'est la seule trace qui dise de l'extérieur si ce
+    // fichier s'exécute, et pourquoi il n'a rien écrit. Il ne révèle rien qu'un robot ne puisse
+    // déjà déduire de la page.
+    balisé.headers.set('x-pokza-apercu', typeof a === 'string' ? a : 'ok');
+
+    if (typeof a === 'string' || !(reponse.headers.get('content-type') || '').includes('text/html')) {
+      return balisé;
+    }
+
     // Le HTML dépend maintenant du chemin ET du contenu de la base. Une minute suffit à absorber la
     // rafale de robots que déclenche un lien collé dans une conversation active, sans qu'un groupe
     // renommé traîne longtemps un vieux nom.
