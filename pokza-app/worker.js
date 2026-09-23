@@ -43,8 +43,11 @@
 // pourquoi des SECRETS et pas des variables.
 const VARS = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY'];
 
-const PHRASE = 'Le réseau des joueurs de poker : partage tes mains, rejoue-les et demande l\'avis de la communauté.';
-const MAIN = 'Une main partagée sur Pokza. Rejoue-la coup par coup.';
+// Recopie de `public/manifest.json` — c'est la même phrase que voit qui installe la PWA, et c'est
+// `scripts/carte-apercu.py` qui la dessine sur la vignette. Les trois bougent ensemble ou pas du tout.
+const PHRASE = 'Le réseau des joueurs de poker : partage tes mains et demande l\'avis de tes amis';
+// « Main partagée sur Pokza » est la signature déjà tranchée pour l'export d'une main en texte.
+const MAIN = 'Main partagée sur Pokza. Donne ton avis en commentaire !';
 
 /** Au-delà, toutes les messageries coupent — autant couper nous-mêmes, sur un mot et non au milieu. */
 function borne(texte, max) {
@@ -102,23 +105,18 @@ async function apercu(url, env) {
 
   if (porte === 'g') {
     // Le lien d'un groupe. Le titre reprend MOT POUR MOT la phrase de la page d'atterrissage
-    // (`groupes.accueil_titre`) : ce qu'on lit dans WhatsApp et ce qu'on lit après le clic doivent
-    // être la même phrase, sinon le clic ressemble à une erreur.
+    // (`accueil_groupe.titre`) : ce qu'on lit dans WhatsApp et ce qu'on lit après le clic doivent
+    // être la même phrase, sinon le clic ressemble à une erreur. Le 23/09, « le groupe » a été
+    // ajouté ICI par Victor — et donc aussi dans les 4 catalogues, pour tenir cette promesse.
     const g = await interroger(base, anon, '/rest/v1/rpc/group_link_preview', { p_token: cle });
     if (!g || !g.group_name) return 'groupe-introuvable';
-    return {
-      titre: `${g.host_name} t'invite dans ${g.group_name}`,
-      description: `${g.member_count} membre${g.member_count > 1 ? 's' : ''}. ${PHRASE}`,
-    };
+    return { titre: `${g.host_name} t'invite dans le groupe ${g.group_name}`, description: PHRASE };
   }
 
   if (porte === 'invite') {
     const p = await interroger(base, anon, '/rest/v1/rpc/profile_invite_preview', { p_user: cle });
     if (!p || !p.host_name) return 'profil-introuvable';
-    // À zéro main, on ne dit pas « 0 main partagée » : ce serait un argument contre soi. Même règle
-    // que l'écran (`InvitationProfilScreen`), qui masque la ligne dans ce cas.
-    const mains = p.hand_count > 0 ? `${p.hand_count} main${p.hand_count > 1 ? 's' : ''} partagée${p.hand_count > 1 ? 's' : ''}. ` : '';
-    return { titre: `${p.host_name} t'invite sur Pokza`, description: mains + PHRASE };
+    return { titre: `${p.host_name} t'invite sur Pokza`, description: PHRASE };
   }
 
   if (porte === 's') {

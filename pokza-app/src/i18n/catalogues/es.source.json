@@ -872,7 +872,7 @@
   "groupe.refuser_message": "Seul {nom} pourra t'y inviter à nouveau.",
   "notif.group_member_invited": "{nom} a invité {invite} dans {groupe}",
   "notif.group_member_joined": "{nom} a rejoint {groupe} grâce à {parrain}",
-  "accueil_groupe.titre": "{nom} t'invite dans {groupe}",
+  "accueil_groupe.titre": "{nom} t'invite dans le groupe {groupe}",
   "accueil_groupe.membres": {
     "one": "{count} membre",
     "other": "{count} membres"

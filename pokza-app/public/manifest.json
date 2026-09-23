@@ -1,7 +1,7 @@
 {
   "name": "Pokza",
   "short_name": "Pokza",
-  "description": "Le réseau des joueurs de poker : partage tes mains, rejoue-les et demande l'avis de la communauté.",
+  "description": "Le réseau des joueurs de poker : partage tes mains et demande l'avis de tes amis",
   "id": "/",
   "start_url": "/",
   "scope": "/",
