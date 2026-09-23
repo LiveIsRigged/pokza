@@ -775,7 +775,6 @@
   "createur.cartes_de_cette_street": "Cards on this street",
   "maintexte.preflop_majuscules": "PREFLOP",
   "amis.invitation_titre": "Join me on Pokza",
-  "amis.invitation_message": "Add me on Pokza to follow my hands and talk them over!",
   "amis.propre_code": "This is your own code!",
   "amis.aucun_ami": "You don't have any friends yet. Add them from “Add friends”.",
   "groupe.membres_titre": "Members",
@@ -882,5 +881,17 @@
   "accueil_groupe.rejoindre": "Join the group",
   "accueil_groupe.deja_membre": "You're already in this group.",
   "accueil_groupe.invalide": "This link is no longer valid.",
-  "recherche.personne_inviter": "Nobody matches. If they're not on Pokza yet, you can invite them below."
+  "recherche.personne_inviter": "Nobody matches. If they're not on Pokza yet, you can invite them below.",
+  "post.auteur_ami": "✓ Friend",
+  "post.auteur_ajouter": "+ Add",
+  "post.auteur_demande": "Requested ✕",
+  "post.auteur_accepter": "Accept",
+  "accueil_profil.titre": "{nom} is inviting you to Pokza",
+  "accueil_profil.mains": {
+    "one": "{count} hand shared",
+    "other": "{count} hands shared"
+  },
+  "accueil_profil.creer_compte": "Create my account",
+  "accueil_profil.invalide": "This link leads nowhere.",
+  "amis.invitation_message_nomme": "{nom} is inviting you to Pokza"
 }

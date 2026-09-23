@@ -198,3 +198,46 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
   // §9.5 (volet client) : oublie l'identité analytics locale.
   resetAnalytics();
 }
+
+/** Ce qu'on montre à quelqu'un qui ouvre `/invite/:id` sans avoir de compte. */
+export interface ProfileInvitePreview {
+  hostId: string;
+  hostName: string;
+  hostAvatarUrl?: string;
+  /** Mains publiques de l'hôte. Zéro → l'écran n'écrit pas la ligne plutôt que « 0 main ». */
+  handCount: number;
+  /** Sa dernière main publique, rejouée sous l'invitation. Absente s'il n'en a aucune. */
+  postId?: string;
+}
+
+/**
+ * L'aperçu de celui qui invite — jumeau de `fetchGroupLinkPreview`.
+ *
+ * Passe par une fonction `security definer` (cf. `docs/dev/invitation-profil.sql`) et NON par un
+ * `select` sur `profiles` : `anon` n'a plus le droit de lire cette table depuis la fermeture de
+ * F-08, et il n'est pas question de le lui rendre pour un écran.
+ *
+ * Rend `null` quand l'identifiant ne correspond à rien ou que le compte est banni — l'écran dit
+ * alors la même phrase dans les deux cas, comme pour un lien de groupe mort.
+ */
+export async function fetchProfileInvitePreview(userId: string): Promise<ProfileInvitePreview | null> {
+  const { data, error } = await supabase.rpc('profile_invite_preview', { p_user: userId });
+  if (error) throw error;
+  const row = (data as
+    | {
+        host_id: string;
+        host_name: string;
+        host_avatar: string | null;
+        hand_count: number;
+        post_id: string | null;
+      }[]
+    | null)?.[0];
+  if (!row) return null;
+  return {
+    hostId: row.host_id,
+    hostName: row.host_name,
+    hostAvatarUrl: row.host_avatar ?? undefined,
+    handCount: row.hand_count,
+    postId: row.post_id ?? undefined,
+  };
+}

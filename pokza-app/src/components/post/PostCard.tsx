@@ -82,6 +82,24 @@ interface PostCardProps {
   onMeasure?: (postId: string, y: number, height: number) => void;
   /** Le replayer de cette carte vient d'être déroulé — la main est lue, sans attendre les 8 s. */
   onDeroule?: (postId: string) => void;
+  /** MARQUEUR D'EN-TÊTE — ce que devient, sur une main PUBLIQUE, la place qu'occupent « Privée » et
+   *  le nom du groupe sur les autres. Le créneau répond alors à la même question sur chaque carte :
+   *  d'où me vient cette main ? (décision de Victor, 23/09/2026.)
+   *
+   *  Absent → aucun marqueur. C'est le cas partout sauf dans le fil principal : sur une page de
+   *  profil le bouton d'ami est déjà sous les yeux, et dans un groupe la main n'est pas publique.
+   *
+   *  `ami` est MUET (texte gris, rien à toucher) : une fois amis il n'y a plus de geste à faire,
+   *  donc plus rien à toucher par erreur. Seuls `inconnu` et `demande_envoyee` se touchent. */
+  relationAuteur?: 'ami' | 'inconnu' | 'demande_envoyee' | 'demande_recue';
+  /** Envoie la demande. REJETTE en cas d'échec : la carte affiche le message sous l'en-tête. */
+  onAjouterAmi?: () => void | Promise<void>;
+  /** Annule la demande envoyée, SANS feuille de confirmation : un miss-click doit se réparer d'un
+   *  geste (décision de Victor, 23/09/2026), et re-toucher renvoie la demande. */
+  onAnnulerDemande?: () => void | Promise<void>;
+  /** Accepte la demande que l'AUTEUR nous a envoyée. « + Ajouter » ne conviendrait pas ici : il
+   *  créerait une seconde ligne, croisée, au lieu d'accepter celle qui attend. */
+  onAccepterDemande?: () => void | Promise<void>;
 }
 
 // Tronque la description à 3 lignes avec "… voir plus" collé à la fin de la 3e ligne. Le nombre
@@ -182,6 +200,10 @@ function PostCardInner({
   onSelectProfile,
   onMeasure,
   onDeroule,
+  relationAuteur,
+  onAjouterAmi,
+  onAnnulerDemande,
+  onAccepterDemande,
 }: PostCardProps) {
   const t = useT();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -524,6 +546,40 @@ function PostCardInner({
             </Text>
           </Pressable>
         )}
+        {/* LE MARQUEUR NE PEUT JAMAIS COHABITER avec les deux autres : « Privée » et le nom du
+            groupe ne s'affichent que sur une main qui n'est PAS publique. Le créneau ne porte donc
+            qu'une chose à la fois, et il en porte toujours une (sauf sur ses propres mains, où il
+            n'y a rien à dire de l'auteur). */}
+        {relationAuteur && post.visibility === 'public' && !isOwnPost && (
+          relationAuteur === 'ami' ? (
+            <Text style={styles.auteurAmi}>{t('post.auteur_ami')}</Text>
+          ) : (
+            <Pressable
+              style={styles.auteurPastille}
+              hitSlop={8}
+              onPress={() =>
+                void signalerEchec(
+                  relationAuteur === 'inconnu'
+                    ? onAjouterAmi
+                    : relationAuteur === 'demande_recue'
+                    ? onAccepterDemande
+                    : onAnnulerDemande,
+                  setMenuFeedback
+                )
+              }
+            >
+              <Text style={styles.auteurPastilleTexte}>
+                {t(
+                  relationAuteur === 'inconnu'
+                    ? 'post.auteur_ajouter'
+                    : relationAuteur === 'demande_recue'
+                    ? 'post.auteur_accepter'
+                    : 'post.auteur_demande'
+                )}
+              </Text>
+            </Pressable>
+          )
+        )}
         {menuItems.length > 0 && (
           <Pressable ref={menuButtonRef} style={styles.deleteButton} onPress={openMenu} hitSlop={8}>
             <Text style={styles.overflowIcon}>⋯</Text>
@@ -754,9 +810,19 @@ const styles = StyleSheet.create({
     gap: 5,
     marginBottom: 6,
   },
+  // `flex-start` ET NON `center` : ce qui se tient à droite — le badge de visibilité, le nom du
+  // groupe, le marqueur d'ami, le « ⋯ » — doit se lire EN FACE DU NOM de l'auteur (Victor,
+  // 23/09/2026), et non à mi-chemin entre le nom et la ligne date/lieu.
+  // Mesuré : centré, le bloc de l'auteur fait la hauteur de l'avatar (36) tandis que ses deux
+  // lignes n'en font que 33 ; le milieu du nom tombait donc 7 px au-dessus du milieu de la rangée.
+  // Aligné en haut, le badge de visibilité (22 px de haut) retombe pile sur le milieu du nom, la
+  // pastille d'ami (26) à 2 px près et le « ⋯ » (28) à 3 px.
+  // ⚠️ Ça n'aligne rien en haut DANS le bloc de l'auteur : `authorSlot` garde son `center`, donc
+  // l'avatar et le texte restent centrés l'un sur l'autre, et une ligne date/lieu qui passe sur
+  // deux hauteurs fait descendre le bloc sans emmener le badge avec elle.
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.sm,
     marginBottom: 6,
   },
@@ -814,6 +880,30 @@ const styles = StyleSheet.create({
   },
   etapeChipTextActive: {
     color: '#fff',
+  },
+  // MARQUEUR D'EN-TÊTE — gabarit COMPACT de `PastilleEtat` (9 / 5, 12 px) et non son gabarit
+  // plein (13 / 7) : ici la pastille fait face à un avatar de 36 px et deux lignes de texte, pas
+  // aux boutons pleins d'une liste. Le gabarit plein grossissait la ligne d'en-tête.
+  auteurAmi: {
+    flexShrink: 0,
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  auteurPastille: {
+    flexShrink: 0,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: borders.default,
+  },
+  auteurPastilleTexte: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
   },
   visibilityBadge: {
     flexShrink: 0,

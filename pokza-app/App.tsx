@@ -42,6 +42,7 @@ import { useProfileStatus } from './src/state/profile';
 import { AuthScreen } from './src/auth/AuthScreen';
 import { PublicPostScreen } from './src/post/PublicPostScreen';
 import { InvitationGroupeScreen } from './src/groups/InvitationGroupeScreen';
+import { InvitationProfilScreen } from './src/profile/InvitationProfilScreen';
 import { NewPasswordScreen } from './src/auth/NewPasswordScreen';
 import { CompleteProfileScreen } from './src/profile/CompleteProfileScreen';
 import { ProfileScreen } from './src/profile/ProfileScreen';
@@ -71,7 +72,13 @@ import { ConnectionErrorScreen } from './src/components/ui/ConnectionErrorScreen
 import { GroupsListScreen } from './src/groups/GroupsListScreen';
 import { GroupScreen, type GroupScreenHandle } from './src/groups/GroupScreen';
 import { createGroup, fetchMyGroups, fetchPendingGroupInvites, type Group } from './src/data/groups';
-import { fetchPendingRequests } from './src/data/friends';
+import {
+  acceptFriendRequest,
+  deleteFriendRelation,
+  fetchPendingFriendIds,
+  fetchPendingRequests,
+  sendFriendRequest,
+} from './src/data/friends';
 import { AddFriendsScreen } from './src/friends/AddFriendsScreen';
 import { FriendsListScreen } from './src/friends/FriendsListScreen';
 import { InvitationsScreen } from './src/invitations/InvitationsScreen';
@@ -412,6 +419,102 @@ function AppContent() {
       .catch(() => {});
   };
 
+  // MARQUEUR D'EN-TÊTE DES CARTES — de qui suis-je déjà l'ami, et à qui ai-je déjà écrit ?
+  // `author_is_friend` arrive avec chaque main (cf. `posts_ranked`), mais rien dans le fil ne dit
+  // qu'une demande est PARTIE : sans ces deux ensembles, « + Ajouter » reviendrait sur chaque main
+  // de quelqu'un qu'on vient d'ajouter. Chargés une fois avec le fil, tenus à jour à la main
+  // ensuite — la carte doit réagir au doigt, pas au prochain rechargement.
+  const [amisDemandes, setAmisDemandes] = useState<{ envoyees: Set<string>; recues: Set<string> }>({
+    envoyees: new Set(),
+    recues: new Set(),
+  });
+  useEffect(() => {
+    if (!hasProfile || !session) return;
+    let annule = false;
+    // Un échec ne doit RIEN casser : sans ces ensembles le fil s'affiche, les pastilles disent
+    // seulement « + Ajouter » là où une demande dort déjà, et le refus d'insertion l'apprendra.
+    fetchPendingFriendIds(session.user.id)
+      .then((ids) => {
+        if (!annule) setAmisDemandes(ids);
+      })
+      .catch(() => {});
+    return () => {
+      annule = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasProfile, session]);
+
+  /** La relation avec l'auteur d'une main, telle que la carte doit la montrer. `undefined` =
+   *  aucun marqueur, c'est-à-dire ses propres mains : il n'y a rien à dire de soi-même.
+   *  Une demande REÇUE donne « Accepter » et non « + Ajouter » : ce dernier créerait une seconde
+   *  ligne, croisée, au lieu d'accepter celle qui attend déjà (décision de Victor, 23/09/2026). */
+  const relationAvecAuteur = (
+    post: Post
+  ): 'ami' | 'inconnu' | 'demande_envoyee' | 'demande_recue' | undefined => {
+    if (!session || post.authorId === session.user.id) return undefined;
+    if (post.authorIsFriend) return 'ami';
+    if (amisDemandes.envoyees.has(post.authorId)) return 'demande_envoyee';
+    if (amisDemandes.recues.has(post.authorId)) return 'demande_recue';
+    return 'inconnu';
+  };
+
+  // Les deux gestes de la pastille. Optimistes puis REJETTENT en cas d'échec, comme le cœur : la
+  // carte d'où part le geste affiche le message elle-même (cf. `signalerEchec` dans `PostCard`).
+  const ajouterAmiDepuisLeFil = async (authorId: string) => {
+    if (!session) return;
+    setAmisDemandes((e) => ({ ...e, envoyees: new Set(e.envoyees).add(authorId) }));
+    try {
+      await sendFriendRequest(session.user.id, authorId);
+      trackEvent('demande_ami_envoyee', { origine: 'fil' });
+    } catch (err) {
+      setAmisDemandes((e) => {
+        const envoyees = new Set(e.envoyees);
+        envoyees.delete(authorId);
+        return { ...e, envoyees };
+      });
+      throw err;
+    }
+  };
+
+  // Accepter fait basculer la pastille en « ✓ Ami », ce qui veut dire toucher `authorIsFriend` sur
+  // TOUTES les mains de cet auteur déjà chargées : le fil ne se recharge pas, et laisser les autres
+  // cartes proposer « Accepter » après coup serait un second refus assuré.
+  const accepterDemandeDepuisLeFil = async (authorId: string) => {
+    if (!session) return;
+    const marquerAmi = (ami: boolean) =>
+      setPosts((p) => p.map((post) => (post.authorId === authorId ? { ...post, authorIsFriend: ami } : post)));
+    setAmisDemandes((e) => {
+      const recues = new Set(e.recues);
+      recues.delete(authorId);
+      return { ...e, recues };
+    });
+    marquerAmi(true);
+    try {
+      await acceptFriendRequest(authorId, session.user.id);
+      trackEvent('demande_ami_traitee', { issue: 'acceptee', lieu: 'fil' });
+      refreshPendingInvitationsCount();
+    } catch (err) {
+      marquerAmi(false);
+      setAmisDemandes((e) => ({ ...e, recues: new Set(e.recues).add(authorId) }));
+      throw err;
+    }
+  };
+
+  const annulerDemandeDepuisLeFil = async (authorId: string) => {
+    if (!session) return;
+    setAmisDemandes((e) => {
+      const envoyees = new Set(e.envoyees);
+      envoyees.delete(authorId);
+      return { ...e, envoyees };
+    });
+    try {
+      await deleteFriendRelation(session.user.id, authorId);
+    } catch (err) {
+      setAmisDemandes((e) => ({ ...e, envoyees: new Set(e.envoyees).add(authorId) }));
+      throw err;
+    }
+  };
+
   useEffect(() => {
     if (!hasProfile) return;
     refreshUnreadNotificationCount();
@@ -623,6 +726,11 @@ function AppContent() {
     routeInitiale?.type === 'groupe' ? routeInitiale.token : null
   );
 
+  // Lien `/invite/:id` : dérivé et non tenu en état, contrairement au jeton de groupe. La page
+  // n'existe QUE déconnecté — une fois la session ouverte, l'effet de lien profond emmène sur la
+  // vraie page de profil, où « Ajouter en ami » attend. Il n'y a donc rien à refermer.
+  const inviteUserId = routeInitiale?.type === 'invite' ? routeInitiale.userId : null;
+
   // MESURE — un lien venu de l'extérieur se compte ICI, avant toute garde de session : la moitié
   // de l'intérêt est de savoir combien de visiteurs SANS COMPTE ouvrent un lien qu'on leur a
   // envoyé, et eux n'atteindront jamais l'effet plus bas. On attend seulement que la session soit
@@ -789,6 +897,16 @@ function AppContent() {
             onOuvrirGroupe={() => setVeutSeConnecter(true)}
             onFermer={() => setVeutSeConnecter(true)}
           />
+          <StatusBar style="dark" />
+        </View>
+      );
+    }
+    // Invitation d'une PERSONNE, sans compte : qui invite, ses mains publiques, une main qui se
+    // rejoue. Jusqu'au 23/09 ce lien tombait ici même, sur le formulaire de connexion nu.
+    if (inviteUserId && !veutSeConnecter) {
+      return (
+        <View style={styles.container}>
+          <InvitationProfilScreen userId={inviteUserId} onCreerCompte={() => setVeutSeConnecter(true)} />
           <StatusBar style="dark" />
         </View>
       );
@@ -1336,6 +1454,7 @@ function AppContent() {
       <Screen onBack={onBack}>
         <AddFriendsScreen
           currentUserId={session.user.id}
+          currentUserName={displayName ?? t('commun.joueur')}
           onBack={onBack}
           // Seul écran à dire lui-même d'où l'on vient : ses deux onglets sont deux portes
           // distinctes (une suggestion qu'on nous propose, un code qu'on scanne en personne), et
@@ -1508,6 +1627,10 @@ function AppContent() {
               onBlockAuthor={handleBlockAuthorInFeed}
               onMeasure={mesurer}
               onDeroule={marquerDeroule}
+              relationAuteur={relationAvecAuteur(post)}
+              onAjouterAmi={() => ajouterAmiDepuisLeFil(post.authorId)}
+              onAnnulerDemande={() => annulerDemandeDepuisLeFil(post.authorId)}
+              onAccepterDemande={() => accepterDemandeDepuisLeFil(post.authorId)}
             />
           ))
         )}

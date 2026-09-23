@@ -29,6 +29,10 @@ const QR_PREFIX = 'pokza:friend:';
 
 interface AddFriendsScreenProps {
   currentUserId: string;
+  /** Le nom sous lequel les autres nous voient : il PART dans le message de partage. Sans lui, le
+   *  lien de Paul arrivait signé de personne — « Ajoute-moi sur Pokza » — là où celui d'un groupe
+   *  nomme son hôte depuis le 19/09. Le plus intime des deux liens était le moins personnel. */
+  currentUserName: string;
   onBack: () => void;
   /** Les deux onglets sont deux portes distinctes — une suggestion proposée, un code scanné en
    *  personne — et c'est l'écran qui sait laquelle a servi (cf. `OrigineProfil`). */
@@ -37,7 +41,12 @@ interface AddFriendsScreenProps {
 
 type Tab = 'code' | 'scan' | 'suggestions';
 
-export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: AddFriendsScreenProps) {
+export function AddFriendsScreen({
+  currentUserId,
+  currentUserName,
+  onBack,
+  onSelectProfile,
+}: AddFriendsScreenProps) {
   const t = useT();
   const [tab, setTab] = useState<Tab>('suggestions');
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
@@ -45,7 +54,7 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
   const handleShareInvite = async () => {
     const outcome = await shareOrCopy({
       title: t('amis.invitation_titre'),
-      message: t('amis.invitation_message'),
+      message: t('amis.invitation_message_nomme', { nom: currentUserName }),
       url: `${POKZA_WEB_ORIGIN}/invite/${currentUserId}`,
     });
     trackEvent('invitation_partagee', { cible: 'profil', issue: ISSUE_PARTAGE[outcome] });

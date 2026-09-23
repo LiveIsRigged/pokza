@@ -74,6 +74,36 @@ export async function deleteFriendRelation(userId: string, otherUserId: string):
   assertWritten(data, refusedMessage(t('erreur.relation_modifiee')));
 }
 
+/** Les demandes d'ami EN ATTENTE qui me concernent, dans les deux sens, en une seule requête.
+ *
+ * Sert au marqueur d'en-tête des cartes du fil : `author_is_friend` arrive déjà avec chaque main
+ * (cf. `posts_ranked`), mais rien ne dit qu'une demande est partie — et sans ça la pastille
+ * « + Ajouter » réapparaîtrait sur toutes les mains de quelqu'un à qui on vient d'écrire.
+ *
+ * Les deux sens, parce qu'ils ne mènent pas au même endroit : une demande ENVOYÉE s'annule depuis
+ * la carte, une demande REÇUE ne s'accepte pas là (l'accepter depuis le fil serait une décision
+ * qu'on n'a pas prise) — elle fait simplement disparaître le marqueur, plutôt que de proposer
+ * « + Ajouter » à quelqu'un qui a déjà demandé, ce qui créerait une seconde ligne croisée.
+ *
+ * Quelques lignes par compte : la table ne garde que les demandes vivantes. */
+export async function fetchPendingFriendIds(
+  userId: string
+): Promise<{ envoyees: Set<string>; recues: Set<string> }> {
+  const { data, error } = await supabase
+    .from('friend_requests')
+    .select('sender_id, receiver_id')
+    .eq('status', 'pending')
+    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+  if (error) throw error;
+  const envoyees = new Set<string>();
+  const recues = new Set<string>();
+  for (const row of (data ?? []) as { sender_id: string; receiver_id: string }[]) {
+    if (row.sender_id === userId) envoyees.add(row.receiver_id);
+    else if (row.receiver_id === userId) recues.add(row.sender_id);
+  }
+  return { envoyees, recues };
+}
+
 export interface Friend {
   id: string;
   /** Seul nom affichable, cf. `ProfileSummary` — pas de `pseudo` ici, volontairement. */
