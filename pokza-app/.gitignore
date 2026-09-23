@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Cloudflare — etat local de `wrangler dev` (miniflare : caches, traces, bases factices).
+# Regenere a chaque lancement, des dizaines de fichiers sqlite, rien a versionner.
+.wrangler/
+
 # Native
 .kotlin/
 *.orig.*

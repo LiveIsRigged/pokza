@@ -1,16 +1,42 @@
 {
-  // Déploiement web sur Cloudflare Workers (static assets). Pas de champ "main" : tant qu'il n'y a
-  // que du statique à servir, aucun script Worker n'est nécessaire. Il en faudra un le jour où on
-  // voudra injecter les balises Open Graph des mains partagées côté serveur (vignettes WhatsApp /
-  // Discord), ce que l'export statique seul ne permet pas.
+  // Déploiement web sur Cloudflare Workers (static assets).
+  //
+  // Depuis le 23/09/2026 il y a un script Worker : `worker.js` écrit les balises Open Graph des
+  // liens partagés (vignettes WhatsApp / Discord), ce que l'export statique seul ne permet pas —
+  // `expo export` ne produit qu'un seul index.html, et un robot d'aperçu n'exécute pas le
+  // JavaScript. Tout le reste du site continue d'être servi comme avant, sans passer par lui.
+  //
+  // ⚠️ DEUX VALEURS DOIVENT EXISTER CÔTÉ CLOUDFLARE, EN **SECRETS** — sans quoi `worker.js` ne
+  // fabrique aucun aperçu (il ne casse rien pour autant : il rend la page telle quelle) :
+  //     EXPO_PUBLIC_SUPABASE_URL        EXPO_PUBLIC_SUPABASE_ANON_KEY
+  // Ce sont les deux lignes du `.env` de l'app, sous le MÊME nom — `wrangler dev` les lit donc
+  // toutes seules en local, sans rien ajouter nulle part.
+  //
+  // POURQUOI DES SECRETS ET PAS DES VARIABLES, alors que la clé anon n'est pas secrète (elle est
+  // dans le bundle, lisible par qui ouvre Pokza) : le déploiement se fait par `git push` — Workers
+  // Builds lance `npx wrangler deploy` à chaque commit sur main — et la doc de `wrangler deploy`
+  // est nette sur les deux comportements. Une VARIABLE posée dans le tableau de bord est effacée
+  // au déploiement suivant si elle n'est pas dans ce fichier (`--keep-vars` vaut `false` par
+  // défaut) ; un SECRET, lui, « n'est jamais supprimé par un déploiement ». Les mettre ici en
+  // clair n'est pas une option : le dépôt est public.
+  // Tableau de bord → Workers & Pages → pokza → Settings → Variables and Secrets → type Secret.
   "name": "pokza",
   "compatibility_date": "2026-07-30",
+  "main": "./worker.js",
   "assets": {
     // Produit par `npm run build:web` (expo export --platform web).
     "directory": "./dist/",
+    // Le Worker a besoin de ce nom pour aller chercher la page lui-même (`env.ASSETS.fetch`).
+    "binding": "ASSETS",
     // Indispensable : l'export ne génère qu'un seul index.html, donc sans ce fallback toute arrivée
     // directe sur /post/:id ou /invite/:id renvoie 404 (vérifié). Tous les liens partagés en
     // dépendent.
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // ⚠️ LA LIGNE QUI LIMITE LES DÉGÂTS. Le Worker ne s'exécute QUE sur ces quatre chemins — les
+    // quatre portes qu'un visiteur sans compte peut pousser. Le bundle, les polices, les icônes, le
+    // manifeste, la page d'accueil et tout le reste vont droit aux fichiers statiques sans le
+    // réveiller. Retirer cette liste (ou la remplacer par `true`) ferait passer TOUT le trafic par
+    // `worker.js`, pour rien.
+    "run_worker_first": ["/post/*", "/g/*", "/invite/*", "/s/*"]
   }
 }

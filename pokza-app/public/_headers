@@ -84,5 +84,11 @@
 #
 # Un lien collé un jour sur un forum ou un Discord indexable serait sinon exploré et conservé.
 # `/post/:id`, lui, n'est PAS couvert : une main publique a le droit d'être trouvée.
+#
+# ⚠️ CETTE LIGNE N'EST PAS UN APERÇU. Depuis le 23/09/2026, `worker.js` donne à `/s/:token` la même
+# vignette qu'à une main publique — titre compris (décision de Victor). Les deux ne se contredisent
+# pas : « les gens à qui on a donné le lien voient de quoi il s'agit » et « la main sort dans les
+# résultats Google » ne sont pas le même public, et c'est la seconde frontière qu'on tient ici.
+# Un robot d'aperçu de messagerie ne consulte pas `X-Robots-Tag` ; un moteur d'indexation, si.
 /s/*
   X-Robots-Tag: noindex, nofollow
