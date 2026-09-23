@@ -41,6 +41,7 @@ import { AuthProvider, useAuth } from './src/state/auth';
 import { useProfileStatus } from './src/state/profile';
 import { AuthScreen } from './src/auth/AuthScreen';
 import { PublicPostScreen } from './src/post/PublicPostScreen';
+import { InvitationGroupeScreen } from './src/groups/InvitationGroupeScreen';
 import { NewPasswordScreen } from './src/auth/NewPasswordScreen';
 import { CompleteProfileScreen } from './src/profile/CompleteProfileScreen';
 import { ProfileScreen } from './src/profile/ProfileScreen';
@@ -82,6 +83,7 @@ import { AdminReportDetailScreen } from './src/admin/AdminReportDetailScreen';
 import { AdminUserScreen } from './src/admin/AdminUserScreen';
 import { AdminAuditScreen } from './src/admin/AdminAuditScreen';
 import { clearDeepLinkFromUrl, readInitialDeepLink } from './src/navigation/deepLink';
+import type { OrigineProfil } from './src/analytics/events';
 import { initAnalytics, resetAnalytics, trackEvent } from './src/analytics';
 
 export default function App() {
@@ -198,6 +200,10 @@ function AppContent() {
   // main d'où l'édition a été ouverte.
   const [editReturnMode, setEditReturnMode] = useState<'feed' | 'profile' | 'group' | 'post'>('feed');
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
+  // D'où l'on vient en ouvrant ce profil. Uniquement pour la mesure : toutes les demandes d'ami
+  // partent de la page de profil, donc sans retenir la porte d'entrée on saurait qu'une demande
+  // est partie, jamais laquelle des portes l'a produite — la seule chose qu'on cherche à savoir.
+  const [origineProfil, setOrigineProfil] = useState<OrigineProfil>('autre');
   const [viewingPostId, setViewingPostId] = useState<string | null>(null);
   const [viewingPostComments, setViewingPostComments] = useState(false);
   const [editingPostFallback, setEditingPostFallback] = useState<Post | null>(null);
@@ -602,17 +608,46 @@ function AppContent() {
   // compte. `useState` avec initialiseur paresseux plutôt qu'un effet : la valeur doit être connue
   // dès le premier rendu, sinon l'écran de connexion s'affiche une fraction de seconde avant la
   // main partagée.
-  const [publicPostId] = useState(() => {
-    const route = readInitialDeepLink();
-    return route?.type === 'post' ? route.postId : null;
-  });
-  // Lien `/s/:token` : une main que son auteur a explicitement rendue partageable. Lu au montage
-  // comme ci-dessus, et pour la même raison. Modifiable, lui, parce qu'un visiteur DÉJÀ connecté
-  // doit pouvoir refermer cette page et retrouver son app.
-  const [shareToken, setShareToken] = useState(() => {
-    const route = readInitialDeepLink();
-    return route?.type === 'share' ? route.token : null;
-  });
+  const [routeInitiale] = useState(() => readInitialDeepLink());
+  const publicPostId = routeInitiale?.type === 'post' ? routeInitiale.postId : null;
+  // Lien `/s/:token` : une main que son auteur a explicitement rendue partageable. Modifiable,
+  // celui-là, parce qu'un visiteur DÉJÀ connecté doit pouvoir refermer cette page et retrouver
+  // son app — d'où un état plutôt qu'une valeur dérivée.
+  const [shareToken, setShareToken] = useState(() =>
+    routeInitiale?.type === 'share' ? routeInitiale.token : null
+  );
+  // Lien `/g/:token` : une invitation à un groupe privé. Lu au montage comme les deux autres, et
+  // tenu en état plutôt que relu dans l'URL : l'effet de lien profond nettoie l'URL, mais la page
+  // d'accueil du groupe doit survivre à toute l'inscription, jusqu'à ce qu'on soit entré.
+  const [groupeToken, setGroupeToken] = useState(() =>
+    routeInitiale?.type === 'groupe' ? routeInitiale.token : null
+  );
+
+  // MESURE — un lien venu de l'extérieur se compte ICI, avant toute garde de session : la moitié
+  // de l'intérêt est de savoir combien de visiteurs SANS COMPTE ouvrent un lien qu'on leur a
+  // envoyé, et eux n'atteindront jamais l'effet plus bas. On attend seulement que la session soit
+  // tranchée, sinon `connecte` dirait « non » pour tout le monde le temps du premier aller-retour.
+  // La même valeur sert à `signed_up` et à `profil_complete` : c'est l'écart entre les deux qui
+  // dira si les gens arrivés par invitation abandonnent plus ou moins que les autres.
+  const origineInscription =
+    routeInitiale?.type === 'invite' || routeInitiale?.type === 'groupe' ? 'invitation' : 'direct';
+
+  const lienCompte = useRef(false);
+  useEffect(() => {
+    if (loading || lienCompte.current || !routeInitiale) return;
+    lienCompte.current = true;
+    const connecte = Boolean(session);
+    if (routeInitiale.type === 'invite') {
+      trackEvent('invitation_ouverte', { cible: 'profil', connecte });
+    } else if (routeInitiale.type === 'groupe') {
+      trackEvent('invitation_ouverte', { cible: 'groupe', connecte });
+    } else {
+      trackEvent('main_ouverte_par_lien', {
+        source: routeInitiale.type === 'post' ? 'publique' : 'jeton',
+        connecte,
+      });
+    }
+  }, [loading, session, routeInitiale]);
   // Passe outre l'aperçu public quand le visiteur clique « Créer un compte » — sans quoi il
   // resterait bloqué sur la main, l'URL n'ayant pas changé.
   const [veutSeConnecter, setVeutSeConnecter] = useState(false);
@@ -625,8 +660,7 @@ function AppContent() {
       if (route.type === 'invite') {
         // Son propre lien d'invitation ne mène nulle part d'utile : on retombe sur le feed.
         if (route.userId !== session.user.id) {
-          setViewingProfileId(route.userId);
-          setMode('profile');
+          ouvrirProfil(route.userId, 'invitation');
         }
       } else if (route.type === 'post') {
         setViewingPostId(route.postId);
@@ -640,6 +674,18 @@ function AppContent() {
     }
     setDeepLinkHandled(true);
   }, [hasProfile, deepLinkHandled, session]);
+
+  /**
+   * Ouvrir la page d'un profil — le seul chemin, pour que chacun dise D'OÙ il vient (cf.
+   * `origineProfil`). Un `setViewingProfileId` posé à la main ailleurs ne serait pas un raccourci :
+   * ce serait une porte qui ne se compte pas, et donc un trou dans la seule mesure qui nous
+   * intéresse. `autre` existe pour les endroits d'où aucune demande d'ami n'est attendue.
+   */
+  const ouvrirProfil = (profileId: string, origine: OrigineProfil) => {
+    setViewingProfileId(profileId);
+    setOrigineProfil(origine);
+    setMode('profile');
+  };
 
   // La main ne quitte la liste qu'une fois supprimée. Elle disparaissait d'avance puis revenait en
   // cas d'échec, avec une erreur en haut du fil, hors de vue : la carte, encore là, le dit elle-même
@@ -731,9 +777,25 @@ function AppContent() {
         </View>
       );
     }
+    // Invitation à un groupe, sans compte : le groupe, qui invite, une main qui se rejoue, et
+    // « Créer mon compte pour rejoindre ».
+    if (groupeToken && !veutSeConnecter) {
+      return (
+        <View style={styles.container}>
+          <InvitationGroupeScreen
+            token={groupeToken}
+            dejaConnecte={false}
+            onCreerCompte={() => setVeutSeConnecter(true)}
+            onOuvrirGroupe={() => setVeutSeConnecter(true)}
+            onFermer={() => setVeutSeConnecter(true)}
+          />
+          <StatusBar style="dark" />
+        </View>
+      );
+    }
     return (
       <View style={styles.container}>
-        <AuthScreen />
+        <AuthScreen origine={origineInscription} />
         <StatusBar style="dark" />
       </View>
     );
@@ -766,7 +828,38 @@ function AppContent() {
   if (!hasProfile) {
     return (
       <View style={styles.container}>
-        <CompleteProfileScreen onComplete={refetchProfile} onBack={() => supabase.auth.signOut()} />
+        <CompleteProfileScreen onComplete={refetchProfile} onBack={() => supabase.auth.signOut()} origine={origineInscription} />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  // Invitation à un groupe, connecté. Deux arrivées possibles :
+  //  · on avait déjà un compte dans ce navigateur → « Rejoindre le groupe », un toucher ;
+  //  · on vient de s'inscrire DEPUIS cette page (`veutSeConnecter`) → on a déjà dit « pour
+  //    rejoindre », l'entrée part seule.
+  // Dans les deux cas on atterrit DANS le groupe, pas sur le fil : c'est là que sont les mains de
+  // ceux qui l'ont invité (décision de Victor, 17/09/2026).
+  if (groupeToken) {
+    const quitterInvitation = () => {
+      setGroupeToken(null);
+      clearDeepLinkFromUrl();
+    };
+    return (
+      <View style={styles.container}>
+        <InvitationGroupeScreen
+          token={groupeToken}
+          dejaConnecte
+          rejoindreAutomatiquement={veutSeConnecter}
+          onCreerCompte={quitterInvitation}
+          onOuvrirGroupe={(groupId) => {
+            quitterInvitation();
+            refreshMyGroups();
+            setViewingGroupId(groupId);
+            setMode('group');
+          }}
+          onFermer={quitterInvitation}
+        />
         <StatusBar style="dark" />
       </View>
     );
@@ -1068,8 +1161,7 @@ function AppContent() {
           currentUserId={session.user.id}
           onBack={onBack}
           onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
+            ouvrirProfil(profileId, 'invitation');
           }}
           onInvitationHandled={refreshPendingInvitationsCount}
         />
@@ -1098,8 +1190,7 @@ function AppContent() {
           onCorrectPost={(postId, depuis) => openCorrection(postId, 'post', depuis)}
           onDuplicatePost={(postId) => openDuplication(postId, 'post')}
           onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
+            ouvrirProfil(profileId, 'main');
           }}
           onLoaded={setEditingPostFallback}
         />
@@ -1121,6 +1212,7 @@ function AppContent() {
           profileId={viewingProfileId}
           currentUserId={session.user.id}
           currentUserName={displayName ?? t('commun.joueur')}
+          origine={origineProfil}
           onProfileChanged={refetchProfile}
           onCreateHand={() => openCreator()}
           onBack={onBack}
@@ -1128,8 +1220,7 @@ function AppContent() {
           onCorrectPost={(postId, depuis) => openCorrection(postId, 'profile', depuis)}
           onDuplicatePost={(postId) => openDuplication(postId, 'profile')}
           onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
+            ouvrirProfil(profileId, 'profil');
           }}
           onOpenGroup={(groupId) => {
             setViewingGroupId(groupId);
@@ -1150,8 +1241,7 @@ function AppContent() {
           userId={session.user.id}
           onBack={onBack}
           onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
+            ouvrirProfil(profileId, 'amis');
           }}
         />
         <StatusBar style="dark" />
@@ -1214,8 +1304,7 @@ function AppContent() {
             setMode('inviteToGroup');
           }}
           onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
+            ouvrirProfil(profileId, 'groupe');
           }}
         />
         <StatusBar style="dark" />
@@ -1248,10 +1337,10 @@ function AppContent() {
         <AddFriendsScreen
           currentUserId={session.user.id}
           onBack={onBack}
-          onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
-          }}
+          // Seul écran à dire lui-même d'où l'on vient : ses deux onglets sont deux portes
+          // distinctes (une suggestion qu'on nous propose, un code qu'on scanne en personne), et
+          // les confondre reviendrait à ne pas mesurer.
+          onSelectProfile={ouvrirProfil}
         />
         <StatusBar style="dark" />
       </Screen>
@@ -1267,8 +1356,7 @@ function AppContent() {
           currentUserId={session.user.id}
           onBack={onBack}
           onSelectProfile={(profileId) => {
-            setViewingProfileId(profileId);
-            setMode('profile');
+            ouvrirProfil(profileId, 'autre');
           }}
         />
         <StatusBar style="dark" />
@@ -1408,12 +1496,10 @@ function AppContent() {
               onDuplicate={() => openDuplication(post.id, 'feed')}
               onToggleLike={() => handleToggleLike(post.id)}
               onPressAuthor={() => {
-                setViewingProfileId(post.authorId);
-                setMode('profile');
+                ouvrirProfil(post.authorId, 'fil');
               }}
               onSelectProfile={(profileId) => {
-                setViewingProfileId(profileId);
-                setMode('profile');
+                ouvrirProfil(profileId, 'fil');
               }}
               onOpenGroup={(groupId) => {
                 setViewingGroupId(groupId);
@@ -1517,8 +1603,7 @@ function AppContent() {
         onClose={() => setMenuOpen(false)}
         onOpenProfile={() => {
           setMenuOpen(false);
-          setViewingProfileId(session.user.id);
-          setMode('profile');
+          ouvrirProfil(session.user.id, 'autre');
         }}
         onSignOut={() => {
           setMenuOpen(false);
@@ -1534,8 +1619,7 @@ function AppContent() {
         }}
         onSelectProfile={(profileId) => {
           setNotificationsOpen(false);
-          setViewingProfileId(profileId);
-          setMode('profile');
+          ouvrirProfil(profileId, 'notification');
         }}
         onOpenGroup={(groupId) => {
           setNotificationsOpen(false);
@@ -1556,8 +1640,7 @@ function AppContent() {
         onClose={() => setSearchOpen(false)}
         onSelectProfile={(profileId) => {
           setSearchOpen(false);
-          setViewingProfileId(profileId);
-          setMode('profile');
+          ouvrirProfil(profileId, 'recherche');
         }}
       />
       <StatusBar style="dark" />

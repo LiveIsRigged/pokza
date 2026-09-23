@@ -34,6 +34,10 @@ type NotificationType =
   | 'group_invite'
   | 'group_accept'
   | 'group_posted'
+  // Au fondateur : un membre a invité quelqu'un / quelqu'un est entré par le lien d'un membre.
+  // Les deux nomment une SECONDE personne, portée par `subject_id`.
+  | 'group_member_invited'
+  | 'group_member_joined'
   | 'report_resolved'
   | 'content_removed'
   | 'account_sanctioned';
@@ -46,6 +50,9 @@ interface NotificationRecord {
   post_id: string | null;
   comment_id: string | null;
   group_id: string | null;
+  /** La seconde personne des deux notifications de groupe ci-dessus (l'invité, ou celui qui a
+   *  envoyé le lien). Nulle pour tous les autres types. */
+  subject_id: string | null;
 }
 
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
@@ -95,8 +102,16 @@ function bodyFor(
   actorName: string,
   postLocation: string | null,
   groupName: string | null,
+  subjectName: string,
 ): string {
-  const vars = { nom: actorName, lieu: postLocation ?? '', groupe: groupName ?? '' };
+  // `invite` et `parrain` désignent la même seconde personne, vue depuis chacune des deux phrases.
+  const vars = {
+    nom: actorName,
+    lieu: postLocation ?? '',
+    groupe: groupName ?? '',
+    invite: subjectName,
+    parrain: subjectName,
+  };
   if (type === 'friend_posted') {
     return remplir(texte(langue, postLocation ? 'friend_posted_lieu' : 'friend_posted'), vars).trim();
   }
@@ -132,6 +147,8 @@ function familyFor(type: NotificationType): PrefFamily | null {
       return 'friends';
     case 'group_invite':
     case 'group_accept':
+    case 'group_member_invited':
+    case 'group_member_joined':
       return 'groups';
     case 'friend_posted':
       return 'posted';
@@ -180,7 +197,7 @@ Deno.serve(async (req) => {
     }
 
     // Résolution des libellés en service_role (contourne la RLS).
-    const [{ data: actor }, { data: destinataire }, post, group] = await Promise.all([
+    const [{ data: actor }, { data: destinataire }, post, group, sujet] = await Promise.all([
       // `display_name` et non `pseudo` : c'est le seul nom sous lequel une personne apparaît dans
       // l'app depuis le 23/08, et une notification qui annonce un pseudo que le destinataire n'a
       // jamais vu ne lui apprend rien. La colonne vaut déjà le pseudo pour qui a choisi de
@@ -196,11 +213,22 @@ Deno.serve(async (req) => {
       n.group_id
         ? admin.from('groups').select('name').eq('id', n.group_id).maybeSingle()
         : Promise.resolve({ data: null }),
+      n.subject_id
+        ? admin.from('profiles').select('display_name').eq('id', n.subject_id).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
     const langue = destinataire?.language ?? REPLI;
     const actorName = actor?.display_name ?? texte(langue, 'quelquun');
-    const body = bodyFor(n.type, langue, actorName, post?.data?.location ?? null, group?.data?.name ?? null);
+    const subjectName = sujet?.data?.display_name ?? texte(langue, 'quelquun');
+    const body = bodyFor(
+      n.type,
+      langue,
+      actorName,
+      post?.data?.location ?? null,
+      group?.data?.name ?? null,
+      subjectName,
+    );
     const message = JSON.stringify({
       title: 'Pokza',
       body,

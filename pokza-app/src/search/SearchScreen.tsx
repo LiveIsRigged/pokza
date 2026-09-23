@@ -9,15 +9,22 @@ import { searchProfiles, type ProfileSummary } from '../data/profiles';
 import { fetchFriends } from '../data/friends';
 import {
   cancelGroupInvite,
+  createGroupInviteLink,
+  fetchClosedDoors,
+  fetchGroup,
   fetchGroupMembers,
   inviteToGroup,
   type GroupMember,
   type GroupMemberStatus,
+  type RaisonPorteFermee,
 } from '../data/groups';
+import { ISSUE_PARTAGE, POKZA_WEB_ORIGIN, shareOrCopy } from '../utils/share';
+import { trackEvent } from '../analytics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { refusedMessage } from '../data/writeGuard';
 import { Popover } from '../components/ui/Popover';
 import { ConfirmSheet } from '../components/ui/ConfirmSheet';
-import { PersonIcon } from '../components/ui/icons';
+import { PersonIcon, ShareIcon } from '../components/ui/icons';
 import { PastilleEtat } from '../components/ui/PastilleEtat';
 import { autoFocusUtile } from '../web/clavierVirtuel';
 import { useT } from '../i18n';
@@ -25,6 +32,11 @@ import { useT } from '../i18n';
 /** Où en est chacun dans le groupe, par id de profil. */
 function statusById(members: GroupMember[]): Map<string, GroupMemberStatus> {
   return new Map(members.map((m) => [m.userId, m.status] as const));
+}
+
+/** Qui a envoyé chaque invitation, par id de profil. */
+function inviteursById(members: GroupMember[]): Map<string, string> {
+  return new Map(members.map((m) => [m.userId, m.invitedBy] as const));
 }
 
 interface SearchScreenProps {
@@ -77,6 +89,25 @@ export function SearchScreen({
   const [cancelTarget, setCancelTarget] = useState<ProfileSummary | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // Depuis le 17/09/2026, tout membre invite, et l'écran doit dire à chacun ce qu'IL peut faire :
+  // qui a envoyé chaque invitation (on n'annule que la sienne, sauf le fondateur), et quelles
+  // portes sont fermées (retrait par le fondateur, ou refus) — pour un simple membre, la pastille
+  // prend alors la place du bouton, au lieu d'un bouton qui ne pourrait qu'échouer.
+  const [inviteurs, setInviteurs] = useState<Map<string, string>>(new Map());
+  const [portes, setPortes] = useState<Map<string, RaisonPorteFermee>>(new Map());
+  const [groupe, setGroupe] = useState<{
+    nom: string;
+    fondateurId: string;
+    fondateurNom: string;
+    monNom: string;
+  } | null>(null);
+  // Le lien pour quelqu'un qui n'est pas sur Pokza, fabriqué DÈS L'OUVERTURE : sur iPhone, la
+  // feuille de partage de Safari doit s'ouvrir dans la foulée du toucher, et un aller-retour réseau
+  // intercalé peut la lui faire refuser. Un lien neuf par visite, valable 7 jours.
+  const [lien, setLien] = useState<string | null>(null);
+  const [partageEnCours, setPartageEnCours] = useState(false);
+  const [partageFeedback, setPartageFeedback] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   // Recherche à la volée, avec un léger débounce pour ne pas envoyer une requête à chaque frappe.
   useEffect(() => {
@@ -107,10 +138,23 @@ export function SearchScreen({
   useEffect(() => {
     if (!inviteMode || !currentUserId || !inviteGroupId) return;
     let cancelled = false;
-    Promise.all([fetchFriends(currentUserId), fetchGroupMembers(inviteGroupId)])
-      .then(([friends, members]) => {
+    Promise.all([
+      fetchFriends(currentUserId),
+      fetchGroupMembers(inviteGroupId),
+      fetchClosedDoors(inviteGroupId),
+      fetchGroup(inviteGroupId),
+    ])
+      .then(([friends, members, doors, group]) => {
         if (cancelled) return;
         const statuses = statusById(members);
+        setInviteurs(inviteursById(members));
+        setPortes(doors);
+        setGroupe({
+          nom: group.name,
+          fondateurId: group.ownerId,
+          fondateurNom: members.find((m) => m.userId === group.ownerId)?.displayName ?? '?',
+          monNom: members.find((m) => m.userId === currentUserId)?.displayName ?? '?',
+        });
         setMemberStatus(statuses);
         setFriendCount(friends.length);
         setInvitableFriends(
@@ -122,6 +166,12 @@ export function SearchScreen({
       .catch((err) => {
         if (!cancelled) setError(errorMessage(err));
       });
+    // À part, et sans bloquer l'écran : s'il échoue, le toucher sur l'option du bas le refabriquera.
+    createGroupInviteLink(inviteGroupId)
+      .then((token) => {
+        if (!cancelled) setLien(token);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -129,15 +179,42 @@ export function SearchScreen({
 
   // Les erreurs s'affichent ICI. Elles partaient sur le fil, où on les découvrait plus tard et hors
   // contexte, pendant que cet écran laissait croire que l'invitation était partie.
-  const handleInvite = async (profileId: string) => {
+  const handleInvite = async (profile: ProfileSummary) => {
+    const profileId = profile.id;
     if (!currentUserId || !inviteGroupId) return;
     setError(null);
     setSendingIds((s) => new Set(s).add(profileId));
     try {
       await inviteToGroup(inviteGroupId, profileId, currentUserId);
       setMemberStatus((m) => new Map(m).set(profileId, 'pending'));
+      setInviteurs((m) => new Map(m).set(profileId, currentUserId));
+      // Une invitation du fondateur rouvre la porte (la base l'efface) : l'écran suit.
+      setPortes((m) => {
+        const next = new Map(m);
+        next.delete(profileId);
+        return next;
+      });
     } catch (err) {
-      setError(errorMessage(err));
+      // Refus le plus probable : quelque chose a changé depuis l'ouverture (une porte fermée, une
+      // invitation partie d'ailleurs). On relit l'état plutôt que de deviner — la pastille prend
+      // alors la place du bouton, et elle suffit à dire ce qui s'est passé.
+      try {
+        const [members, doors] = await Promise.all([
+          fetchGroupMembers(inviteGroupId),
+          fetchClosedDoors(inviteGroupId),
+        ]);
+        const statuses = statusById(members);
+        setMemberStatus(statuses);
+        setInviteurs(inviteursById(members));
+        setPortes(doors);
+        if (doors.get(profileId) === 'removed' && groupe && groupe.fondateurId !== currentUserId) {
+          setError(t('groupe.porte_retire_secours', { fondateur: groupe.fondateurNom, nom: profile.displayName }));
+        } else if (!statuses.has(profileId) && !doors.has(profileId)) {
+          setError(errorMessage(err));
+        }
+      } catch {
+        setError(errorMessage(err));
+      }
     } finally {
       setSendingIds((s) => {
         const next = new Set(s);
@@ -174,6 +251,29 @@ export function SearchScreen({
     }
   };
 
+  // Inviter quelqu'un qui n'est pas sur Pokza : un lien, par la feuille de partage, comme une main.
+  // Pas de bouton « Lien d'invitation » ni de page à part — ça faisait « Discord » (Victor,
+  // 17/09/2026) : c'est une option du même geste « Inviter », fixée en bas de l'écran.
+  const handlePartagerLien = async () => {
+    if (!inviteGroupId || !groupe || partageEnCours) return;
+    setPartageEnCours(true);
+    try {
+      const token = lien ?? (await createGroupInviteLink(inviteGroupId));
+      if (!lien) setLien(token);
+      const message = t('groupe.partage_message', { nom: groupe.monNom, groupe: groupe.nom });
+      const outcome = await shareOrCopy({ title: message, message, url: `${POKZA_WEB_ORIGIN}/g/${token}` });
+      trackEvent('invitation_partagee', { cible: 'groupe', issue: ISSUE_PARTAGE[outcome] });
+      if (outcome === 'copied') setPartageFeedback(t('post.lien_copie'));
+      else if (outcome === 'unavailable') setPartageFeedback(t('post.partage_indisponible'));
+      if (outcome === 'copied' || outcome === 'unavailable') setTimeout(() => setPartageFeedback(null), 2500);
+    } catch (err) {
+      setPartageFeedback(errorMessage(err));
+      setTimeout(() => setPartageFeedback(null), 3500);
+    } finally {
+      setPartageEnCours(false);
+    }
+  };
+
   // En mode invitation avec recherche vide : on montre les amis plutôt qu'un écran vide.
   const showFriendsList = inviteMode && query.trim().length === 0;
   // On ne se trouve pas soi-même en cherchant qui inviter : la base refuse qu'on s'invite.
@@ -184,17 +284,39 @@ export function SearchScreen({
     : results;
 
   const renderInviteAction = (profile: ProfileSummary) => {
-    if (!memberStatus) return null;
+    if (!memberStatus || !groupe) return null;
     const status = memberStatus.get(profile.id);
+    const jeSuisFondateur = groupe.fondateurId === currentUserId;
     if (status === 'accepted') return <Text style={styles.memberText}>{t('groupe.deja_membre')}</Text>;
     if (status === 'pending') {
+      // Toucher « Invité ✓ » propose d'annuler — seulement là où la base le permettra : sa propre
+      // invitation, ou toutes pour le fondateur. Sur celle d'un autre membre, la pastille est muette.
+      const peutAnnuler = jeSuisFondateur || inviteurs.get(profile.id) === currentUserId;
       return (
         <PastilleEtat
           label={t('groupe.invitation_envoyee')}
-          onPress={() => {
-            setCancelTarget(profile);
-            setCancelOpen(true);
-          }}
+          onPress={
+            peutAnnuler
+              ? () => {
+                  setCancelTarget(profile);
+                  setCancelOpen(true);
+                }
+              : undefined
+          }
+        />
+      );
+    }
+    // Porte fermée : le fondateur, lui, peut toujours réinviter — c'est même la seule façon de la
+    // rouvrir. Pour un membre, l'état remplace le bouton.
+    const porte = portes.get(profile.id);
+    if (porte && !jeSuisFondateur) {
+      return (
+        <PastilleEtat
+          label={
+            porte === 'removed'
+              ? t('groupe.porte_retire', { nom: groupe.fondateurNom })
+              : t('groupe.porte_refuse')
+          }
         />
       );
     }
@@ -202,7 +324,7 @@ export function SearchScreen({
     return (
       <Pressable
         style={[styles.inviteButton, sending && styles.inviteButtonSending]}
-        onPress={() => void handleInvite(profile.id)}
+        onPress={() => void handleInvite(profile)}
         disabled={sending}
         hitSlop={8}
       >
@@ -256,7 +378,11 @@ export function SearchScreen({
                 ? t('recherche.aucun_ami')
                 : t('recherche.tous_amis_dans_groupe')
               : query.trim().length > 0
-              ? t('recherche.personne')
+              ? // La phrase renvoie vers l'option fixée en bas de l'écran — qui n'existe que dans
+                // l'invitation à un groupe. Ailleurs, « ci-dessous » ne désignerait rien.
+                inviteMode
+                ? t('recherche.personne_inviter')
+                : t('recherche.personne')
               : ''}
           </Text>
         ) : (
@@ -278,6 +404,23 @@ export function SearchScreen({
           ))
         )}
       </ScrollView>
+
+      {/* FIXÉE EN BAS, hors de la liste : à la fin d'une liste d'amis longue, elle disparaîtrait
+          dès qu'on en a vingt. Et quand une recherche ne trouve personne — le moment exact où l'on
+          comprend que la personne n'est pas sur Pokza — elle est déjà sous les yeux. */}
+      {inviteMode && (
+        <View style={[styles.horsPokzaBar, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+          {partageFeedback && <Text style={styles.partageFeedback}>{partageFeedback}</Text>}
+          <Pressable
+            style={[styles.horsPokzaButton, partageEnCours && styles.inviteButtonSending]}
+            onPress={() => void handlePartagerLien()}
+            disabled={partageEnCours || !groupe}
+          >
+            <ShareIcon size={16} color={colors.textSecondary} />
+            <Text style={styles.horsPokzaText}>{t('groupe.inviter_hors_pokza')}</Text>
+          </Pressable>
+        </View>
+      )}
 
       {inviteMode && (
         <ConfirmSheet
@@ -420,6 +563,36 @@ const styles = StyleSheet.create({
   memberText: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  horsPokzaBar: {
+    paddingHorizontal: 14,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: borders.hairline,
+    backgroundColor: colors.feedBackground,
+    alignItems: 'center',
+  },
+  // Même allure que « Liste des membres » sur la page du groupe (contour, texte gris) : une option
+  // secondaire, qui ne dispute pas la vedette aux boutons « Inviter » de la liste.
+  horsPokzaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: borders.default,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+  },
+  horsPokzaText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  partageFeedback: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
   pseudo: {
     fontSize: 15,

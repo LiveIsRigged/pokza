@@ -6,6 +6,8 @@ import { Pressable } from '../components/ui/Pressable';
 import { BackButton, MoreButton } from '../components/ui/HeaderButton';
 import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, SCREEN_TOP, spacing, tints, typography } from '../theme/theme';
 import { fetchProfile, type ProfileDetails } from '../data/profiles';
+import { trackEvent } from '../analytics';
+import type { OrigineProfil } from '../analytics/events';
 import { EditProfileScreen } from './EditProfileScreen';
 import {
   pickAvatarFromCamera,
@@ -74,6 +76,10 @@ interface ProfileScreenProps {
   onCorrectPost: (postId: string, depuis: Phase) => void | Promise<void>;
   onDuplicatePost: (postId: string) => void | Promise<void>;
   onSelectProfile?: (profileId: string) => void;
+  /** D'où l'on vient — pour la MESURE seulement, et pour une raison précise : toutes les façons
+   *  d'ajouter quelqu'un finissent sur cet écran, donc c'est le seul endroit où l'on peut encore
+   *  dire par quelle porte la demande est partie. Rien à l'écran n'en dépend. */
+  origine?: OrigineProfil;
   /** Ouvre la page du groupe depuis la pastille 👥 d'une main de groupe. */
   onOpenGroup?: (groupId: string) => void;
   /** Ouvre l'écran séparé « Mes amis » (uniquement sur son propre profil). */
@@ -99,6 +105,7 @@ export function ProfileScreen({
   onOpenFriends,
   onCreateHand,
   onProfileChanged,
+  origine,
 }: ProfileScreenProps) {
   // Masque le `t` du module : les aides hors composant (dates, amis en commun) prennent celui-ci.
   const t = useT();
@@ -201,6 +208,10 @@ export function ProfileScreen({
     setBusyPendingIds((s) => new Set(s).add(senderId));
     try {
       await action();
+      trackEvent('demande_ami_traitee', {
+        issue: outcome === 'accepted' ? 'acceptee' : 'refusee',
+        lieu: 'profil',
+      });
       setPendingOutcomes((m) => new Map(m).set(senderId, outcome));
       // Le compte d'amis suit l'acceptation, une fois celle-ci faite.
       if (outcome === 'accepted') setFriendCount((c) => c + 1);
@@ -324,6 +335,7 @@ export function ProfileScreen({
     setFriendStatus('pending_sent');
     try {
       await sendFriendRequest(currentUserId, profileId);
+      trackEvent('demande_ami_envoyee', { origine: origine ?? 'autre' });
     } catch (err) {
       setFriendStatus(previous);
       setError(errorMessage(err));
@@ -335,6 +347,7 @@ export function ProfileScreen({
     setFriendStatus('friends');
     try {
       await acceptFriendRequest(profileId, currentUserId);
+      trackEvent('demande_ami_traitee', { issue: 'acceptee', lieu: 'profil' });
     } catch (err) {
       setFriendStatus(previous);
       setError(errorMessage(err));

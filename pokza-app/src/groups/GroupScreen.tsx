@@ -424,16 +424,17 @@ export const GroupScreen = React.forwardRef<GroupScreenHandle, GroupScreenProps>
               {group.description && <Text style={styles.description}>{group.description}</Text>}
 
               <View style={styles.headerActions}>
-                {/* Visible de tous les membres, contrairement à « Inviter » — remplace l'ancienne
-                    section « Membres » systématiquement dépliée sur la page. */}
+                {/* Remplace l'ancienne section « Membres » systématiquement dépliée sur la page. */}
                 <Pressable style={styles.membersButton} onPress={() => setViewingMembers(true)}>
                   <Text style={styles.membersButtonText}>{t('groupe.liste_membres')}</Text>
                 </Pressable>
-                {isOwner && (
-                  <Pressable style={styles.inviteButton} onPress={() => onInviteMembers(groupId)}>
-                    <Text style={styles.inviteButtonText}>{t('groupe.inviter')}</Text>
-                  </Pressable>
-                )}
+                {/* Tout membre invite depuis le 17/09/2026 — seul le fondateur le pouvait. Si un
+                    ami devait passer par le fondateur pour faire entrer son pote, l'invitation
+                    mourait en route (Victor). Le fondateur est prévenu à chaque invitation et
+                    garde le dernier mot : ce qu'il retire, un membre ne peut plus le réinviter. */}
+                <Pressable style={styles.inviteButton} onPress={() => onInviteMembers(groupId)}>
+                  <Text style={styles.inviteButtonText}>{t('groupe.inviter')}</Text>
+                </Pressable>
               </View>
             </View>
 

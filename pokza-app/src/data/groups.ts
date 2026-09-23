@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { assertWritten, refusedMessage } from './writeGuard';
+import { fetchDisplayNames } from './profiles';
 import { t } from '../i18n/traduire';
 
 export interface Group {
@@ -202,6 +203,10 @@ export interface PendingGroupInvite {
   groupId: string;
   groupName: string;
   invitedBy: string;
+  /** Le nom du fondateur : la feuille de refus le cite (« Seul Marc pourra t'y inviter à nouveau »),
+   *  puisqu'après un refus lui seul peut réinviter. Chargé avec la liste pour que la feuille
+   *  s'ouvre complète, sans texte qui change sous les yeux. */
+  ownerName: string;
 }
 
 export async function fetchPendingGroupInvites(userId: string): Promise<PendingGroupInvite[]> {
@@ -214,13 +219,114 @@ export async function fetchPendingGroupInvites(userId: string): Promise<PendingG
   if (!rows || rows.length === 0) return [];
 
   const groupIds = rows.map((r) => r.group_id);
-  const { data: groupRows, error: groupError } = await supabase.from('groups').select('id, name').in('id', groupIds);
+  const { data: groupRows, error: groupError } = await supabase
+    .from('groups')
+    .select('id, name, owner_id')
+    .in('id', groupIds);
   if (groupError) throw groupError;
 
   const nameById = new Map((groupRows ?? []).map((g) => [g.id, g.name]));
+  const ownerById = new Map((groupRows ?? []).map((g) => [g.id as string, g.owner_id as string]));
+  const ownerNames = await fetchDisplayNames(Array.from(new Set(ownerById.values())));
   return rows.map((row) => ({
     groupId: row.group_id,
     groupName: nameById.get(row.group_id) ?? '?',
     invitedBy: row.invited_by,
+    ownerName: ownerNames.get(ownerById.get(row.group_id) ?? '') ?? '?',
   }));
+}
+
+// ── INVITER DANS UN GROUPE — tout membre invite, le fondateur surveille ─────────────────────
+// Décisions de Victor des 16 et 17/09/2026, mécanique et garde-fous dans
+// `docs/dev/invitations-groupe.sql` :
+//  · tout membre ACCEPTÉ invite ; le fondateur est prévenu à l'invitation et peut retirer ;
+//  · un retrait par le fondateur, ou un refus de l'invité, ferme la porte : seul le fondateur peut
+//    ensuite réinviter cette personne. Quitter le groupe ne ferme rien ;
+//  · quelqu'un qui n'est pas sur Pokza reçoit un lien : plusieurs usages, 7 jours, et l'ouvrir fait
+//    ENTRER. Un lien n'ouvre jamais une porte fermée.
+
+/** Pourquoi une personne ne peut plus être invitée par un simple membre. */
+export type RaisonPorteFermee = 'removed' | 'declined';
+
+/**
+ * Les portes fermées d'un groupe, par id de personne. L'écran « Inviter » s'en sert pour afficher
+ * « Retiré par Marc » ou « A refusé » À LA PLACE du bouton — un bouton qui ne pourrait qu'échouer
+ * est un piège (audit du 15/09). La RLS ne les montre qu'aux membres du groupe.
+ */
+export async function fetchClosedDoors(groupId: string): Promise<Map<string, RaisonPorteFermee>> {
+  const { data, error } = await supabase
+    .from('group_closed_doors')
+    .select('user_id, reason')
+    .eq('group_id', groupId);
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.user_id as string, row.reason as RaisonPorteFermee]));
+}
+
+/**
+ * Un lien NEUF à chaque partage, valable 7 jours à partir de maintenant et pour plusieurs
+ * personnes. Réutiliser celui de la veille le ferait mourir plus tôt chez qui le reçoit.
+ * Rejette si l'appelant n'est pas membre accepté du groupe.
+ */
+export async function createGroupInviteLink(groupId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_group_invite_link', { p_group_id: groupId });
+  if (error) throw error;
+  if (!data) throw new Error(t('erreur.appartenance_groupe'));
+  return data as string;
+}
+
+/** Ce qu'un visiteur — même sans compte — voit derrière un lien. */
+export interface GroupLinkPreview {
+  groupId: string;
+  groupName: string;
+  memberCount: number;
+  /** Celui qui a ENVOYÉ le lien — pas forcément le fondateur. La page dit « Paul t'invite »,
+   *  parce que c'est Paul que l'arrivant connaît. */
+  hostId: string;
+  hostName: string;
+  hostAvatarUrl?: string;
+  /** Une main PUBLIQUE de l'hôte, à rejouer sur la page d'accueil du lien. Absente s'il n'en a
+   *  aucune : la page vaut toujours, elle montre juste le groupe et son hôte. */
+  postId?: string;
+}
+
+/** `null` = lien inconnu, expiré, ou dont l'hôte n'est plus membre. Appelable sans compte. */
+export async function fetchGroupLinkPreview(token: string): Promise<GroupLinkPreview | null> {
+  const { data, error } = await supabase.rpc('group_link_preview', { p_token: token });
+  if (error) throw error;
+  const row = (data as
+    | {
+        group_id: string;
+        group_name: string;
+        member_count: number;
+        host_id: string;
+        host_name: string;
+        host_avatar: string | null;
+        post_id: string | null;
+      }[]
+    | null)?.[0];
+  if (!row) return null;
+  return {
+    groupId: row.group_id,
+    groupName: row.group_name,
+    memberCount: row.member_count,
+    hostId: row.host_id,
+    hostName: row.host_name,
+    hostAvatarUrl: row.host_avatar ?? undefined,
+    postId: row.post_id ?? undefined,
+  };
+}
+
+/** Les trois issues d'un lien ouvert, telles que la base les nomme. L'écran les traduit — on
+ *  ne montre jamais ces mots-là. */
+export type ResultatLienGroupe = 'rejoint' | 'deja_membre' | 'lien_invalide';
+
+/**
+ * Entrer dans le groupe par un lien. Un compte banni, bloqué avec l'hôte, retiré du groupe ou qui
+ * a refusé d'y entrer reçoit `lien_invalide`, comme un lien expiré : on ne dit pas à quelqu'un,
+ * par ce biais, qu'il a été retiré.
+ */
+export async function joinGroupByLink(token: string): Promise<ResultatLienGroupe> {
+  const { data, error } = await supabase.rpc('join_group_by_link', { p_token: token });
+  if (error) throw error;
+  return (data as ResultatLienGroupe) ?? 'lien_invalide';
 }

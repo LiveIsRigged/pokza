@@ -389,7 +389,7 @@
   "groupe.choisir_autre": "Choose another group",
   "groupe.nouveau": "+ New group",
   "groupe.en_attente": "pending",
-  "groupe.exclure_message": "They will no longer see the hands shared here, and can be invited again later.",
+  "groupe.exclure_message": "They will no longer see the hands shared here. Only you can invite them again.",
   "groupe.choisir_titre": "Choose a private group",
   "groupe.rechercher": "Search for a group",
   "groupe.aucun_resultat": "No group by that name.",
@@ -863,5 +863,24 @@
   "diag.aucune_carte_montree": "the file shows nobody's cards",
   "diag.aucune_ligne_lisible": "no readable line",
   "diag.fichier_vide": "empty file",
-  "diag.fichier_sans_texte": "file with no text"
+  "diag.fichier_sans_texte": "file with no text",
+  "groupe.inviter_hors_pokza": "Invite someone who isn't on Pokza",
+  "groupe.partage_message": "{nom} invites you to join the group {groupe} on Pokza",
+  "groupe.porte_retire": "Removed by {nom}",
+  "groupe.porte_refuse": "Declined",
+  "groupe.porte_retire_secours": "{fondateur} removed {nom} from this group — only they can invite them again.",
+  "groupe.refuser_titre": "Decline the invitation to {groupe}?",
+  "groupe.refuser_message": "Only {nom} will be able to invite you again.",
+  "notif.group_member_invited": "{nom} invited {invite} to {groupe}",
+  "notif.group_member_joined": "{nom} joined {groupe} thanks to {parrain}",
+  "accueil_groupe.titre": "{nom} invites you to {groupe}",
+  "accueil_groupe.membres": {
+    "one": "{count} member",
+    "other": "{count} members"
+  },
+  "accueil_groupe.creer_compte": "Create my account to join",
+  "accueil_groupe.rejoindre": "Join the group",
+  "accueil_groupe.deja_membre": "You're already in this group.",
+  "accueil_groupe.invalide": "This link is no longer valid.",
+  "recherche.personne_inviter": "Nobody matches. If they're not on Pokza yet, you can invite them below."
 }

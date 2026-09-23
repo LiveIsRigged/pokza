@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { fetchDisplayNames } from './profiles';
 
 export type NotificationType =
   | 'post_like'
@@ -11,6 +12,11 @@ export type NotificationType =
   | 'group_invite'
   | 'group_accept'
   | 'group_posted'
+  // Au fondateur, quand un MEMBRE invite quelqu'un (« Paul a invité Kevin dans Miami 2026 ») et
+  // quand quelqu'un entre par le lien d'un membre (« Kevin a rejoint Miami 2026 grâce à Paul »).
+  // Toutes deux nomment une SECONDE personne, portée par `subject_id` (cf. `subjectName`).
+  | 'group_member_invited'
+  | 'group_member_joined'
   // Notifications de modération (accusé de traitement 2.6, retrait de contenu, sanction 4.4).
   // L'« acteur » est un admin — volontairement présenté comme « la modération », jamais nommé.
   | 'report_resolved'
@@ -47,9 +53,19 @@ export interface AppNotification {
   commentId?: string;
   groupId?: string;
   groupName?: string;
+  /** La seconde personne des deux notifications de groupe ci-dessus : l'invité pour
+   *  `group_member_invited`, celui qui a envoyé le lien pour `group_member_joined`. Absente pour
+   *  les autres types — et aussi si sa relecture a échoué : l'écran dit alors « Quelqu'un ». */
+  subjectName?: string;
   read: boolean;
   createdAt: string;
 }
+
+/** Les types qui nomment une seconde personne. */
+const AVEC_SECONDE_PERSONNE: ReadonlySet<NotificationType> = new Set([
+  'group_member_invited',
+  'group_member_joined',
+]);
 
 function rowToNotification(row: NotificationRow): AppNotification {
   return {
@@ -76,7 +92,39 @@ export async function fetchNotifications(): Promise<AppNotification[]> {
     .order('created_at', { ascending: false })
     .limit(50);
   if (error) throw error;
-  return (data as NotificationRow[]).map(rowToNotification);
+  return attachSubjectNames((data as NotificationRow[]).map(rowToNotification));
+}
+
+/**
+ * Relit le nom de la seconde personne là où il y en a une.
+ *
+ * Pourquoi pas une colonne de plus dans `notifications_feed` : réécrire une vue avec
+ * `create or replace` à partir d'un dump périmé est exactement le piège déjà payé sur
+ * `posts_ranked`. Deux petites requêtes sur quelques lignes coûtent moins cher — même choix que
+ * `fetchDisplayNames` pour les suggestions d'amis.
+ *
+ * NE PEUT PAS FAIRE TOMBER LA LISTE : un échec rend les notifications sans ce nom, et l'écran dit
+ * « Quelqu'un ». Une décoration n'a pas le droit de coûter toute la liste (leçon du 20/08).
+ */
+async function attachSubjectNames(notifications: AppNotification[]): Promise<AppNotification[]> {
+  const concernees = notifications.filter((n) => AVEC_SECONDE_PERSONNE.has(n.type)).map((n) => n.id);
+  if (concernees.length === 0) return notifications;
+  try {
+    const { data, error } = await supabase.from('notifications').select('id, subject_id').in('id', concernees);
+    if (error) throw error;
+    const sujetParNotif = new Map(
+      (data ?? [])
+        .filter((row) => row.subject_id)
+        .map((row) => [row.id as string, row.subject_id as string])
+    );
+    const noms = await fetchDisplayNames(Array.from(new Set(sujetParNotif.values())));
+    return notifications.map((n) => {
+      const sujet = sujetParNotif.get(n.id);
+      return sujet ? { ...n, subjectName: noms.get(sujet) } : n;
+    });
+  } catch {
+    return notifications;
+  }
 }
 
 export async function fetchUnreadNotificationCount(): Promise<number> {

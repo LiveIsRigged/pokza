@@ -18,6 +18,12 @@
 --   Frank   = LAMBDA TÉMOIN (mêmes mutuels que Bob, mais ne bloque pas Bob)
 --   Mallory = BANNI
 --   Admin   = ADMIN
+--   Newbie  = LE NOUVEAU VENU — aucun ami, aucune main, aucun groupe (ajouté le 16/09/2026)
+--
+-- ⚠️ POURQUOI NEWBIE. Tout le reste du cast a des amis dès la première seconde : impossible d'y
+--    voir ce que voit quelqu'un qui vient d'arriver — fil sans aucune main de connaissance,
+--    suggestions vides, écran d'accueil. C'est pourtant LA personne que le chantier social vise.
+--    Ne jamais lui donner d'ami ni de main dans ce script : sa valeur est d'être vide.
 -- ============================================================================
 
 begin;
@@ -30,6 +36,7 @@ begin;
 --   Frank   ffffffff-0000-0000-0000-000000000005
 --   Mallory 11111111-0000-0000-0000-000000000006
 --   Admin   99999999-0000-0000-0000-000000000007
+--   Newbie  88888888-0000-0000-0000-000000000008
 
 -- ── Nettoyage (idempotence) ──────────────────────────────────────────────────
 delete from public.reports        where reporter_id in ('aaaaaaaa-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000002','cccccccc-0000-0000-0000-000000000003','dddddddd-0000-0000-0000-000000000004','ffffffff-0000-0000-0000-000000000005','11111111-0000-0000-0000-000000000006','99999999-0000-0000-0000-000000000007')
@@ -39,7 +46,7 @@ delete from public.blocks         where blocker_id in ('aaaaaaaa-0000-0000-0000-
                                       or blocked_id in ('aaaaaaaa-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000002','cccccccc-0000-0000-0000-000000000003','dddddddd-0000-0000-0000-000000000004','ffffffff-0000-0000-0000-000000000005','11111111-0000-0000-0000-000000000006','99999999-0000-0000-0000-000000000007');
 delete from public.admins         where user_id in ('99999999-0000-0000-0000-000000000007');
 -- auth.users supprime en cascade profiles → posts, comments, friend_requests, likes, votes, notifications.
-delete from auth.users where id in ('aaaaaaaa-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000002','cccccccc-0000-0000-0000-000000000003','dddddddd-0000-0000-0000-000000000004','ffffffff-0000-0000-0000-000000000005','11111111-0000-0000-0000-000000000006','99999999-0000-0000-0000-000000000007');
+delete from auth.users where id in ('aaaaaaaa-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000002','cccccccc-0000-0000-0000-000000000003','dddddddd-0000-0000-0000-000000000004','ffffffff-0000-0000-0000-000000000005','11111111-0000-0000-0000-000000000006','99999999-0000-0000-0000-000000000007','88888888-0000-0000-0000-000000000008');
 
 -- ── 1. auth.users (colonnes minimales, jeu neuf = schéma GoTrue récent) ───────
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
@@ -51,7 +58,8 @@ values
  ('00000000-0000-0000-0000-000000000000','dddddddd-0000-0000-0000-000000000004','authenticated','authenticated','dave@dev.test','',  now(), now(), now(), '{"provider":"email","providers":["email"]}','{}'),
  ('00000000-0000-0000-0000-000000000000','ffffffff-0000-0000-0000-000000000005','authenticated','authenticated','frank@dev.test','', now(), now(), now(), '{"provider":"email","providers":["email"]}','{}'),
  ('00000000-0000-0000-0000-000000000000','11111111-0000-0000-0000-000000000006','authenticated','authenticated','mallory@dev.test','',now(), now(), now(), '{"provider":"email","providers":["email"]}','{}'),
- ('00000000-0000-0000-0000-000000000000','99999999-0000-0000-0000-000000000007','authenticated','authenticated','admin@dev.test','', now(), now(), now(), '{"provider":"email","providers":["email"]}','{}');
+ ('00000000-0000-0000-0000-000000000000','99999999-0000-0000-0000-000000000007','authenticated','authenticated','admin@dev.test','', now(), now(), now(), '{"provider":"email","providers":["email"]}','{}'),
+ ('00000000-0000-0000-0000-000000000000','88888888-0000-0000-0000-000000000008','authenticated','authenticated','newbie@dev.test','',now(), now(), now(), '{"provider":"email","providers":["email"]}','{}');
 
 -- ── 2. profiles ──────────────────────────────────────────────────────────────
 insert into public.profiles (id, pseudo, format_favori, frequence_jeu, variante_favorite) values
@@ -61,7 +69,11 @@ insert into public.profiles (id, pseudo, format_favori, frequence_jeu, variante_
  ('dddddddd-0000-0000-0000-000000000004','dave_dev',   'cash_live','regulier','nlhe'),
  ('ffffffff-0000-0000-0000-000000000005','frank_dev',  'cash_live','regulier','nlhe'),
  ('11111111-0000-0000-0000-000000000006','mallory_dev','cash_live','regulier','nlhe'),
- ('99999999-0000-0000-0000-000000000007','admin_dev',  'cash_live','regulier','nlhe');
+ ('99999999-0000-0000-0000-000000000007','admin_dev',  'cash_live','regulier','nlhe'),
+ -- Le nouveau venu. Il n'apparaît dans AUCUN des blocs qui suivent (ni main, ni amitié, ni groupe,
+ -- ni sanction) : c'est tout l'intérêt. Son profil est complet pour qu'il atterrisse sur le fil et
+ -- non sur « Complète ton profil » — c'est le fil qu'on veut regarder par ses yeux.
+ ('88888888-0000-0000-0000-000000000008','newbie_dev', 'cash_live','regulier','nlhe');
 
 -- ── 3. posts (1 par joueur, publics ; hand minimal qui matche la pref → +5 uniforme) ─
 insert into public.posts (id, author_id, title, hand, visibility) values

@@ -4,7 +4,9 @@ import { Platform } from 'react-native';
 export type DeepLinkRoute =
   | { type: 'invite'; userId: string }
   | { type: 'post'; postId: string }
-  | { type: 'share'; token: string };
+  | { type: 'share'; token: string }
+  /** Invitation à un groupe privé, envoyée à quelqu'un qui n'est peut-être pas sur Pokza. */
+  | { type: 'groupe'; token: string };
 
 /**
  * Origine web réelle sur laquelle bâtir les liens partagés : en dev c'est `http://localhost:8081`,
@@ -23,9 +25,9 @@ export function webOrigin(): string {
 /**
  * Traduit le chemin de l'URL courante (web uniquement) en intention de navigation. Formats gérés :
  * `/invite/:userId` (ouvrir le profil de la personne pour l'ajouter), `/post/:postId` (une main
- * PUBLIQUE, lisible par son seul identifiant) et `/s/:token` (une main qui ne l'est pas, ouverte
- * par un jeton que son auteur a explicitement créé). Renvoie `null` sur tout autre chemin, ou sur
- * mobile natif.
+ * PUBLIQUE, lisible par son seul identifiant), `/s/:token` (une main qui ne l'est pas, ouverte
+ * par un jeton que son auteur a explicitement créé) et `/g/:token` (une invitation à un groupe
+ * privé, valable 7 jours). Renvoie `null` sur tout autre chemin, ou sur mobile natif.
  */
 /**
  * Un lien ouvert de l'extérieur est la SEULE donnée de l'app qui vienne d'un inconnu : n'importe
@@ -63,6 +65,13 @@ export function readInitialDeepLink(): DeepLinkRoute | null {
   if (shareMatch) {
     const token = decodeURIComponent(shareMatch[1]);
     return SHARE_TOKEN.test(token) ? { type: 'share', token } : null;
+  }
+  // Même forme de jeton que `/s/` (16 octets en hexadécimal, fabriqués par la base) : même
+  // contrôle, à la frontière et nulle part ailleurs.
+  const groupeMatch = path.match(/^\/g\/([^/]+)\/?$/);
+  if (groupeMatch) {
+    const token = decodeURIComponent(groupeMatch[1]);
+    return SHARE_TOKEN.test(token) ? { type: 'groupe', token } : null;
   }
   return null;
 }

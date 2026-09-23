@@ -15,6 +15,15 @@ export interface ShareContent {
 
 export type ShareOutcome = 'shared' | 'copied' | 'unavailable' | 'cancelled';
 
+/** Le sort d'un partage, en clair dans les tableaux de mesure. Sur ordinateur il n'y a pas de
+ *  feuille de partage : `copie` y est la réussite normale, pas un repli raté. */
+export const ISSUE_PARTAGE: Record<ShareOutcome, string> = {
+  shared: 'partage',
+  copied: 'copie',
+  unavailable: 'indisponible',
+  cancelled: 'annule',
+};
+
 /**
  * `Share.share` ouvre le partage natif (WhatsApp, Discord, Messages…) sur mobile, et la boîte de
  * partage du navigateur sur web mobile. Sur desktop, où `navigator.share` n'existe pas,

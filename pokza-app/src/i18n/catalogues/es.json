@@ -389,7 +389,7 @@
   "groupe.choisir_autre": "Elegir otro grupo",
   "groupe.nouveau": "+ Nuevo grupo",
   "groupe.en_attente": "pendiente",
-  "groupe.exclure_message": "Ya no verá las manos compartidas aquí, y podrá ser invitado de nuevo más tarde.",
+  "groupe.exclure_message": "Ya no verá las manos compartidas aquí. Solo tú podrás volver a invitarlo.",
   "groupe.choisir_titre": "Elegir un grupo privado",
   "groupe.rechercher": "Buscar un grupo",
   "groupe.aucun_resultat": "Ningún grupo se llama así.",
@@ -863,5 +863,24 @@
   "diag.aucune_carte_montree": "el archivo no muestra las cartas de nadie",
   "diag.aucune_ligne_lisible": "ninguna línea legible",
   "diag.fichier_vide": "archivo vacío",
-  "diag.fichier_sans_texte": "archivo sin texto"
+  "diag.fichier_sans_texte": "archivo sin texto",
+  "groupe.inviter_hors_pokza": "Invitar a alguien que no está en Pokza",
+  "groupe.partage_message": "{nom} te invita a unirte al grupo {groupe} en Pokza",
+  "groupe.porte_retire": "Retirado por {nom}",
+  "groupe.porte_refuse": "Rechazó",
+  "groupe.porte_retire_secours": "{fondateur} retiró a {nom} de este grupo — solo él puede volver a invitarlo.",
+  "groupe.refuser_titre": "¿Rechazar la invitación a {groupe}?",
+  "groupe.refuser_message": "Solo {nom} podrá volver a invitarte.",
+  "notif.group_member_invited": "{nom} invitó a {invite} a {groupe}",
+  "notif.group_member_joined": "{nom} se unió a {groupe} gracias a {parrain}",
+  "accueil_groupe.titre": "{nom} te invita a {groupe}",
+  "accueil_groupe.membres": {
+    "one": "{count} miembro",
+    "other": "{count} miembros"
+  },
+  "accueil_groupe.creer_compte": "Crear mi cuenta para unirme",
+  "accueil_groupe.rejoindre": "Unirme al grupo",
+  "accueil_groupe.deja_membre": "Ya formas parte de este grupo.",
+  "accueil_groupe.invalide": "Este enlace ya no es válido.",
+  "recherche.personne_inviter": "No coincide nadie. Si todavía no está en Pokza, puedes invitarlo abajo."
 }

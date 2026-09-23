@@ -3,6 +3,7 @@ import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-nat
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { supabase } from '../lib/supabase';
+import { trackEvent } from '../analytics';
 import { Chip } from '../creator/Chip';
 import { CountryPicker } from '../components/ui/CountryPicker';
 import { countryByCode, flagEmoji } from '../data/countries';
@@ -54,6 +55,8 @@ interface CompleteProfileScreenProps {
   /** Revenir en arrière depuis cet écran = se déconnecter : le compte existe déjà (l'inscription
    * est faite), mais tant que le profil n'est pas créé il n'y a rien d'autre où aller. */
   onBack: () => void;
+  /** Reportée telle quelle par `profil_complete`, pour que l'abandon se lise par porte d'entrée. */
+  origine?: 'invitation' | 'direct';
 }
 
 // Construit une date ISO (YYYY-MM-DD) à partir de jour/mois/année saisis séparément, et vérifie
@@ -86,7 +89,7 @@ function isAtLeastAge(dateNaissanceIso: string, minimumAge: number): boolean {
   return age >= minimumAge;
 }
 
-export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScreenProps) {
+export function CompleteProfileScreen({ onComplete, onBack, origine = 'direct' }: CompleteProfileScreenProps) {
   const t = useT();
   const [pseudo, setPseudo] = useState('');
   const [prenom, setPrenom] = useState('');
@@ -194,6 +197,9 @@ export function CompleteProfileScreen({ onComplete, onBack }: CompleteProfileScr
       }
     }
 
+    // Compté ICI et pas à l'entrée de l'écran : couplé à `signed_up`, c'est l'écart entre les deux
+    // qui dit combien de comptes s'arrêtent devant les neuf champs de ce formulaire.
+    trackEvent('profil_complete', { origine });
     setSubmitting(false);
     onComplete();
   };

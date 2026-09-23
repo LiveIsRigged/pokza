@@ -9,7 +9,9 @@ import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, SCREEN_TOP,
 import { Chip } from '../creator/Chip';
 import { Avatar } from '../components/ui/Avatar';
 import { PastilleEtat } from '../components/ui/PastilleEtat';
-import { shareOrCopy, POKZA_WEB_ORIGIN } from '../utils/share';
+import { shareOrCopy, POKZA_WEB_ORIGIN, ISSUE_PARTAGE } from '../utils/share';
+import { trackEvent } from '../analytics';
+import type { OrigineProfil } from '../analytics/events';
 import { useT } from '../i18n';
 import {
   acceptFriendRequest,
@@ -24,10 +26,13 @@ import {
  * une pub…) serait traité comme si son contenu était un id de compte valide. */
 const QR_PREFIX = 'pokza:friend:';
 
+
 interface AddFriendsScreenProps {
   currentUserId: string;
   onBack: () => void;
-  onSelectProfile: (profileId: string) => void;
+  /** Les deux onglets sont deux portes distinctes — une suggestion proposée, un code scanné en
+   *  personne — et c'est l'écran qui sait laquelle a servi (cf. `OrigineProfil`). */
+  onSelectProfile: (profileId: string, origine: OrigineProfil) => void;
 }
 
 type Tab = 'code' | 'scan' | 'suggestions';
@@ -43,6 +48,7 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
       message: t('amis.invitation_message'),
       url: `${POKZA_WEB_ORIGIN}/invite/${currentUserId}`,
     });
+    trackEvent('invitation_partagee', { cible: 'profil', issue: ISSUE_PARTAGE[outcome] });
     if (outcome === 'copied') setShareFeedback(t('post.lien_copie'));
     else if (outcome === 'unavailable') setShareFeedback(t('post.partage_indisponible'));
     if (outcome === 'copied' || outcome === 'unavailable') setTimeout(() => setShareFeedback(null), 2500);
@@ -77,7 +83,7 @@ export function AddFriendsScreen({ currentUserId, onBack, onSelectProfile }: Add
           {shareFeedback && <Text style={styles.feedback}>{shareFeedback}</Text>}
         </View>
       ) : (
-        <ScannerTab currentUserId={currentUserId} onScannedProfile={onSelectProfile} />
+        <ScannerTab currentUserId={currentUserId} onScannedProfile={(id) => onSelectProfile(id, 'qr')} />
       )}
     </View>
   );
@@ -88,7 +94,7 @@ function SuggestionsTab({
   onSelectProfile,
 }: {
   currentUserId: string;
-  onSelectProfile: (profileId: string) => void;
+  onSelectProfile: (profileId: string, origine: OrigineProfil) => void;
 }) {
   const t = useT();
   const [suggestions, setSuggestions] = useState<SuggestedFriend[]>([]);
@@ -132,6 +138,10 @@ function SuggestionsTab({
     setBusyIds((s) => new Set(s).add(senderId));
     try {
       await action();
+      trackEvent('demande_ami_traitee', {
+        issue: outcome === 'accepted' ? 'acceptee' : 'refusee',
+        lieu: 'amis',
+      });
       setOutcomes((m) => new Map(m).set(senderId, outcome));
     } catch (err) {
       setActionError(errorMessage(err));
@@ -164,7 +174,7 @@ function SuggestionsTab({
           <Text style={styles.sectionLabel}>{t('amis.demandes_recues')}</Text>
           {pending.map((req) => (
             <View key={req.senderId} style={styles.suggestionRow}>
-              <Pressable style={styles.pendingInfo} onPress={() => onSelectProfile(req.senderId)}>
+              <Pressable style={styles.pendingInfo} onPress={() => onSelectProfile(req.senderId, 'suggestion')}>
                 <Avatar url={req.senderAvatarUrl} name={req.senderDisplayName} size={40} />
                 <Text style={styles.suggestionPseudo}>{req.senderDisplayName}</Text>
               </Pressable>
@@ -206,7 +216,7 @@ function SuggestionsTab({
         ) : null
       ) : (
         suggestions.map((s) => (
-          <Pressable key={s.id} style={styles.suggestionRow} onPress={() => onSelectProfile(s.id)}>
+          <Pressable key={s.id} style={styles.suggestionRow} onPress={() => onSelectProfile(s.id, 'suggestion')}>
             <Avatar url={s.avatarUrl} name={s.displayName} size={40} />
             <View style={styles.suggestionInfo}>
               <Text style={styles.suggestionPseudo}>{s.displayName}</Text>

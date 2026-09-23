@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
+import { trackEvent } from '../analytics';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { BackButton } from '../components/ui/HeaderButton';
@@ -14,6 +15,7 @@ import {
 import { acceptGroupInvite, fetchPendingGroupInvites, removeGroupMember, type PendingGroupInvite } from '../data/groups';
 import { GroupTableIcon } from '../components/ui/icons';
 import { PastilleEtat } from '../components/ui/PastilleEtat';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import { useT } from '../i18n';
 
 interface InvitationsScreenProps {
@@ -44,6 +46,11 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
   // préfixées, pour qu'un id de profil et un id de groupe ne se confondent jamais.
   const [outcomes, setOutcomes] = useState<Map<string, 'accepted' | 'declined'>>(new Map());
   const [busyKeys, setBusyKeys] = useState<Set<string>>(new Set());
+  // Refuser une invitation de GROUPE passe par une feuille : après un refus, les membres ne pourront
+  // plus réinviter, seul le fondateur le pourra (Victor, 17/09/2026). L'invitation visée survit à la
+  // fermeture, la feuille met 220 ms à redescendre.
+  const [refusCible, setRefusCible] = useState<PendingGroupInvite | null>(null);
+  const [refusOpen, setRefusOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +78,14 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
     setBusyKeys((s) => new Set(s).add(key));
     try {
       await action();
+      // La clé dit déjà de quoi il s'agit (« ami:… » / « groupe:… ») : on ne compte que les
+      // demandes d'ami, les invitations de groupe ont leur propre mesure quand elles arriveront.
+      if (key.startsWith('ami:')) {
+        trackEvent('demande_ami_traitee', {
+          issue: outcome === 'accepted' ? 'acceptee' : 'refusee',
+          lieu: 'invitations',
+        });
+      }
       setOutcomes((m) => new Map(m).set(key, outcome));
       onInvitationHandled();
     } catch (err) {
@@ -155,7 +170,10 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
                   {renderActions(
                     `groupe:${invite.groupId}`,
                     t('invitations.etat_membre'),
-                    () => void handle(`groupe:${invite.groupId}`, 'declined', () => removeGroupMember(invite.groupId, currentUserId)),
+                    () => {
+                      setRefusCible(invite);
+                      setRefusOpen(true);
+                    },
                     () => void handle(`groupe:${invite.groupId}`, 'accepted', () => acceptGroupInvite(invite.groupId, currentUserId))
                   )}
                 </View>
@@ -164,6 +182,25 @@ export function InvitationsScreen({ currentUserId, onBack, onSelectProfile, onIn
           </>
         )}
       </ScrollView>
+
+      <ConfirmSheet
+        visible={refusOpen}
+        icon={GroupTableIcon}
+        title={t('groupe.refuser_titre', { groupe: refusCible?.groupName ?? '?' })}
+        message={t('groupe.refuser_message', { nom: refusCible?.ownerName ?? '?' })}
+        confirmLabel={t('commun.refuser')}
+        cancelLabel={t('commun.annuler')}
+        // Orange : le fondateur peut réinviter, on peut donc revenir dessus.
+        destructive={false}
+        loading={!!refusCible && busyKeys.has(`groupe:${refusCible.groupId}`)}
+        onCancel={() => setRefusOpen(false)}
+        onConfirm={async () => {
+          if (!refusCible) return;
+          const groupId = refusCible.groupId;
+          await handle(`groupe:${groupId}`, 'declined', () => removeGroupMember(groupId, currentUserId));
+          setRefusOpen(false);
+        }}
+      />
     </View>
   );
 }

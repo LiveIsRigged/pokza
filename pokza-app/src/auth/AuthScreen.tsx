@@ -123,7 +123,13 @@ function BrandHeader({ compact }: { compact: boolean }) {
   );
 }
 
-export function AuthScreen() {
+interface AuthScreenProps {
+  /** `invitation` quand la page a été ouverte par un lien `/invite/:id` — la seule façon de savoir
+   *  qu'un compte est né d'une invitation, puisque le lien est consommé bien après. */
+  origine?: 'invitation' | 'direct';
+}
+
+export function AuthScreen({ origine = 'direct' }: AuthScreenProps) {
   const t = useT();
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
@@ -239,7 +245,7 @@ export function AuthScreen() {
     // l'écran resterait figé sur le formulaire sans que rien ne dise pourquoi.
     // Rédigé côté utilisateur : « activée sur le projet » était du vocabulaire d'implémentation.
     if (mode === 'signUp') {
-      trackEvent('signed_up');
+      trackEvent('signed_up', { origine });
       setSignUpMessage(t('auth.compte_cree'));
     }
   };

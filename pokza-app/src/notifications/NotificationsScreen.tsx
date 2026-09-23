@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { errorMessage } from '../utils/errorMessage';
+import { trackEvent } from '../analytics';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from '../components/ui/Pressable';
 import { borders, colors, hitSlopPairLeft, hitSlopPairRight, radius, spacing } from '../theme/theme';
 import { Popover } from '../components/ui/Popover';
 import { PastilleEtat } from '../components/ui/PastilleEtat';
+import { ConfirmSheet } from '../components/ui/ConfirmSheet';
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -67,6 +69,8 @@ function iconFor(type: AppNotification['type']): React.ComponentType<IconProps> 
     case 'group_invite':
     case 'group_accept':
     case 'group_posted':
+    case 'group_member_invited':
+    case 'group_member_joined':
       return GroupTableIcon;
     case 'report_resolved':
     case 'content_removed':
@@ -109,6 +113,12 @@ function textFor(n: AppNotification): string {
       return t('notif.group_accept', { nom, groupe });
     case 'group_posted':
       return t('notif.group_posted', { nom, groupe });
+    // La seconde personne peut manquer (sa relecture a échoué, ou son compte a disparu) : on dit
+    // alors « Quelqu'un » plutôt qu'un blanc au milieu de la phrase.
+    case 'group_member_invited':
+      return t('notif.group_member_invited', { nom, invite: n.subjectName ?? t('notif.quelquun'), groupe });
+    case 'group_member_joined':
+      return t('notif.group_member_joined', { nom, parrain: n.subjectName ?? t('notif.quelquun'), groupe });
     // Notifications de modération : on ne nomme jamais l'admin, on parle de « la modération ».
     case 'report_resolved':
       return t('notif.report_resolved');
@@ -139,6 +149,12 @@ export function NotificationsScreen({
   // réellement en attente — la source de vérité, pas la simple présence de la notification.
   const [pendingFriendActorIds, setPendingFriendActorIds] = useState<Set<string>>(new Set());
   const [pendingGroupIds, setPendingGroupIds] = useState<Set<string>>(new Set());
+  // Nom du fondateur de chaque groupe où une invitation attend : la feuille de refus le cite.
+  const [ownerNameByGroup, setOwnerNameByGroup] = useState<Map<string, string>>(new Map());
+  // Feuille « Refuser l'invitation à … ? ». La notification visée survit à la fermeture : la feuille
+  // met 220 ms à redescendre, et son titre perdrait le nom du groupe en route.
+  const [refusCible, setRefusCible] = useState<AppNotification | null>(null);
+  const [refusOpen, setRefusOpen] = useState(false);
   // Une demande traitée d'ici garde sa ligne (historique) et affiche sa pastille à la place des
   // boutons (« ✓ Amis », « ✓ Membre », « Refusé »). Remises à zéro à chaque rechargement : le panneau
   // reste monté entre deux ouvertures, et une pastille n'a de sens que juste après le geste.
@@ -175,6 +191,7 @@ export function NotificationsScreen({
         setNotifications(data);
         setPendingFriendActorIds(new Set(pendingFriends.map((r) => r.senderId)));
         setPendingGroupIds(new Set(pendingGroups.map((g) => g.groupId)));
+        setOwnerNameByGroup(new Map(pendingGroups.map((g) => [g.groupId, g.ownerName])));
         setOutcomes(new Map());
         setLoading(false);
         const hasUnread = data.some((n) => !n.read);
@@ -196,6 +213,12 @@ export function NotificationsScreen({
     setBusyIds((s) => new Set(s).add(n.id));
     try {
       await action();
+      if (n.type === 'friend_request') {
+        trackEvent('demande_ami_traitee', {
+          issue: outcome === 'accepted' ? 'acceptee' : 'refusee',
+          lieu: 'notifications',
+        });
+      }
       setOutcomes((m) => new Map(m).set(n.id, outcome));
     } catch (err) {
       setError(errorMessage(err));
@@ -217,10 +240,19 @@ export function NotificationsScreen({
     if (!groupId) return;
     return handleAction(n, 'accepted', () => acceptGroupInvite(groupId, currentUserId));
   };
+  // Refuser une invitation de GROUPE n'est pas sans conséquence : les membres ne pourront plus
+  // réinviter, seul le fondateur le pourra. D'où la feuille, que le refus d'une demande d'ami n'a
+  // pas — rien ne l'empêche d'être renvoyée (Victor, 17/09/2026).
   const handleDeclineGroup = (n: AppNotification) => {
-    const groupId = n.groupId;
-    if (!groupId) return;
-    return handleAction(n, 'declined', () => removeGroupMember(groupId, currentUserId));
+    if (!n.groupId) return;
+    setRefusCible(n);
+    setRefusOpen(true);
+  };
+  const confirmRefusGroupe = async () => {
+    const groupId = refusCible?.groupId;
+    if (!refusCible || !groupId) return;
+    await handleAction(refusCible, 'declined', () => removeGroupMember(groupId, currentUserId));
+    setRefusOpen(false);
   };
 
   // Une notification mène à ce dont elle parle. L'ordre compte : une notification liée à une main
@@ -358,6 +390,22 @@ export function NotificationsScreen({
           ))
         )}
       </ScrollView>
+      <ConfirmSheet
+        visible={refusOpen}
+        icon={GroupTableIcon}
+        title={t('groupe.refuser_titre', { groupe: refusCible?.groupName ?? '?' })}
+        message={t('groupe.refuser_message', {
+          nom: (refusCible?.groupId && ownerNameByGroup.get(refusCible.groupId)) || '?',
+        })}
+        confirmLabel={t('commun.refuser')}
+        cancelLabel={t('commun.annuler')}
+        // Orange, comme « Annuler l'invitation » : on peut revenir dessus, le fondateur peut
+        // réinviter (tranché par Victor le 17/09/2026).
+        destructive={false}
+        loading={!!refusCible && busyIds.has(refusCible.id)}
+        onCancel={() => setRefusOpen(false)}
+        onConfirm={() => void confirmRefusGroupe()}
+      />
     </Popover>
   );
 }

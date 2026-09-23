@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { removeAvatar } from './avatars';
 import { assertWritten, refusedMessage } from './writeGuard';
 import { resetAnalytics } from '../analytics';
+import { fold } from '../utils/recherche';
 import { t } from '../i18n/traduire';
 
 /**
@@ -51,18 +52,27 @@ export interface ProfileDetails extends ProfileSummary {
  * Requête client ordinaire, donc soumise aux policies de `profiles` comme n'importe quelle autre
  * lecture — c'est précisément ce qu'on a cherché en stockant le nom plutôt qu'en écrivant une
  * fonction `security definer`, qui aurait dû réappliquer à la main bannissements et blocages.
+ *
+ * ── LES ACCENTS (16/09/2026)
+ * `ilike` est insensible à la CASSE, pas aux ACCENTS : « jerome » ne trouvait pas « Jérôme ». On
+ * cherche donc dans `profiles.search_key`, une colonne qui contient le pseudo ET le nom affiché
+ * repliés (minuscules, accents retirés), tenue par un déclencheur — cf. `docs/dev/recherche-accents.sql`.
+ * La requête tapée est repliée ici par `fold()`, la même fonction que la banque de lieux.
+ *
+ * Deux conséquences :
+ *  • un seul filtre au lieu d'un `or(...)` : plus de guillemets ni d'antislashs à échapper à la
+ *    main dans la grammaire de filtre de PostgREST, où la virgule et les parenthèses sont de la
+ *    SYNTAXE (« Jean, Paul » y coupait la condition en deux) ;
+ *  • la base est toujours PLUS repliée que la requête (`unaccent` traite aussi ø, œ, ß, que `fold`
+ *    laisse passer), jamais moins : ça ne peut produire que des trouvailles en plus, pas des faux.
  */
 export async function searchProfiles(query: string): Promise<ProfileSummary[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
-  // La grammaire de filtre de PostgREST donne un sens à la virgule et aux parenthèses : « Jean,
-  // Paul » couperait le `or` en deux conditions bancales. On passe donc chaque valeur entre
-  // guillemets, en échappant l'antislash et le guillemet, seuls caractères spéciaux à l'intérieur.
-  const motif = `%${trimmed.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}%`;
   const { data, error } = await supabase
     .from('profiles')
     .select('id, display_name, avatar_url')
-    .or(`pseudo.ilike."${motif}",display_name.ilike."${motif}"`)
+    .ilike('search_key', `%${fold(trimmed)}%`)
     .order('display_name')
     .limit(20);
   if (error) throw error;

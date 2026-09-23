@@ -19,13 +19,14 @@ const path = require('path');
 const CATALOGUES = path.join(__dirname, '..', 'pokza-app', 'src', 'i18n', 'catalogues');
 const CIBLE = path.join(__dirname, '..', 'supabase', 'functions', 'send-push', 'textes.json');
 
-// Ce dont la fonction a besoin, et rien de plus : les 13 types de notification, la variante avec
+// Ce dont la fonction a besoin, et rien de plus : les 15 types de notification, la variante avec
 // lieu, et le repli quand l'auteur n'a pas de nom. Les clés y perdent leur préfixe `notif.` pour
 // que le `switch` de la fonction reste lisible.
 const NECESSAIRES = [
   'post_like', 'comment_like', 'post_comment', 'comment_reply',
   'friend_request', 'friend_accept', 'friend_posted', 'friend_posted_lieu',
   'group_invite', 'group_accept', 'group_posted',
+  'group_member_invited', 'group_member_joined',
   'report_resolved', 'content_removed', 'account_sanctioned',
   'quelquun',
 ];

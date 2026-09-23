@@ -389,7 +389,7 @@
   "groupe.choisir_autre": "Andere Gruppe wählen",
   "groupe.nouveau": "+ Neue Gruppe",
   "groupe.en_attente": "ausstehend",
-  "groupe.exclure_message": "Er sieht die hier geteilten Hände nicht mehr und kann später wieder eingeladen werden.",
+  "groupe.exclure_message": "Er sieht die hier geteilten Hände nicht mehr. Nur du kannst ihn erneut einladen.",
   "groupe.choisir_titre": "Private Gruppe wählen",
   "groupe.rechercher": "Gruppe suchen",
   "groupe.aucun_resultat": "Keine Gruppe mit diesem Namen.",
@@ -863,5 +863,24 @@
   "diag.aucune_carte_montree": "die Datei zeigt niemandes Karten",
   "diag.aucune_ligne_lisible": "keine lesbare Zeile",
   "diag.fichier_vide": "leere Datei",
-  "diag.fichier_sans_texte": "Datei ohne Text"
+  "diag.fichier_sans_texte": "Datei ohne Text",
+  "groupe.inviter_hors_pokza": "Jemanden einladen, der nicht auf Pokza ist",
+  "groupe.partage_message": "{nom} lädt dich ein, der Gruppe {groupe} auf Pokza beizutreten",
+  "groupe.porte_retire": "Entfernt von {nom}",
+  "groupe.porte_refuse": "Abgelehnt",
+  "groupe.porte_retire_secours": "{fondateur} hat {nom} aus dieser Gruppe entfernt — nur er kann ihn erneut einladen.",
+  "groupe.refuser_titre": "Einladung in {groupe} ablehnen?",
+  "groupe.refuser_message": "Nur {nom} kann dich wieder einladen.",
+  "notif.group_member_invited": "{nom} hat {invite} in {groupe} eingeladen",
+  "notif.group_member_joined": "{nom} ist {groupe} beigetreten — eingeladen von {parrain}",
+  "accueil_groupe.titre": "{nom} lädt dich in {groupe} ein",
+  "accueil_groupe.membres": {
+    "one": "{count} Mitglied",
+    "other": "{count} Mitglieder"
+  },
+  "accueil_groupe.creer_compte": "Konto erstellen und beitreten",
+  "accueil_groupe.rejoindre": "Der Gruppe beitreten",
+  "accueil_groupe.deja_membre": "Du bist bereits in dieser Gruppe.",
+  "accueil_groupe.invalide": "Dieser Link ist nicht mehr gültig.",
+  "recherche.personne_inviter": "Niemand passt dazu. Wenn er noch nicht auf Pokza ist, kannst du ihn unten einladen."
 }

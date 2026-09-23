@@ -389,7 +389,7 @@
   "groupe.choisir_autre": "Choisir un autre groupe",
   "groupe.nouveau": "+ Nouveau groupe",
   "groupe.en_attente": "en attente",
-  "groupe.exclure_message": "Il ne verra plus les mains partagées ici, et pourra être réinvité plus tard.",
+  "groupe.exclure_message": "Il ne verra plus les mains partagées ici. Seul toi pourras le réinviter.",
   "groupe.choisir_titre": "Choisir un groupe privé",
   "groupe.rechercher": "Rechercher un groupe",
   "groupe.aucun_resultat": "Aucun groupe ne porte ce nom.",
@@ -863,5 +863,24 @@
   "diag.aucune_carte_montree": "le fichier ne montre les cartes de personne",
   "diag.aucune_ligne_lisible": "aucune ligne lisible",
   "diag.fichier_vide": "fichier vide",
-  "diag.fichier_sans_texte": "fichier sans texte"
+  "diag.fichier_sans_texte": "fichier sans texte",
+  "groupe.inviter_hors_pokza": "Inviter quelqu'un qui n'est pas sur Pokza",
+  "groupe.partage_message": "{nom} t'invite à rejoindre le groupe {groupe} sur Pokza",
+  "groupe.porte_retire": "Retiré par {nom}",
+  "groupe.porte_refuse": "A refusé",
+  "groupe.porte_retire_secours": "{fondateur} a retiré {nom} de ce groupe — lui seul peut le réinviter.",
+  "groupe.refuser_titre": "Refuser l'invitation à {groupe} ?",
+  "groupe.refuser_message": "Seul {nom} pourra t'y inviter à nouveau.",
+  "notif.group_member_invited": "{nom} a invité {invite} dans {groupe}",
+  "notif.group_member_joined": "{nom} a rejoint {groupe} grâce à {parrain}",
+  "accueil_groupe.titre": "{nom} t'invite dans {groupe}",
+  "accueil_groupe.membres": {
+    "one": "{count} membre",
+    "other": "{count} membres"
+  },
+  "accueil_groupe.creer_compte": "Créer mon compte pour rejoindre",
+  "accueil_groupe.rejoindre": "Rejoindre le groupe",
+  "accueil_groupe.deja_membre": "Tu fais déjà partie de ce groupe.",
+  "accueil_groupe.invalide": "Ce lien n'est plus valable.",
+  "recherche.personne_inviter": "Personne ne correspond. S'il n'est pas encore sur Pokza, tu peux l'inviter ci-dessous."
 }
