@@ -118,7 +118,9 @@ alter table public.profiles alter column display_name set not null;
 -- indispensable si des droits PAR COLONNE y ont été posés — une nouvelle colonne ne serait alors
 -- lisible par personne. En lecture seulement : la colonne n'a pas à être écrite par le client, et
 -- le déclencheur la recalcule de toute façon.
-grant select (display_name) on public.profiles to anon, authenticated;
+-- `authenticated` SEULEMENT — corrige le 23/09/2026. Le « to anon » d'origine, pose ici par
+-- prudence, a rouvert F-08 huit jours apres sa fermeture (cf. docs/dev/f08-profils-anon.sql).
+grant select (display_name) on public.profiles to authenticated;
 
 commit;
 

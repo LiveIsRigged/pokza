@@ -123,7 +123,10 @@ alter table public.profiles alter column search_key set not null;
 -- serait refusé alors même que l'app ne ramène jamais la colonne. Défensif comme celui de
 -- `display_name` : sans effet si `profiles` est accordée au niveau table, indispensable si des
 -- droits PAR COLONNE y ont été posés (F-21). En lecture seule — le déclencheur écrit, pas le client.
-grant select (search_key) on public.profiles to anon, authenticated;
+-- `authenticated` SEULEMENT. La version d'origine disait « to anon, authenticated » : elle a
+-- rouvert F-08 (cf. docs/dev/f08-profils-anon.sql, 23/09/2026). Aucun ecran sans compte ne lit
+-- `profiles` — les deux pages d'accueil publiques passent par des fonctions `security definer`.
+grant select (search_key) on public.profiles to authenticated;
 grant execute on function public.pokza_fold(text) to anon, authenticated;
 grant execute on function public.pokza_search_key(text, text) to anon, authenticated;
 

@@ -52,6 +52,9 @@ grant select (
   country,
   created_at
 ) on table public.profiles to anon, authenticated;
+-- ⚠️ 23/09/2026 — NE PAS REJOUER CE BLOC TEL QUEL : le « anon » ci-dessus a ete retire le
+-- 15/08 par `profils-lecture-connectes.sql` (F-08), et re-donne par accident deux fois
+-- depuis. Si tu rejoues ce fichier, rejoue `f08-profils-anon.sql` derriere.
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════
 -- F-05 — Stockage : énumération des groupes privés, et destination des remplacements
