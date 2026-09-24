@@ -22,9 +22,13 @@
  * · **Il échoue toujours ouvert.** Base lente, fonction absente, jeton périmé, réponse illisible :
  *   on renvoie la page telle quelle. Un aperçu manquant est un désagrément ; une page blanche sur un
  *   lien d'invitation est une porte fermée. Chaque `catch` de ce fichier est là pour ça.
- * · **Il ne lit rien de plus que l'app.** Les trois `rpc` sont les fonctions `security definer`
- *   déjà appelables sans compte, et `posts` est la SEULE table que `anon` garde depuis
- *   `anon-liste-blanche.sql`. Ce Worker ne demande aucun droit nouveau.
+ * · **Il ne lit rien de plus que l'app.** Les quatre `rpc` sont des fonctions `security definer`
+ *   appelables sans compte. Il ne lit plus AUCUNE table directement depuis le 24/09 : `/post/:id`
+ *   passait par `posts` (la seule que `anon` garde depuis `anon-liste-blanche.sql`), il passe
+ *   désormais par `post_public_preview`, parce que la langue de l'auteur vit dans `profiles`, qui
+ *   est fermée à `anon` (F-08). ⚠️ Le prix de ce déplacement : en `security definer` la RLS ne
+ *   s'applique plus, et ce sont les corps des fonctions qui portent les filtres de visibilité et de
+ *   modération. Cf. `docs/dev/apercus-langue-auteur.sql`.
  * · **Aucun nom d'auteur sur une main.** Ni `fetchPublicPost` ni `post_by_share_token` ne le rendent,
  *   et la page elle-même ne l'affiche pas. Comme `posts` est lisible sans compte, un nom d'auteur
  *   dans l'aperçu se récolterait en deux requêtes : lister les mains, puis lire chaque `og:`. Ce
@@ -34,9 +38,22 @@
  * LA LANGUE (24/09, question de Victor : « aucun moyen d'y remédier ? »)
  *
  * On ne peut PAS connaître la langue de celui qui REÇOIT le lien : c'est un robot sans compte qui
- * vient chercher l'aperçu. On connaît en revanche celle de celui qui l'ENVOIE, et elle est déjà en
- * base — `profiles.language`, réécrite à chaque ouverture de l'app, et `posts.language`, détectée à
- * la publication. C'est le signal que Victor a proposé, et c'est le seul qui existe.
+ * vient chercher l'aperçu. On connaît en revanche celle de celui à qui le LIEN APPARTIENT, et elle
+ * est déjà en base — `profiles.language`, réécrite à chaque ouverture de l'app. C'est le signal que
+ * Victor a proposé, et c'est le seul qui existe.
+ *
+ * **Une seule règle pour les quatre chemins** : `profiles.language`. Pour `/invite/` et `/g/` c'est
+ * l'hôte, celui qui a envoyé le lien ; pour `/post/` et `/s/` c'est l'AUTEUR de la main.
+ *
+ * ⚠️ Ce n'était pas le cas jusqu'au 24/09 : les deux chemins d'une main lisaient `posts.language`,
+ * la langue DÉTECTÉE DANS LA MAIN par le modèle à la publication. Victor, réglé sur l'anglais, a vu
+ * sa main française partir avec une phrase française — la règle annoncée et la règle codée avaient
+ * divergé. `posts.language` reste en REPLI derrière celle de l'auteur : elle est toujours
+ * renseignée, alors que 3 profils sur 5 en PROD n'ont pas encore de langue.
+ *
+ * Le mur qui reste : pour `/post/:id`, n'importe qui peut coller le lien d'une main publique, et
+ * l'URL ne porte aucune trace de qui l'a fait. L'auteur est le plus proche qu'on puisse atteindre.
+ * Pour `/s/:token`, c'est exact — seul l'auteur crée ces jetons.
  *
  * Les phrases ne sont PAS recopiées ici : `worker-textes.json` est GÉNÉRÉ depuis les catalogues de
  * l'app par `scripts/i18n-apercu.js`, et `scripts/i18n-audit.js` sort en erreur s'il dérive. Deux
@@ -182,18 +199,19 @@ async function apercu(url, env) {
     // public, et c'est cette ligne-là qu'on ne franchit pas.
     const m = await interroger(base, anon, '/rest/v1/rpc/post_by_share_token', { p_token: cle });
     if (!m || !m.title) return 'partage-introuvable';
-    const l = langue(m.language);
+    const l = langue(m.author_language || m.language);
     return { langue: l, titre: m.title, description: textes(l).main };
   }
 
   if (porte === 'post') {
-    // La seule lecture directe d'une table de tout ce fichier — et la seule que `anon` ait encore.
-    // Le filtre `visibility=eq.public` recopie `fetchPublicPost` : une main de groupe ouverte par son
-    // identifiant ne doit pas plus avoir d'aperçu qu'elle n'a de page.
-    const q = `/rest/v1/posts?id=eq.${encodeURIComponent(cle)}&visibility=eq.public&select=title,language&limit=1`;
-    const m = await interroger(base, anon, q);
+    // Passait par une lecture directe de `posts` jusqu'au 24/09 — la seule de tout ce fichier. Elle
+    // ne pouvait pas atteindre la langue de l'auteur : `profiles` est fermée à `anon` (F-08). Les
+    // quatre portes passent donc maintenant par une fonction, ce qui met leurs filtres au même
+    // endroit. ⚠️ En `security definer` la RLS ne s'applique plus : c'est le corps de la fonction
+    // qui doit refuser une main non publique ou retirée, et non plus la policy.
+    const m = await interroger(base, anon, '/rest/v1/rpc/post_public_preview', { p_post: cle });
     if (!m || !m.title) return 'main-introuvable';
-    const l = langue(m.language);
+    const l = langue(m.author_language || m.language);
     return { langue: l, titre: m.title, description: textes(l).main };
   }
 
