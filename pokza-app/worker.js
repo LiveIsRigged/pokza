@@ -1,6 +1,6 @@
 /**
  * CE QU'UN LIEN POKZA RACONTE QUAND IL EST COLLÉ AILLEURS
- * (chantier social, lot 6 · 23/09/2026)
+ * (chantier social, lot 6 · 23-24/09/2026)
  *
  * MESURÉ AVANT D'ÉCRIRE UNE LIGNE, sur pokza.app en ligne : `/`, `/post/abc`, `/g/xyz` et
  * `/invite/123` rendaient TOUS LES QUATRE le même fichier de 6 214 octets, avec `<title>Pokza</title>`
@@ -24,18 +24,31 @@
  *   lien d'invitation est une porte fermée. Chaque `catch` de ce fichier est là pour ça.
  * · **Il ne lit rien de plus que l'app.** Les trois `rpc` sont les fonctions `security definer`
  *   déjà appelables sans compte, et `posts` est la SEULE table que `anon` garde depuis
- *   `anon-liste-blanche.sql`. Ce Worker ne demande aucun droit nouveau, et aucun SQL n'a été écrit
- *   pour lui.
+ *   `anon-liste-blanche.sql`. Ce Worker ne demande aucun droit nouveau.
  * · **Aucun nom d'auteur sur une main.** Ni `fetchPublicPost` ni `post_by_share_token` ne le rendent,
  *   et la page elle-même ne l'affiche pas. Comme `posts` est lisible sans compte, un nom d'auteur
  *   dans l'aperçu se récolterait en deux requêtes : lister les mains, puis lire chaque `og:`. Ce
- *   serait F-08 rouvert par la fenêtre. Une main dit donc « Une main partagée sur Pokza », point.
+ *   serait F-08 rouvert par la fenêtre. Une main dit donc « Main partagée sur Pokza », point.
  *
- * ⚠️ L'APERÇU EST EN FRANÇAIS, toujours. Un robot d'aperçu n'a ni compte ni langue fiable (son
- * `Accept-Language` est absent ou vaut `*`), et les catalogues i18n vivent dans le bundle de l'app,
- * pas ici. Traduire voudrait dire recopier ces phrases hors de portée de `scripts/i18n-audit.js`,
- * qui ne les verrait plus dériver. À revoir le jour où quelqu'un partage un lien hors de France.
+ * ────────────────────────────────────────────────────────────────────────────
+ * LA LANGUE (24/09, question de Victor : « aucun moyen d'y remédier ? »)
+ *
+ * On ne peut PAS connaître la langue de celui qui REÇOIT le lien : c'est un robot sans compte qui
+ * vient chercher l'aperçu. On connaît en revanche celle de celui qui l'ENVOIE, et elle est déjà en
+ * base — `profiles.language`, réécrite à chaque ouverture de l'app, et `posts.language`, détectée à
+ * la publication. C'est le signal que Victor a proposé, et c'est le seul qui existe.
+ *
+ * Les phrases ne sont PAS recopiées ici : `worker-textes.json` est GÉNÉRÉ depuis les catalogues de
+ * l'app par `scripts/i18n-apercu.js`, et `scripts/i18n-audit.js` sort en erreur s'il dérive. Deux
+ * des quatre sont d'ailleurs les clés mêmes qu'affichent les pages d'atterrissage : ce qu'on lit
+ * dans WhatsApp est ce qu'on lit après le clic, mot pour mot, dans les deux langues à la fois.
+ *
+ * ⚠️ Ce qu'on ne sait toujours pas faire : un Français qui invite un Allemand lui enverra une carte
+ * française. Aucune donnée ne dit le contraire avant le clic — et après le clic, l'app, elle, parle
+ * la langue du téléphone.
  */
+
+import TEXTES from './worker-textes.json';
 
 // Les noms sont ceux du `.env` de l'app, à la lettre : une seule source pour l'adresse et la clé,
 // et `wrangler dev` lit ce même fichier sans qu'on ait rien à y ajouter. En ligne, elles viennent
@@ -43,11 +56,28 @@
 // pourquoi des SECRETS et pas des variables.
 const VARS = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY'];
 
-// Recopie de `public/manifest.json` — c'est la même phrase que voit qui installe la PWA, et c'est
-// `scripts/carte-apercu.py` qui la dessine sur la vignette. Les trois bougent ensemble ou pas du tout.
-const PHRASE = 'Le réseau des joueurs de poker : partage tes mains et demande l\'avis de tes amis';
-// « Main partagée sur Pokza » est la signature déjà tranchée pour l'export d'une main en texte.
-const MAIN = 'Main partagée sur Pokza. Donne ton avis en commentaire !';
+const DEFAUT = 'fr';
+const LOCALES = { fr: 'fr_FR', en: 'en_US', de: 'de_DE', es: 'es_ES' };
+
+/**
+ * La langue à employer, à partir de ce que la base a rendu.
+ * `posts.language` vaut parfois `zxx` — le code ISO de « pas de texte à analyser », posé par le
+ * modèle de traduction sur une main sans description. Il ne correspond à aucun catalogue, donc il
+ * retombe ici, comme une colonne nulle ou une langue qu'on ne traduit pas encore.
+ */
+function langue(valeur) {
+  const l = String(valeur || '').slice(0, 2).toLowerCase();
+  return TEXTES[l] ? l : DEFAUT;
+}
+
+const textes = (l) => TEXTES[l] || TEXTES[DEFAUT];
+
+/** Les catalogues écrivent `{nom}` et `{groupe}` ; ici il n'y a pas de moteur i18n pour les lire. */
+function remplir(modele, valeurs) {
+  return String(modele).replace(/\{(\w+)\}/g, (entier, nom) =>
+    valeurs[nom] === undefined ? entier : valeurs[nom]
+  );
+}
 
 /** Au-delà, toutes les messageries coupent — autant couper nous-mêmes, sur un mot et non au milieu. */
 function borne(texte, max) {
@@ -87,7 +117,7 @@ async function interroger(url, cle, chemin, corps) {
 }
 
 /**
- * Le titre et la description d'un chemin, ou une CHAÎNE disant pourquoi il n'y en a pas.
+ * Le titre, la description et la langue d'un chemin — ou une CHAÎNE disant pourquoi il n'y a rien.
  * Les quatre cas correspondent aux quatre portes qu'un visiteur SANS COMPTE peut pousser.
  *
  * Cette raison ressort en en-tête `x-pokza-apercu`, et ce n'est pas du confort : de l'extérieur,
@@ -104,19 +134,30 @@ async function apercu(url, env) {
   if (!cle) return 'chemin-sans-cle';
 
   if (porte === 'g') {
-    // Le lien d'un groupe. Le titre reprend MOT POUR MOT la phrase de la page d'atterrissage
-    // (`accueil_groupe.titre`) : ce qu'on lit dans WhatsApp et ce qu'on lit après le clic doivent
-    // être la même phrase, sinon le clic ressemble à une erreur. Le 23/09, « le groupe » a été
-    // ajouté ICI par Victor — et donc aussi dans les 4 catalogues, pour tenir cette promesse.
+    // Le lien d'un groupe. Le titre EST la phrase de la page d'atterrissage — la même clé de
+    // catalogue (`accueil_groupe.titre`), pas une copie : ce qu'on lit dans WhatsApp et ce qu'on lit
+    // après le clic ne peuvent plus diverger. La langue est celle de l'HÔTE, celui qui a envoyé le
+    // lien, pas du fondateur — comme la page, qui dit « Paul t'invite » parce que c'est Paul que
+    // Kevin connaît.
     const g = await interroger(base, anon, '/rest/v1/rpc/group_link_preview', { p_token: cle });
     if (!g || !g.group_name) return 'groupe-introuvable';
-    return { titre: `${g.host_name} t'invite dans le groupe ${g.group_name}`, description: PHRASE };
+    const l = langue(g.host_language);
+    return {
+      langue: l,
+      titre: remplir(textes(l).groupe, { nom: g.host_name, groupe: g.group_name }),
+      description: textes(l).phrase,
+    };
   }
 
   if (porte === 'invite') {
     const p = await interroger(base, anon, '/rest/v1/rpc/profile_invite_preview', { p_user: cle });
     if (!p || !p.host_name) return 'profil-introuvable';
-    return { titre: `${p.host_name} t'invite sur Pokza`, description: PHRASE };
+    const l = langue(p.host_language);
+    return {
+      langue: l,
+      titre: remplir(textes(l).profil, { nom: p.host_name }),
+      description: textes(l).phrase,
+    };
   }
 
   if (porte === 's') {
@@ -126,16 +167,20 @@ async function apercu(url, env) {
     // « les gens à qui on a donné le lien » et « les résultats de recherche » ne sont pas le même
     // public, et c'est cette ligne-là qu'on ne franchit pas.
     const m = await interroger(base, anon, '/rest/v1/rpc/post_by_share_token', { p_token: cle });
-    return m && m.title ? { titre: m.title, description: MAIN } : 'partage-introuvable';
+    if (!m || !m.title) return 'partage-introuvable';
+    const l = langue(m.language);
+    return { langue: l, titre: m.title, description: textes(l).main };
   }
 
   if (porte === 'post') {
     // La seule lecture directe d'une table de tout ce fichier — et la seule que `anon` ait encore.
     // Le filtre `visibility=eq.public` recopie `fetchPublicPost` : une main de groupe ouverte par son
     // identifiant ne doit pas plus avoir d'aperçu qu'elle n'a de page.
-    const q = `/rest/v1/posts?id=eq.${encodeURIComponent(cle)}&visibility=eq.public&select=title&limit=1`;
+    const q = `/rest/v1/posts?id=eq.${encodeURIComponent(cle)}&visibility=eq.public&select=title,language&limit=1`;
     const m = await interroger(base, anon, q);
-    return m && m.title ? { titre: m.title, description: MAIN } : 'main-introuvable';
+    if (!m || !m.title) return 'main-introuvable';
+    const l = langue(m.language);
+    return { langue: l, titre: m.title, description: textes(l).main };
   }
 
   return 'chemin-inconnu';
@@ -144,11 +189,14 @@ async function apercu(url, env) {
 function balises(a, url) {
   const titre = echapper(borne(a.titre, 70));
   const description = echapper(borne(a.description, 160));
-  const image = `${url.origin}/apercu.png`;
+  // Une vignette par langue : la phrase y est PEINTE, une carte française sous un texte allemand
+  // sentirait le bricolage. `apercu.png` reste la française, parce que des aperçus partis le 23/09
+  // désignent encore cette URL-là.
+  const image = `${url.origin}/apercu-${a.langue}.png`;
   return `
     <meta property="og:site_name" content="Pokza" />
     <meta property="og:type" content="website" />
-    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale" content="${LOCALES[a.langue] || LOCALES[DEFAUT]}" />
     <meta property="og:url" content="${echapper(url.origin + url.pathname)}" />
     <meta property="og:title" content="${titre}" />
     <meta property="og:description" content="${description}" />
@@ -175,7 +223,7 @@ export default {
     // Toujours posé, même quand tout va bien : c'est la seule trace qui dise de l'extérieur si ce
     // fichier s'exécute, et pourquoi il n'a rien écrit. Il ne révèle rien qu'un robot ne puisse
     // déjà déduire de la page.
-    balisé.headers.set('x-pokza-apercu', typeof a === 'string' ? a : 'ok');
+    balisé.headers.set('x-pokza-apercu', typeof a === 'string' ? a : `ok:${a.langue}`);
 
     if (typeof a === 'string' || !(reponse.headers.get('content-type') || '').includes('text/html')) {
       return balisé;
@@ -186,6 +234,7 @@ export default {
     // renommé traîne longtemps un vieux nom.
     balisé.headers.set('cache-control', 'public, max-age=60');
     return new HTMLRewriter()
+      .on('html', { element: (e) => e.setAttribute('lang', a.langue) })
       .on('title', { element: (e) => e.setInnerContent(borne(a.titre, 70)) })
       .on('head', { element: (e) => e.append(balises(a, url), { html: true }) })
       .transform(balisé);

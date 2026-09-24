@@ -893,5 +893,7 @@
   },
   "accueil_profil.creer_compte": "Créer mon compte",
   "accueil_profil.invalide": "Ce lien ne mène à personne.",
+  "apercu.phrase": "Le réseau des joueurs de poker : partage tes mains et demande l'avis de tes amis",
+  "apercu.main": "Main partagée sur Pokza. Donne ton avis en commentaire !",
   "amis.invitation_message_nomme": "{nom} t'invite sur Pokza"
 }

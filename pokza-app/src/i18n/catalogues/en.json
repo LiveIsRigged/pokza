@@ -893,5 +893,7 @@
   },
   "accueil_profil.creer_compte": "Create my account",
   "accueil_profil.invalide": "This link leads nowhere.",
+  "apercu.phrase": "The poker players' network: share your hands and ask your friends what they think",
+  "apercu.main": "Hand shared on Pokza. Have your say in the comments!",
   "amis.invitation_message_nomme": "{nom} is inviting you to Pokza"
 }

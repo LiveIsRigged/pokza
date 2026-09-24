@@ -1,0 +1,26 @@
+{
+  "de": {
+    "phrase": "Das Netzwerk der Pokerspieler: Teile deine Hände und frag deine Freunde nach ihrer Meinung",
+    "main": "Hand auf Pokza geteilt. Sag deine Meinung in den Kommentaren!",
+    "groupe": "{nom} lädt dich in die Gruppe {groupe} ein",
+    "profil": "{nom} lädt dich zu Pokza ein"
+  },
+  "en": {
+    "phrase": "The poker players' network: share your hands and ask your friends what they think",
+    "main": "Hand shared on Pokza. Have your say in the comments!",
+    "groupe": "{nom} invites you to the group {groupe}",
+    "profil": "{nom} is inviting you to Pokza"
+  },
+  "es": {
+    "phrase": "La red de los jugadores de póker: comparte tus manos y pide la opinión de tus amigos",
+    "main": "Mano compartida en Pokza. ¡Da tu opinión en los comentarios!",
+    "groupe": "{nom} te invita al grupo {groupe}",
+    "profil": "{nom} te invita a Pokza"
+  },
+  "fr": {
+    "phrase": "Le réseau des joueurs de poker : partage tes mains et demande l'avis de tes amis",
+    "main": "Main partagée sur Pokza. Donne ton avis en commentaire !",
+    "groupe": "{nom} t'invite dans le groupe {groupe}",
+    "profil": "{nom} t'invite sur Pokza"
+  }
+}

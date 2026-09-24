@@ -380,6 +380,24 @@ if (texteJsx.length > 0) {
   }
 }
 
+// ── Les textes des aperçus de liens, qui vivent hors du bundle eux aussi ────────────────────────
+// `pokza-app/worker-textes.json` est GÉNÉRÉ depuis ce catalogue par `scripts/i18n-apercu.js` : le
+// Worker Cloudflare qui écrit les balises Open Graph ne peut pas importer `fr.json`. S'il dérive,
+// la vignette d'un lien dit autre chose que la page qu'il ouvre.
+{
+  const generateur = path.join(__dirname, 'i18n-apercu.js');
+  if (fs.existsSync(generateur)) {
+    const { status } = require('child_process').spawnSync(
+      process.execPath, [generateur, '--verifier'], { encoding: 'utf8' }
+    );
+    if (status !== 0) {
+      trous += 1;
+      console.log("Les textes des aperçus ont dérivé du catalogue — `node scripts/i18n-apercu.js`.");
+      console.log("Si `apercu.phrase` a bougé, relancer aussi `python3 scripts/carte-apercu.py`.\n");
+    }
+  }
+}
+
 // ── `t()` appelé au CHARGEMENT du module — le piège le plus silencieux du lot ────────────────────
 // Une table calculée au niveau module (`const NOM_STREET = { preflop: t('…') }`) résout ses textes
 // UNE FOIS, au démarrage, et les garde dans cette langue-là pour toute la session. Rien ne casse :
