@@ -56,21 +56,35 @@ import TEXTES from './worker-textes.json';
 // pourquoi des SECRETS et pas des variables.
 const VARS = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY'];
 
-const DEFAUT = 'fr';
+// Les deux rôles distingués par `src/i18n/langues.ts`, et pour les mêmes raisons : le français est
+// la langue SOURCE (celle dans laquelle les textes sont écrits), l'anglais est le REPLI — ce que
+// voit quelqu'un dont la langue n'est pas encore servie (décision du 10/09/2026).
+const SOURCE = 'fr';
+const REPLI = 'en';
 const LOCALES = { fr: 'fr_FR', en: 'en_US', de: 'de_DE', es: 'es_ES' };
 
 /**
- * La langue à employer, à partir de ce que la base a rendu.
- * `posts.language` vaut parfois `zxx` — le code ISO de « pas de texte à analyser », posé par le
- * modèle de traduction sur une main sans description. Il ne correspond à aucun catalogue, donc il
- * retombe ici, comme une colonne nulle ou une langue qu'on ne traduit pas encore.
+ * La langue à employer, à partir de ce que la base a rendu. TROIS cas, et non deux — les confondre
+ * était le défaut du 24/09 : tout ce qui n'était pas servi tombait en français, y compris un
+ * Italien identifié, à qui l'app aurait montré de l'anglais.
+ *
+ *   · une langue servie            → elle-même ;
+ *   · une langue réelle non servie → l'anglais, EXACTEMENT comme `choisirLangue()` dans l'app.
+ *     Un Italien lit l'anglais à l'écran ; son lien doit dire la même chose ;
+ *   · rien du tout, ou `zxx`       → le français. Ce n'est pas une langue qu'on refuse de servir,
+ *     c'est une absence d'information : colonne nulle (un compte qui n'a pas rouvert l'app depuis
+ *     que la colonne existe — 3 profils sur 5 en PROD le 24/09), ou `zxx`, le code ISO de « pas de
+ *     texte à analyser » que le modèle pose sur une main sans description. On ne devine rien, on
+ *     prend la langue source.
  */
 function langue(valeur) {
-  const l = String(valeur || '').slice(0, 2).toLowerCase();
-  return TEXTES[l] ? l : DEFAUT;
+  const brut = String(valeur || '').trim().toLowerCase();
+  if (!brut || brut === 'zxx') return SOURCE;
+  const l = brut.slice(0, 2);
+  return TEXTES[l] ? l : REPLI;
 }
 
-const textes = (l) => TEXTES[l] || TEXTES[DEFAUT];
+const textes = (l) => TEXTES[l] || TEXTES[SOURCE];
 
 /** Les catalogues écrivent `{nom}` et `{groupe}` ; ici il n'y a pas de moteur i18n pour les lire. */
 function remplir(modele, valeurs) {
@@ -196,7 +210,7 @@ function balises(a, url) {
   return `
     <meta property="og:site_name" content="Pokza" />
     <meta property="og:type" content="website" />
-    <meta property="og:locale" content="${LOCALES[a.langue] || LOCALES[DEFAUT]}" />
+    <meta property="og:locale" content="${LOCALES[a.langue] || LOCALES[SOURCE]}" />
     <meta property="og:url" content="${echapper(url.origin + url.pathname)}" />
     <meta property="og:title" content="${titre}" />
     <meta property="og:description" content="${description}" />
