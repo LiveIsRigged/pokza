@@ -109,7 +109,74 @@ select * from (values
                )::numeric, 1)::text
         from public.profiles p
         join lateral (select min(created_at) as premiere from public.posts where author_id = p.id) x on true
-        where x.premiere is not null))
+        where x.premiere is not null)),
+
+  -- ── CE QUI POURRAIT RELIER DEUX PERSONNES (ajouté le 24/09/2026, lot 5) ─────────────────
+  -- La question du lot 5 n'est PAS « combien de lieux » ni « combien de groupes » : c'est
+  -- « combien de PAIRES de gens un signal rapproche, qui ne sont pas DÉJÀ amis ». Un signal qui
+  -- ne relie que des gens déjà amis n'apporte rien ; un signal qui ne relie personne non plus.
+  -- Ce sont les lignes 63 et 65 qui décident, pas les autres.
+  --
+  -- ⚠️ LE LIEU EST COMPARÉ TEL QU'IL EST ÉCRIT (rogné, sans la casse). « Wiesbaden » et
+  -- « Spielbank Wiesbaden » restent donc deux lieux différents, alors que c'est le même endroit —
+  -- les deux existent en PROD au 24/09. Ce chiffre est un PLANCHER : il sous-estime les
+  -- rapprochements possibles, et l'écart entre lui et la réalité est exactement ce que coûterait
+  -- l'absence d'une colonne `venue_id` (cf. l'en-tête de `pokza-app/src/data/lieux.ts`).
+  (60, 'mains publiques portant un lieu',
+       (select count(*)::text from public.posts
+         where visibility = 'public' and mod_status = 'visible'
+           and coalesce(btrim(location), '') <> '')),
+  (61, 'lieux distincts (écriture exacte, rognée)',
+       (select count(distinct lower(btrim(location)))::text from public.posts
+         where visibility = 'public' and mod_status = 'visible'
+           and coalesce(btrim(location), '') <> '')),
+  (62, '→ PAIRES reliées par un lieu, DÉJÀ amies ou non',
+       (select count(*)::text from (
+          select distinct a.author_id as x, b.author_id as y
+            from public.posts a
+            join public.posts b on lower(btrim(a.location)) = lower(btrim(b.location))
+                               and a.author_id < b.author_id
+           where a.visibility = 'public' and a.mod_status = 'visible'
+             and b.visibility = 'public' and b.mod_status = 'visible'
+             and coalesce(btrim(a.location), '') <> ''
+        ) p)),
+  (63, '→→ dont PAS ENCORE amies  ⟵ ce que le lieu apporterait',
+       (select count(*)::text from (
+          select distinct a.author_id as x, b.author_id as y
+            from public.posts a
+            join public.posts b on lower(btrim(a.location)) = lower(btrim(b.location))
+                               and a.author_id < b.author_id
+           where a.visibility = 'public' and a.mod_status = 'visible'
+             and b.visibility = 'public' and b.mod_status = 'visible'
+             and coalesce(btrim(a.location), '') <> ''
+             and not exists (select 1 from public.friend_requests f
+                              where f.status = 'accepted'
+                                and ((f.sender_id = a.author_id and f.receiver_id = b.author_id)
+                                  or (f.sender_id = b.author_id and f.receiver_id = a.author_id)))
+        ) p)),
+
+  -- L'autre signal de CONNAISSANCE relevé par l'audit du 16/09 et jamais exploité : être dans le
+  -- même groupe. Plus fort que le lieu — on n'entre pas dans un groupe par hasard.
+  (64, 'PAIRES co-membres d''un même groupe, DÉJÀ amies ou non',
+       (select count(*)::text from (
+          select distinct m1.user_id as x, m2.user_id as y
+            from public.group_members m1
+            join public.group_members m2 on m2.group_id = m1.group_id
+                                        and m1.user_id < m2.user_id
+           where m1.status = 'accepted' and m2.status = 'accepted'
+        ) p)),
+  (65, '→→ dont PAS ENCORE amies  ⟵ ce que le groupe apporterait',
+       (select count(*)::text from (
+          select distinct m1.user_id as x, m2.user_id as y
+            from public.group_members m1
+            join public.group_members m2 on m2.group_id = m1.group_id
+                                        and m1.user_id < m2.user_id
+           where m1.status = 'accepted' and m2.status = 'accepted'
+             and not exists (select 1 from public.friend_requests f
+                              where f.status = 'accepted'
+                                and ((f.sender_id = m1.user_id and f.receiver_id = m2.user_id)
+                                  or (f.sender_id = m2.user_id and f.receiver_id = m1.user_id)))
+        ) p))
 
 ) as t(n, mesure, valeur)
 order by n;
