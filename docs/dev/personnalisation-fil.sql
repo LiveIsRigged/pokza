@@ -199,10 +199,23 @@ select * from (values
       -- On ne peut PAS exiger que `bonus_format` ait disparu de la définition : le
       -- `select * from feed_tuning` la ramènerait nommément si la colonne existait encore.
       -- Ce qui compte, c'est que le BARÈME cite les deux nouveaux termes.
-      (select case when v.definition like '%coalesce(t.bonus_variante%'
-                    and v.definition like '%coalesce(t.bonus_type_partie%'
-                    and v.definition not like '%coalesce(t.bonus_format%'
-                   then 'OK' else 'KO' end
+      --
+      -- ⚠️ `ilike` ET NON `like`, et ce n'est pas du confort : `pg_views.definition` n'est pas le
+      -- texte qu'on a écrit, c'est la vue REDÉPARSÉE par Postgres. Le déparseur réécrit `coalesce`
+      -- en `COALESCE` — un `like` sensible à la casse ne peut donc JAMAIS correspondre, et ce
+      -- contrôle sortait KO sur DEV comme sur PROD alors que la vue était juste (24/09/2026).
+      -- Le même piège ne touche PAS `prosrc` (corps de fonction), qui est stocké mot pour mot.
+      (select case when v.definition ilike '%coalesce(t.bonus_variante%'
+                    and v.definition ilike '%coalesce(t.bonus_type_partie%'
+                    and v.definition not ilike '%coalesce(t.bonus_format%'
+                   then 'OK'
+                   -- Un KO nu ne se diagnostique pas : on dit lequel des trois termes cloche.
+                   else 'KO — variante:' ||
+                        case when v.definition ilike '%coalesce(t.bonus_variante%' then 'oui' else 'NON' end ||
+                        ' type_partie:' ||
+                        case when v.definition ilike '%coalesce(t.bonus_type_partie%' then 'oui' else 'NON' end ||
+                        ' ancien_format_encore_la:' ||
+                        case when v.definition ilike '%coalesce(t.bonus_format%' then 'OUI' else 'non' end end
          from pg_views v where v.schemaname = 'public' and v.viewname = 'posts_ranked')),
   (4, 'la vue tourne encore et rend ses colonnes',
       (select case when count(*) >= 0 then 'OK — ' || count(*) || ' main(s) lisibles ici'
