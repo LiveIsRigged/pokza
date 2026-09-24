@@ -10,6 +10,7 @@ import { StreetCorrectionStep } from './steps/StreetCorrectionStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { ApercuMainScreen } from './ApercuMainScreen';
 import { ImportHHScreen } from './ImportHHScreen';
+import { rogne } from '../utils/texte';
 import { MainEnTexteScreen } from '../components/post/MainEnTexteScreen';
 import type { PartieDecrite } from '../utils/denomination';
 import { appliquerContexteAuxSieges, buildSeats } from './positions';
@@ -589,7 +590,7 @@ export function LiveHandCreator({
       authorId,
       authorName,
       createdAt: new Date().toISOString(),
-      location: ctx.location,
+      location: rogne(ctx.location),
       // LES TROIS CHAMPS D'ÉPREUVE NE SORTENT QU'EN TOURNOI. Le formulaire ne les montre que là,
       // mais le contexte les CONSERVE quand on bascule sur « Cash game » — et depuis que le nom et
       // le buy-in se mémorisent d'une main à l'autre (cf. `PEREMPTION_EPREUVE_MS`), ils peuvent
@@ -597,11 +598,15 @@ export function LiveHandCreator({
       // une main de cash game publierait le buy-in du tournoi de la veille, et sa ligne de contexte
       // l'afficherait (cf. la branche cash de `formatContextLine`, qui les affiche s'ils existent).
       ...(ctx.gameType === 'tournament'
-        ? { tournamentName: ctx.tournamentName, buyIn: ctx.buyIn, level: ctx.level }
+        ? {
+            tournamentName: rogne(ctx.tournamentName),
+            buyIn: rogne(ctx.buyIn),
+            level: rogne(ctx.level),
+          }
         : {}),
-      title: review.title,
-      description: review.description?.trim() || undefined,
-      voteQuestion: review.voteQuestion || undefined,
+      title: review.title.trim(),
+      description: rogne(review.description),
+      voteQuestion: rogne(review.voteQuestion),
       voteOptions: review.voteQuestion
         ? (review.voteOptions ?? []).map((o) => o.trim()).filter(Boolean)
         : undefined,

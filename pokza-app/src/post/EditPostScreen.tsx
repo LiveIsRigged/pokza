@@ -18,6 +18,7 @@ import {
   VOTE_QUESTION_MAX_LENGTH,
 } from '../constants/limits';
 import { normaliserBuyIn } from '../utils/buyIn';
+import { rogne } from '../utils/texte';
 import { errorMessage } from '../utils/errorMessage';
 import { borders, colors, placeholderText } from '../theme/theme';
 import { useT } from '../i18n';
@@ -166,12 +167,12 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
     try {
       await onSave({
         title: title.trim(),
-        description: description.trim() || undefined,
-        location: location.trim() || undefined,
-        tournamentName: tournamentName.trim() || undefined,
-        buyIn: buyIn.trim() || undefined,
-        level: level.trim() || undefined,
-        voteQuestion: voteQuestion.trim() || undefined,
+        description: rogne(description),
+        location: rogne(location),
+        tournamentName: rogne(tournamentName),
+        buyIn: rogne(buyIn),
+        level: rogne(level),
+        voteQuestion: rogne(voteQuestion),
         voteOptions: hasVoteQuestion ? voteOptions.map((o) => o.trim()).filter(Boolean) : undefined,
         visibility,
         groupId: visibility === 'group' ? groupId : undefined,
