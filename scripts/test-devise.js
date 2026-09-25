@@ -103,7 +103,29 @@ eq('aucun SIGLE en double', new Set(sigles).size, 30);
 for (const d of DEVISES) {
   if (!d.sigle.trim()) echecs.push(`${d.code} : sigle vide`);
   else ok++;
-  if (!d.nom.trim()) echecs.push(`${d.code} : nom vide`);
+}
+
+// LE NOM N'EST PLUS DANS `currency.ts` : il y était sous `nom`, et le 10/09/2026 la traduction l'a
+// remplacé par `cle`, une clé de catalogue — un nom figé dans le code serait resté en français dans
+// les treize langues. Ce contrôle lisait `d.nom` et plantait donc depuis ce jour-là, sur toutes les
+// devises ; il n'a été relancé que le 25/09, en ajoutant sept langues d'un coup. Le commit qui a
+// changé `currency.ts` n'avait pas touché à ce fichier, et rien ne reliait les deux.
+//
+// Ce qu'il vérifie maintenant est PLUS FORT que ce qu'il vérifiait avant : non seulement la clé
+// existe, mais elle est traduite dans la langue SOURCE et dans la langue de REPLI. Une devise dont
+// la clé serait oubliée d'`en.json` afficherait son nom en français à un Grec, sans erreur.
+const fr = require('../pokza-app/src/i18n/catalogues/fr.json');
+const en = require('../pokza-app/src/i18n/catalogues/en.json');
+for (const d of DEVISES) {
+  if (!/^devise\.[a-z]{3}$/.test(d.cle ?? '')) {
+    echecs.push(`${d.code} : clé de nom absente ou mal formée (${JSON.stringify(d.cle)})`);
+    continue;
+  }
+  const manquantes = [
+    typeof fr[d.cle] === 'string' && fr[d.cle].trim() ? null : 'fr',
+    typeof en[d.cle] === 'string' && en[d.cle].trim() ? null : 'en',
+  ].filter(Boolean);
+  if (manquantes.length > 0) echecs.push(`${d.code} : ${d.cle} absente de ${manquantes.join(' et ')}`);
   else ok++;
 }
 // L'espace ne se déduit PAS de la longueur du sigle : « RM100 », « Rp5000 », « R$50 » et « S/50 »
