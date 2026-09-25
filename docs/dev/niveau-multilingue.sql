@@ -60,42 +60,49 @@ commit;
 
 -- CONTRÔLES
 -- ---------
--- Chacun rend OK ou KO. Tout doit être OK.
+-- ⚠️ UN SEUL JEU DE LIGNES, et c'est la leçon du 25/09/2026 : écrits en quatre `select` séparés,
+-- l'éditeur Supabase n'affichait QUE LE DERNIER. Les trois premiers tournaient sans qu'on les voie
+-- — un script qui passe en silence et qu'on croit vérifié. Un `union all` les rend tous visibles.
+-- Tout doit être OK.
 
--- 1. La contrainte existe, et elle porte bien 16 pour le niveau.
-select '1. contrainte posée à 16' as controle,
-       case when pg_get_constraintdef(oid) like '%char_length(level) <= 16%'
-            then 'OK' else 'KO — ' || pg_get_constraintdef(oid) end as resultat
-  from pg_constraint
- where conname = 'posts_context_length'
-   and conrelid = 'public.posts'::regclass;
+select * from (
+  -- 1. La contrainte existe, et elle porte bien 16 pour le niveau.
+  select 1 as n, '1. contrainte posée à 16' as controle,
+         coalesce((
+           select case when pg_get_constraintdef(oid) like '%char_length(level) <= 16%'
+                       then 'OK' else 'KO — ' || pg_get_constraintdef(oid) end
+             from pg_constraint
+            where conname = 'posts_context_length' and conrelid = 'public.posts'::regclass
+         ), 'KO — contrainte absente') as resultat
 
--- 2. Les deux autres colonnes n'ont pas bougé au passage.
-select '2. lieu 40 et buy-in 16 intacts' as controle,
-       case when pg_get_constraintdef(oid) like '%char_length(location) <= 40%'
-             and pg_get_constraintdef(oid) like '%char_length(buy_in) <= 16%'
-            then 'OK' else 'KO' end as resultat
-  from pg_constraint
- where conname = 'posts_context_length'
-   and conrelid = 'public.posts'::regclass;
+  union all
+  -- 2. Les deux autres colonnes n'ont pas bougé au passage.
+  select 2, '2. lieu 40 et buy-in 16 intacts',
+         coalesce((
+           select case when pg_get_constraintdef(oid) like '%char_length(location) <= 40%'
+                        and pg_get_constraintdef(oid) like '%char_length(buy_in) <= 16%'
+                       then 'OK' else 'KO' end
+             from pg_constraint
+            where conname = 'posts_context_length' and conrelid = 'public.posts'::regclass
+         ), 'KO — contrainte absente')
 
--- 3. Aucune donnée existante n'est devenue non conforme — la contrainte s'est DESSERRÉE, donc
---    ce contrôle doit rester vide par construction. Il est là pour le dire, pas pour en douter.
-select '3. aucune ligne hors limites' as controle,
-       case when count(*) = 0 then 'OK' else 'KO — ' || count(*) || ' ligne(s)' end as resultat
-  from public.posts
- where char_length(coalesce(location, '')) > 40
-    or char_length(coalesce(buy_in, ''))   > 16
-    or char_length(coalesce(level, ''))    > 16;
+  union all
+  -- 3. Aucune donnée existante n'est hors limites. La contrainte s'est DESSERRÉE, donc ce contrôle
+  --    doit rester à zéro par construction : il est là pour le dire, pas pour en douter.
+  select 3, '3. aucune ligne hors limites',
+         (select case when count(*) = 0 then 'OK' else 'KO — ' || count(*) || ' ligne(s)' end
+            from public.posts
+           where char_length(coalesce(location, '')) > 40
+              or char_length(coalesce(buy_in, ''))   > 16
+              or char_length(coalesce(level, ''))    > 16)
 
--- 4. Ce qui EST stocké aujourd'hui, pour mémoire : les niveaux existants restent en français, ce
---    sont des données déjà écrites. Seules les nouvelles mains suivent la langue de leur auteur.
-select '4. niveaux déjà en base' as controle,
-       coalesce(
-         (select string_agg(distinct level, ' | ' order by level)
-            from public.posts where level is not null),
-         '(aucun)'
-       ) as resultat;
+  union all
+  -- 4. Ce qui EST stocké aujourd'hui, pour mémoire : les niveaux existants restent dans la langue
+  --    dans laquelle ils ont été écrits. Seules les nouvelles mains suivent leur auteur.
+  select 4, '4. niveaux déjà en base',
+         coalesce((select string_agg(distinct level, ' | ' order by level)
+                     from public.posts where level is not null), '(aucun)')
+) c order by n;
 
 -- ⚠️ PAS DE CONTRÔLE PAR INSERTION D'ESSAI, et c'est délibéré. Écrire une main jetable pour
 -- prouver que « Livello 999 » passe reviendrait à toucher `posts` en PRODUCTION — avec des
