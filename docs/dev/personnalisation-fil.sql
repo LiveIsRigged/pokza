@@ -97,7 +97,14 @@ select
   c.is_cercle,
   (c.is_cercle and l.lectures = 0
      and a.age_days < coalesce(t.fresh_circle_hours, 48) / 24.0)          as is_fresh_circle,
-  (ap.apparent - bo.bonus)                                                as feed_score
+  (ap.apparent - bo.bonus)                                                as feed_score,
+  -- ⚠️ AJOUTÉE LE 25/09 APRÈS L'AVOIR PERDUE. `posts_ranked_base` a été figé le 10/09 ; `language`
+  -- a été greffée sur `posts_ranked` le 15/09, PAR-DESSUS. Recréer la vue depuis le socle, comme
+  -- fait ici, revient donc au 10/09 et efface la greffe — sans erreur, sans ligne manquante : le
+  -- bouton « Traduire » disparaît simplement du fil, en silence. Reprise ici depuis `p2`, déjà
+  -- joint pour `vote_count`, pour que rejouer ce fichier ne la reperde plus.
+  -- Constat et réparation : `docs/dev/vues-colonnes-perdues.sql`.
+  p2.language
 from public.posts_ranked_base b
   -- `vote_count` n'est pas dans le socle : c'est une colonne de `posts` créée par ce script.
   left join public.posts p2 on p2.id = b.id
