@@ -114,6 +114,24 @@ verifier('fr-CA → fr', choisirLangue(['fr-CA']), 'fr');
 verifier("la variante ne l'emporte pas sur une correspondance exacte plus loin",
   choisirLangue([`${nonServie}-001`, 'de']), 'de');
 
+// …et l'étage AU-DESSUS de la variante régionale : DEUX CODES POUR LA MÊME LANGUE. « nb » (bokmål)
+// et « no » (la macrolangue) nomment le même norvégien écrit, et les plateformes ne s'accordent pas
+// — iOS rend « nb-NO », certains navigateurs « no ». Pokza sert « nb » ; sans la table EQUIVALENTS
+// de `traduire.ts`, tous les « no » tombaient sur l'anglais, et rien ne pouvait le signaler.
+verifier('nb servi directement', choisirLangue(['nb']), 'nb');
+verifier('nb-NO → nb (variante régionale)', choisirLangue(['nb-NO']), 'nb');
+verifier('no → nb (autre code, même langue)', choisirLangue(['no']), 'nb');
+verifier('no-NO → nb (les deux mécanismes à la fois)', choisirLangue(['no-NO']), 'nb');
+verifier('NB-no → nb (casse ignorée)', choisirLangue(['NB-no']), 'nb');
+// Le nynorsk est un ARBITRAGE assumé, pas une équivalence : c'est une autre norme écrite. Du bokmål
+// vaut mieux que de l'anglais pour qui écrit le nynorsk — les deux se lisent sans effort.
+verifier('nn → nb (arbitrage, cf. le commentaire de EQUIVALENTS)', choisirLangue(['nn']), 'nb');
+// L'équivalence joue AVANT de passer à la préférence suivante, et c'est voulu : quelqu'un réglé sur
+// [nynorsk, danois] demande d'abord du norvégien. Le bokmål répond à cette demande-là.
+verifier('[nn, da] → nb, pas da', choisirLangue(['nn', 'da']), 'nb');
+// Et la table ne doit rien inventer pour une langue qui n'y figure pas.
+verifier('langue sans équivalent connu → repli', choisirLangue(['xh']), 'en');
+
 // 8. phrases a trous — celles dont un morceau est un lien ou un mot en couleur
 const seg = (g) => JSON.stringify(segmenter(g));
 verifier(

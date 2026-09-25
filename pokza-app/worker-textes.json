@@ -1,9 +1,21 @@
 {
+  "da": {
+    "phrase": "Pokerspillernes netværk: del dine hænder og spørg dine venner, hvad de mener",
+    "main": "Hånd delt på Pokza. Sig hvad du mener i kommentarerne!",
+    "groupe": "{nom} inviterer dig til gruppen {groupe}",
+    "profil": "{nom} inviterer dig til Pokza"
+  },
   "de": {
     "phrase": "Das Netzwerk der Pokerspieler: Teile deine Hände und frag deine Freunde nach ihrer Meinung",
     "main": "Hand auf Pokza geteilt. Sag deine Meinung in den Kommentaren!",
     "groupe": "{nom} lädt dich in die Gruppe {groupe} ein",
     "profil": "{nom} lädt dich zu Pokza ein"
+  },
+  "el": {
+    "phrase": "Το δίκτυο των παικτών πόκερ: μοιράσου τα χέρια σου και ζήτα τη γνώμη των φίλων σου",
+    "main": "Χέρι που μοιράστηκε στο Pokza. Πες τη γνώμη σου στα σχόλια!",
+    "groupe": "{nom} σε προσκαλεί στην ομάδα {groupe}",
+    "profil": "{nom} σε προσκαλεί στο Pokza"
   },
   "en": {
     "phrase": "The poker players' network: share your hands and ask your friends what they think",
@@ -17,11 +29,23 @@
     "groupe": "{nom} te invita al grupo {groupe}",
     "profil": "{nom} te invita a Pokza"
   },
+  "fi": {
+    "phrase": "Pokerinpelaajien verkosto: jaa kätesi ja kysy kavereiltasi mielipidettä",
+    "main": "Käsi jaettu Pokzassa. Kerro mielipiteesi kommenteissa!",
+    "groupe": "{nom} kutsuu sinut ryhmään {groupe}",
+    "profil": "{nom} kutsuu sinut Pokzaan"
+  },
   "fr": {
     "phrase": "Le réseau des joueurs de poker : partage tes mains et demande l'avis de tes amis",
     "main": "Main partagée sur Pokza. Donne ton avis en commentaire !",
     "groupe": "{nom} t'invite dans le groupe {groupe}",
     "profil": "{nom} t'invite sur Pokza"
+  },
+  "hu": {
+    "phrase": "A pókerjátékosok hálózata: oszd meg a leosztásaid, és kérdezd meg a barátaid véleményét",
+    "main": "Leosztás megosztva a Pokzán. Írd meg a véleményed a hozzászólásokban!",
+    "groupe": "{nom} meghív a {groupe} csoportba",
+    "profil": "{nom} meghív a Pokzára"
   },
   "it": {
     "phrase": "Il network dei giocatori di poker: condividi le tue mani e chiedi il parere dei tuoi amici",
@@ -29,10 +53,28 @@
     "groupe": "{nom} ti invita nel gruppo {groupe}",
     "profil": "{nom} ti invita su Pokza"
   },
+  "nb": {
+    "phrase": "Pokerspillernes nettverk: del hendene dine og spør vennene dine hva de mener",
+    "main": "Hånd delt på Pokza. Si hva du mener i kommentarene!",
+    "groupe": "{nom} inviterer deg til gruppen {groupe}",
+    "profil": "{nom} inviterer deg til Pokza"
+  },
+  "nl": {
+    "phrase": "Het netwerk van pokerspelers: deel je handen en vraag je vrienden wat ze ervan vinden",
+    "main": "Hand gedeeld op Pokza. Geef je mening in de reacties!",
+    "groupe": "{nom} nodigt je uit in de groep {groupe}",
+    "profil": "{nom} nodigt je uit op Pokza"
+  },
   "pt": {
     "phrase": "A rede dos jogadores de poker: compartilhe suas mãos e peça a opinião dos seus amigos",
     "main": "Mão compartilhada no Pokza. Dê sua opinião nos comentários!",
     "groupe": "{nom} convida você para o grupo {groupe}",
     "profil": "{nom} convida você para o Pokza"
+  },
+  "sv": {
+    "phrase": "Pokerspelarnas nätverk: dela dina händer och fråga dina vänner vad de tycker",
+    "main": "Hand delad på Pokza. Säg vad du tycker i kommentarerna!",
+    "groupe": "{nom} bjuder in dig till gruppen {groupe}",
+    "profil": "{nom} bjuder in dig till Pokza"
   }
 }

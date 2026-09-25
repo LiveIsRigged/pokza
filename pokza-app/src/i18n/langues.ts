@@ -14,6 +14,13 @@ export const LANGUES = {
   es: 'Español',
   it: 'Italiano',
   pt: 'Português',
+  nl: 'Nederlands',
+  el: 'Ελληνικά',
+  hu: 'Magyar',
+  sv: 'Svenska',
+  fi: 'Suomi',
+  nb: 'Norsk',
+  da: 'Dansk',
 } as const;
 
 export type Langue = keyof typeof LANGUES;

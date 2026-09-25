@@ -4,6 +4,13 @@ import de from './catalogues/de.json';
 import es from './catalogues/es.json';
 import it from './catalogues/it.json';
 import pt from './catalogues/pt.json';
+import nl from './catalogues/nl.json';
+import el from './catalogues/el.json';
+import hu from './catalogues/hu.json';
+import sv from './catalogues/sv.json';
+import fi from './catalogues/fi.json';
+import nb from './catalogues/nb.json';
+import da from './catalogues/da.json';
 import { estLangueServie, LANGUE_REPLI, LANGUE_SOURCE, type Langue } from './langues';
 
 /**
@@ -39,7 +46,14 @@ const CATALOGUES: {
   es: Partial<Record<Cle, Message>>;
   it: Partial<Record<Cle, Message>>;
   pt: Partial<Record<Cle, Message>>;
-} = { fr, en, de, es, it, pt };
+  nl: Partial<Record<Cle, Message>>;
+  el: Partial<Record<Cle, Message>>;
+  hu: Partial<Record<Cle, Message>>;
+  sv: Partial<Record<Cle, Message>>;
+  fi: Partial<Record<Cle, Message>>;
+  nb: Partial<Record<Cle, Message>>;
+  da: Partial<Record<Cle, Message>>;
+} = { fr, en, de, es, it, pt, nl, el, hu, sv, fi, nb, da };
 
 /**
  * Langue effective, tenue hors de React : `handEngine`, `relativeDate` ou `errorMessage` produisent
@@ -133,6 +147,35 @@ export function segmenter(gabarit: string): Segment[] {
 }
 
 /**
+ * Codes qui DÉSIGNENT LA MÊME LANGUE qu'un code servi, sans lui être égaux — un étage au-dessus du
+ * repli « de-AT » → « de », qui ne traite que les variantes régionales.
+ *
+ * LE NORVÉGIEN EN EST LA RAISON, et c'est mesuré, pas supposé : « nb » (bokmål) et « no » (la
+ * macrolangue) nomment le même norvégien écrit, et les plateformes ne s'accordent pas — iOS rend
+ * « nb-NO », Android « nb », certains navigateurs « no ». Servir l'un sans l'autre renvoie donc une
+ * partie des Norvégiens sur l'anglais, sans qu'ils puissent deviner que leur langue existe. C'est
+ * exactement le défaut que le repli régional évite déjà, à un niveau que `split('-')` ne voit pas.
+ *
+ * Pokza sert « nb » : c'est du bokmål qui est écrit dans le catalogue, et c'est aussi le nom que
+ * reçoit le modèle de traduction de contenu (« Norwegian Bokmål » plutôt que « Norwegian »), donc
+ * une consigne plus précise. La table rend « no » et « nn » sans qu'on ait à le redire ailleurs.
+ *
+ * ⚠️ « nn » (nynorsk) y est un ARBITRAGE, pas une équivalence : c'est une autre norme écrite, pas
+ * une variante régionale. Du bokmål vaut mieux que de l'anglais pour qui écrit le nynorsk — les
+ * deux se lisent sans effort en Norvège — mais ce n'est pas du même ordre que les deux lignes
+ * au-dessus. Le jour où Pokza servirait le nynorsk, `estLangueServie('nn')` répondrait vrai avant
+ * d'arriver ici et la ligne deviendrait morte d'elle-même.
+ *
+ * Les autres doublons connus (« he »/« iw », « id »/« in », « zh »/« cmn ») n'y sont pas : on
+ * n'ajoute une ligne que pour une langue qu'on sert, sinon la table décrit un monde imaginaire.
+ */
+const EQUIVALENTS: Record<string, readonly string[]> = {
+  nb: ['no'],
+  no: ['nb'],
+  nn: ['nb', 'no'],
+};
+
+/**
  * Première langue préférée de l'appareil que nous servons réellement.
  *
  * `preferees` arrive DANS L'ORDRE DE PRÉFÉRENCE de l'utilisateur (ce que rend `getLocales()`). On
@@ -147,8 +190,15 @@ export function choisirLangue(preferees: readonly (string | null | undefined)[])
     // ne le garantit sur toutes les plateformes, et le jour où on servira une variante régionale
     // (« pt-BR ») les deux formes coexisteront. Un Autrichien basculé sur l'anglais faute d'un
     // tiret serait un défaut invisible : il n'aurait aucun moyen de savoir que l'allemand existe.
-    const base = typeof code === 'string' ? code.split('-')[0] : null;
+    const base = typeof code === 'string' ? code.split('-')[0].toLowerCase() : null;
     if (estLangueServie(base)) return base;
+    // …et le même défaut d'un étage au-dessus, pour les codes qui ne sont pas des variantes
+    // régionales mais DEUX NOMS DE LA MÊME LANGUE (cf. EQUIVALENTS).
+    if (base !== null) {
+      for (const equivalent of EQUIVALENTS[base] ?? []) {
+        if (estLangueServie(equivalent)) return equivalent;
+      }
+    }
   }
   return LANGUE_REPLI;
 }
