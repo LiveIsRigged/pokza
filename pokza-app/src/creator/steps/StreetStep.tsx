@@ -1138,7 +1138,7 @@ export function StreetStep({
               le choix du board, où personne ne l'a encore. */}
           {boardComplete && nomQuiParle ? (
             <Text style={styles.aQuiDeJouer} numberOfLines={1}>
-              {decouper(t('createur.a_qui_de_jouer'), {
+              {decouper(t('commun.a_qui_de_jouer'), {
                 nom: <Text style={styles.aQuiNom}>{nomQuiParle}</Text>,
               })}
             </Text>

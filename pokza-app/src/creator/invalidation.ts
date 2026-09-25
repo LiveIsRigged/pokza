@@ -127,7 +127,7 @@ export function champsInvalidants(
       // que les mises seront à ressaisir, et c'est l'auteur qui décide.
       return verrouilles.has(s.id) || ap < (plancher[s.id] ?? 0);
     })
-    .map((s) => `le tapis de ${s.position}`);
+    .map((s) => t('createur.le_tapis_de', { siege: s.position }));
 }
 
 /** Le tapis effectif est-il verrouillé, et à quel minimum ? `null` = libre. */

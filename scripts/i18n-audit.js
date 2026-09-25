@@ -362,6 +362,143 @@ if (texteJsx.length > 0) {
   console.log('');
 }
 
+// ── Le français caché dans un gabarit interpolé ─────────────────────────────────────────────────
+// LE NEUVIÈME AVEUGLEMENT, signalé par Victor le 25/09/2026 : « À {nom} de jouer » s'affichait en
+// français à un lecteur réglé sur l'anglais, sous chaque main arrêtée par son auteur. La ligne
+// fautive était à UN appel de la bonne — sa voisine immédiate passait déjà par `t()` :
+//
+//     ? `À ${nomEnAttente} de jouer`     ← en dur
+//     : t('replayer.main_arretee')       ← traduite
+//
+// Aucun des trois contrôles ci-dessus ne pouvait la voir, et chacun pour une raison propre :
+//   · « Français restant » exige QUATRE caractères AVANT l'accent. Le « À » est le premier
+//     caractère du gabarit : la condition ne peut pas être remplie. Toute phrase qui COMMENCE par
+//     son accent lui était invisible — et en français c'est un début très courant (« À », « Élu »,
+//     « Ôte »). Le {4,} voulait écarter les chaînes trop courtes ; il a été posé AVANT l'accent au
+//     lieu de mesurer la longueur totale ;
+//   · « Texte littéral » exclut le dollar de sa classe de caractères : tout gabarit interpolé lui
+//     est invisible PAR CONSTRUCTION ;
+//   · « Texte JSX » ne lit qu'entre des balises, et celui-ci est dans une expression.
+//
+// Le troisième l'annonçait d'ailleurs en clair — « un mot court dans une expression ou dans un
+// gabarit reste invisible à tous les contrôles ». Le trou était donc CONNU et écrit ; il manquait
+// seulement quelqu'un pour le fermer. Mesuré à l'insertion : cinq autres gabarits français, dont
+// deux glissaient un fragment brut DANS une phrase traduite (un Allemand lisait « den ganzen
+// Verlauf » autour de « le tapis de BTN »).
+//
+// Celui-ci ne cherche donc ni accent ni balise : il relève TOUT gabarit contenant une expression,
+// remplace les expressions par un blanc, et juge ce qui reste avec le même critère que les autres.
+// Les expressions se suivent en comptant les accolades, et un gabarit imbriqué se saute en entier —
+// sans quoi le ternaire d'`ErrorBoundary` faisait déborder la lecture sur le code d'après.
+//
+// ⚠️ LIMITE CONNUE, mesurée et non corrigée : un gabarit dont il ne reste qu'une UNITÉ de deux
+// lettres (« {n} Mo », réellement trouvé ce jour-là et traduit à la main) reste sous le critère
+// « deux mots, ou un mot capitalisé de quatre lettres ». L'abaisser ferait remonter toutes les
+// constantes d'une lettre ou deux du dépôt : un garde-fou qui crie à tort finit ignoré, et
+// celui-ci a déjà trois prédécesseurs morts de ça.
+
+/** Blanchit un appel et son contenu en suivant ses parenthèses, sans décaler les lignes. */
+function blanchirAppels(src, motif) {
+  let sortie = src;
+  const re = new RegExp(motif, 'g');
+  let m;
+  while ((m = re.exec(sortie))) {
+    let profondeur = 0;
+    let i = m.index + m[0].length - 1;
+    for (; i < sortie.length; i++) {
+      if (sortie[i] === '(') profondeur++;
+      else if (sortie[i] === ')') { profondeur--; if (profondeur === 0) break; }
+    }
+    const fin = Math.min(i + 1, sortie.length);
+    sortie =
+      sortie.slice(0, m.index) +
+      sortie.slice(m.index, fin).replace(/[^\n]/g, ' ') +
+      sortie.slice(fin);
+    re.lastIndex = fin;
+  }
+  return sortie;
+}
+
+/** Les gabarits INTERPOLÉS d'une source, leurs expressions réduites à un blanc. */
+function gabaritsInterpoles(src) {
+  const sortie = [];
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] !== '`') continue;
+    let texte = '';
+    let interpole = false;
+    let profondeur = 0;
+    let j = i + 1;
+    for (; j < src.length; j++) {
+      const c = src[j];
+      if (profondeur === 0) {
+        if (c === '\\') { j++; continue; }
+        if (c === '`') break;
+        if (c === '$' && src[j + 1] === '{') { interpole = true; profondeur = 1; j++; texte += ' '; continue; }
+        texte += c;
+      } else if (c === '{') profondeur++;
+      else if (c === '}') profondeur--;
+      else if (c === '`') {
+        // Gabarit imbriqué dans l'expression : sauté en entier, sinon sa fin passerait pour celle
+        // du gabarit extérieur et la lecture déborderait sur le code suivant.
+        let k = j + 1;
+        let p = 0;
+        for (; k < src.length; k++) {
+          if (src[k] === '\\') { k++; continue; }
+          if (src[k] === '$' && src[k + 1] === '{') { p++; k++; }
+          else if (src[k] === '}' && p > 0) p--;
+          else if (src[k] === '`' && p === 0) break;
+        }
+        j = k;
+      }
+    }
+    // Un gabarit non refermé signe une lecture qui a dérapé : on ne rapporte rien plutôt que faux.
+    if (j < src.length && interpole) sortie.push({ index: i, texte });
+    i = j;
+  }
+  return sortie;
+}
+
+// Ce qu'on assemble avec une variable est le plus souvent une ADRESSE, un sélecteur ou un filtre —
+// jamais une phrase. Ces cinq motifs sont les familles réellement relevées dans le dépôt.
+const BRUIT_GABARIT = [
+  /^\//,                        // chemin ou route assemblés (`${userId}/avatar.jpg`)
+  /\w\[\w+=/,                   // sélecteur d'attribut CSS (`meta[name="${name}"]`)
+  /^url\(/,                     // `url(#fade-${suit})`
+  /\.eq\.|_id[,)]|^and\(/,      // filtres PostgREST (`sender_id.eq.${userId},…`)
+  /^[A-Z][a-z]+[A-Z]/,          // identifiant en casse chameau (`PostCard ${id}`)
+];
+const gabaritsFrancais = [];
+for (const f of fichiers) {
+  const relatif = path.relative(RACINE, f).split(path.sep).join('/');
+  if (HORS_PERIMETRE.some((h) => relatif.startsWith(h))) continue;
+  let src = fs
+    .readFileSync(f, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (c, avant) => avant + ' '.repeat(c.length - avant.length));
+  // Un message de `console.*` s'adresse au développeur — même raison qu'au contrôle précédent,
+  // mais en suivant les parenthèses : ce contrôle lit le fichier d'un bloc, pas ligne par ligne.
+  src = blanchirAppels(src, '\\bconsole\\.\\w+\\(');
+  for (const g of gabaritsInterpoles(src)) {
+    const net = g.texte.replace(/\s+/g, ' ').trim();
+    if (!net || net in fr) continue;
+    if (BRUIT.some((b) => b.test(net)) || BRUIT_GABARIT.some((b) => b.test(net))) continue;
+    const mots = net.match(MOTS) ?? [];
+    const humain = mots.length >= 2 || (mots.length === 1 && mots[0].length >= 4 && /^[A-ZÀ-Þ]/.test(mots[0]));
+    if (!humain) continue;
+    const ligne = src.slice(0, g.index).split('\n').length;
+    gabaritsFrancais.push(`${relatif}:${ligne}  ${net.slice(0, 90)}`);
+  }
+}
+if (gabaritsFrancais.length > 0) {
+  const plafondGabarits = process.argv.includes('--tout') ? gabaritsFrancais.length : 25;
+  console.log(`Texte figé dans un gabarit interpolé (${gabaritsFrancais.length}) — informatif :`);
+  for (const l of gabaritsFrancais.slice(0, plafondGabarits)) console.log(`      ${l}`);
+  if (gabaritsFrancais.length > plafondGabarits) {
+    console.log(`      … et ${gabaritsFrancais.length - plafondGabarits} de plus (--tout)`);
+  }
+  console.log('');
+}
+
 // ── Les textes du push, qui vivent hors du bundle ───────────────────────────────────────────────
 // `supabase/functions/send-push/textes.json` est GÉNÉRÉ depuis ce catalogue par
 // `scripts/i18n-push.js` : la fonction Deno ne peut pas importer `fr.json`. Si le fichier dérive,
@@ -488,11 +625,24 @@ if (fs.existsSync(cheminContexte)) {
 // ── `t` nu dans un composant : le texte resterait dans l'ancienne langue après un changement ─────
 // Le seul piège du module. `t` nu est LÉGITIME hors React et dans un gestionnaire d'événement (le
 // texte y est fabriqué au clic, pas affiché en continu) — d'où l'avertissement plutôt que l'échec.
+//
+// ⚠️ CE CONTRÔLE N'AVAIT JAMAIS RIEN ATTRAPÉ, découvert le 25/09/2026 : son motif exigeait un chemin
+// d'import FINISSANT par `i18n`, alors que les quatre fichiers concernés importent depuis
+// `i18n/traduire` — le module nu, justement celui qui n'abonne pas. Il ne pouvait donc mordre que
+// sur la forme qui n'a pas le défaut. Un contrôle muet est pire que pas de contrôle : la docstring
+// d'`useT` promet qu'il signale ce piège, et on s'y fiait.
+// Un COMPOSANT DE CLASSE ne peut pas appeler de hook : React impose la classe aux frontières
+// d'erreur (`componentDidCatch` n'existe pas sur une fonction). Nommé ici plutôt que toléré en
+// silence — sans quoi cet avertissement resterait allumé pour toujours et on apprendrait à ne
+// plus le lire, ce qui a déjà tué trois contrôles de ce fichier.
+const ABONNEMENT_IMPOSSIBLE = ['src/components/ui/ErrorBoundary.tsx'];
 const sansAbonnement = [];
 for (const f of fichiers) {
   if (!f.endsWith('.tsx')) continue;
+  const relatifT = path.relative(RACINE, f).split(path.sep).join('/');
+  if (ABONNEMENT_IMPOSSIBLE.includes(relatifT)) continue;
   const contenu = fs.readFileSync(f, 'utf8');
-  const importeT = /import\s*\{[^}]*\bt\b[^}]*\}\s*from\s*'[^']*i18n'/.test(contenu);
+  const importeT = /import\s*\{[^}]*\bt\b[^}]*\}\s*from\s*'[^']*i18n(?:\/traduire)?'/.test(contenu);
   if (importeT && !contenu.includes('useT(')) sansAbonnement.push(path.relative(RACINE, f));
 }
 if (sansAbonnement.length > 0) {

@@ -1,4 +1,5 @@
 import { refuser } from './formeNeutre';
+import { t } from '../i18n/traduire';
 
 /**
  * LE DÉCOUPAGE EN BLOCS, PARTAGÉ PAR TOUS LES DIALECTES.
@@ -76,7 +77,7 @@ export function decouperEnBlocs(
       continue;
     }
     const canonique = reconnus.get(clefDeMarqueur(m[1]));
-    if (!canonique) refuser('ligne-incomprise', `marqueur inconnu : « ${ligne.trim()} »`);
+    if (!canonique) refuser('ligne-incomprise', t('diag.marqueur_inconnu', { ligne: ligne.trim() }));
     courant = parMarqueur.get(canonique!) ?? [];
     parMarqueur.set(canonique!, courant);
     // Les cartes de la street vivent SUR la ligne du marqueur : rangées à part (cf. `apresMarqueur`).

@@ -77,7 +77,7 @@ export function GroupMembersScreen({
       <ConfirmSheet
         visible={excludingMember != null}
         icon={PersonIcon}
-        title={`Retirer ${excludingMember?.displayName ?? t('groupe.ce_membre')} du groupe ?`}
+        title={t('groupe.retirer_titre', { nom: excludingMember?.displayName ?? t('groupe.ce_membre') })}
         message={t('groupe.exclure_message')}
         confirmLabel={t('commun.retirer')}
         onCancel={() => setExcludingMember(null)}

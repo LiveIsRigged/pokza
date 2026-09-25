@@ -52,7 +52,7 @@ export function decoderTexte(octets: ArrayBuffer): string {
 export function verifierTaille(octets: number): void {
   if (octets === 0) refuser('texte-vide', t('diag.fichier_vide'));
   if (octets > TAILLE_MAX_OCTETS) {
-    refuser('fichier-trop-gros', `${Math.round(octets / 1024 / 1024)} Mo`);
+    refuser('fichier-trop-gros', t('diag.taille_mo', { n: Math.round(octets / 1024 / 1024) }));
   }
 }
 

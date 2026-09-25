@@ -1,5 +1,6 @@
 import type { Card, Rank, Street, Suit } from '../types/poker';
 import type { CodeDevise } from '../utils/currency';
+import { t } from '../i18n/traduire';
 
 /**
  * LA FORME NEUTRE — CE QU'UN DIALECTE A LU, AVANT TOUTE INTERPRÉTATION POKZA.
@@ -260,7 +261,7 @@ export function crochets(ligne: string): string[] {
 export function cartesNeuves(ligne: string, combien: number, quoi: string): Card[] {
   const toutes = crochets(ligne).flatMap((c) => lireCartes(c));
   if (toutes.length < combien) {
-    refuser('ligne-incomprise', `${quoi} : ${toutes.length} carte(s) lue(s), ${combien} attendue(s)`);
+    refuser('ligne-incomprise', t('diag.cartes_insuffisantes', { quoi, lues: toutes.length, attendues: combien }));
   }
   return toutes.slice(toutes.length - combien);
 }

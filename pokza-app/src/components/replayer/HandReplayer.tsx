@@ -19,7 +19,7 @@ import { TableVue, type SiegeAffiche } from '../table/TableVue';
 import { ActionCallout } from './ActionCallout';
 import { PlaybackControls } from './PlaybackControls';
 import { UnitToggle, UNIT_TOGGLE_WIDTH } from './UnitToggle';
-import { t } from '../../i18n/traduire';
+import { useT } from '../../i18n';
 
 const AUTOPLAY_INTERVAL_MS = 1400;
 /**
@@ -74,6 +74,9 @@ function useEquityHorsRendu(pending: EquitySituation | null): Record<string, num
 }
 
 export function HandReplayer({ hand, onDeroule }: HandReplayerProps) {
+  // `useT` et non `t` nu : c'est lui qui redessine la bulle quand la langue change sous une main
+  // déjà ouverte à l'écran (cf. la docstring d'`useT`, et le contrôle qui le signale).
+  const t = useT();
   const { useBB, toggleUseBB } = useDisplayUnit();
   const initialStep = useMemo(() => initialReplayStep(hand), [hand]);
   const [step, setStep] = useState(initialStep);
@@ -166,7 +169,7 @@ export function HandReplayer({ hand, onDeroule }: HandReplayerProps) {
   const nomEnAttente = siegeEnAttente ? seatLabel(hand, siegeEnAttente) : '';
   const texteArret = siegeEnAttente
     ? nomEnAttente
-      ? `À ${nomEnAttente} de jouer`
+      ? t('commun.a_qui_de_jouer', { nom: nomEnAttente })
       : t('replayer.main_arretee')
     : null;
 
