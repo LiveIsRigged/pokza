@@ -354,7 +354,7 @@ export function monter(main: MainLue): MontageDeMain {
     tournamentName,
     buyIn,
     // Ce qui est STOCKÉ est la chaîne complète, pas le seul nombre (cf. `LevelNumberInput`).
-    level: enTournoi && main.niveau ? t('import.niveau', { n: main.niveau }) : undefined,
+    level: enTournoi && main.niveau ? t('commun.niveau_valeur', { n: main.niveau }) : undefined,
     siegeParNom,
     positionParNom,
     avertissements,

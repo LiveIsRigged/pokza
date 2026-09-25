@@ -11,7 +11,7 @@ import { LocationInput } from '../components/ui/LocationInput';
 import { DESCRIPTION_MAX_LENGTH } from '../creator/types';
 import {
   BUY_IN_MAX_LENGTH,
-  LEVEL_MAX_LENGTH,
+  levelMaxLength,
   TITLE_MAX_LENGTH,
   TOURNAMENT_NAME_MAX_LENGTH,
   VOTE_OPTION_MAX_LENGTH,
@@ -273,13 +273,13 @@ export const EditPostScreen = React.forwardRef<EditPostScreenHandle, EditPostScr
               />
               <Text style={styles.label}>{t('createur.niveau_de_blindes')}</Text>
               {/* Champ libre ici, alors que la création impose un numéro seul (LevelNumberInput).
-                  La limite couvre le format réellement stocké — « Niveau » + 3 chiffres. */}
+                  La limite couvre le format réellement stocké, dans la langue de l'auteur. */}
               <TextInput
                 autoComplete="off"
                 style={styles.input}
                 placeholder={t('post.niveau_exemple')}
                 placeholderTextColor={placeholderText}
-                maxLength={LEVEL_MAX_LENGTH}
+                maxLength={levelMaxLength()}
                 value={level}
                 onChangeText={setLevel}
               />

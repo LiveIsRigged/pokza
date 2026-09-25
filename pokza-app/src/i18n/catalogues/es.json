@@ -738,7 +738,7 @@
   "denomination.tournoi": "Torneo",
   "denomination.cash_game": "Cash game",
   "denomination.bomb_pot": "{prefixe}bomb pot {montant}",
-  "import.niveau": "Nivel {n}",
+  "commun.niveau_valeur": "Nivel {n}",
   "profil.stat_mains": {
     "one": "mano",
     "other": "manos"

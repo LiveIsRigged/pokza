@@ -738,7 +738,7 @@
   "denomination.tournoi": "Turnier",
   "denomination.cash_game": "Cash Game",
   "denomination.bomb_pot": "{prefixe}Bomb Pot {montant}",
-  "import.niveau": "Level {n}",
+  "commun.niveau_valeur": "Level {n}",
   "profil.stat_mains": {
     "one": "Hand",
     "other": "Hände"

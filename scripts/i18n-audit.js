@@ -499,6 +499,38 @@ if (gabaritsFrancais.length > 0) {
   console.log('');
 }
 
+// ── La forme stockée du niveau contre la contrainte de la base ───────────────────────────────────
+// `commun.niveau_valeur` n'est pas une étiquette : c'est la valeur ÉCRITE dans `posts.level`, par
+// le créateur comme par l'import. Et `securite-lot6.sql` y impose `char_length(level) <= 10`.
+//
+// Les quatre langues livrées tiennent — « Niveau 999 » fait 10 pile, les trois autres 9. Par
+// chance, pas par construction : « Livello 999 » (italien) ferait 11, et la base REFUSERAIT
+// l'insertion. Ce n'est pas une troncature, c'est une main qui ne se publie pas, sur une erreur que
+// personne ne saurait relier à une traduction.
+//
+// BLOQUANT, contrairement aux contrôles informatifs plus haut : le coût d'un oubli n'est pas une
+// phrase un peu française, c'est une fonctionnalité cassée pour toute une langue.
+{
+  const PLAFOND_BASE = 10; // jumeau de limits.ts / securite-lot6.sql:63
+  const CLE_NIVEAU = 'commun.niveau_valeur';
+  const CHIFFRES_MAX = 3; // LEVEL_DIGITS_MAX
+  const trop = [];
+  for (const langue of [SOURCE, ...langues]) {
+    const catalogue = langue === SOURCE ? fr : lire(`${langue}.json`);
+    const forme = catalogue[CLE_NIVEAU];
+    if (typeof forme !== 'string') continue; // absente : déjà signalé comme MANQUANTE plus haut
+    const rendu = forme.replace(/\{n\}/g, '9'.repeat(CHIFFRES_MAX));
+    if (rendu.length > PLAFOND_BASE) trop.push(`${langue} : « ${rendu} » = ${rendu.length} caractères`);
+  }
+  if (trop.length > 0) {
+    trous += trop.length;
+    console.log(`${CLE_NIVEAU} dépasse les ${PLAFOND_BASE} caractères de la base (${trop.length}) :`);
+    for (const l of trop) console.log(`      ${l}`);
+    console.log('      La base REFUSERAIT la publication. Raccourcir le mot, ou remonter la');
+    console.log('      contrainte des DEUX côtés (securite-lot6.sql et limits.ts).\n');
+  }
+}
+
 // ── Les textes du push, qui vivent hors du bundle ───────────────────────────────────────────────
 // `supabase/functions/send-push/textes.json` est GÉNÉRÉ depuis ce catalogue par
 // `scripts/i18n-push.js` : la fonction Deno ne peut pas importer `fr.json`. Si le fichier dérive,

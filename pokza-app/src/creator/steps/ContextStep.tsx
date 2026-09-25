@@ -75,10 +75,13 @@ function LevelNumberInput({
         placeholderTextColor={placeholderText}
         maxLength={LEVEL_DIGITS_MAX}
         value={digits}
-        onChangeText={(t) => {
-          const d = t.replace(/\D/g, '').slice(0, LEVEL_DIGITS_MAX);
+        onChangeText={(saisie) => {
+          const d = saisie.replace(/\D/g, '').slice(0, LEVEL_DIGITS_MAX);
           setDigits(d);
-          onChangeValue(d ? `Niveau ${d}` : undefined);
+          // LA MÊME clé que l'import (cf. `montage.ts`) : les deux chemins écrivent la valeur
+          // stockée, et deux formes différentes rendraient une main saisie étrangère à la même
+          // main importée — aucun rapprochement par le texte ne marcherait dessus.
+          onChangeValue(d ? t('commun.niveau_valeur', { n: d }) : undefined);
         }}
       />
     </View>

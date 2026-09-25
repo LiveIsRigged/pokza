@@ -15,6 +15,10 @@
 // pour 2 côté interface et pour 1 côté base. La base ne refusera donc jamais quelque chose que
 // l'interface a laissé passer.
 
+// Seul import de ce module, et il n'y est que pour le niveau : sa forme stockée est TRADUITE
+// (cf. `levelMaxLength`), donc son plafond ne se lit plus sur un mot français.
+import { t } from '../i18n/traduire';
+
 /** Profil */
 export const PSEUDO_MAX_LENGTH = 24;
 export const BIO_MAX_LENGTH = 150;
@@ -61,10 +65,33 @@ export const BUY_IN_MAX_LENGTH = 16;
 export const TOURNAMENT_NAME_MAX_LENGTH = 44;
 
 /** Niveau de blindes. Ce qui est STOCKÉ est la chaîne complète « Niveau 12 », pas le seul nombre
- *  (cf. LevelNumberInput) : 7 caractères de préfixe + 3 chiffres. Le niveau ne dépasse jamais
- *  999 en tournoi, d'où les 3 chiffres. */
+ *  (cf. LevelNumberInput). Le niveau ne dépasse jamais 999 en tournoi, d'où les 3 chiffres. */
 export const LEVEL_DIGITS_MAX = 3;
-export const LEVEL_MAX_LENGTH = 'Niveau '.length + LEVEL_DIGITS_MAX;
+
+/** Le jumeau en base : `char_length(level) <= 10` (securite-lot6.sql, ligne 63). Écrit ici pour
+ *  que le plafond de saisie ne puisse jamais le dépasser — un dépassement n'est pas une troncature
+ *  mais un REFUS d'insertion, donc une main qui ne se publie pas sur une erreur opaque. */
+const LEVEL_MAX_LENGTH_BASE = 10;
+
+/** Le plafond du champ libre de correction, DANS LA LANGUE DE L'AUTEUR.
+ *
+ *  ⚠️ UNE FONCTION ET NON UNE CONSTANTE, pour deux raisons qui se cumulent. Le préfixe est traduit
+ *  (commun.niveau_valeur) depuis le 25/09/2026, donc sa longueur change avec la langue ; et une
+ *  constante de module serait évaluée AVANT que `LangueProvider` n'ait appelé `poserLangue` —
+ *  elle figerait le français au chargement.
+ *
+ *  Ce que l'ancienne écriture (`'Niveau '.length + 3`) cachait, mesuré : « Niveau » est le plus
+ *  long des quatre préfixes livrés, donc les quatre tiennent dans 10 — par chance, pas par
+ *  construction. Un italien (« Livello 999 » = 11) dépasserait.
+ *
+ *  Le `min` est le garde-fou de dernier recours : il garantit qu'on ne peut pas SAISIR ce que la
+ *  base refuserait. Mais il tronquerait en silence, ce qui n'est pas acceptable comme seule
+ *  réponse — d'où le contrôle bloquant de `scripts/i18n-audit.js`, qui refuse une langue dont la
+ *  forme dépasse 10. Le garde-fou protège la publication ; le contrôle fait corriger la traduction. */
+export function levelMaxLength(): number {
+  const rendu = t('commun.niveau_valeur', { n: '9'.repeat(LEVEL_DIGITS_MAX) }).length;
+  return Math.min(rendu, LEVEL_MAX_LENGTH_BASE);
+}
 
 /** Main : sondage */
 export const VOTE_QUESTION_MAX_LENGTH = 80;
