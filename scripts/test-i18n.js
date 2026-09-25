@@ -107,7 +107,12 @@ verifier('codes nuls ignorés', choisirLangue([null, undefined, 'fr']), 'fr');
 // moyen de savoir que sa langue existe.
 verifier('variante régionale → langue de base', choisirLangue(['de-AT']), 'de');
 verifier('fr-CA → fr', choisirLangue(['fr-CA']), 'fr');
-verifier("la variante ne l'emporte pas sur une correspondance exacte plus loin", choisirLangue(['pt-BR', 'de']), 'de');
+// La variante d'une langue NON SERVIE ne doit pas court-circuiter une correspondance exacte
+// située plus loin dans la liste. Le suffixe de région est sans importance ici — seule compte la
+// base, qui n'est pas servie. Ce cas s'écrivait « pt-BR » jusqu'au 25/09/2026, jour où le
+// portugais est arrivé : même piège que plus haut, et donc la même parade.
+verifier("la variante ne l'emporte pas sur une correspondance exacte plus loin",
+  choisirLangue([`${nonServie}-001`, 'de']), 'de');
 
 // 8. phrases a trous — celles dont un morceau est un lien ou un mot en couleur
 const seg = (g) => JSON.stringify(segmenter(g));

@@ -28,5 +28,11 @@
     "main": "Mano condivisa su Pokza. Di' la tua nei commenti!",
     "groupe": "{nom} ti invita nel gruppo {groupe}",
     "profil": "{nom} ti invita su Pokza"
+  },
+  "pt": {
+    "phrase": "A rede dos jogadores de poker: compartilhe suas mãos e peça a opinião dos seus amigos",
+    "main": "Mão compartilhada no Pokza. Dê sua opinião nos comentários!",
+    "groupe": "{nom} convida você para o grupo {groupe}",
+    "profil": "{nom} convida você para o Pokza"
   }
 }
