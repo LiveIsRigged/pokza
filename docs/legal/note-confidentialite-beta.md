@@ -33,7 +33,11 @@ réinitialisation de mot de passe si besoin.
 ## Où c'est hébergé
 
 Base de données, authentification et stockage de fichiers : Supabase, hébergé dans l'Union européenne.
-Application web : Cloudflare.
+
+Cloudflare, établi aux États-Unis, intervient à trois endroits : il héberge l'application web (toute
+visite passe par lui, qui reçoit donc ton adresse IP), il protège l'inscription contre les robots, et
+il traduit les publications quand tu touches « Traduire » — dans ce cas seulement, le texte concerné
+(titre, description, sondage, ou le commentaire) lui est transmis pour être traduit.
 
 ## Combien de temps c'est gardé
 
