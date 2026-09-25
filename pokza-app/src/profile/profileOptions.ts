@@ -56,11 +56,19 @@ export function playerSummary(formatFavori: string, frequenceJeu: string): strin
   const format = formatLabel(formatFavori);
   // ⚠️ LA MINUSCULE INITIALE EST UNE CONVENTION, PAS UNE RÈGLE. Le français et l'anglais écrivent
   // « joueur régulier de cash game live » ; l'allemand met une majuscule à ses noms communs, et
-  // « live Cash Game » y serait une faute. La typographie appartient à la langue : on ne l'applique
-  // donc qu'aux langues qui la pratiquent, et une langue de plus se déclare ici.
-  const MINUSCULE_EN_MILIEU_DE_PHRASE = ['fr', 'en', 'es'];
-  const formatLowerFirst = MINUSCULE_EN_MILIEU_DE_PHRASE.includes(langueCourante())
-    ? format.charAt(0).toLowerCase() + format.slice(1)
-    : format;
+  // « live Cash Game » y serait une faute. La typographie appartient à la langue.
+  //
+  // ÉCRIT EN LISTE D'EXCEPTIONS ET NON D'AUTORISATIONS, et c'est le correctif du 25/09/2026 : la
+  // liste disait « une langue de plus se déclare ici », l'italien et le portugais ont été livrés
+  // sans y être ajoutés, et affichaient « Giocatore regolare di Cash game live » — une faute de
+  // typographie italienne que rien ne signalait, puisque le texte s'affichait normalement.
+  //
+  // La majuscule aux noms communs est le CAS RARE : l'allemand, le luxembourgeois. La minuscule est
+  // la règle partout ailleurs. En nommant l'exception plutôt que la règle, une langue de plus n'a
+  // plus rien à déclarer ici — et l'oubli, s'il reste possible, ne concerne que l'allemand.
+  const MAJUSCULE_AUX_NOMS_COMMUNS = ['de', 'lb'];
+  const formatLowerFirst = MAJUSCULE_AUX_NOMS_COMMUNS.includes(langueCourante())
+    ? format
+    : format.charAt(0).toLowerCase() + format.slice(1);
   return t(regulier ? 'profil.resume_regulier' : 'profil.resume_occasionnel', { format: formatLowerFirst });
 }
