@@ -74,5 +74,24 @@
     "content_removed": "Un de tes contenus a été retiré par la modération.",
     "account_sanctioned": "Ton compte a fait l'objet d'une mesure de modération.",
     "quelquun": "Quelqu’un"
+  },
+  "it": {
+    "post_like": "A {nom} è piaciuta la tua mano",
+    "comment_like": "A {nom} è piaciuto il tuo commento",
+    "post_comment": "{nom} ha commentato la tua mano",
+    "comment_reply": "{nom} ha risposto al tuo commento",
+    "friend_request": "{nom} vuole diventare tuo amico",
+    "friend_accept": "{nom} ha accettato la tua richiesta di amicizia",
+    "friend_posted": "{nom} ha pubblicato una mano",
+    "friend_posted_lieu": "{nom} ha pubblicato una mano a {lieu}",
+    "group_invite": "{nom} ti invita nel gruppo privato {groupe}",
+    "group_accept": "{nom} è entrato nel gruppo privato {groupe}",
+    "group_posted": "{nom} ha pubblicato una mano nel gruppo privato {groupe}",
+    "group_member_invited": "{nom} ha invitato {invite} in {groupe}",
+    "group_member_joined": "{nom} è entrato in {groupe} grazie a {parrain}",
+    "report_resolved": "La tua segnalazione è stata gestita dalla moderazione.",
+    "content_removed": "Uno dei tuoi contenuti è stato rimosso dalla moderazione.",
+    "account_sanctioned": "Il tuo account è stato oggetto di un provvedimento di moderazione.",
+    "quelquun": "Qualcuno"
   }
 }

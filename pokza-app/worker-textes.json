@@ -22,5 +22,11 @@
     "main": "Main partagée sur Pokza. Donne ton avis en commentaire !",
     "groupe": "{nom} t'invite dans le groupe {groupe}",
     "profil": "{nom} t'invite sur Pokza"
+  },
+  "it": {
+    "phrase": "Il network dei giocatori di poker: condividi le tue mani e chiedi il parere dei tuoi amici",
+    "main": "Mano condivisa su Pokza. Di' la tua nei commenti!",
+    "groupe": "{nom} ti invita nel gruppo {groupe}",
+    "profil": "{nom} ti invita su Pokza"
   }
 }

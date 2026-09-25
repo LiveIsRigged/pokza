@@ -21,6 +21,10 @@ scripts/ch/
 scripts/lv/
 scripts/i18n/
 scripts/i18n-*.csv
+# Traductions en attente d'import (cf. scripts/i18n-remplir.js). Volontairement NON suivies, pour
+# la même raison que les CSV : une fois importées, le catalogue EST le document de référence. En
+# garder une seconde copie, c'est se donner deux vérités qui divergeront à la première correction.
+scripts/traductions/
 scripts/legal/
 
 # Banc de traduction : résultats et journal des neurons dépensés (regénérés, cf. scripts/traduction-banc.mjs)

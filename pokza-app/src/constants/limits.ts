@@ -68,10 +68,16 @@ export const TOURNAMENT_NAME_MAX_LENGTH = 44;
  *  (cf. LevelNumberInput). Le niveau ne dépasse jamais 999 en tournoi, d'où les 3 chiffres. */
 export const LEVEL_DIGITS_MAX = 3;
 
-/** Le jumeau en base : `char_length(level) <= 10` (securite-lot6.sql, ligne 63). Écrit ici pour
- *  que le plafond de saisie ne puisse jamais le dépasser — un dépassement n'est pas une troncature
- *  mais un REFUS d'insertion, donc une main qui ne se publie pas sur une erreur opaque. */
-const LEVEL_MAX_LENGTH_BASE = 10;
+/** Le jumeau en base : `char_length(level) <= 16` (docs/dev/niveau-multilingue.sql, qui a desserré
+ *  les 10 de securite-lot6.sql le 25/09/2026). Écrit ici pour que le plafond de saisie ne puisse
+ *  jamais le dépasser — un dépassement n'est pas une troncature mais un REFUS d'insertion, donc
+ *  une main qui ne se publie pas sur une erreur opaque.
+ *
+ *  Pourquoi ça a bougé : la forme stockée est traduite, et « Niveau » se trouvait être le plus
+ *  long préfixe des quatre premières langues — les quatre tenaient dans 10 par chance. L'italien
+ *  (« Livello 999 » = 11) et le russe (« Уровень 999 » = 11) dépassaient. 16 est déjà la valeur de
+ *  buy_in dans la MÊME contrainte : un nombre arbitraire de moins à tenir. */
+const LEVEL_MAX_LENGTH_BASE = 16;
 
 /** Le plafond du champ libre de correction, DANS LA LANGUE DE L'AUTEUR.
  *

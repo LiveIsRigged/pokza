@@ -26,6 +26,7 @@
 // puis : node scripts/test-i18n.js
 
 const { t, rendre, interpoler, categorie, poserLangue, choisirLangue, segmenter } = require('./i18n/i18n/traduire');
+const { LANGUES } = require('./i18n/i18n/langues');
 
 let echecs = 0;
 function verifier(nom, obtenu, attendu) {
@@ -43,12 +44,23 @@ poserLangue('en');
 verifier('anglais', t('reglages.titre'), 'Settings');
 
 // 3. une langue sans catalogue retombe sur l'anglais, pas sur la clé
-// ⚠️ Ce cas s'est testé avec 'de', puis avec 'es' — chaque fois jusqu'à ce que la langue existe
-// pour de vrai (allemand le 11/09, espagnol le même jour). L'ITALIEN prend la suite : il faut ici
-// une langue que Pokza NE SERT PAS, sinon le test ne teste plus le repli mais la traduction. Ce
-// commentaire a déjà servi deux fois — le jour où l'italien arrivera, prendre encore la suivante.
-poserLangue('it');
-verifier('repli sur anglais', t('reglages.titre'), 'Settings');
+// ⚠️ IL FAUT ICI UNE LANGUE QUE POKZA NE SERT PAS, sinon le test ne teste plus le repli mais la
+// traduction. Elle était écrite en dur, et il a fallu la changer à CHAQUE langue ajoutée — 'de'
+// le 11/09, puis 'es' le même jour, puis 'it' le 25/09. Le commentaire disait « prendre encore la
+// suivante » ; en ouvrant Pokza à une dizaine de langues d'un coup, ce n'est plus tenable.
+//
+// Elle se DÉDUIT donc maintenant du catalogue lui-même : on prend le premier code d'une liste de
+// langues que Pokza ne prévoit pas de servir. Le jour où l'une d'elles arrive, le test se déplace
+// tout seul ; le jour où TOUTES seraient servies, il échoue en le DISANT, au lieu de se mettre à
+// vérifier silencieusement autre chose que ce qu'il annonce.
+const NON_SERVIES = ['mt', 'is', 'ga', 'cy', 'eu', 'lb'];
+const nonServie = NON_SERVIES.find((c) => !(c in LANGUES));
+if (!nonServie) {
+  console.log('✗ plus aucune langue non servie dans NON_SERVIES — en ajouter une');
+  process.exit(1);
+}
+poserLangue(nonServie);
+verifier(`repli sur anglais (${nonServie} non servie)`, t('reglages.titre'), 'Settings');
 poserLangue('fr');
 
 // …et une langue servie MAIS INCOMPLÈTE retombe clé par clé, pas en bloc.
@@ -84,11 +96,11 @@ verifier('catégorie manquante → other', rendre({ other: '{count} шт.' }, 'r
 
 // 7. langue de démarrage
 verifier('appareil en français', choisirLangue(['fr']), 'fr');
-// La PREMIÈRE langue servie de la liste, pas la première tout court : un Suisse réglé sur
-// [italien, français] reçoit du français plutôt que de l'anglais.
-verifier('appareil suisse [it, fr] → fr', choisirLangue(['it', 'fr']), 'fr');
+// La PREMIÈRE langue servie de la liste, pas la première tout court : quelqu'un réglé sur
+// [une langue qu'on ne sert pas, français] reçoit du français plutôt que de l'anglais.
+verifier(`appareil [${nonServie}, fr] → fr`, choisirLangue([nonServie, 'fr']), 'fr');
 verifier('appareil [de, fr] → de (les deux sont servies)', choisirLangue(['de', 'fr']), 'de');
-verifier('langue non servie seule → anglais', choisirLangue(['it']), 'en');
+verifier('langue non servie seule → anglais', choisirLangue([nonServie]), 'en');
 verifier('aucune préférence → anglais', choisirLangue([]), 'en');
 verifier('codes nuls ignorés', choisirLangue([null, undefined, 'fr']), 'fr');
 // « de-AT » est de l'allemand : un Autrichien basculé sur l'anglais faute d'un tiret n'aurait aucun

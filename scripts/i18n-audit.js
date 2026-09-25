@@ -511,7 +511,7 @@ if (gabaritsFrancais.length > 0) {
 // BLOQUANT, contrairement aux contrôles informatifs plus haut : le coût d'un oubli n'est pas une
 // phrase un peu française, c'est une fonctionnalité cassée pour toute une langue.
 {
-  const PLAFOND_BASE = 10; // jumeau de limits.ts / securite-lot6.sql:63
+  const PLAFOND_BASE = 16; // jumeau de limits.ts / docs/dev/niveau-multilingue.sql
   const CLE_NIVEAU = 'commun.niveau_valeur';
   const CHIFFRES_MAX = 3; // LEVEL_DIGITS_MAX
   const trop = [];
