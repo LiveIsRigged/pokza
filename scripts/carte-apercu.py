@@ -22,7 +22,8 @@ vérifiée par `scripts/i18n-audit.js`). Le jour où l'une des deux bouge, on re
 """
 import json
 import pathlib
-from PIL import Image, ImageDraw, ImageFont
+import unicodedata
+from PIL import Image, ImageDraw, ImageFont, features
 
 RACINE = pathlib.Path(__file__).resolve().parent.parent
 CATALOGUES = RACINE / 'pokza-app' / 'src' / 'i18n' / 'catalogues'
@@ -64,6 +65,95 @@ def police(taille, graisse=400):
         except OSError:
             continue
     raise SystemExit('Aucune police trouvée — ni SF Pro ni Helvetica.')
+
+
+# ⚠️ SF PRO NE COUVRE NI LE HAN, NI LE HANGUL, NI LES KANA, NI LE THAÏ — et le défaut est MUET :
+# PIL ne lève rien, il dessine le glyphe .notdef, c'est-à-dire un carré. La vignette chinoise est
+# sortie avec une rangée de carrés à la place de la phrase, le 26/09/2026, et seul son POIDS le
+# disait (13 Ko contre 23 pour les langues latines).
+#
+# ⚠️ CE N'EST PAS LE MÊME PROBLÈME QUE DANS L'APP, et c'est pour ça qu'il a été manqué : l'app
+# écrit en fonte SYSTÈME, qui couvre toutes les écritures. Ce script, lui, charge un CHEMIN DE
+# FONTE EN DUR. Deux surfaces, deux réponses — vérifier l'une ne dit rien de l'autre.
+#
+# Les fontes de secours sont ESSAYÉES, pas déclarées : on compare le glyphe rendu à celui de
+# U+E000 (zone privée, jamais dessinée, donc toujours .notdef). Si les deux bitmaps sont
+# identiques, la fonte n'a pas le caractère et on passe à la suivante. Une écriture de plus, ou
+# un macOS qui déplace ses fontes, se règle donc tout seul — rien à tenir à jour ici.
+# ⚠️ PIL NE COMPOSE PAS LES ÉCRITURES COMPLEXES SANS libraqm, et là encore le défaut est MUET.
+# Le thaï écrit ses voyelles et ses tons en MARQUES COMBINANTES posées au-dessus et au-dessous de
+# la consonne. Sans composition, PIL dessine chaque marque ISOLÉMENT — et une marque isolée se
+# rend avec son cercle pointillé de substitution. La vignette thaïe est sortie couverte de petits
+# ronds, le 26/09/2026 ; la fonte n'y était pour rien, elle avait tous les caractères.
+#
+# Ça ne se voit pas au poids du fichier (29 Ko, comme une vignette normale) : il faut REGARDER.
+#
+# Concerne aujourd'hui le thaï seul, mais concernera l'arabe, l'hébreu, le persan et l'hindi le
+# jour où ils arriveront. La vignette retombe donc sur la phrase ANGLAISE, en le DISANT à chaque
+# passage : une carte lisible en anglais vaut mieux qu'une carte illisible dans la bonne langue.
+#
+# Pour l'avoir dans la bonne langue : `brew install libraqm` puis réinstaller Pillow
+# (`pip install --force-reinstall --no-binary :all: Pillow`), et relancer ce script.
+COMPOSITION = features.check('raqm')
+
+
+def besoin_de_composition(texte):
+    """Le texte porte-t-il des marques qui doivent se poser SUR une autre lettre ?"""
+    return any(unicodedata.category(c) in ('Mn', 'Mc', 'Me') for c in texte)
+
+
+SECOURS = (
+    '/System/Library/Fonts/Hiragino Sans GB.ttc',        # han + kana (chinois, japonais)
+    '/System/Library/Fonts/AppleSDGothicNeo.ttc',        # hangul (coréen)
+    '/System/Library/Fonts/ThonburiUI.ttc',              # thaï
+    '/System/Library/Fonts/Supplemental/Thonburi.ttc',
+    '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',  # le filet : presque tout Unicode
+)
+
+
+def _manque(font, caractere):
+    """La fonte dessine-t-elle ce caractère, ou son carré ?
+
+    On compare la BOÎTE du glyphe à celle de U+FFFF, un « non-caractère » qu'Unicode garantit ne
+    jamais assigner : aucune fonte ne l'a, donc elle dessine forcément son .notdef. Même boîte =
+    même carré = caractère absent.
+
+    ⚠️ PREMIER JET FAUX, ET IL A ÉCHOUÉ BRUYAMMENT : il comparait `getmask(c).tobytes()`, une
+    méthode qui n'existe pas sur cette version de PIL. Chaque appel tombait donc dans son `except`
+    et déclarait TOUT manquant — y compris le cyrillique, que SF Pro écrit très bien. Le script
+    s'est arrêté sur « Мрежат » au lieu de fabriquer des vignettes fausses, ce qui est exactement
+    le comportement voulu d'un contrôle qui se trompe.
+
+    ⚠️ ET U+E000 NE CONVIENT PAS non plus, alors que c'est de la zone privée : Apple y range ses
+    SF Symbols, donc SF Pro a bel et bien un glyphe à cette position.
+
+    La limite assumée : deux glyphes peuvent partager une boîte par hasard. L'erreur ne va alors
+    que dans le sens sûr — on passe à la fonte suivante, et si aucune ne convient on s'arrête.
+    """
+    try:
+        return font.getbbox(caractere) == font.getbbox('\uffff')
+    except Exception:
+        return True
+
+
+def police_pour(texte, taille, graisse=400):
+    """La police du thème si elle sait écrire `texte`, sinon la première de SECOURS qui sait."""
+    principale = police(taille, graisse)
+    inconnus = [c for c in texte if ord(c) > 0x2FF and _manque(principale, c)]
+    if not inconnus:
+        return principale
+    for chemin in SECOURS:
+        try:
+            f = ImageFont.truetype(chemin, taille)
+        except OSError:
+            continue
+        if not any(_manque(f, c) for c in inconnus):
+            return f
+    # Aucune ne convient : mieux vaut s'arrêter que publier une vignette de carrés.
+    raise SystemExit(
+        f"Aucune police ne sait écrire « {''.join(dict.fromkeys(inconnus))[:12]} » — "
+        f'ajouter une fonte à SECOURS dans {__file__}.'
+    )
 
 
 def largeur(d, texte, font):
@@ -108,11 +198,11 @@ def carte(phrase):
     haut, bas = deux_lignes(phrase)
     taille = 31
     while taille > 20:
-        f = police(taille)
+        f = police_pour(phrase, taille)
         if max(largeur(d, haut, f), largeur(d, bas, f)) <= L - 2 * MARGE:
             break
         taille -= 1
-    f = police(taille)
+    f = police_pour(phrase, taille)
     centre(d, haut, 430, f, PARCHEMIN_ESTOMPE)
     centre(d, bas, 430 + taille + 17, f, PARCHEMIN_ESTOMPE)
     return img
@@ -126,8 +216,19 @@ def main():
         l: json.loads((CATALOGUES / f'{l}.json').read_text())['apercu.phrase'] for l in langues
     }
 
+    # Les langues dont l'écriture demande une composition que PIL ne sait pas faire ici : on prend
+    # la phrase anglaise pour LEUR vignette, et on le dit. Voir le bandeau de COMPOSITION.
+    degradees = [
+        l for l in langues
+        if not COMPOSITION and l != 'en' and besoin_de_composition(phrases[l])
+    ]
+    if degradees:
+        print(f"⚠️ libraqm absent : {', '.join(degradees)} — vignette rendue avec la phrase ANGLAISE,")
+        print('   parce que sans composition leurs marques sortiraient en cercles pointillés.')
+        print('   Pour les avoir dans leur langue : brew install libraqm, puis réinstaller Pillow.')
+
     for langue in langues:
-        img = carte(phrases[langue])
+        img = carte(phrases['en'] if langue in degradees else phrases[langue])
         cible = PUBLIC / f'apercu-{langue}.png'
         img.save(cible, optimize=True)
         print(f'{cible.relative_to(RACINE)} — {cible.stat().st_size // 1024} Ko')
