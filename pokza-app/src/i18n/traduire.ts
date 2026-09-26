@@ -17,7 +17,14 @@ import uk from './catalogues/uk.json';
 import bg from './catalogues/bg.json';
 import ro from './catalogues/ro.json';
 import cs from './catalogues/cs.json';
-import { estLangueServie, LANGUE_REPLI, LANGUE_SOURCE, type Langue } from './langues';
+import zhHant from './catalogues/zh-Hant.json';
+import sk from './catalogues/sk.json';
+import ko from './catalogues/ko.json';
+import ja from './catalogues/ja.json';
+import th from './catalogues/th.json';
+import vi from './catalogues/vi.json';
+import tr from './catalogues/tr.json';
+import { estLangueServie, LANGUE_REPLI, LANGUE_SOURCE, resoudreLangue, type Langue } from './langues';
 
 /**
  * Le cœur de la traduction, SANS React ni rien de natif : un dictionnaire, une interpolation et
@@ -65,7 +72,14 @@ const CATALOGUES: {
   bg: Partial<Record<Cle, Message>>;
   ro: Partial<Record<Cle, Message>>;
   cs: Partial<Record<Cle, Message>>;
-} = { fr, en, de, es, it, pt, nl, el, hu, sv, fi, nb, da, ru, pl, uk, bg, ro, cs };
+  'zh-Hant': Partial<Record<Cle, Message>>;
+  sk: Partial<Record<Cle, Message>>;
+  ko: Partial<Record<Cle, Message>>;
+  ja: Partial<Record<Cle, Message>>;
+  th: Partial<Record<Cle, Message>>;
+  vi: Partial<Record<Cle, Message>>;
+  tr: Partial<Record<Cle, Message>>;
+} = { fr, en, de, es, it, pt, nl, el, hu, sv, fi, nb, da, ru, pl, uk, bg, ro, cs, 'zh-Hant': zhHant, sk, ko, ja, th, vi, tr };
 
 /**
  * Langue effective, tenue hors de React : `handEngine`, `relativeDate` ou `errorMessage` produisent
@@ -185,7 +199,21 @@ const EQUIVALENTS: Record<string, readonly string[]> = {
   nb: ['no'],
   no: ['nb'],
   nn: ['nb', 'no'],
+  // Même nature d'arbitrage que le nynorsk : deux écritures du chinois, pas deux dialectes. Qui lit
+  // le simplifié déchiffre le traditionnel avec un effort — moins d'effort que l'anglais. Le jour où
+  // Pokza servira `zh-Hans`, la correspondance exacte jouera avant d'arriver ici.
+  'zh-hans': ['zh-Hant'],
+  'zh-hant': ['zh-Hans'],
 };
+
+/**
+ * « zh-Hant-TW » → [« zh-Hant-TW », « zh-Hant », « zh »] : la recherche par TRONCATURE de RFC 4647.
+ * `split('-')[0]` ne gardait que le premier morceau, et jetait donc l'écriture avec la région.
+ */
+function troncatures(code: string): string[] {
+  const parts = code.split('-');
+  return parts.map((_, i) => parts.slice(0, parts.length - i).join('-'));
+}
 
 /**
  * Première langue préférée de l'appareil que nous servons réellement.
@@ -197,18 +225,39 @@ const EQUIVALENTS: Record<string, readonly string[]> = {
  */
 export function choisirLangue(preferees: readonly (string | null | undefined)[]): Langue {
   for (const code of preferees) {
-    if (estLangueServie(code)) return code;
+    if (typeof code !== 'string' || code === '') continue;
+
     // ⚠️ « de-AT » EST DE L'ALLEMAND. `getLocales()` rend en principe le code nu (« de »), mais rien
     // ne le garantit sur toutes les plateformes, et le jour où on servira une variante régionale
     // (« pt-BR ») les deux formes coexisteront. Un Autrichien basculé sur l'anglais faute d'un
     // tiret serait un défaut invisible : il n'aurait aucun moyen de savoir que l'allemand existe.
-    const base = typeof code === 'string' ? code.split('-')[0].toLowerCase() : null;
-    if (estLangueServie(base)) return base;
-    // …et le même défaut d'un étage au-dessus, pour les codes qui ne sont pas des variantes
-    // régionales mais DEUX NOMS DE LA MÊME LANGUE (cf. EQUIVALENTS).
-    if (base !== null) {
-      for (const equivalent of EQUIVALENTS[base] ?? []) {
-        if (estLangueServie(equivalent)) return equivalent;
+    // La correspondance EXACTE est la première troncature : pas de chemin rapide à tenir en double.
+
+    const candidats = troncatures(code);
+    // ⚠️ « zh-TW » NE CONTIENT PAS L'ÉCRITURE, et c'est CLDR qui sait que Taïwan écrit en
+    // traditionnel et la Chine en simplifié. `maximize()` ajoute ces sous-étiquettes probables :
+    // « zh-TW » → « zh-Hant-TW », « zh-HK » → « zh-Hant-HK », « zh-CN » → « zh-Hans-CN ». Aucune
+    // liste à tenir à la main, donc rien à oublier le jour d'une écriture de plus.
+    try {
+      for (const t of troncatures(new Intl.Locale(code).maximize().toString())) {
+        if (!candidats.includes(t)) candidats.push(t);
+      }
+    } catch {
+      // `Intl.Locale` peut manquer (Hermes sans ICU, cf. `categorie`) ou le code être malformé. Les
+      // troncatures seules suffisent dès que la plateforme rend déjà l'écriture (« zh-Hant-TW »),
+      // ce que fait iOS ; on perd seulement le cas « zh-TW » nu.
+    }
+
+    for (const candidat of candidats) {
+      const servie = resoudreLangue(candidat);
+      if (servie !== null) return servie;
+    }
+    // …et l'étage au-dessus : les codes qui ne sont ni des variantes ni des troncatures, mais DEUX
+    // NOMS DE LA MÊME LANGUE (cf. EQUIVALENTS). Dans la même préférence, avant de passer à la suivante.
+    for (const candidat of candidats) {
+      for (const equivalent of EQUIVALENTS[candidat.toLowerCase()] ?? []) {
+        const servie = resoudreLangue(equivalent);
+        if (servie !== null) return servie;
       }
     }
   }

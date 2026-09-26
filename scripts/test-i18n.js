@@ -132,6 +132,23 @@ verifier('[nn, da] → nb, pas da', choisirLangue(['nn', 'da']), 'nb');
 // Et la table ne doit rien inventer pour une langue qui n'y figure pas.
 verifier('langue sans équivalent connu → repli', choisirLangue(['xh']), 'en');
 
+// …et l'étage ENCORE au-dessus : une SOUS-ÉTIQUETTE D'ÉCRITURE. Le chinois traditionnel et le
+// simplifié sont deux écritures de la même langue, et `split('-')[0]` jetait l'écriture avec la
+// région — « zh-Hant-TW » devenait « zh », qui n'est pas servi. Pokza sert « zh-Hant » : c'est
+// Macao, Hong Kong et Taïwan, donc les cinq lieux chinois de la banque.
+verifier('zh-Hant servi directement', choisirLangue(['zh-Hant']), 'zh-Hant');
+verifier('zh-Hant-TW → zh-Hant (troncature)', choisirLangue(['zh-Hant-TW']), 'zh-Hant');
+verifier('zh-hant → zh-Hant (casse de la sous-étiquette)', choisirLangue(['zh-hant']), 'zh-Hant');
+// ⚠️ LE CAS QUI NE MARCHE QUE PAR `maximize()` : « zh-TW » ne contient PAS l'écriture. C'est CLDR
+// qui sait que Taïwan, Hong Kong et Macao écrivent en traditionnel — aucune liste à tenir ici.
+verifier('zh-TW → zh-Hant (région ⇒ écriture)', choisirLangue(['zh-TW']), 'zh-Hant');
+verifier('zh-HK → zh-Hant', choisirLangue(['zh-HK']), 'zh-Hant');
+verifier('zh-MO → zh-Hant (Macao)', choisirLangue(['zh-MO']), 'zh-Hant');
+// Le simplifié est un ARBITRAGE, comme le nynorsk : qui lit le simplifié déchiffre le traditionnel
+// avec un effort, et c'est moins d'effort que l'anglais.
+verifier('zh-Hans-CN → zh-Hant (arbitrage)', choisirLangue(['zh-Hans-CN']), 'zh-Hant');
+verifier('zh nu → zh-Hant (maximize donne Hans, puis l\'arbitrage)', choisirLangue(['zh']), 'zh-Hant');
+
 // 8. phrases a trous — celles dont un morceau est un lien ou un mot en couleur
 const seg = (g) => JSON.stringify(segmenter(g));
 verifier(

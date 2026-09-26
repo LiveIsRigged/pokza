@@ -38,7 +38,8 @@ const rel = (p) => path.relative(RACINE, p);
 function languesDeclarees(source) {
   const bloc = source.match(/export const LANGUES = \{([\s\S]*?)\n\} as const;/);
   if (!bloc) throw new Error(`${rel(LANGUES_TS)} : bloc LANGUES introuvable`);
-  return [...bloc[1].matchAll(/^\s*([a-z]{2,3}(?:-[A-Za-z0-9]+)?):/gm)].map((m) => m[1]);
+  // Les clés à tiret sont CITÉES (`'zh-Hant':`), les autres non : le motif accepte les deux.
+  return [...bloc[1].matchAll(/^\s*'?([a-z]{2,3}(?:-[A-Za-z0-9]+)?)'?:/gim)].map((m) => m[1]);
 }
 
 /** Les catalogues présents sur le disque (les empreintes `.source.json` ne comptent pas). */
@@ -59,9 +60,11 @@ if (process.argv.includes('--verifier')) {
   const manquantes = [];
   for (const code of cataloguesPresents()) {
     const dansLangues = declarees.includes(code);
-    const importee = new RegExp(`^import ${code} from '\\./catalogues/${code}\\.json';$`, 'm').test(traduire);
-    const dansCatalogues = new RegExp(`\\b${code}: Partial<Record<Cle, Message>>;`).test(traduire)
-      || new RegExp(`\\b${code}: Record<Cle, Message>;`).test(traduire);
+    const id = code.replace(/-(.)/g, (_, x) => x.toUpperCase());
+    const k = /^[a-z]{2,3}$/.test(code) ? code : `'${code}'`;
+    const importee = new RegExp(`^import ${id} from '\\./catalogues/${code}\\.json';$`, 'm').test(traduire);
+    const dansCatalogues = new RegExp(`${k}: Partial<Record<Cle, Message>>;`).test(traduire)
+      || new RegExp(`${k}: Record<Cle, Message>;`).test(traduire);
     if (!dansLangues || !importee || !dansCatalogues) {
       manquantes.push(
         `${code} : ${[!dansLangues && 'absent de LANGUES', !importee && "pas d'import", !dansCatalogues && 'absent du type CATALOGUES']
@@ -99,6 +102,15 @@ if (!fs.existsSync(path.join(CATALOGUES, `${code}.json`))) {
   process.exit(2);
 }
 
+// ⚠️ UN CODE À TIRET N'EST NI UNE CLÉ NI UN IDENTIFIANT VALIDES. `zh-Hant:` ne compile pas comme
+// clé d'objet TypeScript, et `import zh-Hant from …` est une erreur de syntaxe — le tiret y est lu
+// comme une soustraction. Tant qu'aucune langue n'en avait, le script écrivait le code tel quel ;
+// le chinois traditionnel a levé les deux d'un coup. Deux formes distinctes, donc :
+//   clé d'objet  → citée si elle porte un tiret  (`'zh-Hant'`)
+//   identifiant  → chameau sans tiret            (`zhHant`)
+const cle = (c) => (/^[a-z]{2,3}$/.test(c) ? c : `'${c}'`);
+const identifiant = (c) => c.replace(/-(.)/g, (_, x) => x.toUpperCase());
+
 let langues = fs.readFileSync(LANGUES_TS, 'utf8');
 let traduire = fs.readFileSync(TRADUIRE_TS, 'utf8');
 const faits = [];
@@ -112,35 +124,40 @@ if (languesDeclarees(langues).includes(code)) {
   const avant = langues;
   langues = langues.replace(
     /(export const LANGUES = \{[\s\S]*?\n)(\} as const;)/,
-    (_, debut, fin) => `${debut}  ${code}: '${nom.replace(/'/g, "\\'")}',\n${fin}`
+    (_, debut, fin) => `${debut}  ${cle(code)}: '${nom.replace(/'/g, "\\'")}',\n${fin}`
   );
   if (langues === avant) throw new Error(`${rel(LANGUES_TS)} : insertion dans LANGUES impossible`);
-  faits.push(`LANGUES → ${code}: '${nom}'`);
+  faits.push(`LANGUES → ${cle(code)}: '${nom}'`);
 }
 
 // 2. l'import du catalogue, juste après le dernier `import … from './catalogues/….json';`
-if (new RegExp(`^import ${code} from '\\./catalogues/${code}\\.json';$`, 'm').test(traduire)) {
+if (new RegExp(`^import ${identifiant(code)} from '\\./catalogues/${code}\\.json';$`, 'm').test(traduire)) {
   deja.push('import');
 } else {
   const imports = [...traduire.matchAll(/^import \w+ from '\.\/catalogues\/[\w-]+\.json';$/gm)];
   if (imports.length === 0) throw new Error(`${rel(TRADUIRE_TS)} : aucun import de catalogue trouvé`);
   const dernier = imports[imports.length - 1];
   const fin = dernier.index + dernier[0].length;
-  traduire = `${traduire.slice(0, fin)}\nimport ${code} from './catalogues/${code}.json';${traduire.slice(fin)}`;
-  faits.push(`import ${code}`);
+  traduire = `${traduire.slice(0, fin)}\nimport ${identifiant(code)} from './catalogues/${code}.json';${traduire.slice(fin)}`;
+  faits.push(`import ${identifiant(code)} depuis ${code}.json`);
 }
 
 // 3. le type de CATALOGUES, puis la valeur. Le type est `Partial` pour toute langue autre que le
 //    français (source) et l'anglais (repli) : une clé qui manque doit retomber sur l'anglais, pas
 //    faire échouer la compilation. C'est ce qui permet d'importer une traduction incomplète.
-if (new RegExp(`\\b${code}: (?:Partial<Record|Record)<Cle, Message>[>;]`).test(traduire)) {
+if (new RegExp(`${cle(code).replace(/'/g, "'")}: (?:Partial<Record|Record)<Cle, Message>[>;]`).test(traduire)) {
   deja.push('type CATALOGUES');
 } else {
   const avant = traduire;
+  // ⚠️ LA CLASSE ACCEPTE `'` `:` ET `-` : dès la PREMIÈRE langue à tiret, la liste de valeurs cesse
+  //    d'être une simple énumération de noms et devient `…, cs, 'zh-Hant': zhHant`. Écrite d'abord
+  //    en `[\w, ]`, elle a marché pour le chinois puis échoué à la langue SUIVANTE — un défaut qui
+  //    ne se voit qu'au deuxième usage, et qui a bien échoué bruyamment plutôt qu'en silence.
   traduire = traduire.replace(
-    /(const CATALOGUES: \{\n[\s\S]*?)(\n\} = \{ )([\w, ]+)( \};)/,
+    /(const CATALOGUES: \{\n[\s\S]*?)(\n\} = \{ )([\w, ':-]+)( \};)/,
     (_, corps, milieu, valeurs, fin) =>
-      `${corps}\n  ${code}: Partial<Record<Cle, Message>>;${milieu}${valeurs}, ${code}${fin}`
+      `${corps}\n  ${cle(code)}: Partial<Record<Cle, Message>>;${milieu}${valeurs}, `
+      + `${identifiant(code) === code ? code : `${cle(code)}: ${identifiant(code)}`}${fin}`
   );
   if (traduire === avant) throw new Error(`${rel(TRADUIRE_TS)} : bloc CATALOGUES introuvable`);
   faits.push(`CATALOGUES → ${code}: Partial<Record<Cle, Message>>`);

@@ -96,6 +96,8 @@ const colonne = entete.length - 1;
 const servies = new Set();
 let remplies = 0;
 const vides = [];
+/** Lignes vides dont la forme n'existe pas dans cette langue : sans conséquence (voir plus bas). */
+const videsHorsLangue = [];
 
 // Les formes plurielles que CETTE langue possède — la référence, et non une liste écrite à la main.
 // Une entrée qui porterait une forme absente d'ici serait du poids mort : `rendre()` ne la choisit jamais.
@@ -126,7 +128,12 @@ for (const ligne of lignes.slice(1)) {
     servies.add(cle);
     remplies++;
   } else if (champs[colonne].trim() === '') {
-    vides.push(cle);
+    // ⚠️ DEUX SORTES DE LIGNE VIDE, et les confondre fait mentir le rapport. Une forme que la langue
+    // N'A PAS (« #one » en chinois) ne retombera pas sur l'anglais : `Intl.PluralRules` ne la
+    // sélectionnera jamais, donc elle ne sera jamais consultée. C'est normal et sans conséquence.
+    // Une forme que la langue A et qu'on n'a pas remplie, elle, s'affichera en anglais.
+    const forme = cle.includes('#') ? cle.split('#')[1] : null;
+    (forme !== null && !formesValides.has(forme) ? videsHorsLangue : vides).push(cle);
   }
   corps.push(champs);
   const base = cle.split('#')[0];
@@ -214,6 +221,10 @@ if (orphelines.length > 0) {
   console.log(`   leur traduction serait perdue. Faute de frappe, ou clé disparue du français :`);
   for (const c of orphelines.slice(0, 30)) console.log(`      ${c}`);
   if (orphelines.length > 30) console.log(`      … et ${orphelines.length - 30} de plus`);
+}
+if (videsHorsLangue.length > 0) {
+  console.log(`\n${videsHorsLangue.length} ligne(s) laissée(s) vide(s) parce que ${langue} n'a pas cette forme —`);
+  console.log('   normal et sans conséquence : Intl ne les sélectionnera jamais.');
 }
 if (vides.length > 0) {
   console.log(`\n${vides.length} ligne(s) encore vide(s) — elles retomberont sur l'anglais :`);
