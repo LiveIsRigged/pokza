@@ -11,6 +11,12 @@ import sv from './catalogues/sv.json';
 import fi from './catalogues/fi.json';
 import nb from './catalogues/nb.json';
 import da from './catalogues/da.json';
+import ru from './catalogues/ru.json';
+import pl from './catalogues/pl.json';
+import uk from './catalogues/uk.json';
+import bg from './catalogues/bg.json';
+import ro from './catalogues/ro.json';
+import cs from './catalogues/cs.json';
 import { estLangueServie, LANGUE_REPLI, LANGUE_SOURCE, type Langue } from './langues';
 
 /**
@@ -53,7 +59,13 @@ const CATALOGUES: {
   fi: Partial<Record<Cle, Message>>;
   nb: Partial<Record<Cle, Message>>;
   da: Partial<Record<Cle, Message>>;
-} = { fr, en, de, es, it, pt, nl, el, hu, sv, fi, nb, da };
+  ru: Partial<Record<Cle, Message>>;
+  pl: Partial<Record<Cle, Message>>;
+  uk: Partial<Record<Cle, Message>>;
+  bg: Partial<Record<Cle, Message>>;
+  ro: Partial<Record<Cle, Message>>;
+  cs: Partial<Record<Cle, Message>>;
+} = { fr, en, de, es, it, pt, nl, el, hu, sv, fi, nb, da, ru, pl, uk, bg, ro, cs };
 
 /**
  * Langue effective, tenue hors de React : `handEngine`, `relativeDate` ou `errorMessage` produisent

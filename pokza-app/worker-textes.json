@@ -1,4 +1,16 @@
 {
+  "bg": {
+    "phrase": "Мрежата на покер играчите: споделяй ръцете си и питай приятелите си за мнение",
+    "main": "Ръка, споделена в Pokza. Кажи какво мислиш в коментарите!",
+    "groupe": "{nom} те кани в групата {groupe}",
+    "profil": "{nom} те кани в Pokza"
+  },
+  "cs": {
+    "phrase": "Síť pokerových hráčů: sdílej své ruce a zjisti, co si myslí tví přátelé",
+    "main": "Ruka sdílená na Pokza. Řekni svůj názor v komentářích!",
+    "groupe": "{nom} tě zve do skupiny {groupe}",
+    "profil": "{nom} tě zve na Pokza"
+  },
   "da": {
     "phrase": "Pokerspillernes netværk: del dine hænder og spørg dine venner, hvad de mener",
     "main": "Hånd delt på Pokza. Sig hvad du mener i kommentarerne!",
@@ -65,16 +77,40 @@
     "groupe": "{nom} nodigt je uit in de groep {groupe}",
     "profil": "{nom} nodigt je uit op Pokza"
   },
+  "pl": {
+    "phrase": "Sieć pokerzystów: udostępniaj swoje rozdania i pytaj znajomych o opinię",
+    "main": "Rozdanie udostępnione w Pokza. Powiedz, co myślisz, w komentarzach!",
+    "groupe": "{nom} zaprasza cię do grupy {groupe}",
+    "profil": "{nom} zaprasza cię do Pokza"
+  },
   "pt": {
     "phrase": "A rede dos jogadores de poker: compartilhe suas mãos e peça a opinião dos seus amigos",
     "main": "Mão compartilhada no Pokza. Dê sua opinião nos comentários!",
     "groupe": "{nom} convida você para o grupo {groupe}",
     "profil": "{nom} convida você para o Pokza"
   },
+  "ro": {
+    "phrase": "Rețeaua jucătorilor de poker: împarte mâinile tale și cere părerea prietenilor",
+    "main": "Mână împărtășită pe Pokza. Spune-ți părerea în comentarii!",
+    "groupe": "{nom} te invită în grupul {groupe}",
+    "profil": "{nom} te invită pe Pokza"
+  },
+  "ru": {
+    "phrase": "Сеть покерных игроков: делись своими раздачами и спрашивай мнение друзей",
+    "main": "Раздача опубликована в Pokza. Скажи, что думаешь, в комментариях!",
+    "groupe": "{nom} приглашает тебя в группу {groupe}",
+    "profil": "{nom} приглашает тебя в Pokza"
+  },
   "sv": {
     "phrase": "Pokerspelarnas nätverk: dela dina händer och fråga dina vänner vad de tycker",
     "main": "Hand delad på Pokza. Säg vad du tycker i kommentarerna!",
     "groupe": "{nom} bjuder in dig till gruppen {groupe}",
     "profil": "{nom} bjuder in dig till Pokza"
+  },
+  "uk": {
+    "phrase": "Мережа покерних гравців: діліться своїми роздачами й питайте думку друзів",
+    "main": "Роздачу опубліковано в Pokza. Скажи, що думаєш, у коментарях!",
+    "groupe": "{nom} запрошує тебе до групи {groupe}",
+    "profil": "{nom} запрошує тебе в Pokza"
   }
 }
