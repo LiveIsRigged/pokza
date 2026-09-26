@@ -24,6 +24,12 @@ import ja from './catalogues/ja.json';
 import th from './catalogues/th.json';
 import vi from './catalogues/vi.json';
 import tr from './catalogues/tr.json';
+import srLatn from './catalogues/sr-Latn.json';
+import hi from './catalogues/hi.json';
+import bn from './catalogues/bn.json';
+import ar from './catalogues/ar.json';
+import zhHans from './catalogues/zh-Hans.json';
+import id from './catalogues/id.json';
 import { estLangueServie, LANGUE_REPLI, LANGUE_SOURCE, resoudreLangue, type Langue } from './langues';
 
 /**
@@ -79,7 +85,13 @@ const CATALOGUES: {
   th: Partial<Record<Cle, Message>>;
   vi: Partial<Record<Cle, Message>>;
   tr: Partial<Record<Cle, Message>>;
-} = { fr, en, de, es, it, pt, nl, el, hu, sv, fi, nb, da, ru, pl, uk, bg, ro, cs, 'zh-Hant': zhHant, sk, ko, ja, th, vi, tr };
+  'sr-Latn': Partial<Record<Cle, Message>>;
+  hi: Partial<Record<Cle, Message>>;
+  bn: Partial<Record<Cle, Message>>;
+  ar: Partial<Record<Cle, Message>>;
+  'zh-Hans': Partial<Record<Cle, Message>>;
+  id: Partial<Record<Cle, Message>>;
+} = { fr, en, de, es, it, pt, nl, el, hu, sv, fi, nb, da, ru, pl, uk, bg, ro, cs, 'zh-Hant': zhHant, sk, ko, ja, th, vi, tr, 'sr-Latn': srLatn, hi, bn, ar, 'zh-Hans': zhHans, id };
 
 /**
  * Langue effective, tenue hors de React : `handEngine`, `relativeDate` ou `errorMessage` produisent
@@ -199,11 +211,34 @@ const EQUIVALENTS: Record<string, readonly string[]> = {
   nb: ['no'],
   no: ['nb'],
   nn: ['nb', 'no'],
-  // Même nature d'arbitrage que le nynorsk : deux écritures du chinois, pas deux dialectes. Qui lit
-  // le simplifié déchiffre le traditionnel avec un effort — moins d'effort que l'anglais. Le jour où
-  // Pokza servira `zh-Hans`, la correspondance exacte jouera avant d'arriver ici.
+  // Deux écritures du chinois, pas deux dialectes. Depuis que Pokza sert LES DEUX (26/09/2026), ces
+  // deux lignes ne servent plus qu'au cas tordu : un code annonçant une écriture que nous n'aurions
+  // pas — la correspondance exacte joue bien avant d'arriver ici. On les garde parce qu'elles ne
+  // coûtent rien et qu'elles couvrent l'écriture qu'on ajouterait demain.
   'zh-hans': ['zh-Hant'],
   'zh-hant': ['zh-Hans'],
+  // ⚠️ MALAIS → INDONÉSIEN, et c'est un ARBITRAGE, pas une équivalence. Ce sont deux normes d'une
+  // même langue, intelligibles entre elles à ~80 % : un Malaisien lit l'indonésien avec un effort,
+  // bien moindre que l'anglais. Quelques faux amis existent (« percuma » = gratuit en malais,
+  // inutile en indonésien) — d'où l'arbitrage assumé plutôt que l'équivalence. Même geste que le
+  // nynorsk. Le jour où Pokza servirait `ms`, la correspondance exacte jouerait avant d'arriver ici.
+  ms: ['id'],
+  zsm: ['id'],
+  // ⚠️ LE SERBE REJOUE LE COUP DU CHINOIS, À L'ENVERS — et sans ces trois lignes il échouerait EN
+  // SILENCE. Le serbe s'écrit en cyrillique ET en latin ; CLDR tient le cyrillique pour l'écriture
+  // par défaut, donc `maximize('sr')` rend « sr-Cyrl-RS », dont les troncatures sont « sr-Cyrl »
+  // puis « sr » — jamais « sr-Latn ». Un appareil qui annonce simplement « sr » ne trouverait donc
+  // rien, alors que le catalogue est écrit pour lui.
+  //
+  // Le croate et le bosniaque, eux, ne sont pas des équivalences de repli mais LA MÊME LANGUE à
+  // trois normes : le catalogue est écrit en ijékavien, la forme valable dans les trois. Ils sont
+  // ici plutôt que dans LANGUES parce qu'on ne sert qu'un catalogue, pas trois.
+  sr: ['sr-Latn'],
+  hr: ['sr-Latn'],
+  bs: ['sr-Latn'],
+  // Le monténégrin : même langue, même ijékavien, code séparé depuis 2017.
+  cnr: ['sr-Latn'],
+  sh: ['sr-Latn'],
 };
 
 /**

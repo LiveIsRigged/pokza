@@ -97,9 +97,37 @@ def police(taille, graisse=400):
 COMPOSITION = features.check('raqm')
 
 
+# ⚠️ LES MARQUES COMBINANTES NE SUFFISENT PAS À DÉTECTER LE PROBLÈME — mesuré le 26/09/2026.
+# L'arabe courant n'écrit PAS ses voyelles brèves : « المستوى 999 » ne porte aucune marque de
+# catégorie Mn/Mc/Me. Le garde-fou ne tirait donc pas, alors que la carte sortait doublement
+# fausse : lettres DÉTACHÉES (l'arabe exige une liaison, que HarfBuzz fait et PIL non) et dans
+# l'ORDRE INVERSE (PIL n'applique pas l'algorithme bidi). L'hébreu, qui ne lie pas ses lettres,
+# sortait quand même à l'envers. Même classe de défaut que les carrés du chinois : SILENCIEUX.
+#
+# Une écriture de droite à gauche est donc traitée comme une écriture à composer, par ses plages
+# Unicode : arabe, hébreu, syriaque, thaana, n'ko, adlam. Raqm apporte FriBidi en même temps que
+# HarfBuzz — le même `brew install libraqm` règle la liaison ET le sens.
+PLAGES_RTL = (
+    (0x0590, 0x05FF),  # hébreu
+    (0x0600, 0x06FF),  # arabe
+    (0x0700, 0x074F),  # syriaque
+    (0x0750, 0x077F),  # supplément arabe
+    (0x0780, 0x07BF),  # thaana (divéhi)
+    (0x07C0, 0x07FF),  # n'ko
+    (0x0860, 0x08FF),  # arabe étendu
+    (0x1E900, 0x1E95F),  # adlam
+    (0xFB1D, 0xFDFF),  # formes de présentation hébraïques et arabes
+    (0xFE70, 0xFEFF),  # formes de présentation arabes B
+)
+
+
 def besoin_de_composition(texte):
-    """Le texte porte-t-il des marques qui doivent se poser SUR une autre lettre ?"""
-    return any(unicodedata.category(c) in ('Mn', 'Mc', 'Me') for c in texte)
+    """Le texte demande-t-il une composition que PIL ne sait pas faire sans libraqm ?"""
+    if any(unicodedata.category(c) in ('Mn', 'Mc', 'Me') for c in texte):
+        return True
+    return any(
+        any(debut <= ord(c) <= fin for debut, fin in PLAGES_RTL) for c in texte
+    )
 
 
 SECOURS = (

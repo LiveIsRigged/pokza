@@ -1,4 +1,23 @@
 {
+  "ar": {
+    "post_like": "{nom} أعجب بيدك",
+    "comment_like": "{nom} أعجب بتعليقك",
+    "post_comment": "{nom} علّق على يدك",
+    "comment_reply": "{nom} ردّ على تعليقك",
+    "friend_request": "{nom} يريد أن يصبح صديقك",
+    "friend_accept": "{nom} قبل طلب الصداقة",
+    "friend_posted": "{nom} نشر يدًا",
+    "friend_posted_lieu": "{nom} نشر يدًا في {lieu}",
+    "group_invite": "{nom} يدعوك إلى المجموعة الخاصة {groupe}",
+    "group_accept": "{nom} انضم إلى المجموعة الخاصة {groupe}",
+    "group_posted": "{nom} نشر يدًا في المجموعة الخاصة {groupe}",
+    "group_member_invited": "{nom} دعا {invite} إلى {groupe}",
+    "group_member_joined": "{nom} انضمّ إلى {groupe} بفضل {parrain}",
+    "report_resolved": "عالج الإشراف بلاغك.",
+    "content_removed": "أزال الإشراف أحد منشوراتك.",
+    "account_sanctioned": "اتُّخذ إجراء إشرافي بحقّ حسابك.",
+    "quelquun": "شخص ما"
+  },
   "bg": {
     "post_like": "{nom} хареса ръката ти",
     "comment_like": "{nom} хареса коментара ти",
@@ -17,6 +36,25 @@
     "content_removed": "Едно от съдържанията ти беше премахнато от модерацията.",
     "account_sanctioned": "Към акаунта ти беше приложена мярка на модерацията.",
     "quelquun": "Някой"
+  },
+  "bn": {
+    "post_like": "{nom} তোমার হ্যান্ড লাইক করেছে",
+    "comment_like": "{nom} তোমার মন্তব্য লাইক করেছে",
+    "post_comment": "{nom} তোমার হ্যান্ডে মন্তব্য করেছে",
+    "comment_reply": "{nom} তোমার মন্তব্যের জবাব দিয়েছে",
+    "friend_request": "{nom} তোমার বন্ধু হতে চায়",
+    "friend_accept": "{nom} তোমার বন্ধুত্বের অনুরোধ মেনে নিয়েছে",
+    "friend_posted": "{nom} একটা হ্যান্ড পোস্ট করেছে",
+    "friend_posted_lieu": "{nom} {lieu}-এ একটা হ্যান্ড পোস্ট করেছে",
+    "group_invite": "{nom} তোমাকে ব্যক্তিগত গ্রুপ {groupe}-এ ডাকছে",
+    "group_accept": "{nom} ব্যক্তিগত গ্রুপ {groupe}-এ যোগ দিয়েছে",
+    "group_posted": "{nom} ব্যক্তিগত গ্রুপ {groupe}-এ একটা হ্যান্ড পোস্ট করেছে",
+    "group_member_invited": "{nom} {invite}-কে {groupe}-এ ডেকেছে",
+    "group_member_joined": "{parrain}-এর সূত্রে {nom} {groupe}-এ যোগ দিয়েছে",
+    "report_resolved": "মডারেশন তোমার রিপোর্ট দেখেছে।",
+    "content_removed": "মডারেশন তোমার একটা কনটেন্ট সরিয়ে দিয়েছে।",
+    "account_sanctioned": "তোমার অ্যাকাউন্টে মডারেশনের ব্যবস্থা নেওয়া হয়েছে।",
+    "quelquun": "কেউ একজন"
   },
   "cs": {
     "post_like": "{nom} ocenil tvou ruku",
@@ -170,6 +208,25 @@
     "account_sanctioned": "Ton compte a fait l'objet d'une mesure de modération.",
     "quelquun": "Quelqu’un"
   },
+  "hi": {
+    "post_like": "{nom} ने तुम्हारे हैंड को लाइक किया",
+    "comment_like": "{nom} ने तुम्हारे कमेंट को लाइक किया",
+    "post_comment": "{nom} ने तुम्हारे हैंड पर कमेंट किया",
+    "comment_reply": "{nom} ने तुम्हारे कमेंट का जवाब दिया",
+    "friend_request": "{nom} तुमसे दोस्ती करना चाहता है",
+    "friend_accept": "{nom} ने तुम्हारी दोस्ती की रिक्वेस्ट मान ली",
+    "friend_posted": "{nom} ने एक हैंड पोस्ट किया",
+    "friend_posted_lieu": "{nom} ने {lieu} में एक हैंड पोस्ट किया",
+    "group_invite": "{nom} तुम्हें निजी ग्रुप {groupe} में बुला रहा है",
+    "group_accept": "{nom} निजी ग्रुप {groupe} में शामिल हुआ",
+    "group_posted": "{nom} ने निजी ग्रुप {groupe} में एक हैंड पोस्ट किया",
+    "group_member_invited": "{nom} ने {invite} को {groupe} में बुलाया",
+    "group_member_joined": "{nom} {parrain} की वजह से {groupe} में शामिल हुआ",
+    "report_resolved": "मॉडरेशन ने तुम्हारी रिपोर्ट देख ली है।",
+    "content_removed": "मॉडरेशन ने तुम्हारी एक सामग्री हटा दी है।",
+    "account_sanctioned": "तुम्हारे खाते पर मॉडरेशन की कार्रवाई हुई है।",
+    "quelquun": "कोई"
+  },
   "hu": {
     "post_like": "{nom} kedvelte a leosztásodat",
     "comment_like": "{nom} kedvelte a hozzászólásodat",
@@ -188,6 +245,25 @@
     "content_removed": "Az egyik tartalmadat a moderáció eltávolította.",
     "account_sanctioned": "A fiókoddal kapcsolatban moderációs intézkedés történt.",
     "quelquun": "Valaki"
+  },
+  "id": {
+    "post_like": "{nom} menyukai hand-mu",
+    "comment_like": "{nom} menyukai komentarmu",
+    "post_comment": "{nom} mengomentari hand-mu",
+    "comment_reply": "{nom} membalas komentarmu",
+    "friend_request": "{nom} ingin berteman denganmu",
+    "friend_accept": "{nom} menerima permintaan pertemananmu",
+    "friend_posted": "{nom} memposting sebuah hand",
+    "friend_posted_lieu": "{nom} memposting sebuah hand di {lieu}",
+    "group_invite": "{nom} mengundangmu ke grup pribadi {groupe}",
+    "group_accept": "{nom} bergabung dengan grup pribadi {groupe}",
+    "group_posted": "{nom} memposting sebuah hand di grup pribadi {groupe}",
+    "group_member_invited": "{nom} mengundang {invite} ke {groupe}",
+    "group_member_joined": "{nom} bergabung ke {groupe} berkat {parrain}",
+    "report_resolved": "Laporanmu sudah ditangani oleh moderasi.",
+    "content_removed": "Salah satu kontenmu dihapus oleh moderasi.",
+    "account_sanctioned": "Akunmu terkena tindakan moderasi.",
+    "quelquun": "Seseorang"
   },
   "it": {
     "post_like": "A {nom} è piaciuta la tua mano",
@@ -379,6 +455,25 @@
     "account_sanctioned": "Na tvoje konto bolo uplatnené moderačné opatrenie.",
     "quelquun": "Niekto"
   },
+  "sr-Latn": {
+    "post_like": "{nom} je lajkao tvoju ruku",
+    "comment_like": "{nom} je lajkao tvoj komentar",
+    "post_comment": "{nom} je komentarisao tvoju ruku",
+    "comment_reply": "{nom} je odgovorio na tvoj komentar",
+    "friend_request": "{nom} želi da ti bude prijatelj",
+    "friend_accept": "{nom} je prihvatio tvoj zahtjev za prijateljstvo",
+    "friend_posted": "{nom} je objavio ruku",
+    "friend_posted_lieu": "{nom} je objavio ruku u {lieu}",
+    "group_invite": "{nom} te poziva u privatnu grupu {groupe}",
+    "group_accept": "{nom} se pridružio privatnoj grupi {groupe}",
+    "group_posted": "{nom} je objavio ruku u privatnoj grupi {groupe}",
+    "group_member_invited": "{nom} je pozvao {invite} u {groupe}",
+    "group_member_joined": "{nom} se pridružio grupi {groupe} zahvaljujući {parrain}",
+    "report_resolved": "Moderacija je obradila tvoju prijavu.",
+    "content_removed": "Moderacija je uklonila jedan tvoj sadržaj.",
+    "account_sanctioned": "Nad tvojim nalogom je primijenjena mjera moderacije.",
+    "quelquun": "Neko"
+  },
   "sv": {
     "post_like": "{nom} gillade din hand",
     "comment_like": "{nom} gillade din kommentar",
@@ -473,6 +568,25 @@
     "content_removed": "Một nội dung của bạn đã bị kiểm duyệt xóa.",
     "account_sanctioned": "Tài khoản của bạn đã bị áp dụng biện pháp kiểm duyệt.",
     "quelquun": "Một người nào đó"
+  },
+  "zh-Hans": {
+    "post_like": "{nom} 赞了你的手牌",
+    "comment_like": "{nom} 赞了你的评论",
+    "post_comment": "{nom} 评论了你的手牌",
+    "comment_reply": "{nom} 回复了你的评论",
+    "friend_request": "{nom} 想和你成为朋友",
+    "friend_accept": "{nom} 接受了你的好友申请",
+    "friend_posted": "{nom} 发布了一手牌",
+    "friend_posted_lieu": "{nom} 在 {lieu} 发布了一手牌",
+    "group_invite": "{nom} 邀请你加入私密群组 {groupe}",
+    "group_accept": "{nom} 加入了私密群组 {groupe}",
+    "group_posted": "{nom} 在私密群组 {groupe} 发布了一手牌",
+    "group_member_invited": "{nom} 邀请了 {invite} 加入 {groupe}",
+    "group_member_joined": "{nom} 通过 {parrain} 加入了 {groupe}",
+    "report_resolved": "你的举报已由审核处理。",
+    "content_removed": "你的一条内容已被审核移除。",
+    "account_sanctioned": "你的账号受到了审核处分。",
+    "quelquun": "某人"
   },
   "zh-Hant": {
     "post_like": "{nom} 讚了你的手牌",

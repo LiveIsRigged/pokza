@@ -34,6 +34,12 @@ export const LANGUES = {
   th: 'ไทย',
   vi: 'Tiếng Việt',
   tr: 'Türkçe',
+  'sr-Latn': 'Srpski · Hrvatski · Bosanski',
+  hi: 'हिन्दी',
+  bn: 'বাংলা',
+  ar: 'العربية',
+  'zh-Hans': '简体中文',
+  id: 'Indonesia',
 } as const;
 
 export type Langue = keyof typeof LANGUES;

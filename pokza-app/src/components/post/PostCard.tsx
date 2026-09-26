@@ -19,6 +19,7 @@ import { formatContextLine } from '../../utils/denomination';
 import { formatRelativeDate } from '../../utils/relativeDate';
 import { wasEdited } from '../../utils/postEdited';
 import { lieuEtProvenance } from '../../utils/provenance';
+import { segmentColle } from '../../utils/segmentColle';
 import { getOrCreateShareToken } from '../../data/shares';
 import { etapesCorrigibles } from '../../creator/rehydrate';
 import type { Phase } from '../../creator/types';
@@ -522,7 +523,7 @@ function PostCardInner({
                   Il faut une main à la fois vieille, modifiée ET importée pour y arriver. */}
               <Text style={[typography.dateLocation, styles.muted]}>
                 {formatRelativeDate(post.createdAt)}
-                {wasEdited(post) ? t('post.modifie') : ''}
+                {wasEdited(post) ? segmentColle(t('post.modifie')) : ''}
                 {lieuEtProvenance(post.location, post.hand.imported)}
               </Text>
             </View>

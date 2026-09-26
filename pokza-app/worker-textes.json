@@ -1,9 +1,21 @@
 {
+  "ar": {
+    "phrase": "شبكة لاعبي البوكر: شارك أيديك واسأل أصدقاءك عن رأيهم",
+    "main": "يد مشتركة على Pokza. قل رأيك في التعليقات!",
+    "groupe": "{nom} يدعوك إلى مجموعة {groupe}",
+    "profil": "{nom} يدعوك إلى Pokza"
+  },
   "bg": {
     "phrase": "Мрежата на покер играчите: споделяй ръцете си и питай приятелите си за мнение",
     "main": "Ръка, споделена в Pokza. Кажи какво мислиш в коментарите!",
     "groupe": "{nom} те кани в групата {groupe}",
     "profil": "{nom} те кани в Pokza"
+  },
+  "bn": {
+    "phrase": "পোকার খেলোয়াড়দের নেটওয়ার্ক: নিজের হ্যান্ড শেয়ার করো আর বন্ধুদের মত জানো",
+    "main": "Pokza-তে শেয়ার করা হ্যান্ড। মন্তব্যে তোমার মত জানাও!",
+    "groupe": "{nom} তোমাকে {groupe} গ্রুপে ডাকছে",
+    "profil": "{nom} তোমাকে Pokza-তে ডাকছে"
   },
   "cs": {
     "phrase": "Síť pokerových hráčů: sdílej své ruce a zjisti, co si myslí tví přátelé",
@@ -53,11 +65,23 @@
     "groupe": "{nom} t'invite dans le groupe {groupe}",
     "profil": "{nom} t'invite sur Pokza"
   },
+  "hi": {
+    "phrase": "पोकर खिलाड़ियों का नेटवर्क: अपने हैंड शेयर करो और दोस्तों की राय पूछो",
+    "main": "Pokza पर शेयर किया हैंड। कमेंट में अपनी राय दो!",
+    "groupe": "{nom} तुम्हें {groupe} ग्रुप में बुला रहा है",
+    "profil": "{nom} तुम्हें Pokza पर बुला रहा है"
+  },
   "hu": {
     "phrase": "A pókerjátékosok hálózata: oszd meg a leosztásaid, és kérdezd meg a barátaid véleményét",
     "main": "Leosztás megosztva a Pokzán. Írd meg a véleményed a hozzászólásokban!",
     "groupe": "{nom} meghív a {groupe} csoportba",
     "profil": "{nom} meghív a Pokzára"
+  },
+  "id": {
+    "phrase": "Jaringan pemain poker: bagikan hand-mu dan tanyakan pendapat teman-temanmu",
+    "main": "Hand dibagikan di Pokza. Sampaikan pendapatmu di komentar!",
+    "groupe": "{nom} mengundangmu ke grup {groupe}",
+    "profil": "{nom} mengundangmu ke Pokza"
   },
   "it": {
     "phrase": "Il network dei giocatori di poker: condividi le tue mani e chiedi il parere dei tuoi amici",
@@ -119,6 +143,12 @@
     "groupe": "{nom} ťa pozýva do skupiny {groupe}",
     "profil": "{nom} ťa pozýva na Pokza"
   },
+  "sr-Latn": {
+    "phrase": "Mreža poker igrača: podijeli svoje ruke i pitaj prijatelje za mišljenje",
+    "main": "Ruka podijeljena na Pokzi. Reci svoje u komentarima!",
+    "groupe": "{nom} te poziva u grupu {groupe}",
+    "profil": "{nom} te poziva na Pokzu"
+  },
   "sv": {
     "phrase": "Pokerspelarnas nätverk: dela dina händer och fråga dina vänner vad de tycker",
     "main": "Hand delad på Pokza. Säg vad du tycker i kommentarerna!",
@@ -148,6 +178,12 @@
     "main": "Tay bài chia sẻ trên Pokza. Hãy nói ý bạn trong phần bình luận!",
     "groupe": "{nom} mời bạn vào nhóm {groupe}",
     "profil": "{nom} mời bạn vào Pokza"
+  },
+  "zh-Hans": {
+    "phrase": "扑克玩家的网络：分享你的手牌，问问朋友的看法",
+    "main": "在 Pokza 分享的手牌。在评论里说说你的看法！",
+    "groupe": "{nom} 邀请你加入群组 {groupe}",
+    "profil": "{nom} 邀请你来 Pokza"
   },
   "zh-Hant": {
     "phrase": "撲克玩家的網路：分享你的手牌，問問朋友的看法",

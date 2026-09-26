@@ -1,4 +1,5 @@
 import { t } from '../i18n/traduire';
+import { segmentColle } from './segmentColle';
 
 /**
  * LE LIEU ET LA PROVENANCE, SUR LA MÊME LIGNE.
@@ -34,6 +35,10 @@ import { t } from '../i18n/traduire';
  */
 export function lieuEtProvenance(lieu?: string, importee?: boolean): string {
   const nom = lieu?.trim();
-  if (nom) return importee ? t('post.provenance_lieu_importee', { lieu: nom }) : t('post.provenance_lieu', { lieu: nom });
-  return importee ? t('post.provenance_importee') : '';
+  // `segmentColle` remet l'espace de tête que l'import de traduction retire (cf. son commentaire).
+  if (nom)
+    return segmentColle(
+      importee ? t('post.provenance_lieu_importee', { lieu: nom }) : t('post.provenance_lieu', { lieu: nom })
+    );
+  return importee ? segmentColle(t('post.provenance_importee')) : '';
 }

@@ -20,6 +20,7 @@
 //
 // Compiler d'abord (le `tsc` local, pas `npx tsc` — cf. mémoire projet) :
 //   pokza-app/node_modules/.bin/tsc pokza-app/src/i18n/traduire.ts pokza-app/src/utils/enumerer.ts \
+//     pokza-app/src/utils/segmentColle.ts \
 //     --outDir scripts/i18n --module commonjs --target es2021 --rootDir pokza-app/src \
 //     --resolveJsonModule --skipLibCheck
 // (es2021 et pas es2020 : `Intl.ListFormat` n'existe pas dans la lib es2020.)
@@ -27,6 +28,7 @@
 
 const { t, rendre, interpoler, categorie, poserLangue, choisirLangue, segmenter } = require('./i18n/i18n/traduire');
 const { LANGUES } = require('./i18n/i18n/langues');
+const { segmentColle } = require('./i18n/utils/segmentColle');
 
 let echecs = 0;
 function verifier(nom, obtenu, attendu) {
@@ -146,8 +148,49 @@ verifier('zh-HK → zh-Hant', choisirLangue(['zh-HK']), 'zh-Hant');
 verifier('zh-MO → zh-Hant (Macao)', choisirLangue(['zh-MO']), 'zh-Hant');
 // Le simplifié est un ARBITRAGE, comme le nynorsk : qui lit le simplifié déchiffre le traditionnel
 // avec un effort, et c'est moins d'effort que l'anglais.
-verifier('zh-Hans-CN → zh-Hant (arbitrage)', choisirLangue(['zh-Hans-CN']), 'zh-Hant');
-verifier('zh nu → zh-Hant (maximize donne Hans, puis l\'arbitrage)', choisirLangue(['zh']), 'zh-Hant');
+// ⚠️ CES DEUX-LÀ ONT CHANGÉ DE RÉPONSE le 26/09/2026, et c'est voulu : tant que seul le
+// traditionnel était servi, « zh-Hans-CN » et « zh » nu retombaient dessus par ARBITRAGE (la table
+// EQUIVALENTS). Depuis que Pokza sert aussi le simplifié, la correspondance EXACTE joue avant — ce
+// qui est tout l'intérêt. Le test a échoué à l'ajout du catalogue, exactement comme il devait.
+verifier('zh-Hans servi directement', choisirLangue(['zh-Hans']), 'zh-Hans');
+verifier('zh-Hans-CN → zh-Hans (troncature, plus d\'arbitrage)', choisirLangue(['zh-Hans-CN']), 'zh-Hans');
+verifier('zh nu → zh-Hans (maximize donne Hans, et Hans est servi)', choisirLangue(['zh']), 'zh-Hans');
+// Le pendant du cas taïwanais : la RÉGION suffit, CLDR fournit l'écriture.
+verifier('zh-CN → zh-Hans (région ⇒ écriture)', choisirLangue(['zh-CN']), 'zh-Hans');
+verifier('zh-SG → zh-Hans (Singapour écrit en simplifié)', choisirLangue(['zh-SG']), 'zh-Hans');
+verifier('zh-hans → zh-Hans (casse de la sous-étiquette)', choisirLangue(['zh-hans']), 'zh-Hans');
+// …et le traditionnel ne doit RIEN perdre au passage.
+verifier('zh-TW → zh-Hant (pas de régression)', choisirLangue(['zh-TW']), 'zh-Hant');
+
+// ── LE SERBO-CROATE : LE MÊME MÉCANISME, MAIS À L'ENVERS ──────────────────────────────────────
+// Pokza sert « sr-Latn », UN catalogue pour trois normes (serbe, croate, bosniaque). Le piège est
+// que CLDR tient le CYRILLIQUE pour l'écriture par défaut du serbe : `maximize('sr')` rend
+// « sr-Cyrl-RS », dont les troncatures sont « sr-Cyrl » puis « sr » — jamais « sr-Latn ». Sans la
+// ligne `sr: ['sr-Latn']` dans EQUIVALENTS, un appareil réglé sur « sr » tomberait en ANGLAIS
+// alors que le catalogue est écrit pour lui. Retirer cette ligne fait échouer les trois premiers.
+verifier('sr-Latn servi directement', choisirLangue(['sr-Latn']), 'sr-Latn');
+verifier('sr nu → sr-Latn (maximize donne Cyrl, il faut l\'équivalence)', choisirLangue(['sr']), 'sr-Latn');
+verifier('sr-RS → sr-Latn', choisirLangue(['sr-RS']), 'sr-Latn');
+verifier('sr-Cyrl → sr-Latn (nous ne servons pas le cyrillique)', choisirLangue(['sr-Cyrl']), 'sr-Latn');
+verifier('sr-Latn-RS → sr-Latn (troncature)', choisirLangue(['sr-Latn-RS']), 'sr-Latn');
+// Croate, bosniaque et monténégrin ne sont pas des replis : c'est la MÊME langue à d'autres noms.
+// Le catalogue est écrit en ijékavien, la forme valable dans les quatre normes.
+verifier('hr → sr-Latn (même langue, autre norme)', choisirLangue(['hr']), 'sr-Latn');
+verifier('hr-HR → sr-Latn', choisirLangue(['hr-HR']), 'sr-Latn');
+verifier('bs → sr-Latn', choisirLangue(['bs']), 'sr-Latn');
+verifier('bs-Latn-BA → sr-Latn', choisirLangue(['bs-Latn-BA']), 'sr-Latn');
+verifier('cnr → sr-Latn (monténégrin)', choisirLangue(['cnr']), 'sr-Latn');
+// [croate, allemand] demande d'abord du croate. Le catalogue latin répond à cette demande-là.
+verifier('[hr, de] → sr-Latn, pas de', choisirLangue(['hr', 'de']), 'sr-Latn');
+
+// ── LE MALAIS : UN ARBITRAGE, PAS UNE ÉQUIVALENCE ─────────────────────────────────────────────
+// Malais et indonésien sont deux normes d'une même langue, intelligibles à ~80 %. Pokza ne sert
+// que l'indonésien : un Malaisien le lit avec un effort, bien moindre que l'anglais. Même geste
+// que le nynorsk. Quelques faux amis subsistent — d'où « arbitrage » et non « équivalence ».
+verifier('id servi directement', choisirLangue(['id']), 'id');
+verifier('ms → id (arbitrage)', choisirLangue(['ms']), 'id');
+verifier('ms-MY → id', choisirLangue(['ms-MY']), 'id');
+verifier('zsm → id (code du malais standard)', choisirLangue(['zsm']), 'id');
 
 // 8. phrases a trous — celles dont un morceau est un lien ou un mot en couleur
 const seg = (g) => JSON.stringify(segmenter(g));
@@ -180,6 +223,18 @@ verifier('en : deux noms', enumerer(['Bob', 'Chloé']), 'Bob and Chloé');
 // La virgule d'Oxford : l'anglais la met, le francais non. Ecrite a la main, elle se serait perdue.
 verifier('en : virgule d’Oxford', enumerer(['Bob', 'Chloé', 'Ali']), 'Bob, Chloé, and Ali');
 poserLangue('fr');
+
+// ── L'ESPACE QUE L'IMPORT DE TRADUCTION MANGE ─────────────────────────────────────────────────
+// `post.modifie` vaut « ␣· modifié » en français : l'espace de tête sépare le morceau du temps qui
+// le précède, dans une ligne concaténée sans séparateur. `i18n-import.js` fait un `.trim()` sur
+// chaque cellule du tableur — les 25 langues traduites la perdaient donc, et affichaient
+// « il y a 3 semaines· изменено », collé. Mesuré le 26/09/2026 sur ru, tr et ja.
+// `segmentColle` normalise au point de collage : retirer ce qu'il y a, remettre exactement une.
+verifier('segmentColle : sans espace → une espace', segmentColle('· изменено'), ' · изменено');
+verifier('segmentColle : avec espace → inchangé', segmentColle(' · modifié'), ' · modifié');
+verifier('segmentColle : deux espaces → une seule', segmentColle('  · modifié'), ' · modifié');
+verifier('segmentColle : vide reste vide (pas d’espace orpheline)', segmentColle(''), '');
+verifier('segmentColle : que des espaces → vide', segmentColle('   '), '');
 
 console.log(echecs === 0 ? '\nTout passe.' : `\n${echecs} échec(s).`);
 process.exit(echecs === 0 ? 0 : 1);
