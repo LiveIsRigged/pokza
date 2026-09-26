@@ -65,6 +65,18 @@
     "groupe": "{nom} ti invita nel gruppo {groupe}",
     "profil": "{nom} ti invita su Pokza"
   },
+  "ja": {
+    "phrase": "ポーカープレイヤーのネットワーク：ハンドを共有して、友だちの意見を聞こう",
+    "main": "Pokzaで共有したハンド。コメントで意見を聞かせてください！",
+    "groupe": "{nom}さんがグループ{groupe}に招待しています",
+    "profil": "{nom}さんがPokzaに招待しています"
+  },
+  "ko": {
+    "phrase": "포커 플레이어들의 네트워크: 핸드를 공유하고 친구들의 의견을 물어보세요",
+    "main": "Pokza에서 공유한 핸드. 댓글로 의견을 남겨 주세요!",
+    "groupe": "{nom}님이 {groupe} 그룹에 초대합니다",
+    "profil": "{nom}님이 Pokza에 초대합니다"
+  },
   "nb": {
     "phrase": "Pokerspillernes nettverk: del hendene dine og spør vennene dine hva de mener",
     "main": "Hånd delt på Pokza. Si hva du mener i kommentarene!",
@@ -101,16 +113,46 @@
     "groupe": "{nom} приглашает тебя в группу {groupe}",
     "profil": "{nom} приглашает тебя в Pokza"
   },
+  "sk": {
+    "phrase": "Sieť pokrových hráčov: zdieľaj svoje ruky a zisti, čo si myslia tvoji priatelia",
+    "main": "Ruka zdieľaná na Pokza. Povedz svoj názor v komentároch!",
+    "groupe": "{nom} ťa pozýva do skupiny {groupe}",
+    "profil": "{nom} ťa pozýva na Pokza"
+  },
   "sv": {
     "phrase": "Pokerspelarnas nätverk: dela dina händer och fråga dina vänner vad de tycker",
     "main": "Hand delad på Pokza. Säg vad du tycker i kommentarerna!",
     "groupe": "{nom} bjuder in dig till gruppen {groupe}",
     "profil": "{nom} bjuder in dig till Pokza"
   },
+  "th": {
+    "phrase": "เครือข่ายของผู้เล่นโป๊กเกอร์: แบ่งปันมือของคุณและถามความเห็นเพื่อน",
+    "main": "มือที่แบ่งปันบน Pokza บอกความเห็นของคุณในความคิดเห็นได้เลย",
+    "groupe": "{nom} เชิญคุณเข้ากลุ่ม {groupe}",
+    "profil": "{nom} เชิญคุณมาที่ Pokza"
+  },
+  "tr": {
+    "phrase": "Poker oyuncularının ağı: ellerini paylaş ve arkadaşlarının görüşünü al",
+    "main": "Pokza'da paylaşılan el. Görüşünü yorumlarda söyle!",
+    "groupe": "{nom} seni {groupe} grubuna davet ediyor",
+    "profil": "{nom} seni Pokza'ya davet ediyor"
+  },
   "uk": {
     "phrase": "Мережа покерних гравців: діліться своїми роздачами й питайте думку друзів",
     "main": "Роздачу опубліковано в Pokza. Скажи, що думаєш, у коментарях!",
     "groupe": "{nom} запрошує тебе до групи {groupe}",
     "profil": "{nom} запрошує тебе в Pokza"
+  },
+  "vi": {
+    "phrase": "Mạng của những người chơi poker: chia sẻ tay bài của bạn và hỏi ý bạn bè",
+    "main": "Tay bài chia sẻ trên Pokza. Hãy nói ý bạn trong phần bình luận!",
+    "groupe": "{nom} mời bạn vào nhóm {groupe}",
+    "profil": "{nom} mời bạn vào Pokza"
+  },
+  "zh-Hant": {
+    "phrase": "撲克玩家的網路：分享你的手牌，問問朋友的看法",
+    "main": "在 Pokza 分享的手牌。在留言裡說說你的看法！",
+    "groupe": "{nom} 邀請你加入群組 {groupe}",
+    "profil": "{nom} 邀請你來 Pokza"
   }
 }
