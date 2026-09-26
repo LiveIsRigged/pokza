@@ -683,6 +683,60 @@ if (sansAbonnement.length > 0) {
   console.log('');
 }
 
+// ── 11. UN CARACTÈRE D'UNE AUTRE ÉCRITURE ÉGARÉ DANS UN TEXTE ─────────────────────────────────
+// Né d'un vrai défaut, le 26/09/2026 : le polonais portait « podglądу » — un « у » CYRILLIQUE au
+// milieu d'un mot latin. Le texte s'affiche, `tsc` ne dit rien, l'importateur ne dit rien, et à
+// l'œil c'est invisible : la lettre a exactement la forme du « y ». Ce sont les langues voisines
+// qui le fabriquent — traduire le russe puis le polonais dans la même heure suffit.
+//
+// LE CONTRÔLE NE CONNAÎT PAS LES LANGUES, il les DÉDUIT : l'écriture d'un catalogue est celle de
+// la majorité de ses lettres, et on ne signale que la minorité. Une langue de plus n'a donc rien à
+// déclarer, et le jour où Pokza servira le grec ou le géorgien ça marche sans y toucher.
+//
+// Les mots entièrement d'une autre écriture sont IGNORÉS : ce sont des emprunts voulus (« Hold'em »
+// dans un texte cyrillique, « PLO », « Pokza », « GIF »). Seul un mot MÉLANGÉ est suspect.
+const ECRITURES = [
+  ['latin', /\p{Script=Latin}/u],
+  ['cyrillique', /\p{Script=Cyrillic}/u],
+  ['grec', /\p{Script=Greek}/u],
+];
+const melanges = [];
+for (const langue of langues) {
+  const cat = JSON.parse(fs.readFileSync(path.join(CATALOGUES, `${langue}.json`), 'utf8'));
+  const textes = [];
+  for (const [cle, val] of Object.entries(cat)) {
+    for (const t of typeof val === 'string' ? [val] : Object.values(val)) textes.push([cle, t]);
+  }
+  // L'écriture DOMINANTE du catalogue, comptée sur tout son contenu.
+  const totaux = ECRITURES.map(([nom, re]) => [
+    nom,
+    textes.reduce((n, [, t]) => n + [...t].filter((c) => re.test(c)).length, 0),
+  ]);
+  const [dominante] = totaux.sort((a, b) => b[1] - a[1])[0];
+  const autres = ECRITURES.filter(([nom]) => nom !== dominante);
+  for (const [cle, texte] of textes) {
+    // Un MOT à la fois : un mot entièrement étranger est un emprunt, un mot mélangé est une faute.
+    for (const mot of texte.split(/[^\p{L}]+/u).filter((m) => m.length > 1)) {
+      const dansDominante = [...mot].some((c) => ECRITURES.find(([n]) => n === dominante)[1].test(c));
+      if (!dansDominante) continue; // emprunt entier, légitime
+      for (const [nom, re] of autres) {
+        const intrus = [...mot].filter((c) => re.test(c));
+        if (intrus.length > 0) {
+          melanges.push(`${langue} · ${cle} — « ${mot} » mêle du ${dominante} et du ${nom} (${[...new Set(intrus)].join(' ')})`);
+        }
+      }
+    }
+  }
+}
+if (melanges.length > 0) {
+  console.log(`✗ ${melanges.length} mot(s) mêlant deux écritures — presque sûrement un copier-coller :`);
+  for (const m of melanges.slice(0, 20)) console.log(`      ${m}`);
+  if (melanges.length > 20) console.log(`      … et ${melanges.length - 20} de plus`);
+  console.log('');
+  trous += melanges.length;
+}
+
+
 if (trous > 0) {
   console.log(`✗ ${trous} trou(s) — traduire, puis « --sceller »`);
   process.exit(1);
